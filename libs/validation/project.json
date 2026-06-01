@@ -1,0 +1,13 @@
+{
+    "name":  "@chat-app/validation",
+    "$schema":  "../../node_modules/nx/schemas/project-schema.json",
+    "sourceRoot":  "libs/validation/src",
+    "projectType":  "library",
+    "tags":  [
+                 "type:infra"
+             ],
+    "// targets":  "to see all targets run: nx show project @chat-app/validation --web",
+    "targets":  {
+
+                }
+}

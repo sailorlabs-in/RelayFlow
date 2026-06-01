@@ -4,43 +4,40 @@
   "files": [],
   "references": [
     {
-      "path": "./apps/api-gateway"
+      "path": "./apps/gateway"
     },
     {
-      "path": "./libs/shared/domain"
+      "path": "./apps/worker-service"
     },
     {
-      "path": "./libs/shared/events"
+      "path": "./libs/database"
     },
     {
-      "path": "./libs/shared/config"
+      "path": "./libs/config"
     },
     {
-      "path": "./libs/features/auth"
+      "path": "./libs/logger"
     },
     {
-      "path": "./libs/features/messaging"
+      "path": "./libs/redis"
     },
     {
-      "path": "./libs/features/presence"
+      "path": "./libs/queues"
     },
     {
-      "path": "./libs/infrastructure/database"
+      "path": "./libs/validation"
     },
     {
-      "path": "./libs/infrastructure/cache"
+      "path": "./libs/contracts"
     },
     {
-      "path": "./libs/infrastructure/queue"
+      "path": "./libs/common"
     },
     {
-      "path": "./apps/realtime-gateway"
+      "path": "./libs/shared-events"
     },
     {
-      "path": "./apps/worker-engine"
-    },
-    {
-      "path": "./apps/web-client"
+      "path": "./libs/shared-constants"
     }
   ]
 }

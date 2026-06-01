@@ -1,0 +1,13 @@
+{
+    "name":  "@chat-app/common",
+    "$schema":  "../../node_modules/nx/schemas/project-schema.json",
+    "sourceRoot":  "libs/common/src",
+    "projectType":  "library",
+    "tags":  [
+                 "type:common"
+             ],
+    "// targets":  "to see all targets run: nx show project @chat-app/common --web",
+    "targets":  {
+
+                }
+}

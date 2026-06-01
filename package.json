@@ -2,16 +2,46 @@
   "name": "@chat-app/source",
   "version": "0.0.0",
   "license": "MIT",
-  "scripts": {},
+  "scripts": {
+    "serve-all": "nx run-many -t serve --parallel=10",
+    "serve-all:prod": "nx run-many -t serve --configuration=production --parallel=10",
+    "build-all": "nx run-many -t build",
+    "build-all:prod": "nx run-many -t build --configuration=production",
+    "preview-gateway": "node apps/gateway/dist/main.js",
+    "preview-worker-service": "node apps/worker-service/dist/main.js",
+    "preview-all": "npx --yes concurrently \"npm run preview-gateway\" \"npm run preview-worker-service\""
+  },
   "private": true,
   "dependencies": {
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/config": "^4.0.4",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/jwt": "^11.0.2",
+    "@nestjs/platform-express": "^11.0.0",
+    "@nestjs/platform-socket.io": "^11.1.24",
+    "@nestjs/swagger": "^11.4.4",
+    "@nestjs/typeorm": "^11.0.1",
+    "@nestjs/websockets": "^11.1.24",
     "axios": "^1.6.0",
+    "ioredis": "^5.11.0",
+    "nestjs-pino": "^4.6.1",
     "next": "~16.1.6",
+    "pg": "^8.21.0",
+    "pino": "^10.3.1",
+    "pino-pretty": "^13.1.3",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "reflect-metadata": "^0.1.13",
+    "rxjs": "^7.8.0",
+    "socket.io": "^4.8.3",
+    "typeorm": "^0.3.30",
+    "typeorm-naming-strategies": "^4.1.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.8.0",
+    "@nestjs/schematics": "^11.0.0",
+    "@nestjs/testing": "^11.0.0",
     "@next/eslint-plugin-next": "^16.1.6",
     "@nx/docker": "22.7.5",
     "@nx/esbuild": "22.7.5",
@@ -22,6 +52,7 @@
     "@nx/nest": "^22.7.5",
     "@nx/next": "^22.7.5",
     "@nx/node": "22.7.5",
+    "@nx/web": "22.7.5",
     "@nx/webpack": "^22.7.5",
     "@nx/workspace": "22.7.5",
     "@swc-node/register": "~1.11.1",
@@ -37,7 +68,7 @@
     "eslint": "^9.8.0",
     "eslint-config-next": "^16.1.6",
     "eslint-config-prettier": "^10.0.0",
-    "eslint-plugin-import": "2.31.0",
+    "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-jsx-a11y": "6.10.1",
     "eslint-plugin-react": "7.35.0",
     "eslint-plugin-react-hooks": "5.0.0",
@@ -56,8 +87,6 @@
   },
   "workspaces": [
     "apps/*",
-    "libs/shared/*",
-    "libs/features/*",
-    "libs/infrastructure/*"
+    "libs/*"
   ]
 }
