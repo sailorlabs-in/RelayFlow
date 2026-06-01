@@ -1,101 +1,428 @@
-# ChatApp
+# RelayFlow
 
-<a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
+## Overview
 
-✨ Your new, shiny [Nx workspace](https://nx.dev) is ready ✨.
+RelayFlow is a modern realtime communication platform built to learn and demonstrate production-grade system design, backend architecture, realtime communication, and scalable application development.
 
-[Learn more about this workspace setup and its capabilities](https://nx.dev/nx-api/node?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
+The project is intentionally designed to evolve from a simple MVP into a distributed platform while maintaining clean architecture and developer experience.
 
-## Run tasks
+The primary goal is educational:
 
-To run the dev server for your app, use:
+* Learn system design
+* Learn distributed systems concepts
+* Learn realtime communication
+* Learn scalable backend architecture
+* Learn monorepo development
+* Learn event-driven design
 
-```sh
-npx nx serve api-gateway
-```
+---
 
-To create a production bundle:
+# Vision
 
-```sh
-npx nx build api-gateway
-```
+RelayFlow starts as a realtime messaging platform and gradually evolves into a communication ecosystem.
 
-To see all available targets to run for a project, run:
+Current Focus:
 
-```sh
-npx nx show project api-gateway
-```
+* Authentication
+* One-to-One Messaging
+* Realtime Updates
+* Presence Tracking
+* Typing Indicators
+* Read Receipts
 
-These targets are either [inferred automatically](https://nx.dev/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
+Future Expansion:
 
-[More about running tasks in the docs &raquo;](https://nx.dev/features/run-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+* Group Chats
+* File Sharing
+* Notifications
+* Voice Calls
+* Video Calls
+* Workspaces
+* Channels
+* Integrations
+* Public APIs
 
-## Add new projects
+---
 
-While you could add new projects to your workspace manually, you might want to leverage [Nx plugins](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) and their [code generation](https://nx.dev/features/generate-code?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) feature.
+# Tech Stack
 
-Use the plugin's generator to create new projects.
+## Frontend
 
-To generate a new application, use:
+* Next.js
+* TypeScript
+* TailwindCSS
+* Socket.IO Client
 
-```sh
-npx nx g @nx/node:app demo
-```
+## Backend
 
-To generate a new library, use:
+* NestJS
+* TypeScript
+* Socket.IO
 
-```sh
-npx nx g @nx/node:lib mylib
-```
+## Database
 
-You can use `npx nx list` to get a list of installed plugins. Then, run `npx nx list <plugin-name>` to learn about more specific capabilities of a particular plugin. Alternatively, [install Nx Console](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) to browse plugins and generators in your IDE.
+* PostgreSQL
 
-[Learn more about Nx plugins &raquo;](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) | [Browse the plugin registry &raquo;](https://nx.dev/plugin-registry?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+## Realtime Infrastructure
 
-## Set up CI!
+* Redis
 
-### Step 1
+## Background Processing
 
-To connect to Nx Cloud, run the following command:
+* BullMQ
 
-```sh
-npx nx connect
-```
+## Monorepo
 
-Connecting to Nx Cloud ensures a [fast and scalable CI](https://nx.dev/ci/intro/why-nx-cloud?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) pipeline. It includes features such as:
+* Nx
 
-- [Remote caching](https://nx.dev/ci/features/remote-cache?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task distribution across multiple machines](https://nx.dev/ci/features/distribute-task-execution?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Automated e2e test splitting](https://nx.dev/ci/features/split-e2e-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task flakiness detection and rerunning](https://nx.dev/ci/features/flaky-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+## Infrastructure
 
-### Step 2
+* Docker
+* Docker Compose
 
-Use the following command to configure a CI workflow for your workspace:
+Future:
 
-```sh
-npx nx g ci-workflow
-```
+* Kubernetes
 
-[Learn more about Nx on CI](https://nx.dev/ci/intro/ci-with-nx#ready-get-started-with-your-provider?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+---
 
-## Install Nx Console
+# Architecture Philosophy
 
-Nx Console is an editor extension that enriches your developer experience. It lets you run tasks, generate code, and improves code autocompletion in your IDE. It is available for VSCode and IntelliJ.
+RelayFlow follows these principles:
 
-[Install Nx Console &raquo;](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+## 1. Simplicity First
 
-## Useful links
+Avoid unnecessary complexity.
 
-Learn more:
+Every abstraction must solve a real problem.
 
-- [Learn more about this workspace setup](https://nx.dev/nx-api/node?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects)
-- [Learn about Nx on CI](https://nx.dev/ci/intro/ci-with-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Releasing Packages with Nx release](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [What are Nx plugins?](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+---
 
-And join the Nx community:
-- [Discord](https://go.nx.dev/community)
-- [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
-- [Our Youtube channel](https://www.youtube.com/@nxdevtools)
-- [Our blog](https://nx.dev/blog?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+## 2. Domain Driven Structure
+
+Code should be organized by business domain rather than technical layers.
+
+Examples:
+
+* Auth
+* Users
+* Conversations
+* Messages
+* Presence
+
+---
+
+## 3. Event Driven Thinking
+
+Services communicate through events whenever possible.
+
+Example:
+
+Message Created
+→ Realtime Delivery
+→ Notifications
+→ Analytics
+
+---
+
+## 4. Scalability Through Separation
+
+The system starts simple but can evolve into multiple services without major rewrites.
+
+---
+
+# Repository Structure
+
+apps/
+
+* web
+* gateway
+* auth-service
+* chat-service
+* realtime-service
+* worker-service
+
+libs/
+
+* shared-types
+* shared-events
+* shared-constants
+* database
+* redis
+* socket
+* logger
+* config
+* validation
+
+docs/
+
+* architecture
+* decisions
+* setup
+* roadmap
+
+docker/
+
+* local infrastructure
+
+---
+
+# Service Responsibilities
+
+## Gateway
+
+Responsibilities:
+
+* Public API entry point
+* Authentication validation
+* Request routing
+* Rate limiting
+
+Should NOT contain business logic.
+
+---
+
+## Auth Service
+
+Responsibilities:
+
+* Registration
+* Login
+* JWT Management
+* Session Management
+
+Owns:
+
+* Users
+* Sessions
+
+---
+
+## Chat Service
+
+Responsibilities:
+
+* Conversations
+* Messages
+* Read Receipts
+
+Owns:
+
+* Conversations
+* Messages
+
+---
+
+## Realtime Service
+
+Responsibilities:
+
+* WebSocket Connections
+* Presence
+* Typing Indicators
+* Message Delivery
+
+Owns:
+
+* Socket State
+* Realtime Communication
+
+---
+
+## Worker Service
+
+Responsibilities:
+
+* Notifications
+* Scheduled Jobs
+* Async Processing
+
+Owns:
+
+* BullMQ Workers
+
+---
+
+# Database Ownership
+
+PostgreSQL stores:
+
+* Users
+* Sessions
+* Conversations
+* Conversation Members
+* Messages
+* Read Receipts
+
+Redis stores:
+
+* Presence
+* Typing Indicators
+* Socket Mapping
+* Pub/Sub Events
+* Cache
+
+---
+
+# Development Workflow
+
+Before implementing features:
+
+1. Design
+2. Architecture Review
+3. Database Design
+4. API Design
+5. Event Design
+6. Implementation
+7. Testing
+
+Avoid implementing features without first documenting their design.
+
+---
+
+# Branch Strategy
+
+main
+
+Production-ready code.
+
+develop
+
+Active development.
+
+feature/*
+
+Feature branches.
+
+Examples:
+
+feature/auth
+feature/conversations
+feature/realtime-presence
+
+---
+
+# Coding Standards
+
+## General
+
+* TypeScript Strict Mode
+* ESLint
+* Prettier
+* Conventional Commits
+
+---
+
+## Naming
+
+Files:
+
+kebab-case
+
+Examples:
+
+message.service.ts
+conversation.controller.ts
+
+Classes:
+
+PascalCase
+
+Variables:
+
+camelCase
+
+Constants:
+
+UPPER_SNAKE_CASE
+
+---
+
+# Current MVP Scope
+
+Authentication
+
+* Register
+* Login
+* Refresh Token
+
+Messaging
+
+* Direct Messages
+* Message Persistence
+* Realtime Delivery
+
+Presence
+
+* Online
+* Offline
+
+Typing
+
+* Typing Indicators
+
+Read Receipts
+
+* Message Seen State
+
+---
+
+# Out Of Scope (For Now)
+
+* Group Chats
+* Attachments
+* Voice Calls
+* Video Calls
+* Workspaces
+* Channels
+
+These features will be added after the MVP is stable.
+
+---
+
+# Documentation Structure
+
+Every major feature must include:
+
+Feature Overview
+
+API Design
+
+Database Changes
+
+Events Produced
+
+Events Consumed
+
+Testing Strategy
+
+No feature should be implemented without corresponding documentation.
+
+---
+
+# Success Criteria
+
+A successful RelayFlow MVP should:
+
+* Support realtime messaging
+* Persist messages reliably
+* Handle reconnects gracefully
+* Track presence accurately
+* Demonstrate scalable architecture patterns
+* Be understandable by new contributors
+
+---
+
+# Long-Term Goal
+
+RelayFlow should become a reference project demonstrating how modern realtime applications are built using:
+
+* NestJS
+* Next.js
+* PostgreSQL
+* Redis
+* BullMQ
+* Event Driven Architecture
+* Monorepo Development
+
+while remaining approachable for developers learning advanced backend engineering concepts.
