@@ -1,0 +1,9 @@
+{
+  "name": "@chat-app/infrastructure-database",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/infrastructure/database/src",
+  "projectType": "library",
+  "tags": [],
+  "// targets": "to see all targets run: nx show project @chat-app/infrastructure-database --web",
+  "targets": {}
+}

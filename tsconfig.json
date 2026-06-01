@@ -4,10 +4,43 @@
   "files": [],
   "references": [
     {
-      "path": "./apps/api-gateway-e2e"
+      "path": "./apps/api-gateway"
     },
     {
-      "path": "./apps/api-gateway"
+      "path": "./libs/shared/domain"
+    },
+    {
+      "path": "./libs/shared/events"
+    },
+    {
+      "path": "./libs/shared/config"
+    },
+    {
+      "path": "./libs/features/auth"
+    },
+    {
+      "path": "./libs/features/messaging"
+    },
+    {
+      "path": "./libs/features/presence"
+    },
+    {
+      "path": "./libs/infrastructure/database"
+    },
+    {
+      "path": "./libs/infrastructure/cache"
+    },
+    {
+      "path": "./libs/infrastructure/queue"
+    },
+    {
+      "path": "./apps/realtime-gateway"
+    },
+    {
+      "path": "./apps/worker-engine"
+    },
+    {
+      "path": "./apps/web-client"
     }
   ]
 }
