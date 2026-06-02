@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../store';
 import {
   loginUser,
@@ -22,12 +22,183 @@ import {
 import { socketManager } from '../store/socketManager';
 import StoreProvider from '../store/StoreProvider';
 
+/* ── Types ─────────────────────────────────────────────────── */
+type Theme = 'dark' | 'light' | 'system';
+
+/* ── SVG icon components ────────────────────────────────────── */
+const IconSend = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className="w-[18px] h-[18px]">
+    <path d="m21.426 11.095-17-8A1 1 0 0 0 3.03 4.542L7.38 12l-4.35 7.458a1 1 0 0 0 1.396 1.447l17-8a1 1 0 0 0 0-1.81zM5.92 6.069 17.522 11.5 10.9 8.272l-4.98-2.203zm4.98 9.659L17.522 12.5 5.92 17.931l4.98-2.203z" />
+  </svg>
+);
+
+const IconCompose = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+    <path d="M12 20h9" />
+    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+  </svg>
+);
+
+const IconLogout = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+    <polyline points="16 17 21 12 16 7" />
+    <line x1="21" y1="12" x2="9" y2="12" />
+  </svg>
+);
+
+const IconTrash = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-[14px] h-[14px]">
+    <polyline points="3 6 5 6 21 6" />
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    <line x1="10" y1="11" x2="10" y2="17" />
+    <line x1="14" y1="11" x2="14" y2="17" />
+  </svg>
+);
+
+const IconSearch = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-[14px] h-[14px]">
+    <circle cx="11" cy="11" r="8" />
+    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+  </svg>
+);
+
+const IconChat = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-[30px] h-[30px]">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+  </svg>
+);
+
+const IconAlertCircle = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-[15px] h-[15px] flex-shrink-0">
+    <circle cx="12" cy="12" r="10" />
+    <line x1="12" y1="8" x2="12" y2="12" />
+    <line x1="12" y1="16" x2="12.01" y2="16" />
+  </svg>
+);
+
+const IconBolt = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-[28px] h-[28px]">
+    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+  </svg>
+);
+
+const IconShield = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-[14px] h-[14px]">
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+  </svg>
+);
+
+const IconZap = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-[14px] h-[14px]">
+    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+  </svg>
+);
+
+const IconGlobe = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-[14px] h-[14px]">
+    <circle cx="12" cy="12" r="10" />
+    <line x1="2" y1="12" x2="22" y2="12" />
+    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+  </svg>
+);
+
+/* ── Theme Icon SVGs ─────────────────────────────────────────── */
+const IconSun = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-[14px] h-[14px]">
+    <circle cx="12" cy="12" r="5" />
+    <line x1="12" y1="1" x2="12" y2="3" />
+    <line x1="12" y1="21" x2="12" y2="23" />
+    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+    <line x1="1" y1="12" x2="3" y2="12" />
+    <line x1="21" y1="12" x2="23" y2="12" />
+    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+  </svg>
+);
+
+const IconMoon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-[14px] h-[14px]">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+  </svg>
+);
+
+const IconMonitor = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-[14px] h-[14px]">
+    <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+    <line x1="8" y1="21" x2="16" y2="21" />
+    <line x1="12" y1="17" x2="12" y2="21" />
+  </svg>
+);
+
+/* ── ThemeSwitcher Component ────────────────────────────────── */
+function ThemeSwitcher({ theme, onChange }: { theme: Theme; onChange: (t: Theme) => void }) {
+  const options: { value: Theme; icon: React.ReactNode; label: string }[] = [
+    { value: 'light',  icon: <IconSun />,     label: 'Light mode' },
+    { value: 'dark',   icon: <IconMoon />,    label: 'Dark mode' },
+    { value: 'system', icon: <IconMonitor />, label: 'System mode' },
+  ];
+
+  return (
+    <div className="theme-switcher" role="group" aria-label="Theme selector">
+      {options.map(({ value, icon, label }) => (
+        <button
+          key={value}
+          id={`theme-btn-${value}`}
+          title={label}
+          aria-pressed={theme === value}
+          onClick={() => onChange(value)}
+          className={`theme-btn${theme === value ? ' theme-btn-active' : ''}`}
+          style={theme === value ? {
+            background: 'var(--theme-btn-active)',
+            color: 'var(--theme-btn-active-text)',
+          } : {}}
+          onMouseEnter={(e) => {
+            if (theme !== value) (e.currentTarget as HTMLButtonElement).style.background = 'var(--theme-btn-hover)';
+          }}
+          onMouseLeave={(e) => {
+            if (theme !== value) (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
+          }}
+        >
+          {icon}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* ── Avatar ─────────────────────────────────────────────────── */
+function Avatar({
+  letter,
+  online = false,
+  size = 'md',
+}: {
+  letter: string;
+  online?: boolean;
+  size?: 'sm' | 'md' | 'lg';
+}) {
+  const sizeMap = {
+    sm: 'w-[32px] h-[32px] text-[12px]',
+    md: 'w-[38px] h-[38px] text-[14px]',
+    lg: 'w-[44px] h-[44px] text-[16px]',
+  };
+  return (
+    <div
+      className={`avatar-base ${sizeMap[size]} ${online ? 'avatar-online' : ''} flex-shrink-0`}
+      aria-hidden="true"
+    >
+      {letter}
+    </div>
+  );
+}
+
+/* ── Main Dashboard Content ─────────────────────────────────── */
 function ChatDashboardContent() {
   const dispatch = useAppDispatch();
   const feedEndRef = useRef<HTMLDivElement>(null);
 
-  // Redux state selectors
-  const { user, accessToken, status: authStatus, error: authError } = useAppSelector((state) => state.auth);
+  const { user, accessToken, status: authStatus, error: authError } = useAppSelector((s) => s.auth);
   const {
     conversations,
     activeConversationId,
@@ -37,64 +208,166 @@ function ChatDashboardContent() {
     searchResults,
     userProfiles,
     convoRecipients,
-  } = useAppSelector((state) => state.chat);
+    hasMoreMessages,
+  } = useAppSelector((s) => s.chat);
 
-  // Local React States
+  // --- Local state ---
   const [isLoginMode, setIsLoginMode] = useState(true);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail]             = useState('');
+  const [password, setPassword]       = useState('');
   const [displayName, setDisplayName] = useState('');
-  
   const [searchQuery, setSearchQuery] = useState('');
   const [messageInput, setMessageInput] = useState('');
   const [isTypingState, setIsTypingState] = useState(false);
   const [isComposeOpen, setIsComposeOpen] = useState(false);
+  const [theme, setTheme] = useState<Theme>('dark');
+
+  // --- Pagination & Scroll UX state ---
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
+  const isFetchingMoreRef = useRef(false);
+  const feedContainerRef = useRef<HTMLDivElement>(null);
+  
+  const scrollHeightBeforeLoadRef = useRef(0);
+  const scrollTopBeforeLoadRef = useRef(0);
+  const prevActiveConvoIdRef = useRef<string | null>(null);
+  const prevMessagesLengthRef = useRef(0);
+  const isFirstRenderForConvoRef = useRef(true);
+
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // -------------------------------------------------------------
-  // Side Effect: Socket Connection & Data fetching on login
-  // -------------------------------------------------------------
+  // ---- Theme persistence & application ----
+  useEffect(() => {
+    try {
+      const saved = (localStorage.getItem('rf-theme') as Theme) || 'dark';
+      setTheme(saved);
+      document.documentElement.setAttribute('data-theme', saved);
+    } catch (_) {}
+  }, []);
+
+  const handleThemeChange = useCallback((t: Theme) => {
+    setTheme(t);
+    document.documentElement.setAttribute('data-theme', t);
+    try { localStorage.setItem('rf-theme', t); } catch (_) {}
+  }, []);
+
+  // ---- Socket + data on login ----
   useEffect(() => {
     if (accessToken && user) {
-      // 1. Fetch conversations from backend
       dispatch(fetchConversations(user.id));
-      
-      // 2. Connect to WebSocket Gateway
       socketManager.connect(accessToken);
-      
-      return () => {
-        // Disconnect on logout/cleanup
-        socketManager.disconnect();
-      };
+      return () => { socketManager.disconnect(); };
     }
-    return;
+    return undefined;
   }, [accessToken, user, dispatch]);
 
-  // -------------------------------------------------------------
-  // Side Effect: Fetch messages when active conversation changes
-  // -------------------------------------------------------------
+  // ---- Messages on conversation change ----
   useEffect(() => {
     if (activeConversationId) {
-      dispatch(fetchMessages({ conversationId: activeConversationId }));
+      dispatch(fetchMessages({ conversationId: activeConversationId, limit: 20, offset: 0 }));
       socketManager.joinConversation(activeConversationId);
     }
   }, [activeConversationId, dispatch]);
 
-  // -------------------------------------------------------------
-  // Side Effect: Auto-scroll to bottom of messages
-  // -------------------------------------------------------------
-  useEffect(() => {
-    feedEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, activeConversationId, typingUsers]);
+  // ---- Scroll & Anchor Management ----
+  const activeMessages = messages[activeConversationId || ''] || [];
 
-  // -------------------------------------------------------------
-  // Resolve other users profiles for existing conversations
-  // -------------------------------------------------------------
+  useEffect(() => {
+    isFirstRenderForConvoRef.current = true;
+  }, [activeConversationId]);
+
+  useLayoutEffect(() => {
+    const container = feedContainerRef.current;
+    if (!container || !activeConversationId) return;
+
+    const messagesLength = activeMessages.length;
+
+    // Case 1: Active conversation changed
+    if (activeConversationId !== prevActiveConvoIdRef.current) {
+      prevActiveConvoIdRef.current = activeConversationId;
+      prevMessagesLengthRef.current = messagesLength;
+      container.scrollTop = container.scrollHeight;
+      return;
+    }
+
+    // Case 2: Messages length increased
+    if (messagesLength > prevMessagesLengthRef.current) {
+      prevMessagesLengthRef.current = messagesLength;
+
+      if (isFetchingMoreRef.current) {
+        // We loaded older messages (pagination)
+        const newScrollHeight = container.scrollHeight;
+        const oldScrollHeight = scrollHeightBeforeLoadRef.current;
+        const oldScrollTop = scrollTopBeforeLoadRef.current;
+        
+        container.scrollTop = newScrollHeight - oldScrollHeight + oldScrollTop;
+        isFetchingMoreRef.current = false;
+        setIsFetchingMore(false);
+      } else if (isFirstRenderForConvoRef.current) {
+        // Initial load of messages
+        container.scrollTop = container.scrollHeight;
+        isFirstRenderForConvoRef.current = false;
+      } else {
+        // New real-time message
+        const isNearBottom = container.scrollHeight - container.clientHeight - container.scrollTop < 150;
+        const lastMsg = activeMessages[messagesLength - 1];
+        const sentByMe = lastMsg?.senderId === user?.id;
+        
+        if (isNearBottom || sentByMe) {
+          container.scrollTo({
+            top: container.scrollHeight,
+            behavior: 'smooth'
+          });
+        }
+      }
+    } else if (messagesLength < prevMessagesLengthRef.current) {
+      // Messages deleted/purged
+      prevMessagesLengthRef.current = messagesLength;
+    }
+  }, [activeMessages, activeConversationId, user?.id]);
+
+  // ---- Infinite scroll (load more older messages on scroll up) ----
+  const hasMore = activeConversationId ? hasMoreMessages[activeConversationId] !== false : false;
+
+  const loadMoreMessages = useCallback(async () => {
+    if (isFetchingMore || !hasMore || !activeConversationId) return;
+    
+    const container = feedContainerRef.current;
+    if (!container) return;
+
+    // Record scroll positions before dispatching/loading
+    scrollHeightBeforeLoadRef.current = container.scrollHeight;
+    scrollTopBeforeLoadRef.current = container.scrollTop;
+    
+    isFetchingMoreRef.current = true;
+    setIsFetchingMore(true);
+
+    const currentMessages = messages[activeConversationId] || [];
+    const offset = currentMessages.length;
+
+    try {
+      await dispatch(fetchMessages({
+        conversationId: activeConversationId,
+        limit: 20,
+        offset
+      })).unwrap();
+    } catch (err) {
+      console.error('Failed to load older messages:', err);
+      isFetchingMoreRef.current = false;
+      setIsFetchingMore(false);
+    }
+  }, [activeConversationId, isFetchingMore, hasMore, messages, dispatch]);
+
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const container = e.currentTarget;
+    if (container.scrollTop < 20 && !isFetchingMore && hasMore) {
+      loadMoreMessages();
+    }
+  }, [isFetchingMore, hasMore, loadMoreMessages]);
+
+  // ---- Resolve sender profiles ----
   useEffect(() => {
     if (activeConversationId && messages[activeConversationId]) {
-      const activeMsgs = messages[activeConversationId];
-      // Resolve profiles of senders we don't have cached yet
-      activeMsgs.forEach((msg) => {
+      messages[activeConversationId].forEach((msg) => {
         if (msg.senderId !== user?.id && !userProfiles[msg.senderId]) {
           dispatch(fetchUserProfile(msg.senderId));
         }
@@ -102,9 +375,6 @@ function ChatDashboardContent() {
     }
   }, [activeConversationId, messages, userProfiles, user, dispatch]);
 
-  // -------------------------------------------------------------
-  // Resolve user profiles for all conversation recipients (e.g. on hard refresh)
-  // -------------------------------------------------------------
   useEffect(() => {
     Object.values(convoRecipients).forEach((recipientId) => {
       if (recipientId && recipientId !== user?.id && !userProfiles[recipientId]) {
@@ -113,25 +383,16 @@ function ChatDashboardContent() {
     });
   }, [convoRecipients, userProfiles, user, dispatch]);
 
-  // -------------------------------------------------------------
-  // Side Effect: Fetch all active users when starting new chat
-  // -------------------------------------------------------------
+  // ---- Compose modal: load all users ----
   useEffect(() => {
-    if (isComposeOpen) {
-      dispatch(searchUsers(''));
-    }
+    if (isComposeOpen) dispatch(searchUsers(''));
   }, [isComposeOpen, dispatch]);
 
-  // -------------------------------------------------------------
-  // Form submission: Auth
-  // -------------------------------------------------------------
+  // ---- Auth ----
   const handleAuthSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isLoginMode) {
-      dispatch(loginUser({ email, password }));
-    } else {
-      dispatch(registerUser({ email, password, displayName }));
-    }
+    if (isLoginMode) dispatch(loginUser({ email, password }));
+    else dispatch(registerUser({ email, password, displayName }));
   };
 
   const handleLogout = () => {
@@ -139,204 +400,230 @@ function ChatDashboardContent() {
     dispatch(logoutUser());
   };
 
-  // -------------------------------------------------------------
-  // Form submission: Send Message
-  // -------------------------------------------------------------
+  // ---- Messages ----
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!messageInput.trim() || !activeConversationId) return;
-
-    // Send via WebSocket connection
     socketManager.sendMessage(activeConversationId, messageInput.trim());
-    
-    // Stop typing immediately on send
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     socketManager.stopTyping(activeConversationId);
     setIsTypingState(false);
-
     setMessageInput('');
   };
 
-  // -------------------------------------------------------------
-  // Typing Indicator Debouncer
-  // -------------------------------------------------------------
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setMessageInput(e.target.value);
-    
     if (!activeConversationId) return;
-
     if (!isTypingState) {
       setIsTypingState(true);
       socketManager.startTyping(activeConversationId);
     }
-
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
-
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
       socketManager.stopTyping(activeConversationId);
       setIsTypingState(false);
     }, 1500);
   };
 
-  // -------------------------------------------------------------
-  // Start chat with searched user
-  // -------------------------------------------------------------
+  // ---- Search ----
   const handleSelectSearchedUser = (selectedUser: User) => {
     if (!user) return;
-    
-    // Start or activate with explicit recipient profile reference
     dispatch(createConversation({ userIds: [user.id, selectedUser.id], recipient: selectedUser }));
-    
-    // Cache profile instantly
     dispatch(fetchUserProfile(selectedUser.id));
-
-    // Clear search query and lookup results
     setSearchQuery('');
     dispatch(clearSearchResults());
     setIsComposeOpen(false);
   };
 
-  // -------------------------------------------------------------
-  // Contact Search handler
-  // -------------------------------------------------------------
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setSearchQuery(val);
-    if (val.trim()) {
-      dispatch(searchUsers(val.trim()));
-    } else {
-      dispatch(clearSearchResults());
-    }
+    if (val.trim()) dispatch(searchUsers(val.trim()));
+    else dispatch(clearSearchResults());
   };
 
-  // -------------------------------------------------------------
-  // Delete Conversation Handler
-  // -------------------------------------------------------------
+  // ---- Delete conversation ----
   const handleDeleteConversation = (convoId: string | null) => {
     if (!convoId) return;
-    if (window.confirm('Are you sure you want to remove this thread and all of its messages?')) {
+    if (window.confirm('Remove this thread and all messages?')) {
       dispatch(deleteConversation(convoId));
     }
   };
 
-  // Helper: Resolve Conversation Header Display Name
+  // ---- Conversation display name helper ----
   const getConversationDetails = (convo: any) => {
-    if (convo.name) return { name: convo.name, avatar: convo.name[0].toUpperCase() };
-    
-    // 1. Check if we have a direct cached recipient ID (for newly started chats with no history yet)
+    if (convo.name) return { name: convo.name, letter: convo.name[0].toUpperCase() };
+
     let recipientId = convoRecipients[convo.id];
-    
-    // 2. If not, scan the conversation history to deduce the recipient ID
     if (!recipientId) {
       const roomMsgs = messages[convo.id] || [];
       const recipientMsg = roomMsgs.find((m) => m.senderId !== user?.id);
-      if (recipientMsg) {
-        recipientId = recipientMsg.senderId;
-      }
+      if (recipientMsg) recipientId = recipientMsg.senderId;
     }
-    
-    // 3. Resolve profile if recipient ID is found
+
     if (recipientId && userProfiles[recipientId]) {
-      const recipient = userProfiles[recipientId];
+      const r = userProfiles[recipientId];
       return {
-        name: recipient.displayName || recipient.email.split('@')[0],
-        avatar: (recipient.displayName || recipient.email)[0].toUpperCase(),
-        email: recipient.email,
-        id: recipient.id,
+        name: r.displayName || r.email.split('@')[0],
+        letter: (r.displayName || r.email)[0].toUpperCase(),
+        email: r.email,
+        id: r.id,
       };
     }
 
-    return {
-      name: 'Direct Message',
-      avatar: '💬',
-      email: '',
-      id: null,
-    };
+    return { name: 'Direct Message', letter: 'D', email: '', id: null };
   };
 
-  // -------------------------------------------------------------
-  // RENDER: Auth Card Gate
-  // -------------------------------------------------------------
+  // ── RENDER: Auth Gate ──────────────────────────────────────
   if (!accessToken || !user) {
     return (
-      <div className="auth-wrapper">
-        <div className="auth-container glass-panel">
-          <div className="auth-sidebar">
-            <h1 className="auth-sidebar-title">RelayFlow</h1>
-            <p className="auth-sidebar-tagline">
-              Experience ultra-fast, high-fidelity real-time messaging. Built with NestJS event loops, TypeORM persistence, and Next.js reactive frontend.
+      <div className="flex items-center justify-center min-h-screen w-screen p-6"
+        style={{ background: 'var(--bg-primary)' }}>
+
+        {/* Theme switcher in corner */}
+        <div className="fixed top-5 right-5 z-50">
+          <ThemeSwitcher theme={theme} onChange={handleThemeChange} />
+        </div>
+
+        <div className="flex w-[900px] max-w-full min-h-[580px] overflow-hidden glass-panel animate-fade-in">
+
+          {/* Left Branding Panel */}
+          <div className="relative flex-[1.1] flex flex-col justify-center items-center p-12 text-white text-center overflow-hidden"
+            style={{ background: 'linear-gradient(140deg, #6366f1 0%, #8b5cf6 100%)' }}>
+            <div className="absolute inset-0"
+              style={{ background: 'radial-gradient(circle at 30% 20%, rgba(255,255,255,0.18) 0%, transparent 65%)' }} />
+            <div className="absolute -bottom-14 -right-14 w-56 h-56 rounded-full"
+              style={{ background: 'rgba(255,255,255,0.06)' }} />
+
+            {/* Brand icon */}
+            <div className="relative z-10 w-14 h-14 rounded-2xl flex items-center justify-center mb-6"
+              style={{ background: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(8px)' }}>
+              <IconBolt />
+            </div>
+
+            <h1 className="relative z-10 text-[38px] font-bold tracking-tight mb-3">RelayFlow</h1>
+            <p className="relative z-10 text-[15px] leading-relaxed opacity-85 max-w-[260px]">
+              Ultra-fast, real-time messaging with NestJS WebSocket Gateway.
             </p>
+
+            <div className="relative z-10 flex flex-col gap-2.5 mt-8 w-full">
+              {[
+                { icon: <IconZap />,    text: 'Sub-millisecond delivery' },
+                { icon: <IconShield />, text: 'JWT-secured channels' },
+                { icon: <IconGlobe />,  text: 'Real-time presence sync' },
+              ].map(({ icon, text }) => (
+                <div key={text} className="flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-[13px] text-left"
+                  style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)' }}>
+                  {icon}
+                  <span>{text}</span>
+                </div>
+              ))}
+            </div>
           </div>
-          
-          <div className="auth-form-area">
-            <div className="auth-header">
-              <h2 className="auth-title">{isLoginMode ? 'Welcome Back' : 'Create Profile'}</h2>
-              <p className="auth-subtitle">
-                {isLoginMode ? 'Enter credentials to open your secure workspace.' : 'Register a profile to start instant chats.'}
+
+          {/* Right Form Panel */}
+          <div className="flex-1 flex flex-col justify-center p-12"
+            style={{ background: 'var(--bg-chat)' }}>
+            <div className="mb-8">
+              <h2 className="text-[28px] font-bold tracking-tight mb-2"
+                style={{ color: 'var(--text-primary)' }}>
+                {isLoginMode ? 'Welcome back' : 'Create account'}
+              </h2>
+              <p className="text-[14px]" style={{ color: 'var(--text-secondary)' }}>
+                {isLoginMode
+                  ? 'Enter your credentials to open your workspace.'
+                  : 'Register a profile to start instant messaging.'}
               </p>
             </div>
 
-            {authError && <div className="error-bubble">{authError}</div>}
+            {authError && (
+              <div className="flex items-center gap-2 rounded-xl px-4 py-3 mb-5 text-[13.5px] animate-fade-in"
+                style={{ background: 'var(--danger-bg)', border: '1px solid var(--danger-border)', color: 'var(--danger)' }}>
+                <IconAlertCircle />
+                {authError}
+              </div>
+            )}
 
-            <form className="auth-form" onSubmit={handleAuthSubmit}>
+            <form className="flex flex-col gap-4" onSubmit={handleAuthSubmit}>
               {!isLoginMode && (
-                <div className="form-group">
-                  <label className="form-label">Display Name</label>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[11.5px] font-semibold uppercase tracking-wide"
+                    style={{ color: 'var(--text-secondary)' }}>
+                    Display Name
+                  </label>
                   <input
+                    id="auth-display-name"
                     type="text"
-                    className="form-input"
+                    className="input-base rounded-[10px] px-4 py-3 text-[14.5px]"
                     placeholder="e.g. Umang"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
                     required={!isLoginMode}
+                    onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(99,102,241,0.55)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.12)'; }}
+                    onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.boxShadow = 'none'; }}
                   />
                 </div>
               )}
-              
-              <div className="form-group">
-                <label className="form-label">Email Address</label>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11.5px] font-semibold uppercase tracking-wide"
+                  style={{ color: 'var(--text-secondary)' }}>
+                  Email
+                </label>
                 <input
+                  id="auth-email"
                   type="email"
-                  className="form-input"
+                  className="input-base rounded-[10px] px-4 py-3 text-[14.5px]"
                   placeholder="user@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(99,102,241,0.55)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.12)'; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.boxShadow = 'none'; }}
                 />
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Password</label>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11.5px] font-semibold uppercase tracking-wide"
+                  style={{ color: 'var(--text-secondary)' }}>
+                  Password
+                </label>
                 <input
+                  id="auth-password"
                   type="password"
-                  className="form-input"
+                  className="input-base rounded-[10px] px-4 py-3 text-[14.5px]"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(99,102,241,0.55)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.12)'; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.boxShadow = 'none'; }}
                 />
               </div>
 
-              <button type="submit" className="auth-btn" disabled={authStatus === 'loading'}>
-                {authStatus === 'loading' ? 'Processing...' : isLoginMode ? 'Sign In' : 'Sign Up'}
+              <button
+                id="auth-submit-btn"
+                type="submit"
+                disabled={authStatus === 'loading'}
+                className="mt-2 rounded-[10px] py-3.5 text-[15px] font-semibold text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 relative overflow-hidden"
+                style={{ background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)' }}
+                onMouseEnter={(e) => { if (authStatus !== 'loading') { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 20px rgba(99,102,241,0.40)'; } }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = ''; (e.currentTarget as HTMLButtonElement).style.boxShadow = ''; }}
+              >
+                {authStatus === 'loading' ? 'Processing…' : isLoginMode ? 'Sign In' : 'Sign Up'}
               </button>
             </form>
 
-            <div className="auth-toggle">
+            <div className="text-center mt-6 text-[14px]" style={{ color: 'var(--text-secondary)' }}>
               {isLoginMode ? "Don't have an account?" : 'Already registered?'}
-              <span
-                className="auth-toggle-link"
-                onClick={() => {
-                  setIsLoginMode(!isLoginMode);
-                  dispatch(clearAuthError());
-                }}
+              <button
+                id="auth-toggle-btn"
+                className="ml-1.5 font-semibold cursor-pointer transition-colors duration-200"
+                style={{ color: 'var(--accent-indigo, #6366f1)', background: 'none', border: 'none' }}
+                onClick={() => { setIsLoginMode(!isLoginMode); dispatch(clearAuthError()); }}
               >
                 {isLoginMode ? 'Create account' : 'Sign In'}
-              </span>
+              </button>
             </div>
           </div>
         </div>
@@ -344,77 +631,99 @@ function ChatDashboardContent() {
     );
   }
 
-  // -------------------------------------------------------------
-  // RENDER: Chat Dashboard Workspace
-  // -------------------------------------------------------------
-  const activeConvo = conversations.find((c) => c.id === activeConversationId);
+  // ── RENDER: Chat Dashboard ────────────────────────────────
+  const activeConvo   = conversations.find((c) => c.id === activeConversationId);
   const activeDetails = activeConvo ? getConversationDetails(activeConvo) : null;
   const isActiveOnline = activeDetails?.id ? !!onlineUsers[activeDetails.id] : false;
-  
-  // Calculate if the recipient is typing in active chat
   const isActiveTyping = activeConversationId && typingUsers[activeConversationId]
-    ? Object.entries(typingUsers[activeConversationId]).some(
-        ([uid, typing]) => uid !== user.id && typing
-      )
+    ? Object.entries(typingUsers[activeConversationId]).some(([uid, typing]) => uid !== user.id && typing)
     : false;
 
   return (
-    <div className="app-container">
-      {/* SIDEBAR PANEL */}
-      <div className="sidebar-panel glass-panel">
+    <div className="flex h-screen w-screen p-3.5 gap-3.5"
+      style={{ background: 'var(--bg-primary)' }}>
+
+      {/* ── SIDEBAR ─────────────────────────────────────────── */}
+      <div className="glass-panel flex flex-col overflow-hidden h-full w-[300px] flex-shrink-0">
+
         {/* Profile Card */}
-        <div className="profile-card">
-          <div className="avatar online">
-            {(user.displayName || user.email)[0].toUpperCase()}
+        <div className="flex items-center gap-2.5 p-3.5 border-b" style={{ borderColor: 'var(--border-muted)' }}>
+          <Avatar letter={(user.displayName || user.email)[0].toUpperCase()} online size="md" />
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold text-[13.5px] truncate" style={{ color: 'var(--text-primary)' }}>
+              {user.displayName || 'Active User'}
+            </div>
+            <div className="text-[11px] truncate mt-0.5" style={{ color: 'var(--text-muted)' }}>
+              {user.email}
+            </div>
           </div>
-          <div className="profile-info">
-            <div className="profile-name">{user.displayName || 'Active User'}</div>
-            <div className="profile-email">{user.email}</div>
-          </div>
-          <button className="logout-btn" title="Compose New Chat" onClick={() => setIsComposeOpen(true)} style={{ marginRight: '8px' }}>
-            <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" height="1.05em" width="1.05em" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 20h9"></path>
-              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-            </svg>
+
+          {/* Theme switcher */}
+          <ThemeSwitcher theme={theme} onChange={handleThemeChange} />
+
+          {/* Compose */}
+          <button
+            id="compose-btn"
+            title="New conversation"
+            className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center cursor-pointer transition-all duration-200 flex-shrink-0 border-none"
+            style={{ background: 'transparent', color: 'var(--text-muted)' }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--theme-btn-hover)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)'; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'; }}
+            onClick={() => setIsComposeOpen(true)}
+          >
+            <IconCompose />
           </button>
-          <button className="logout-btn" title="Sign Out" onClick={handleLogout}>
-            <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-              <polyline points="16 17 21 12 16 7"></polyline>
-              <line x1="21" y1="12" x2="9" y2="12"></line>
-            </svg>
+
+          {/* Logout */}
+          <button
+            id="logout-btn"
+            title="Sign out"
+            className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center cursor-pointer transition-all duration-200 flex-shrink-0 border-none"
+            style={{ background: 'transparent', color: 'var(--text-muted)' }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--danger-bg)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--danger)'; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'; }}
+            onClick={handleLogout}
+          >
+            <IconLogout />
           </button>
         </div>
 
-        {/* Global Contacts Lookup */}
-        <div className="search-container">
-          <div className="search-input-wrapper">
-            <span className="search-icon">🔍</span>
+        {/* Search */}
+        <div className="p-3 border-b relative" style={{ borderColor: 'var(--border-muted)' }}>
+          <div className="relative flex items-center">
+            <span className="absolute left-3 flex items-center pointer-events-none" style={{ color: 'var(--text-muted)' }}>
+              <IconSearch />
+            </span>
             <input
+              id="sidebar-search"
               type="text"
-              className="search-bar-input"
-              placeholder="Search users to chat..."
+              className="input-base w-full rounded-[10px] pl-8 pr-3 py-2 text-[13px]"
+              style={{ background: 'var(--bg-input)', border: '1.5px solid var(--glass-border)', color: 'var(--text-primary)' }}
+              placeholder="Search users…"
               value={searchQuery}
               onChange={handleSearchChange}
+              onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(99,102,241,0.55)'; e.currentTarget.style.boxShadow = '0 0 0 2.5px rgba(99,102,241,0.12)'; }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.boxShadow = 'none'; }}
             />
           </div>
-          
+
           {searchResults.length > 0 && (
-            <div className="search-results-dropdown">
+            <div className="absolute left-3 right-3 top-[calc(100%-6px)] z-50 dropdown-base animate-fade-in overflow-y-auto max-h-[240px]">
               {searchResults
-                .filter((u) => u.id !== user.id) // Exclude current user
-                .map((searchedUser) => (
+                .filter((u) => u.id !== user.id)
+                .map((su) => (
                   <div
-                    key={searchedUser.id}
-                    className="search-item"
-                    onClick={() => handleSelectSearchedUser(searchedUser)}
+                    key={su.id}
+                    className="flex items-center gap-2.5 px-3.5 py-2.5 cursor-pointer border-b transition-colors duration-150"
+                    style={{ borderColor: 'var(--border-muted)' }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(99,102,241,0.09)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                    onClick={() => handleSelectSearchedUser(su)}
                   >
-                    <div className="avatar">
-                      {(searchedUser.displayName || searchedUser.email)[0].toUpperCase()}
-                    </div>
+                    <Avatar letter={(su.displayName || su.email)[0].toUpperCase()} size="sm" />
                     <div>
-                      <div className="search-item-name">{searchedUser.displayName}</div>
-                      <div className="search-item-email">{searchedUser.email}</div>
+                      <div className="font-medium text-[13px]" style={{ color: 'var(--text-primary)' }}>{su.displayName}</div>
+                      <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{su.email}</div>
                     </div>
                   </div>
                 ))}
@@ -422,54 +731,71 @@ function ChatDashboardContent() {
           )}
         </div>
 
-        {/* Conversation Sidebar List */}
-        <div className="conversation-list">
+        {/* Conversations Label */}
+        <div className="flex items-center justify-between px-3.5 pt-3 pb-1.5">
+          <span className="text-[10.5px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
+            Conversations
+          </span>
+          <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded-md"
+            style={{ background: 'rgba(99,102,241,0.12)', color: 'var(--accent-indigo, #6366f1)' }}>
+            {conversations.length}
+          </span>
+        </div>
+
+        {/* Conversation List */}
+        <div className="flex-1 overflow-y-auto px-1.5 pb-2">
           {conversations.length === 0 ? (
-            <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
-              No active conversations. Search users above to start a chat room.
+            <div className="py-10 px-5 text-center text-[13px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+              <IconChat />
+              <p className="mt-3">No conversations yet.<br />Search above to start one.</p>
             </div>
           ) : (
             conversations.map((convo) => {
-              const details = getConversationDetails(convo);
-              const isActive = convo.id === activeConversationId;
-              const isConvoOnline = details.id ? !!onlineUsers[details.id] : false;
-              const convoMsgs = messages[convo.id] || [];
-              let lastMsg = convoMsgs[convoMsgs.length - 1];
-              if (!lastMsg && convo.lastMessage) {
-                lastMsg = convo.lastMessage;
-              }
-              
-              // Verify typing status in sidebar listing
-              const isConvoTyping = typingUsers[convo.id]
-                ? Object.entries(typingUsers[convo.id]).some(([uid, typing]) => uid !== user.id && typing)
+              const details      = getConversationDetails(convo);
+              const isActive     = convo.id === activeConversationId;
+              const isOnline     = details.id ? !!onlineUsers[details.id] : false;
+              const convoMsgs    = messages[convo.id] || [];
+              const lastMsg      = convoMsgs[convoMsgs.length - 1] ?? convo.lastMessage;
+              const isTyping     = typingUsers[convo.id]
+                ? Object.entries(typingUsers[convo.id]).some(([uid, t]) => uid !== user.id && t)
                 : false;
 
               return (
                 <div
                   key={convo.id}
-                  className={`conversation-item ${isActive ? 'active' : ''}`}
+                  id={`convo-${convo.id}`}
+                  className="flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl cursor-pointer transition-all duration-200 mb-0.5 border"
+                  style={{
+                    background: isActive ? 'rgba(99,102,241,0.10)' : 'transparent',
+                    borderColor: isActive ? 'rgba(99,102,241,0.18)' : 'transparent',
+                    boxShadow: isActive ? '0 2px 12px rgba(99,102,241,0.08)' : 'none',
+                  }}
+                  onMouseEnter={(e) => { if (!isActive) { (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-input)'; (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--glass-border)'; } }}
+                  onMouseLeave={(e) => { if (!isActive) { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; (e.currentTarget as HTMLDivElement).style.borderColor = 'transparent'; } }}
                   onClick={() => dispatch(setActiveConversation(convo.id))}
                 >
-                  <div className={`avatar ${isConvoOnline ? 'online' : ''}`}>
-                    {details.avatar}
-                  </div>
-                  <div className="convo-details">
-                    <div className="convo-header">
-                      <span className="convo-title">{details.name}</span>
+                  <Avatar letter={details.letter} online={isOnline} size="md" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline justify-between mb-0.5">
+                      <span
+                        className="font-semibold text-[13px] truncate"
+                        style={{ color: isActive ? '#6366f1' : 'var(--text-primary)' }}>
+                        {details.name}
+                      </span>
                       {lastMsg && (
-                        <span className="convo-time">
+                        <span className="text-[10px] flex-shrink-0 ml-2" style={{ color: 'var(--text-muted)' }}>
                           {new Date(lastMsg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       )}
                     </div>
-                    {isConvoTyping ? (
-                      <div className="convo-snippet typing">
+                    {isTyping ? (
+                      <div className="flex items-center gap-1 text-[11.5px] font-medium" style={{ color: '#a78bfa' }}>
                         <span>typing</span>
-                        <div className="typing-dot" style={{ width: '4px', height: '4px', margin: '0' }} />
-                        <div className="typing-dot" style={{ width: '4px', height: '4px', margin: '0' }} />
+                        <span className="typing-dot" style={{ animationDelay: '0s' }} />
+                        <span className="typing-dot" style={{ animationDelay: '0.15s' }} />
                       </div>
                     ) : (
-                      <div className="convo-snippet">
+                      <div className="text-[11.5px] truncate" style={{ color: 'var(--text-secondary)' }}>
                         {lastMsg ? lastMsg.content : 'No messages yet'}
                       </div>
                     )}
@@ -481,68 +807,99 @@ function ChatDashboardContent() {
         </div>
       </div>
 
-      {/* CHAT FEED PANEL */}
-      <div className="chat-panel glass-panel">
+      {/* ── CHAT PANEL ──────────────────────────────────────── */}
+      <div className="glass-panel flex flex-col overflow-hidden h-full flex-1 min-w-0">
         {activeConversationId && activeDetails ? (
           <>
-            {/* Chat header */}
-            <div className="chat-header">
-              <div className="avatar" style={{ marginRight: '14px', width: '38px', height: '38px' }}>
-                {activeDetails.avatar}
-              </div>
-              <div className="chat-header-info" style={{ flex: 1 }}>
-                <h3 className="chat-header-name">{activeDetails.name}</h3>
+            {/* Chat Header */}
+            <div className="flex items-center gap-3 px-5 py-3.5 border-b"
+              style={{
+                borderColor: 'var(--border-muted)',
+                background: 'var(--bg-sidebar)',
+                borderTopLeftRadius: '1rem',
+                borderTopRightRadius: '1rem',
+              }}>
+              <Avatar letter={activeDetails.letter} online={isActiveOnline} size="md" />
+              <div className="flex-1 min-w-0">
+                <h3 className="text-[16px] font-bold tracking-tight truncate" style={{ color: 'var(--text-primary)' }}>
+                  {activeDetails.name}
+                </h3>
                 {isActiveTyping ? (
-                  <span className="chat-header-status" style={{ color: '#c084fc' }}>
-                    typing...
+                  <span className="text-[11.5px] font-medium" style={{ color: '#c084fc' }}>
+                    typing…
                   </span>
                 ) : (
-                  <span className={`chat-header-status ${isActiveOnline ? 'online' : ''}`}>
+                  <div className="flex items-center gap-1.5 text-[11.5px] mt-0.5"
+                    style={{ color: isActiveOnline ? 'var(--accent-emerald, #10b981)' : 'var(--text-muted)' }}>
+                    {isActiveOnline && (
+                      <span className="inline-block w-1.5 h-1.5 rounded-full"
+                        style={{ background: 'var(--accent-emerald, #10b981)', animation: 'pulseDot 2.5s ease-in-out infinite' }} />
+                    )}
                     {isActiveOnline ? 'Online' : 'Offline'}
-                  </span>
+                  </div>
                 )}
               </div>
-              
+
+              {/* Delete thread */}
               <button
-                className="logout-btn"
-                title="Remove Thread"
-                onClick={() => handleDeleteConversation(activeConversationId)}
+                id="delete-thread-btn"
+                title="Delete thread"
+                className="flex items-center gap-1.5 rounded-[9px] px-3 py-1.5 text-[12px] font-semibold cursor-pointer transition-all duration-200 flex-shrink-0"
                 style={{
-                  marginLeft: 'auto',
-                  background: 'rgba(239, 68, 68, 0.15)',
-                  color: '#ef4444',
-                  border: '1px solid rgba(239, 68, 68, 0.25)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '8px',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
+                  background: 'var(--danger-bg)',
+                  color: 'var(--danger)',
+                  border: '1.5px solid var(--danger-border)',
                 }}
+                onMouseEnter={(e) => {
+                  const b = e.currentTarget as HTMLButtonElement;
+                  b.style.background = 'var(--danger)';
+                  b.style.color = 'white';
+                  b.style.borderColor = 'var(--danger)';
+                  b.style.boxShadow = '0 4px 14px rgba(239,68,68,0.3)';
+                }}
+                onMouseLeave={(e) => {
+                  const b = e.currentTarget as HTMLButtonElement;
+                  b.style.background = 'var(--danger-bg)';
+                  b.style.color = 'var(--danger)';
+                  b.style.borderColor = 'var(--danger-border)';
+                  b.style.boxShadow = 'none';
+                }}
+                onClick={() => handleDeleteConversation(activeConversationId)}
               >
-                <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" height="1.1em" width="1.1em" xmlns="http://www.w3.org/2000/svg">
-                  <polyline points="3 6 5 6 21 6"></polyline>
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                  <line x1="10" y1="11" x2="10" y2="17"></line>
-                  <line x1="14" y1="11" x2="14" y2="17"></line>
-                </svg>
+                <IconTrash />
+                Delete
               </button>
             </div>
 
-            {/* Scrollable Message Feed */}
-            <div className="message-feed">
+            {/* Message Feed */}
+            <div 
+              ref={feedContainerRef}
+              onScroll={handleScroll}
+              className="flex-1 overflow-y-auto flex flex-col gap-3.5 p-5"
+              style={{ background: 'var(--bg-chat)' }}>
+              
+              {isFetchingMore && (
+                <div className="flex justify-center py-2 flex-shrink-0">
+                  <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin"
+                    style={{ borderColor: 'var(--accent-primary, #6366f1)', borderTopColor: 'transparent' }} />
+                </div>
+              )}
               {(messages[activeConversationId] || []).length === 0 ? (
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '14px' }}>
-                  No messages yet. Send a greetings to begin.
+                <div className="flex-1 flex flex-col items-center justify-center gap-2.5 text-[13.5px]"
+                  style={{ color: 'var(--text-muted)' }}>
+                  <IconChat />
+                  <span>No messages yet. Send a greeting to begin.</span>
                 </div>
               ) : (
                 (messages[activeConversationId] || []).map((msg) => {
-                  const isOutgoing = msg.senderId === user.id;
+                  const isOut = msg.senderId === user.id;
                   return (
-                    <div key={msg.id} className={`message-group ${isOutgoing ? 'outgoing' : 'incoming'}`}>
-                      <div className="message-bubble">{msg.content}</div>
-                      <span className="message-time">
+                    <div key={msg.id}
+                      className={`flex flex-col max-w-[68%] animate-fade-in ${isOut ? 'self-end items-end' : 'self-start items-start'}`}>
+                      <div className={`px-4 py-2.5 rounded-[18px] text-[14px] leading-relaxed break-words ${isOut ? 'msg-bubble-out' : 'msg-bubble-in'}`}>
+                        {msg.content}
+                      </div>
+                      <span className="text-[10px] mt-1 px-1" style={{ color: 'var(--text-muted)' }}>
                         {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
@@ -550,96 +907,175 @@ function ChatDashboardContent() {
                 })
               )}
 
-              {/* Typing indicator bubble */}
+              {/* Typing indicator */}
               {isActiveTyping && (
-                <div className="typing-indicator-bubble">
-                  <div className="typing-dot"></div>
-                  <div className="typing-dot"></div>
-                  <div className="typing-dot"></div>
+                <div className="self-start flex items-center gap-1.5 px-4 py-3 rounded-[18px] animate-fade-in msg-bubble-in">
+                  <span className="typing-dot" style={{ animationDelay: '0s' }} />
+                  <span className="typing-dot" style={{ animationDelay: '0.15s' }} />
+                  <span className="typing-dot" style={{ animationDelay: '0.30s' }} />
                 </div>
               )}
-              
+
               <div ref={feedEndRef} />
             </div>
 
-            {/* Bottom Input Area */}
-            <div className="chat-input-area">
-              <form className="chat-input-form" onSubmit={handleSendMessage}>
+            {/* Input Area */}
+            <div className="px-4 py-3.5 border-t"
+              style={{
+                borderColor: 'var(--border-muted)',
+                background: 'var(--bg-sidebar)',
+                borderBottomLeftRadius: '1rem',
+                borderBottomRightRadius: '1rem',
+              }}>
+              <form className="flex gap-2.5 items-end" onSubmit={handleSendMessage}>
                 <textarea
-                  className="chat-textarea"
-                  placeholder="Type a message... (Press Enter to Send)"
+                  id="message-input"
+                  className="input-base flex-1 rounded-xl px-4 py-3 text-[14px] resize-none leading-relaxed"
+                  style={{
+                    minHeight: '46px',
+                    maxHeight: '120px',
+                    background: 'var(--bg-input)',
+                    border: '1.5px solid var(--glass-border)',
+                    color: 'var(--text-primary)',
+                  }}
+                  placeholder="Type a message… (Enter to send)"
                   value={messageInput}
                   onChange={handleInputChange}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(99,102,241,0.55)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.10)'; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.boxShadow = 'none'; }}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSendMessage(e);
-                    }
+                    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(e); }
                   }}
                 />
-                <button type="submit" className="chat-send-btn">
-                  <svg stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 24 24" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
-                    <path d="m21.426 11.095-17-8A.999.999 0 0 0 3.03 4.542L7.38 12l-4.35 7.458a1 1 0 0 0 1.396 1.447l17-8a1 1 0 0 0 0-1.81zM5.92 6.069 17.522 11.5 10.9 8.272l-4.98-2.203zm4.98 9.659L17.522 12.5 5.92 17.931l4.98-2.203z"></path>
-                  </svg>
+                <button
+                  id="send-message-btn"
+                  type="submit"
+                  disabled={!messageInput.trim()}
+                  className="btn-send w-[46px] h-[46px] rounded-xl flex-shrink-0 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                  onMouseEnter={(e) => { if (messageInput.trim()) { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 18px rgba(99,102,241,0.42)'; } }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = ''; (e.currentTarget as HTMLButtonElement).style.boxShadow = ''; }}
+                >
+                  <IconSend />
                 </button>
               </form>
             </div>
           </>
         ) : (
-          <div className="no-chat-selected">
-            <div className="no-chat-icon">💬</div>
-            <h2>RelayFlow Workspace</h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '14.5px', maxWidth: '320px', textAlign: 'center', lineHeight: '1.6' }}>
-              Select an existing chat from the left sidebar or look up contacts to begin high fidelity messaging.
+          /* Empty state */
+          <div className="flex-1 flex flex-col items-center justify-center gap-4"
+            style={{ background: 'var(--bg-chat)', borderRadius: '1rem' }}>
+            <div className="w-16 h-16 rounded-full flex items-center justify-center animate-float border"
+              style={{
+                background: 'rgba(99,102,241,0.10)',
+                borderColor: 'rgba(99,102,241,0.18)',
+              }}>
+              <IconChat />
+            </div>
+            <h2 className="text-[20px] font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+              RelayFlow Workspace
+            </h2>
+            <p className="text-[13.5px] max-w-[290px] text-center leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+              Select a conversation from the sidebar or search for a contact to start messaging.
             </p>
+            <button
+              id="empty-compose-btn"
+              className="mt-1 px-5 py-2.5 rounded-xl text-[13.5px] font-semibold text-white cursor-pointer transition-all duration-200 border-none"
+              style={{ background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)' }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 18px rgba(99,102,241,0.38)'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = ''; (e.currentTarget as HTMLButtonElement).style.boxShadow = ''; }}
+              onClick={() => setIsComposeOpen(true)}
+            >
+              Start a conversation
+            </button>
           </div>
         )}
       </div>
 
-      {/* COMPOSE NEW CHAT MODAL OVERLAY */}
+      {/* ── COMPOSE MODAL ────────────────────────────────────── */}
       {isComposeOpen && (
-        <div className="modal-overlay" onClick={() => setIsComposeOpen(false)}>
-          <div className="modal-card glass-panel" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3 className="modal-title">New Conversation</h3>
-              <button className="modal-close-btn" onClick={() => setIsComposeOpen(false)}>
-                &times;
+        <div
+          className="fixed inset-0 z-[1000] flex items-center justify-content p-4 animate-fade-in"
+          style={{ background: 'rgba(4,6,12,0.65)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => setIsComposeOpen(false)}
+        >
+          <div
+            className="w-[480px] max-w-full max-h-[540px] flex flex-col overflow-hidden animate-slide-up"
+            style={{
+              background: 'var(--glass-bg)',
+              border: '1.5px solid var(--glass-border)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              borderRadius: '18px',
+              boxShadow: 'var(--glass-shadow)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: 'var(--border-muted)' }}>
+              <h3 className="text-[17px] font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+                New Conversation
+              </h3>
+              <button
+                id="modal-close-btn"
+                className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center cursor-pointer text-[18px] leading-none transition-all duration-200 border-none"
+                style={{ background: 'var(--theme-btn)', color: 'var(--text-muted)' }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--theme-btn-hover)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)'; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--theme-btn)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'; }}
+                onClick={() => setIsComposeOpen(false)}
+              >
+                ×
               </button>
             </div>
-            
-            <div className="modal-search-container">
+
+            {/* Modal search */}
+            <div className="px-5 py-3.5 border-b" style={{ borderColor: 'var(--border-muted)' }}>
               <input
+                id="compose-search"
                 type="text"
-                className="modal-search-input"
-                placeholder="Search users by name or email..."
+                className="input-base w-full rounded-[10px] px-4 py-2.5 text-[14px]"
+                style={{ background: 'var(--bg-input)', border: '1.5px solid var(--glass-border)', color: 'var(--text-primary)' }}
+                placeholder="Search by name or email…"
                 value={searchQuery}
                 onChange={handleSearchChange}
                 autoFocus
+                onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(99,102,241,0.55)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.10)'; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.boxShadow = 'none'; }}
               />
             </div>
-            
-            <div className="modal-user-list">
+
+            {/* Modal user list */}
+            <div className="flex-1 overflow-y-auto px-3.5 py-2">
               {searchResults.length === 0 ? (
-                <div className="modal-empty-state">
-                  No active users found. Try searching by name or email.
+                <div className="py-12 text-center text-[13.5px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                  <div className="w-9 h-9 mx-auto mb-3 opacity-30"><IconChat /></div>
+                  No users found. Try a different search.
                 </div>
               ) : (
                 searchResults
-                  .filter((u) => u.id !== user.id) // Exclude current user
+                  .filter((u) => u.id !== user.id)
                   .map((u) => (
                     <div
                       key={u.id}
-                      className="modal-user-item"
+                      id={`compose-user-${u.id}`}
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200 mb-1 border"
+                      style={{ borderColor: 'transparent' }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(99,102,241,0.08)'; (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(99,102,241,0.12)'; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; (e.currentTarget as HTMLDivElement).style.borderColor = 'transparent'; }}
                       onClick={() => handleSelectSearchedUser(u)}
                     >
-                      <div className="avatar">
-                        {(u.displayName || u.email)[0].toUpperCase()}
+                      <Avatar letter={(u.displayName || u.email)[0].toUpperCase()} size="md" />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-[13.5px] truncate" style={{ color: 'var(--text-primary)' }}>
+                          {u.displayName}
+                        </div>
+                        <div className="text-[11.5px] truncate mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                          {u.email}
+                        </div>
                       </div>
-                      <div className="modal-user-details">
-                        <div className="modal-user-name">{u.displayName}</div>
-                        <div className="modal-user-email">{u.email}</div>
-                      </div>
-                      <span className="modal-chat-action">Chat</span>
+                      <span className="text-[11.5px] font-bold px-3 py-1.5 rounded-[7px] flex-shrink-0 transition-all duration-200"
+                        style={{ background: 'rgba(99,102,241,0.12)', color: '#6366f1' }}>
+                        Chat
+                      </span>
                     </div>
                   ))
               )}
@@ -651,6 +1087,7 @@ function ChatDashboardContent() {
   );
 }
 
+/* ── Root wrapper with Redux provider ───────────────────────── */
 export default function ChatDashboard() {
   return (
     <StoreProvider>

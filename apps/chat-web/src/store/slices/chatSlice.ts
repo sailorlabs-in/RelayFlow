@@ -26,6 +26,7 @@ export interface ChatState {
   conversations: Conversation[];
   activeConversationId: string | null;
   messages: Record<string, Message[]>; // conversationId -> messages array
+  hasMoreMessages: Record<string, boolean>; // conversationId -> hasMore
   typingUsers: Record<string, Record<string, boolean>>; // conversationId -> { userId -> isTyping }
   onlineUsers: Record<string, boolean>; // userId -> isOnline
   searchResults: User[];
@@ -39,6 +40,7 @@ const initialState: ChatState = {
   conversations: [],
   activeConversationId: null,
   messages: {},
+  hasMoreMessages: {},
   typingUsers: {},
   onlineUsers: {},
   searchResults: [],
@@ -249,6 +251,7 @@ const chatSlice = createSlice({
         state.activeConversationId = null;
       }
       delete state.messages[deletedId];
+      delete state.hasMoreMessages[deletedId];
       delete state.convoRecipients[deletedId];
     },
   },
@@ -288,11 +291,26 @@ const chatSlice = createSlice({
       })
       .addCase(
         fetchMessages.fulfilled,
-        (state, action: PayloadAction<{ conversationId: string; messages: Message[] }>) => {
+        (state, action) => {
           state.status = 'succeeded';
           const { conversationId, messages } = action.payload;
+          const limit = action.meta.arg.limit || 50;
+          const offset = action.meta.arg.offset || 0;
+          
           // Reverse messages because typeorm fetched DESC, but chat feeds display chronologically (ASC)
-          state.messages[conversationId] = [...messages].reverse();
+          const reversed = [...messages].reverse();
+          
+          if (offset === 0) {
+            state.messages[conversationId] = reversed;
+          } else {
+            const currentMsgs = state.messages[conversationId] || [];
+            const existingIds = new Set(currentMsgs.map((m) => m.id));
+            const filteredReversed = reversed.filter((m) => !existingIds.has(m.id));
+            state.messages[conversationId] = [...filteredReversed, ...currentMsgs];
+          }
+          
+          // If we received fewer messages than the limit, we know there are no more messages to load
+          state.hasMoreMessages[conversationId] = messages.length === limit;
           state.error = null;
         }
       )
@@ -343,6 +361,7 @@ const chatSlice = createSlice({
           state.activeConversationId = null;
         }
         delete state.messages[deletedId];
+        delete state.hasMoreMessages[deletedId];
         delete state.convoRecipients[deletedId];
       });
   },
