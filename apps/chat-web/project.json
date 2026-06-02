@@ -21,7 +21,7 @@
       "options": {
         "buildTarget": "@chat-app/chat-web:build:development",
         "dev": true,
-        "port": 3000
+        "port": 4000
       },
       "configurations": {
         "production": {
@@ -34,7 +34,7 @@
       "executor": "@nx/next:start",
       "options": {
         "buildTarget": "@chat-app/chat-web:build:development",
-        "port": 3000
+        "port": 4000
       }
     }
   }

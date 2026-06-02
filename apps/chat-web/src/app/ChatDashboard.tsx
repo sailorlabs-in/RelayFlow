@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
-import Link from 'next/link';
+import { ProfileSettingsContent } from './profile/page';
 import { useAppDispatch, useAppSelector } from '../store';
 import {
   loginUser,
@@ -228,6 +228,7 @@ function ChatDashboardContent() {
   const [messageInput, setMessageInput] = useState('');
   const [isTypingState, setIsTypingState] = useState(false);
   const [isComposeOpen, setIsComposeOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [theme, setTheme] = useState<Theme>('dark');
 
   // --- Pagination & Scroll UX state ---
@@ -693,17 +694,18 @@ function ChatDashboardContent() {
           <ThemeSwitcher theme={theme} onChange={handleThemeChange} />
 
           {/* Profile settings */}
-          <Link
-            href="/profile"
+          <button
+            type="button"
+            onClick={() => setIsProfileOpen(true)}
             id="profile-settings-btn"
             title="Profile Settings"
-            className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center cursor-pointer transition-all duration-200 flex-shrink-0"
+            className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center cursor-pointer transition-all duration-200 flex-shrink-0 border-none"
             style={{ background: 'transparent', color: 'var(--text-muted)' }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = 'var(--theme-btn-hover)'; (e.currentTarget as HTMLAnchorElement).style.color = 'var(--text-primary)'; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = 'transparent'; (e.currentTarget as HTMLAnchorElement).style.color = 'var(--text-muted)'; }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--theme-btn-hover)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)'; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'; }}
           >
             <IconSettings />
-          </Link>
+          </button>
 
           {/* Compose */}
           <button
@@ -1124,6 +1126,30 @@ function ChatDashboardContent() {
                   ))
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── PROFILE SETTINGS MODAL ────────────────────────────── */}
+      {isProfileOpen && (
+        <div
+          className="fixed inset-0 z-[1000] flex items-center justify-center p-4 animate-fade-in"
+          style={{ background: 'rgba(4,6,12,0.65)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)' }}
+          onClick={() => setIsProfileOpen(false)}
+        >
+          <div
+            className="w-[800px] max-w-full h-[85vh] flex flex-col overflow-hidden animate-slide-up"
+            style={{
+              background: 'var(--glass-bg)',
+              border: '1.5px solid var(--glass-border)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              borderRadius: '18px',
+              boxShadow: 'var(--glass-shadow)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ProfileSettingsContent isModal onClose={() => setIsProfileOpen(false)} />
           </div>
         </div>
       )}
