@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
+import Link from 'next/link';
 import { useAppDispatch, useAppSelector } from '../store';
 import {
   loginUser,
   registerUser,
   logoutUser,
   clearAuthError,
+  updateUserProfile,
   User,
 } from '../store/slices/authSlice';
 import {
@@ -26,6 +28,12 @@ import StoreProvider from '../store/StoreProvider';
 type Theme = 'dark' | 'light' | 'system';
 
 /* ── SVG icon components ────────────────────────────────────── */
+const IconSettings = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+    <circle cx="12" cy="12" r="3" />
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+  </svg>
+);
 const IconSend = () => (
   <svg viewBox="0 0 24 24" fill="currentColor" className="w-[18px] h-[18px]">
     <path d="m21.426 11.095-17-8A1 1 0 0 0 3.03 4.542L7.38 12l-4.35 7.458a1 1 0 0 0 1.396 1.447l17-8a1 1 0 0 0 0-1.81zM5.92 6.069 17.522 11.5 10.9 8.272l-4.98-2.203zm4.98 9.659L17.522 12.5 5.92 17.931l4.98-2.203z" />
@@ -239,16 +247,39 @@ function ChatDashboardContent() {
   useEffect(() => {
     try {
       const saved = (localStorage.getItem('rf-theme') as Theme) || 'dark';
+      const savedSchema = localStorage.getItem('rf-theme-schema') || 'golden';
       setTheme(saved);
       document.documentElement.setAttribute('data-theme', saved);
+      document.documentElement.setAttribute('data-theme-schema', savedSchema);
     } catch (_) {}
   }, []);
+
+  // Sync theme when user logs in or profile changes
+  useEffect(() => {
+    if (user) {
+      const userTheme = (user.themeMode as Theme) || 'dark';
+      const userSchema = user.themeSchema || 'golden';
+      
+      setTheme(userTheme);
+      document.documentElement.setAttribute('data-theme', userTheme);
+      document.documentElement.setAttribute('data-theme-schema', userSchema);
+      
+      try {
+        localStorage.setItem('rf-theme', userTheme);
+        localStorage.setItem('rf-theme-schema', userSchema);
+      } catch (_) {}
+    }
+  }, [user]);
 
   const handleThemeChange = useCallback((t: Theme) => {
     setTheme(t);
     document.documentElement.setAttribute('data-theme', t);
     try { localStorage.setItem('rf-theme', t); } catch (_) {}
-  }, []);
+
+    if (user && user.themeMode !== t) {
+      dispatch(updateUserProfile({ themeMode: t }));
+    }
+  }, [user, dispatch]);
 
   // ---- Socket + data on login ----
   useEffect(() => {
@@ -660,6 +691,19 @@ function ChatDashboardContent() {
 
           {/* Theme switcher */}
           <ThemeSwitcher theme={theme} onChange={handleThemeChange} />
+
+          {/* Profile settings */}
+          <Link
+            href="/profile"
+            id="profile-settings-btn"
+            title="Profile Settings"
+            className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center cursor-pointer transition-all duration-200 flex-shrink-0"
+            style={{ background: 'transparent', color: 'var(--text-muted)' }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = 'var(--theme-btn-hover)'; (e.currentTarget as HTMLAnchorElement).style.color = 'var(--text-primary)'; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = 'transparent'; (e.currentTarget as HTMLAnchorElement).style.color = 'var(--text-muted)'; }}
+          >
+            <IconSettings />
+          </Link>
 
           {/* Compose */}
           <button

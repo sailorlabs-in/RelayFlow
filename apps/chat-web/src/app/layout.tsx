@@ -26,6 +26,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               try {
                 var t = localStorage.getItem('rf-theme') || 'dark';
                 document.documentElement.setAttribute('data-theme', t);
+                var s = localStorage.getItem('rf-theme-schema') || 'golden';
+                document.documentElement.setAttribute('data-theme-schema', s);
               } catch (_) {}
             `,
           }}

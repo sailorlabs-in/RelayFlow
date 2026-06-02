@@ -17,6 +17,18 @@ export class User {
   @Column({ name: 'avatar_url', nullable: true })
   avatarUrl?: string;
 
+  @Column({ name: 'theme_mode', default: 'system' })
+  themeMode!: string;
+
+  @Column({ name: 'theme_schema', default: 'golden' })
+  themeSchema!: string;
+
+  @Column({ name: 'status', default: 'online' })
+  status!: string;
+
+  @Column({ name: 'visibility', default: 'everyone' })
+  visibility!: string;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 

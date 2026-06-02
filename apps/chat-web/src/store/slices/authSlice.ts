@@ -9,6 +9,10 @@ export interface User {
   email: string;
   displayName?: string;
   avatarUrl?: string;
+  themeMode?: string;
+  themeSchema?: string;
+  status?: string;
+  visibility?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -71,6 +75,43 @@ export const loginUser = createAsyncThunk(
   }
 );
 
+// Async Thunk for Updating User Profile / Settings
+export const updateUserProfile = createAsyncThunk(
+  'auth/updateProfile',
+  async (
+    payload: {
+      displayName?: string;
+      password?: string;
+      themeMode?: string;
+      themeSchema?: string;
+      status?: string;
+      visibility?: string;
+    },
+    { getState, rejectWithValue }
+  ) => {
+    try {
+      const state = getState() as { auth: { accessToken: string | null } };
+      const response = await axios.patch(
+        `${API_URL}/users/profile`,
+        payload,
+        {
+          headers: {
+            Authorization: state.auth.accessToken ? `Bearer ${state.auth.accessToken}` : '',
+          },
+        }
+      );
+      // NestJS wraps response in { success: true, data: user }
+      return response.data.data;
+    } catch (error: any) {
+      const errorMsg =
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        'Failed to update profile settings.';
+      return rejectWithValue(errorMsg);
+    }
+  }
+);
+
 const authSlice = createSlice({
   name: 'auth',
   initialState,
@@ -122,6 +163,25 @@ const authSlice = createSlice({
         }
       })
       .addCase(loginUser.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.payload as string;
+      });
+
+    // Update Profile
+    builder
+      .addCase(updateUserProfile.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+      })
+      .addCase(updateUserProfile.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+        state.user = action.payload;
+        state.error = null;
+        if (isBrowser) {
+          localStorage.setItem('chat_user', JSON.stringify(action.payload));
+        }
+      })
+      .addCase(updateUserProfile.rejected, (state, action) => {
         state.status = 'failed';
         state.error = action.payload as string;
       });
