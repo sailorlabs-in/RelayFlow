@@ -3,6 +3,7 @@ import {
   socketReceiveMessage,
   socketUpdatePresence,
   socketUpdateTyping,
+  socketRemoveConversation,
   Message,
   fetchConversations,
 } from './slices/chatSlice';
@@ -108,6 +109,12 @@ class SocketManager {
           isTyping: false,
         })
       );
+    });
+
+    // Handle real-time conversation deletion (when the other participant removes the thread)
+    this.socket.on('conversation.deleted', (data: { conversationId: string }) => {
+      console.log('🗑️ Socket conversation.deleted event received:', data.conversationId);
+      store.dispatch(socketRemoveConversation(data.conversationId));
     });
   }
 

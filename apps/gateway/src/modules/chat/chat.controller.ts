@@ -1,14 +1,19 @@
 import { Conversation, Message } from '@chat-app/database';
-import { Controller, Post, Get, Body, Param, Query, Delete } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, Query, Delete, Inject, forwardRef } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiQuery, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
 
 import { ChatService } from './chat.service';
+import { RealtimeGateway } from '../realtime/realtime.gateway';
 
 @ApiTags('Chat & Conversations')
 @ApiBearerAuth()
 @Controller('chat')
 export class ChatController {
-  constructor(private readonly chatService: ChatService) {}
+  constructor(
+    private readonly chatService: ChatService,
+    @Inject(forwardRef(() => RealtimeGateway))
+    private readonly realtimeGateway: RealtimeGateway,
+  ) {}
 
   @Post('conversations')
   @ApiOperation({ summary: 'Create a new DM or group conversation' })
@@ -59,7 +64,16 @@ export class ChatController {
   @ApiParam({ name: 'id', description: 'Conversation unique UUID identifier' })
   @ApiResponse({ status: 200, description: 'Conversation thread successfully removed.' })
   async deleteConversation(@Param('id') id: string): Promise<{ success: boolean }> {
+    // Fetch members BEFORE deleting so we can still notify them in real-time
+    const members = await this.chatService.getConversationMembers(id);
+
     await this.chatService.deleteConversation(id);
+
+    // Broadcast conversation.deleted to every participant's private user room
+    for (const member of members) {
+      this.realtimeGateway.server.to(`user:${member.userId}`).emit('conversation.deleted', { conversationId: id });
+    }
+
     return { success: true };
   }
 }

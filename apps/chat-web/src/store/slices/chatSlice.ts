@@ -241,6 +241,16 @@ const chatSlice = createSlice({
     clearSearchResults: (state) => {
       state.searchResults = [];
     },
+    // Handle real-time conversation deletion pushed by the server (when the other participant deletes the thread)
+    socketRemoveConversation: (state, action: PayloadAction<string>) => {
+      const deletedId = action.payload;
+      state.conversations = state.conversations.filter((c) => c.id !== deletedId);
+      if (state.activeConversationId === deletedId) {
+        state.activeConversationId = null;
+      }
+      delete state.messages[deletedId];
+      delete state.convoRecipients[deletedId];
+    },
   },
   extraReducers: (builder) => {
     // Fetch conversations
@@ -345,6 +355,7 @@ export const {
   socketUpdatePresence,
   socketUpdateTyping,
   clearSearchResults,
+  socketRemoveConversation,
 } = chatSlice.actions;
 
 export default chatSlice.reducer;
