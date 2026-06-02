@@ -1,0 +1,41 @@
+{
+  "name": "@chat-app/chat-web",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/chat-web/src",
+  "projectType": "application",
+  "tags": ["type:app"],
+  "targets": {
+    "build": {
+      "executor": "@nx/next:build",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/apps/chat-web"
+      },
+      "configurations": {
+        "production": {},
+        "development": {}
+      }
+    },
+    "serve": {
+      "executor": "@nx/next:server",
+      "options": {
+        "buildTarget": "@chat-app/chat-web:build:development",
+        "dev": true,
+        "port": 3000
+      },
+      "configurations": {
+        "production": {
+          "buildTarget": "@chat-app/chat-web:build:production",
+          "dev": false
+        }
+      }
+    },
+    "start": {
+      "executor": "@nx/next:start",
+      "options": {
+        "buildTarget": "@chat-app/chat-web:build:development",
+        "port": 3000
+      }
+    }
+  }
+}

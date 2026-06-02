@@ -38,6 +38,9 @@
     },
     {
       "path": "./libs/shared-constants"
+    },
+    {
+      "path": "./apps/chat-web"
     }
   ]
 }

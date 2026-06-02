@@ -1,5 +1,5 @@
 import { Conversation, Message } from '@chat-app/database';
-import { Controller, Post, Get, Body, Param, Query } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, Query, Delete } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiQuery, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
 
 import { ChatService } from './chat.service';
@@ -30,6 +30,14 @@ export class ChatController {
     return this.chatService.createConversation(userIds);
   }
 
+  @Get('conversations')
+  @ApiOperation({ summary: 'Get all conversations for a specific user' })
+  @ApiQuery({ name: 'userId', required: true, description: 'User unique UUID identifier' })
+  @ApiResponse({ status: 200, description: 'List of user conversations.', type: [Conversation] })
+  async getConversations(@Query('userId') userId: string): Promise<Conversation[]> {
+    return this.chatService.getConversationsForUser(userId);
+  }
+
   @Get('conversations/:id/messages')
   @ApiOperation({ summary: 'Fetch paginated message archive for a conversation room' })
   @ApiParam({ name: 'id', description: 'Conversation unique UUID identifier' })
@@ -44,5 +52,14 @@ export class ChatController {
     const limitNum = limit ? parseInt(limit, 10) : 50;
     const offsetNum = offset ? parseInt(offset, 10) : 0;
     return this.chatService.getMessages(id, limitNum, offsetNum);
+  }
+
+  @Delete('conversations/:id')
+  @ApiOperation({ summary: 'Delete a conversation thread, message history and memberships' })
+  @ApiParam({ name: 'id', description: 'Conversation unique UUID identifier' })
+  @ApiResponse({ status: 200, description: 'Conversation thread successfully removed.' })
+  async deleteConversation(@Param('id') id: string): Promise<{ success: boolean }> {
+    await this.chatService.deleteConversation(id);
+    return { success: true };
   }
 }

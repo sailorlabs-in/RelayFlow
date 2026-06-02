@@ -15,6 +15,36 @@ export class ChatService {
   ) {}
 
   async createConversation(userIds: string[]): Promise<Conversation> {
+    // If it is a Direct Message (2 members), verify if a DM already exists between them
+    if (userIds.length === 2) {
+      const [userA, userB] = userIds;
+      
+      const membershipsA = await this.memberRepository.find({ where: { userId: userA } });
+      const convoIdsA = membershipsA.map((m) => m.conversationId);
+      
+      if (convoIdsA.length > 0) {
+        const commonMemberships = await this.memberRepository.find({
+          where: {
+            conversationId: In(convoIdsA),
+            userId: userB,
+          },
+        });
+        
+        for (const membership of commonMemberships) {
+          const allMembers = await this.memberRepository.find({
+            where: { conversationId: membership.conversationId },
+          });
+          
+          if (allMembers.length === 2) {
+            // Existing DM thread discovered; return it directly instead of duplicating
+            return this.conversationRepository.findOneOrFail({
+              where: { id: membership.conversationId },
+            });
+          }
+        }
+      }
+    }
+
     const conversation = this.conversationRepository.create();
     const saved = await this.conversationRepository.save(conversation);
 
@@ -29,7 +59,7 @@ export class ChatService {
     return saved;
   }
 
-  async getConversationsForUser(userId: string): Promise<Conversation[]> {
+  async getConversationsForUser(userId: string): Promise<any[]> {
     const memberships = await this.memberRepository.find({ where: { userId } });
     const conversationIds = memberships.map((m) => m.conversationId);
 
@@ -37,7 +67,52 @@ export class ChatService {
       return [];
     }
 
-    return this.conversationRepository.find({ where: { id: In(conversationIds) } });
+    const conversations = await this.conversationRepository.find({ where: { id: In(conversationIds) } });
+    
+    // Fetch all memberships for these conversation IDs to resolve participant details instantly
+    const allMemberships = await this.memberRepository.find({
+      where: { conversationId: In(conversationIds) },
+    });
+
+    const conversationsWithDetails = await Promise.all(
+      conversations.map(async (convo) => {
+        const members = allMemberships.filter((m) => m.conversationId === convo.id);
+        const lastMessage = await this.messageRepository.findOne({
+          where: { conversationId: convo.id },
+          order: { createdAt: 'DESC' },
+        });
+
+        return {
+          ...convo,
+          members: members.map((m) => ({ userId: m.userId, role: m.role })),
+          lastMessage: lastMessage ? {
+            id: lastMessage.id,
+            conversationId: lastMessage.conversationId,
+            senderId: lastMessage.senderId,
+            content: lastMessage.content,
+            createdAt: lastMessage.createdAt.toISOString(),
+            updatedAt: lastMessage.updatedAt.toISOString(),
+          } : null,
+        };
+      })
+    );
+
+    return conversationsWithDetails;
+  }
+
+  async getConversationMembers(conversationId: string): Promise<ConversationMember[]> {
+    return this.memberRepository.find({ where: { conversationId } });
+  }
+
+  async deleteConversation(conversationId: string): Promise<void> {
+    // 1. Wipe message archives
+    await this.messageRepository.delete({ conversationId });
+    
+    // 2. Wipe memberships
+    await this.memberRepository.delete({ conversationId });
+    
+    // 3. Wipe conversation record
+    await this.conversationRepository.delete({ id: conversationId });
   }
 
   async createMessage(conversationId: string, senderId: string, content: string): Promise<Message> {

@@ -33,7 +33,16 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
 
   async handleConnection(socket: Socket): Promise<void> {
     try {
-      const authHeader = socket.handshake.headers['authorization'];
+      let authHeader = socket.handshake.headers['authorization'];
+      
+      // Fallback to auth token or query parameters for browser WebSocket handshake compatibilities
+      if (!authHeader) {
+        const tokenVal = socket.handshake.auth?.token || socket.handshake.auth?.Authorization || socket.handshake.query?.token;
+        if (typeof tokenVal === 'string') {
+          authHeader = tokenVal;
+        }
+      }
+
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
         this.logger.warn(`❌ Socket connection rejected: Missing authorization header`);
         socket.disconnect(true);
@@ -60,8 +69,24 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
 
       this.logger.log(`✔ Socket connected: User ${payload.userId} joined room ${userRoom}`);
 
-      // Broadcast user online status
+      // Broadcast user online status to all other users
       this.server.emit('user.online', { userId: payload.userId });
+
+      // Fetch all online users from Redis to sync with the newly connected user
+      const allPresence = await redisClient.hgetall('presence:status');
+      const onlineUserIds: string[] = [];
+      for (const [uid, presenceJson] of Object.entries(allPresence)) {
+        try {
+          const presence = JSON.parse(presenceJson);
+          if (presence.status === 'online') {
+            onlineUserIds.push(uid);
+          }
+        } catch (e) {
+          // ignore parsing error
+        }
+      }
+      // Emit the initial list of online users to the newly connected user's socket
+      socket.emit('user.presence.sync', { onlineUserIds });
 
     } catch (error) {
       this.logger.error(`❌ Socket authentication error`, error);
@@ -110,10 +135,13 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     // Save message in PostgreSQL system of record
     const message = await this.chatService.createMessage(conversationId, userId, content);
 
-    // Broadcast to conversation participants room
-    const roomName = `conv:${conversationId}`;
-    this.server.to(roomName).emit('message.new', message);
-    this.logger.log(`✔ Broadcasted new message in room ${roomName} from ${userId}`);
+    // Fetch all conversation members to broadcast to each participant's private user room
+    const members = await this.chatService.getConversationMembers(conversationId);
+    for (const member of members) {
+      const memberRoom = `user:${member.userId}`;
+      this.server.to(memberRoom).emit('message.new', message);
+    }
+    this.logger.log(`✔ Broadcasted new message in conversation ${conversationId} to ${members.length} members from ${userId}`);
   }
 
   @SubscribeMessage('typing.started')

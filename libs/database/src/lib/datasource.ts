@@ -12,8 +12,8 @@ export const dbOptions: DataSourceOptions = {
   password: process.env.DB_PASSWORD || 'postgres',
   database: process.env.DB_NAME || 'relayflow',
   
-  // Production-grade safety rule: Always disable synchronize
-  synchronize: false,
+  // Check env variable for synchronization (development/testing)
+  synchronize: process.env.DB_SYNCHRONIZE === 'true',
   
   // Custom naming strategy for clean PostgreSQL snake_case naming
   namingStrategy: new SnakeNamingStrategy(),
