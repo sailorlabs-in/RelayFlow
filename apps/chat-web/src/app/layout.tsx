@@ -24,9 +24,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           dangerouslySetInnerHTML={{
             __html: `
               try {
-                var t = localStorage.getItem('rf-theme') || 'dark';
+                var t = localStorage.getItem('rf-theme') || 'system';
                 document.documentElement.setAttribute('data-theme', t);
-                var s = localStorage.getItem('rf-theme-schema') || 'golden';
+                var s = localStorage.getItem('rf-theme-schema') || 'arctic_glass';
                 document.documentElement.setAttribute('data-theme-schema', s);
               } catch (_) {}
             `,

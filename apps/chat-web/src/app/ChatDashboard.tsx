@@ -9,6 +9,7 @@ import {
   logoutUser,
   clearAuthError,
   updateUserProfile,
+  setThemeMode,
   User,
 } from '../store/slices/authSlice';
 import {
@@ -177,13 +178,43 @@ function ThemeSwitcher({ theme, onChange }: { theme: Theme; onChange: (t: Theme)
 }
 
 /* ── Avatar ─────────────────────────────────────────────────── */
+type PresenceStatus = 'online' | 'away' | 'dnd' | 'offline';
+
+const PRESENCE_DOT_COLORS: Record<PresenceStatus, string> = {
+  online:  '#22c55e', // green
+  away:    '#eab308', // amber
+  dnd:     '#ef4444', // red
+  offline: 'var(--text-muted)', // gray
+};
+
+function PresenceDot({ status, size = 10 }: { status: PresenceStatus | string; size?: number }) {
+  const s = (status as PresenceStatus) in PRESENCE_DOT_COLORS ? (status as PresenceStatus) : 'offline';
+  return (
+    <span
+      style={{
+        display: 'inline-block',
+        width: size,
+        height: size,
+        borderRadius: '50%',
+        background: PRESENCE_DOT_COLORS[s],
+        border: '2px solid var(--glass-bg)',
+        flexShrink: 0,
+        boxShadow: s !== 'offline' ? `0 0 0 1px ${PRESENCE_DOT_COLORS[s]}33` : 'none',
+        transition: 'background 0.3s ease',
+      }}
+      title={s.charAt(0).toUpperCase() + s.slice(1)}
+      aria-label={`Status: ${s}`}
+    />
+  );
+}
+
 function Avatar({
   letter,
-  online = false,
+  status = 'offline',
   size = 'md',
 }: {
   letter: string;
-  online?: boolean;
+  status?: PresenceStatus | string;
   size?: 'sm' | 'md' | 'lg';
 }) {
   const sizeMap = {
@@ -191,12 +222,30 @@ function Avatar({
     md: 'w-[38px] h-[38px] text-[14px]',
     lg: 'w-[44px] h-[44px] text-[16px]',
   };
+  const dotSize = size === 'lg' ? 11 : size === 'md' ? 10 : 8;
   return (
-    <div
-      className={`avatar-base ${sizeMap[size]} ${online ? 'avatar-online' : ''} flex-shrink-0`}
-      aria-hidden="true"
-    >
-      {letter}
+    <div className="relative flex-shrink-0" style={{ display: 'inline-flex' }}>
+      <div
+        className={`avatar-base ${sizeMap[size]} flex-shrink-0`}
+        aria-hidden="true"
+      >
+        {letter}
+      </div>
+      <span
+        style={{
+          position: 'absolute',
+          bottom: -1,
+          right: -1,
+          width: dotSize,
+          height: dotSize,
+          borderRadius: '50%',
+          background: PRESENCE_DOT_COLORS[(status as PresenceStatus) in PRESENCE_DOT_COLORS ? (status as PresenceStatus) : 'offline'],
+          border: '2px solid var(--glass-bg)',
+          boxShadow: status !== 'offline' ? `0 0 0 1px ${PRESENCE_DOT_COLORS[(status as PresenceStatus) in PRESENCE_DOT_COLORS ? (status as PresenceStatus) : 'offline']}33` : 'none',
+          transition: 'background 0.3s ease',
+        }}
+        title={status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Offline'}
+      />
     </div>
   );
 }
@@ -229,7 +278,7 @@ function ChatDashboardContent() {
   const [isTypingState, setIsTypingState] = useState(false);
   const [isComposeOpen, setIsComposeOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [theme, setTheme] = useState<Theme>('dark');
+  const theme = useAppSelector((s) => s.auth.themeMode);
 
   // --- Pagination & Scroll UX state ---
   const [isFetchingMore, setIsFetchingMore] = useState(false);
@@ -243,40 +292,11 @@ function ChatDashboardContent() {
   const isFirstRenderForConvoRef = useRef(true);
 
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // ---- Theme persistence & application ----
-  useEffect(() => {
-    try {
-      const saved = (localStorage.getItem('rf-theme') as Theme) || 'dark';
-      const savedSchema = localStorage.getItem('rf-theme-schema') || 'golden';
-      setTheme(saved);
-      document.documentElement.setAttribute('data-theme', saved);
-      document.documentElement.setAttribute('data-theme-schema', savedSchema);
-    } catch (_) {}
-  }, []);
-
-  // Sync theme when user logs in or profile changes
-  useEffect(() => {
-    if (user) {
-      const userTheme = (user.themeMode as Theme) || 'dark';
-      const userSchema = user.themeSchema || 'golden';
-      
-      setTheme(userTheme);
-      document.documentElement.setAttribute('data-theme', userTheme);
-      document.documentElement.setAttribute('data-theme-schema', userSchema);
-      
-      try {
-        localStorage.setItem('rf-theme', userTheme);
-        localStorage.setItem('rf-theme-schema', userSchema);
-      } catch (_) {}
-    }
-  }, [user]);
+  const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [ownStatus, setOwnStatus] = useState<string>('online'); // local user's own presence
 
   const handleThemeChange = useCallback((t: Theme) => {
-    setTheme(t);
-    document.documentElement.setAttribute('data-theme', t);
-    try { localStorage.setItem('rf-theme', t); } catch (_) {}
-
+    dispatch(setThemeMode(t));
     if (user && user.themeMode !== t) {
       dispatch(updateUserProfile({ themeMode: t }));
     }
@@ -287,10 +307,72 @@ function ChatDashboardContent() {
     if (accessToken && user) {
       dispatch(fetchConversations(user.id));
       socketManager.connect(accessToken);
+      // Set own status from user profile preference
+      const savedStatus = user.status || 'online';
+      setOwnStatus(savedStatus);
       return () => { socketManager.disconnect(); };
     }
     return undefined;
   }, [accessToken, user, dispatch]);
+
+  // ---- Inactivity detection: go 'away' after 2 minutes of no interaction ----
+  useEffect(() => {
+    if (!accessToken || !user) return;
+
+    const INACTIVITY_MS = 2 * 60 * 1000; // 2 minutes
+
+    const resetTimer = () => {
+      if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+      const currentStatus = (document.documentElement.dataset.ownStatus as string) || 'online';
+      // If we were away due to inactivity, return to online
+      if (currentStatus === 'away') {
+        setOwnStatus('online');
+        socketManager.updateStatus('online');
+      }
+      inactivityTimerRef.current = setTimeout(() => {
+        // Only auto-away if not on DND
+        const currentStatus = (document.documentElement.dataset.ownStatus as string) || 'online';
+        if (currentStatus !== 'dnd') {
+          setOwnStatus('away');
+          socketManager.updateStatus('away');
+        }
+      }, INACTIVITY_MS);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+        const currentStatus = (document.documentElement.dataset.ownStatus as string) || 'online';
+        if (currentStatus !== 'dnd') {
+          setOwnStatus('away');
+          socketManager.updateStatus('away');
+        }
+      } else {
+        resetTimer();
+      }
+    };
+
+    const activityEvents = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
+    activityEvents.forEach((ev) => window.addEventListener(ev, resetTimer, { passive: true }));
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Kick off the first timer
+    resetTimer();
+
+    return () => {
+      if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+      activityEvents.forEach((ev) => window.removeEventListener(ev, resetTimer));
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessToken, user]);
+
+  // ---- Sync ownStatus with what the server acknowledges via Redux ----
+  useEffect(() => {
+    if (user?.id && onlineUsers[user.id]) {
+      setOwnStatus(onlineUsers[user.id]);
+    }
+  }, [onlineUsers, user?.id]);
 
   // ---- Messages on conversation change ----
   useEffect(() => {
@@ -521,7 +603,7 @@ function ChatDashboardContent() {
 
           {/* Left Branding Panel */}
           <div className="relative flex-[1.1] flex flex-col justify-center items-center p-12 text-white text-center overflow-hidden"
-            style={{ background: 'linear-gradient(140deg, #6366f1 0%, #8b5cf6 100%)' }}>
+            style={{ background: 'linear-gradient(140deg, var(--accent-primary) 0%, var(--accent-secondary) 100%)' }}>
             <div className="absolute inset-0"
               style={{ background: 'radial-gradient(circle at 30% 20%, rgba(255,255,255,0.18) 0%, transparent 65%)' }} />
             <div className="absolute -bottom-14 -right-14 w-56 h-56 rounded-full"
@@ -591,7 +673,7 @@ function ChatDashboardContent() {
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
                     required={!isLoginMode}
-                    onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(99,102,241,0.55)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.12)'; }}
+                    onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-ring)'; }}
                     onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.boxShadow = 'none'; }}
                   />
                 </div>
@@ -610,7 +692,7 @@ function ChatDashboardContent() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(99,102,241,0.55)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.12)'; }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-ring)'; }}
                   onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.boxShadow = 'none'; }}
                 />
               </div>
@@ -628,7 +710,7 @@ function ChatDashboardContent() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(99,102,241,0.55)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.12)'; }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-ring)'; }}
                   onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.boxShadow = 'none'; }}
                 />
               </div>
@@ -637,9 +719,8 @@ function ChatDashboardContent() {
                 id="auth-submit-btn"
                 type="submit"
                 disabled={authStatus === 'loading'}
-                className="mt-2 rounded-[10px] py-3.5 text-[15px] font-semibold text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 relative overflow-hidden"
-                style={{ background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)' }}
-                onMouseEnter={(e) => { if (authStatus !== 'loading') { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 20px rgba(99,102,241,0.40)'; } }}
+                className="mt-2 rounded-[10px] py-3.5 text-[15px] font-semibold text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 relative overflow-hidden btn-send"
+                onMouseEnter={(e) => { if (authStatus !== 'loading') { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = 'var(--btn-shadow)'; } }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = ''; (e.currentTarget as HTMLButtonElement).style.boxShadow = ''; }}
               >
                 {authStatus === 'loading' ? 'Processing…' : isLoginMode ? 'Sign In' : 'Sign Up'}
@@ -651,7 +732,7 @@ function ChatDashboardContent() {
               <button
                 id="auth-toggle-btn"
                 className="ml-1.5 font-semibold cursor-pointer transition-colors duration-200"
-                style={{ color: 'var(--accent-indigo, #6366f1)', background: 'none', border: 'none' }}
+                style={{ color: 'var(--accent-primary)', background: 'none', border: 'none' }}
                 onClick={() => { setIsLoginMode(!isLoginMode); dispatch(clearAuthError()); }}
               >
                 {isLoginMode ? 'Create account' : 'Sign In'}
@@ -666,10 +747,16 @@ function ChatDashboardContent() {
   // ── RENDER: Chat Dashboard ────────────────────────────────
   const activeConvo   = conversations.find((c) => c.id === activeConversationId);
   const activeDetails = activeConvo ? getConversationDetails(activeConvo) : null;
-  const isActiveOnline = activeDetails?.id ? !!onlineUsers[activeDetails.id] : false;
+  // Derive the active recipient's presence status string
+  const activeStatus: string = activeDetails?.id ? (onlineUsers[activeDetails.id] || 'offline') : 'offline';
   const isActiveTyping = activeConversationId && typingUsers[activeConversationId]
     ? Object.entries(typingUsers[activeConversationId]).some(([uid, typing]) => uid !== user.id && typing)
     : false;
+
+  // Keep data-own-status on the HTML element so the inactivity timer closure can read it
+  if (typeof document !== 'undefined') {
+    document.documentElement.dataset.ownStatus = ownStatus;
+  }
 
   return (
     <div className="flex h-screen w-screen p-3.5 gap-3.5"
@@ -680,7 +767,7 @@ function ChatDashboardContent() {
 
         {/* Profile Card */}
         <div className="flex items-center gap-2.5 p-3.5 border-b" style={{ borderColor: 'var(--border-muted)' }}>
-          <Avatar letter={(user.displayName || user.email)[0].toUpperCase()} online size="md" />
+          <Avatar letter={(user.displayName || user.email)[0].toUpperCase()} status={ownStatus} size="md" />
           <div className="flex-1 min-w-0">
             <div className="font-semibold text-[13.5px] truncate" style={{ color: 'var(--text-primary)' }}>
               {user.displayName || 'Active User'}
@@ -748,7 +835,7 @@ function ChatDashboardContent() {
               placeholder="Search users…"
               value={searchQuery}
               onChange={handleSearchChange}
-              onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(99,102,241,0.55)'; e.currentTarget.style.boxShadow = '0 0 0 2.5px rgba(99,102,241,0.12)'; }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.boxShadow = '0 0 0 2.5px var(--accent-ring)'; }}
               onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.boxShadow = 'none'; }}
             />
           </div>
@@ -762,7 +849,7 @@ function ChatDashboardContent() {
                     key={su.id}
                     className="flex items-center gap-2.5 px-3.5 py-2.5 cursor-pointer border-b transition-colors duration-150"
                     style={{ borderColor: 'var(--border-muted)' }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(99,102,241,0.09)')}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--theme-btn-hover)')}
                     onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                     onClick={() => handleSelectSearchedUser(su)}
                   >
@@ -783,7 +870,7 @@ function ChatDashboardContent() {
             Conversations
           </span>
           <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded-md"
-            style={{ background: 'rgba(99,102,241,0.12)', color: 'var(--accent-indigo, #6366f1)' }}>
+            style={{ background: 'var(--theme-btn-active)', color: 'var(--theme-btn-active-text)' }}>
             {conversations.length}
           </span>
         </div>
@@ -799,7 +886,7 @@ function ChatDashboardContent() {
             conversations.map((convo) => {
               const details      = getConversationDetails(convo);
               const isActive     = convo.id === activeConversationId;
-              const isOnline     = details.id ? !!onlineUsers[details.id] : false;
+              const recipientStatus = details.id ? (onlineUsers[details.id] || 'offline') : 'offline';
               const convoMsgs    = messages[convo.id] || [];
               const lastMsg      = convoMsgs[convoMsgs.length - 1] ?? convo.lastMessage;
               const isTyping     = typingUsers[convo.id]
@@ -812,20 +899,20 @@ function ChatDashboardContent() {
                   id={`convo-${convo.id}`}
                   className="flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl cursor-pointer transition-all duration-200 mb-0.5 border"
                   style={{
-                    background: isActive ? 'rgba(99,102,241,0.10)' : 'transparent',
-                    borderColor: isActive ? 'rgba(99,102,241,0.18)' : 'transparent',
-                    boxShadow: isActive ? '0 2px 12px rgba(99,102,241,0.08)' : 'none',
+                    background: isActive ? 'var(--theme-btn-active)' : 'transparent',
+                    borderColor: isActive ? 'var(--accent-primary)' : 'transparent',
+                    boxShadow: isActive ? 'var(--btn-shadow)' : 'none',
                   }}
                   onMouseEnter={(e) => { if (!isActive) { (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-input)'; (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--glass-border)'; } }}
                   onMouseLeave={(e) => { if (!isActive) { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; (e.currentTarget as HTMLDivElement).style.borderColor = 'transparent'; } }}
                   onClick={() => dispatch(setActiveConversation(convo.id))}
                 >
-                  <Avatar letter={details.letter} online={isOnline} size="md" />
+                  <Avatar letter={details.letter} status={recipientStatus} size="md" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-baseline justify-between mb-0.5">
                       <span
                         className="font-semibold text-[13px] truncate"
-                        style={{ color: isActive ? '#6366f1' : 'var(--text-primary)' }}>
+                        style={{ color: isActive ? 'var(--theme-btn-active-text)' : 'var(--text-primary)' }}>
                         {details.name}
                       </span>
                       {lastMsg && (
@@ -835,7 +922,7 @@ function ChatDashboardContent() {
                       )}
                     </div>
                     {isTyping ? (
-                      <div className="flex items-center gap-1 text-[11.5px] font-medium" style={{ color: '#a78bfa' }}>
+                      <div className="flex items-center gap-1 text-[11.5px] font-medium" style={{ color: 'var(--accent-secondary)' }}>
                         <span>typing</span>
                         <span className="typing-dot" style={{ animationDelay: '0s' }} />
                         <span className="typing-dot" style={{ animationDelay: '0.15s' }} />
@@ -865,23 +952,29 @@ function ChatDashboardContent() {
                 borderTopLeftRadius: '1rem',
                 borderTopRightRadius: '1rem',
               }}>
-              <Avatar letter={activeDetails.letter} online={isActiveOnline} size="md" />
+              <Avatar letter={activeDetails.letter} status={activeStatus} size="md" />
               <div className="flex-1 min-w-0">
                 <h3 className="text-[16px] font-bold tracking-tight truncate" style={{ color: 'var(--text-primary)' }}>
                   {activeDetails.name}
                 </h3>
                 {isActiveTyping ? (
-                  <span className="text-[11.5px] font-medium" style={{ color: '#c084fc' }}>
+                  <span className="text-[11.5px] font-medium" style={{ color: 'var(--accent-primary)' }}>
                     typing…
                   </span>
                 ) : (
-                  <div className="flex items-center gap-1.5 text-[11.5px] mt-0.5"
-                    style={{ color: isActiveOnline ? 'var(--accent-emerald, #10b981)' : 'var(--text-muted)' }}>
-                    {isActiveOnline && (
-                      <span className="inline-block w-1.5 h-1.5 rounded-full"
-                        style={{ background: 'var(--accent-emerald, #10b981)', animation: 'pulseDot 2.5s ease-in-out infinite' }} />
-                    )}
-                    {isActiveOnline ? 'Online' : 'Offline'}
+                  <div className="flex items-center gap-1.5 text-[11.5px] mt-0.5">
+                    <PresenceDot status={activeStatus} size={7} />
+                    <span style={{ color:
+                      activeStatus === 'online' ? '#22c55e' :
+                      activeStatus === 'away'   ? '#eab308' :
+                      activeStatus === 'dnd'    ? '#ef4444' :
+                      'var(--text-muted)'
+                    }}>
+                      {activeStatus === 'online' ? 'Online' :
+                       activeStatus === 'away'   ? 'Away' :
+                       activeStatus === 'dnd'    ? 'Do Not Disturb' :
+                       'Offline'}
+                    </span>
                   </div>
                 )}
               </div>
@@ -927,7 +1020,7 @@ function ChatDashboardContent() {
               {isFetchingMore && (
                 <div className="flex justify-center py-2 flex-shrink-0">
                   <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin"
-                    style={{ borderColor: 'var(--accent-primary, #6366f1)', borderTopColor: 'transparent' }} />
+                    style={{ borderColor: 'var(--accent-primary)', borderTopColor: 'transparent' }} />
                 </div>
               )}
               {(messages[activeConversationId] || []).length === 0 ? (
@@ -987,7 +1080,7 @@ function ChatDashboardContent() {
                   placeholder="Type a message… (Enter to send)"
                   value={messageInput}
                   onChange={handleInputChange}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(99,102,241,0.55)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.10)'; }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-ring)'; }}
                   onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.boxShadow = 'none'; }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(e); }
@@ -998,7 +1091,7 @@ function ChatDashboardContent() {
                   type="submit"
                   disabled={!messageInput.trim()}
                   className="btn-send w-[46px] h-[46px] rounded-xl flex-shrink-0 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
-                  onMouseEnter={(e) => { if (messageInput.trim()) { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 18px rgba(99,102,241,0.42)'; } }}
+                  onMouseEnter={(e) => { if (messageInput.trim()) { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = 'var(--btn-shadow)'; } }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = ''; (e.currentTarget as HTMLButtonElement).style.boxShadow = ''; }}
                 >
                   <IconSend />
@@ -1012,8 +1105,8 @@ function ChatDashboardContent() {
             style={{ background: 'var(--bg-chat)', borderRadius: '1rem' }}>
             <div className="w-16 h-16 rounded-full flex items-center justify-center animate-float border"
               style={{
-                background: 'rgba(99,102,241,0.10)',
-                borderColor: 'rgba(99,102,241,0.18)',
+                background: 'var(--theme-btn-active)',
+                borderColor: 'var(--accent-primary)',
               }}>
               <IconChat />
             </div>
@@ -1025,9 +1118,8 @@ function ChatDashboardContent() {
             </p>
             <button
               id="empty-compose-btn"
-              className="mt-1 px-5 py-2.5 rounded-xl text-[13.5px] font-semibold text-white cursor-pointer transition-all duration-200 border-none"
-              style={{ background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)' }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 18px rgba(99,102,241,0.38)'; }}
+              className="mt-1 px-5 py-2.5 rounded-xl text-[13.5px] font-semibold text-white cursor-pointer transition-all duration-200 border-none btn-send"
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = 'var(--btn-shadow)'; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = ''; (e.currentTarget as HTMLButtonElement).style.boxShadow = ''; }}
               onClick={() => setIsComposeOpen(true)}
             >
@@ -1084,7 +1176,7 @@ function ChatDashboardContent() {
                 value={searchQuery}
                 onChange={handleSearchChange}
                 autoFocus
-                onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(99,102,241,0.55)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.10)'; }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-ring)'; }}
                 onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.boxShadow = 'none'; }}
               />
             </div>
@@ -1105,7 +1197,7 @@ function ChatDashboardContent() {
                       id={`compose-user-${u.id}`}
                       className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200 mb-1 border"
                       style={{ borderColor: 'transparent' }}
-                      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(99,102,241,0.08)'; (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(99,102,241,0.12)'; }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--theme-btn-hover)'; (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--glass-border)'; }}
                       onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; (e.currentTarget as HTMLDivElement).style.borderColor = 'transparent'; }}
                       onClick={() => handleSelectSearchedUser(u)}
                     >
@@ -1119,7 +1211,7 @@ function ChatDashboardContent() {
                         </div>
                       </div>
                       <span className="text-[11.5px] font-bold px-3 py-1.5 rounded-[7px] flex-shrink-0 transition-all duration-200"
-                        style={{ background: 'rgba(99,102,241,0.12)', color: '#6366f1' }}>
+                        style={{ background: 'var(--theme-btn-active)', color: 'var(--theme-btn-active-text)' }}>
                         Chat
                       </span>
                     </div>

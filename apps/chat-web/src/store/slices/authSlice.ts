@@ -22,18 +22,24 @@ export interface AuthState {
   accessToken: string | null;
   status: 'idle' | 'loading' | 'succeeded' | 'failed';
   error: string | null;
+  themeMode: 'dark' | 'light' | 'system';
+  themeSchema: string;
 }
 
 // Check localStorage for cached credentials safely in Next.js client
 const isBrowser = typeof window !== 'undefined';
 const initialToken = isBrowser ? localStorage.getItem('chat_token') : null;
 const initialUser = isBrowser ? localStorage.getItem('chat_user') : null;
+const initialTheme = isBrowser ? (localStorage.getItem('rf-theme') || 'system') : 'system';
+const initialSchema = isBrowser ? (localStorage.getItem('rf-theme-schema') || 'arctic_glass') : 'arctic_glass';
 
 const initialState: AuthState = {
   user: initialUser ? JSON.parse(initialUser) : null,
   accessToken: initialToken,
   status: 'idle',
   error: null,
+  themeMode: initialTheme as 'dark' | 'light' | 'system',
+  themeSchema: initialSchema,
 };
 
 // Async Thunk for User Registration
@@ -121,13 +127,29 @@ const authSlice = createSlice({
       state.accessToken = null;
       state.status = 'idle';
       state.error = null;
+      state.themeMode = 'system';
+      state.themeSchema = 'arctic_glass';
       if (isBrowser) {
         localStorage.removeItem('chat_token');
         localStorage.removeItem('chat_user');
+        localStorage.setItem('rf-theme', 'system');
+        localStorage.setItem('rf-theme-schema', 'arctic_glass');
       }
     },
     clearAuthError: (state) => {
       state.error = null;
+    },
+    setThemeMode: (state, action) => {
+      state.themeMode = action.payload;
+      if (isBrowser) {
+        localStorage.setItem('rf-theme', action.payload);
+      }
+    },
+    setThemeSchema: (state, action) => {
+      state.themeSchema = action.payload;
+      if (isBrowser) {
+        localStorage.setItem('rf-theme-schema', action.payload);
+      }
     },
   },
   extraReducers: (builder) => {
@@ -157,9 +179,17 @@ const authSlice = createSlice({
         state.accessToken = action.payload.accessToken;
         state.user = action.payload.user;
         state.error = null;
+        
+        const userTheme = action.payload.user?.themeMode || 'system';
+        const userSchema = action.payload.user?.themeSchema || 'arctic_glass';
+        state.themeMode = userTheme;
+        state.themeSchema = userSchema;
+
         if (isBrowser) {
           localStorage.setItem('chat_token', action.payload.accessToken);
           localStorage.setItem('chat_user', JSON.stringify(action.payload.user));
+          localStorage.setItem('rf-theme', userTheme);
+          localStorage.setItem('rf-theme-schema', userSchema);
         }
       })
       .addCase(loginUser.rejected, (state, action) => {
@@ -177,8 +207,16 @@ const authSlice = createSlice({
         state.status = 'succeeded';
         state.user = action.payload;
         state.error = null;
+
+        const userTheme = action.payload?.themeMode || state.themeMode;
+        const userSchema = action.payload?.themeSchema || state.themeSchema;
+        state.themeMode = userTheme;
+        state.themeSchema = userSchema;
+
         if (isBrowser) {
           localStorage.setItem('chat_user', JSON.stringify(action.payload));
+          localStorage.setItem('rf-theme', userTheme);
+          localStorage.setItem('rf-theme-schema', userSchema);
         }
       })
       .addCase(updateUserProfile.rejected, (state, action) => {
@@ -188,5 +226,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { logoutUser, clearAuthError } = authSlice.actions;
+export const { logoutUser, clearAuthError, setThemeMode, setThemeSchema } = authSlice.actions;
 export default authSlice.reducer;

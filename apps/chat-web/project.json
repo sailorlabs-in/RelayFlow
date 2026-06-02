@@ -6,14 +6,11 @@
   "tags": ["type:app"],
   "targets": {
     "build": {
-      "executor": "@nx/next:build",
-      "outputs": ["{options.outputPath}"],
+      "executor": "nx:run-commands",
+      "outputs": ["{projectRoot}/.next"],
       "options": {
-        "outputPath": "dist/apps/chat-web"
-      },
-      "configurations": {
-        "production": {},
-        "development": {}
+        "command": "npx next build",
+        "cwd": "apps/chat-web"
       }
     },
     "serve": {

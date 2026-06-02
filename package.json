@@ -5,8 +5,8 @@
   "scripts": {
     "serve-all": "nx run-many -t serve --parallel=10",
     "serve-all:prod": "nx run-many -t serve --configuration=production --parallel=10",
-    "build-all": "nx run-many -t build",
-    "build-all:prod": "nx run-many -t build --configuration=production",
+    "build-all": "nx run-many -t build --exclude=@chat-app/chat-web && npm run --prefix apps/chat-web build",
+    "build-all:prod": "nx run-many -t build --exclude=@chat-app/chat-web --configuration=production && npm run --prefix apps/chat-web build",
     "preview-gateway": "node apps/gateway/dist/main.js",
     "preview-worker-service": "node apps/worker-service/dist/main.js",
     "preview-all": "npx --yes concurrently \"npm run preview-gateway\" \"npm run preview-worker-service\""

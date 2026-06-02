@@ -2,6 +2,7 @@ import { io, Socket } from 'socket.io-client';
 import {
   socketReceiveMessage,
   socketUpdatePresence,
+  socketUpdateUserStatus,
   socketUpdateTyping,
   socketRemoveConversation,
   Message,
@@ -116,6 +117,20 @@ class SocketManager {
       console.log('🗑️ Socket conversation.deleted event received:', data.conversationId);
       store.dispatch(socketRemoveConversation(data.conversationId));
     });
+
+    // Handle granular presence/status changes broadcast by the server
+    this.socket.on('user.status.changed', (data: { userId: string; status: string }) => {
+      console.log(`🟡 User status changed: ${data.userId} -> ${data.status}`);
+      store.dispatch(socketUpdateUserStatus({ userId: data.userId, status: data.status }));
+    });
+
+    // Handle initial presence sync (includes status strings)
+    this.socket.on('user.presence.full.sync', (data: { users: { userId: string; status: string }[] }) => {
+      console.log('🟢 Full presence sync received:', data.users.length, 'users');
+      data.users.forEach(({ userId, status }) => {
+        store.dispatch(socketUpdateUserStatus({ userId, status }));
+      });
+    });
   }
 
   // -------------------------------------------------------------
@@ -146,6 +161,17 @@ class SocketManager {
   stopTyping(conversationId: string) {
     if (this.socket?.connected) {
       this.socket.emit('typing.stopped', { conversationId });
+    }
+  }
+
+  /**
+   * Emit a manual status update to the server.
+   * status: 'online' | 'away' | 'dnd' | 'offline'
+   */
+  updateStatus(status: string) {
+    if (this.socket?.connected) {
+      console.log(`📡 Emitting user.status.update: ${status}`);
+      this.socket.emit('user.status.update', { status });
     }
   }
 

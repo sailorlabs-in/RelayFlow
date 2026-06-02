@@ -17,15 +17,15 @@ export default function NotFound() {
       fontFamily: 'system-ui, -apple-system, sans-serif'
     }}>
       <h2 style={{ fontSize: '32px', fontWeight: '700' }}>404</h2>
-      <p style={{ color: '#94a3b8', fontSize: '15px' }}>The requested workspace route does not exist.</p>
+      <p style={{ color: 'var(--text-muted)', fontSize: '15px' }}>The requested workspace route does not exist.</p>
       <Link href="/" style={{ 
-        color: '#6366f1', 
+        color: 'var(--accent-primary)', 
         textDecoration: 'none',
         fontWeight: '600',
-        border: '1px solid rgba(99, 102, 241, 0.3)',
+        border: '1px solid var(--accent-ring)',
         padding: '10px 20px',
         borderRadius: '8px',
-        background: 'rgba(99, 102, 241, 0.05)',
+        background: 'var(--theme-btn)',
         transition: 'all 0.2s ease'
       }}>
         Return Home

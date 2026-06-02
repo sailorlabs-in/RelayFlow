@@ -60,33 +60,46 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       const userRoom = `user:${payload.userId}`;
       await socket.join(userRoom);
 
-      // Register presence inside Redis
+      // Register presence inside Redis — respect existing user-set status (e.g. DND)
       const redisClient = this.redisService.getClient();
+      const existingRaw = await redisClient.hget('presence:status', payload.userId);
+      let currentStatus = 'online';
+      if (existingRaw) {
+        try {
+          const existing = JSON.parse(existingRaw);
+          // Keep DND status across reconnects; reset away/offline to online
+          if (existing.status === 'dnd') {
+            currentStatus = 'dnd';
+          }
+        } catch (_) {}
+      }
+
       await redisClient.hset('presence:status', payload.userId, JSON.stringify({
-        status: 'online',
+        userId: payload.userId,
+        status: currentStatus,
         lastSeen: new Date().toISOString(),
       }));
 
-      this.logger.log(`✔ Socket connected: User ${payload.userId} joined room ${userRoom}`);
+      this.logger.log(`✔ Socket connected: User ${payload.userId} joined room ${userRoom} with status '${currentStatus}'`);
 
-      // Broadcast user online status to all other users
+      // Broadcast status change to all other users
+      this.server.emit('user.status.changed', { userId: payload.userId, status: currentStatus });
+      // Legacy backward-compat event
       this.server.emit('user.online', { userId: payload.userId });
 
-      // Fetch all online users from Redis to sync with the newly connected user
+      // Fetch ALL presence data and send to the newly connected client
       const allPresence = await redisClient.hgetall('presence:status');
-      const onlineUserIds: string[] = [];
+      const presenceList: { userId: string; status: string }[] = [];
       for (const [uid, presenceJson] of Object.entries(allPresence)) {
         try {
           const presence = JSON.parse(presenceJson);
-          if (presence.status === 'online') {
-            onlineUserIds.push(uid);
-          }
-        } catch (e) {
-          // ignore parsing error
-        }
+          presenceList.push({ userId: uid, status: presence.status || 'offline' });
+        } catch (_) {}
       }
-      // Emit the initial list of online users to the newly connected user's socket
-      socket.emit('user.presence.sync', { onlineUserIds });
+      // Full sync with rich status strings
+      socket.emit('user.presence.full.sync', { users: presenceList });
+      // Legacy backward-compat sync
+      socket.emit('user.presence.sync', { onlineUserIds: presenceList.filter(p => p.status === 'online' || p.status === 'away' || p.status === 'dnd').map(p => p.userId) });
 
     } catch (error) {
       this.logger.error(`❌ Socket authentication error`, error);
@@ -100,14 +113,17 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       const userRoom = `user:${userId}`;
       this.logger.log(`✔ Socket disconnected: User ${userId} left room ${userRoom}`);
 
-      // Update presence status to offline in Redis
+      // Update presence status to away on disconnect (not fully offline - could be a tab refresh)
       const redisClient = this.redisService.getClient();
       await redisClient.hset('presence:status', userId, JSON.stringify({
-        status: 'offline',
+        userId,
+        status: 'away',
         lastSeen: new Date().toISOString(),
       }));
 
-      // Broadcast user offline status
+      // Broadcast status change
+      this.server.emit('user.status.changed', { userId, status: 'away' });
+      // Legacy backward-compat event
       this.server.emit('user.offline', { userId });
     }
   }
@@ -162,5 +178,35 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     const userId = socket.data.userId as string;
     const roomName = `conv:${conversationId}`;
     socket.to(roomName).emit('typing.stopped', { conversationId, userId });
+  }
+
+  /**
+   * Handle manual status updates from the client.
+   * Allows users to set 'online', 'away', 'dnd', or 'offline'.
+   */
+  @SubscribeMessage('user.status.update')
+  async handleUserStatusUpdate(
+    @MessageBody('status') status: string,
+    @ConnectedSocket() socket: Socket
+  ): Promise<void> {
+    const userId = socket.data.userId as string;
+    const allowedStatuses = ['online', 'away', 'dnd', 'offline'];
+    const safeStatus = allowedStatuses.includes(status) ? status : 'online';
+
+    this.logger.log(`🟡 User ${userId} manually set status to '${safeStatus}'`);
+
+    // Persist in Redis
+    const redisClient = this.redisService.getClient();
+    await redisClient.hset('presence:status', userId, JSON.stringify({
+      userId,
+      status: safeStatus,
+      lastSeen: new Date().toISOString(),
+    }));
+
+    // Broadcast status change to all connected clients
+    this.server.emit('user.status.changed', { userId, status: safeStatus });
+
+    // Acknowledge back to the requesting socket
+    socket.emit('user.status.ack', { status: safeStatus });
   }
 }

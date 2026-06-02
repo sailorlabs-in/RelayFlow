@@ -28,7 +28,7 @@ export interface ChatState {
   messages: Record<string, Message[]>; // conversationId -> messages array
   hasMoreMessages: Record<string, boolean>; // conversationId -> hasMore
   typingUsers: Record<string, Record<string, boolean>>; // conversationId -> { userId -> isTyping }
-  onlineUsers: Record<string, boolean>; // userId -> isOnline
+  onlineUsers: Record<string, string>; // userId -> presence status: 'online' | 'away' | 'dnd' | 'offline'
   searchResults: User[];
   userProfiles: Record<string, User>; // userId -> user profile metadata cache
   convoRecipients: Record<string, string>; // conversationId -> recipientUserId mapping
@@ -228,7 +228,20 @@ const chatSlice = createSlice({
       action: PayloadAction<{ userId: string; isOnline: boolean }>
     ) => {
       const { userId, isOnline } = action.payload;
-      state.onlineUsers[userId] = isOnline;
+      // Only downgrade to offline; don't overwrite away/dnd with online from a generic event
+      if (!isOnline) {
+        state.onlineUsers[userId] = 'offline';
+      } else if (!state.onlineUsers[userId] || state.onlineUsers[userId] === 'offline') {
+        state.onlineUsers[userId] = 'online';
+      }
+    },
+    // Granular status update from presence.changed socket events
+    socketUpdateUserStatus: (
+      state,
+      action: PayloadAction<{ userId: string; status: string }>
+    ) => {
+      const { userId, status } = action.payload;
+      state.onlineUsers[userId] = status;
     },
     socketUpdateTyping: (
       state,
@@ -372,6 +385,7 @@ export const {
   clearChatError,
   socketReceiveMessage,
   socketUpdatePresence,
+  socketUpdateUserStatus,
   socketUpdateTyping,
   clearSearchResults,
   socketRemoveConversation,
