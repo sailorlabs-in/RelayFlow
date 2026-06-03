@@ -1,9 +1,12 @@
 import { Conversation, Message } from '@chat-app/database';
-import { Controller, Post, Get, Body, Param, Query, Delete, Inject, forwardRef } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, Query, Delete, Inject, forwardRef, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiQuery, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
 
 import { ChatService } from './chat.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
+import { UsersService } from '../users/users.service';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @ApiTags('Chat & Conversations')
 @ApiBearerAuth()
@@ -13,6 +16,7 @@ export class ChatController {
     private readonly chatService: ChatService,
     @Inject(forwardRef(() => RealtimeGateway))
     private readonly realtimeGateway: RealtimeGateway,
+    private readonly usersService: UsersService,
   ) {}
 
   @Post('conversations')
@@ -60,18 +64,30 @@ export class ChatController {
   }
 
   @Delete('conversations/:id')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Delete a conversation thread, message history and memberships' })
   @ApiParam({ name: 'id', description: 'Conversation unique UUID identifier' })
   @ApiResponse({ status: 200, description: 'Conversation thread successfully removed.' })
-  async deleteConversation(@Param('id') id: string): Promise<{ success: boolean }> {
+  async deleteConversation(
+    @Param('id') id: string,
+    @CurrentUser() currentUser: { userId: string }
+  ): Promise<{ success: boolean }> {
     // Fetch members BEFORE deleting so we can still notify them in real-time
     const members = await this.chatService.getConversationMembers(id);
+
+    // Retrieve name of user who is deleting
+    const deletingUser = await this.usersService.findById(currentUser.userId);
+    const deletingUserName = deletingUser.displayName || deletingUser.email.split('@')[0];
 
     await this.chatService.deleteConversation(id);
 
     // Broadcast conversation.deleted to every participant's private user room
     for (const member of members) {
-      this.realtimeGateway.server.to(`user:${member.userId}`).emit('conversation.deleted', { conversationId: id });
+      this.realtimeGateway.server.to(`user:${member.userId}`).emit('conversation.deleted', {
+        conversationId: id,
+        deletedBy: deletingUserName,
+        deletedById: currentUser.userId,
+      });
     }
 
     return { success: true };

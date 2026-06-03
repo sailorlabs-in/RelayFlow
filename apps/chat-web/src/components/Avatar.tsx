@@ -1,5 +1,5 @@
 import React from 'react';
-import { PresenceStatus, PRESENCE_DOT_COLORS } from './PresenceDot';
+import { PresenceStatus, PRESENCE_DOT_COLORS } from '@chat-app/shared-constants';
 
 interface AvatarProps {
   letter: string;

@@ -14,6 +14,7 @@ import {
 } from '../../store/slices/authSlice';
 import { socketUpdateUserStatus } from '../../store/slices/chatSlice';
 import { socketManager } from '../../store/socketManager';
+import { PRESENCE_STATUS_DETAILS } from '@chat-app/shared-constants';
 import StoreProvider from '../../store/StoreProvider';
 
 /* ── SVGs for icons ────────────────────────────────────────── */
@@ -893,32 +894,7 @@ export function ProfileSettingsContent({
                   </label>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {[
-                      {
-                        id: 'online',
-                        name: 'Online',
-                        color: '#22c55e',
-                        desc: 'Active & receptive to messages',
-                      },
-                      {
-                        id: 'away',
-                        name: 'Away',
-                        color: '#eab308',
-                        desc: 'Stepped away from keyboard',
-                      },
-                      {
-                        id: 'dnd',
-                        name: 'DND',
-                        color: '#ef4444',
-                        desc: 'Muted — focus mode active',
-                      },
-                      {
-                        id: 'offline',
-                        name: 'Offline',
-                        color: '#71717a',
-                        desc: 'Invisible to all users',
-                      },
-                    ].map((st) => (
+                    {PRESENCE_STATUS_DETAILS.map((st) => (
                       <button
                         key={st.id}
                         type="button"

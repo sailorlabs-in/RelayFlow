@@ -1,13 +1,5 @@
 import React from 'react';
-
-export type PresenceStatus = 'online' | 'away' | 'dnd' | 'offline';
-
-export const PRESENCE_DOT_COLORS: Record<PresenceStatus, string> = {
-  online:  '#22c55e', // green
-  away:    '#eab308', // amber
-  dnd:     '#ef4444', // red
-  offline: 'var(--text-muted)', // gray
-};
+import { PresenceStatus, PRESENCE_DOT_COLORS } from '@chat-app/shared-constants';
 
 interface PresenceDotProps {
   status: PresenceStatus | string;

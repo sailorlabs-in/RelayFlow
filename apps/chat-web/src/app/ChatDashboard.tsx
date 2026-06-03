@@ -11,6 +11,7 @@ import {
 import { fetchConversations } from '../store/slices/chatSlice';
 import { socketManager } from '../store/socketManager';
 import StoreProvider from '../store/StoreProvider';
+import { INACTIVITY_TIMEOUT_MS } from '@chat-app/shared-constants';
 
 // Import extracted modular components
 import { AuthGate } from '../components/AuthGate';
@@ -86,7 +87,7 @@ function ChatDashboardContent() {
     }
 
     // Otherwise, we are manually 'online'
-    const INACTIVITY_MS = 2 * 60 * 1000;
+    const INACTIVITY_MS = INACTIVITY_TIMEOUT_MS;
 
     const resetTimer = () => {
       if (inactivityTimerRef.current) {

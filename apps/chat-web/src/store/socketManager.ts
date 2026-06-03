@@ -132,8 +132,16 @@ class SocketManager {
     });
 
     // Handle real-time conversation deletion (when the other participant removes the thread)
-    this.socket.on('conversation.deleted', (data: { conversationId: string }) => {
-      console.log('🗑️ Socket conversation.deleted event received:', data.conversationId);
+    this.socket.on('conversation.deleted', (data: { conversationId: string; deletedBy?: string; deletedById?: string }) => {
+      console.log('🗑️ Socket conversation.deleted event received:', data);
+      
+      const state = store.getState() as { auth: { user: any } };
+      const currentUserId = state.auth?.user?.id;
+      
+      if (data.deletedById && currentUserId && data.deletedById !== currentUserId) {
+        showToast.warning(`${data.deletedBy || 'Someone'} removed all messages with you.`);
+      }
+      
       store.dispatch(socketRemoveConversation(data.conversationId));
     });
 

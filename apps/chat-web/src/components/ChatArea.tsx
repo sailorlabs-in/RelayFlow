@@ -8,6 +8,7 @@ import {
 import { socketManager } from '../store/socketManager';
 import { Avatar } from './Avatar';
 import { PresenceDot } from './PresenceDot';
+import { PresenceStatus, PRESENCE_DOT_COLORS, STATUS_TEXTS } from '@chat-app/shared-constants';
 import { IconSend, IconTrash, IconChat } from './Icons';
 
 interface ChatAreaProps {
@@ -264,16 +265,8 @@ export const ChatArea = ({
               ) : (
                 <div className="flex items-center gap-1.5 text-[11.5px] mt-0.5">
                   <PresenceDot status={activeStatus} size={7} />
-                  <span style={{ color:
-                    activeStatus === 'online' ? '#22c55e' :
-                    activeStatus === 'away'   ? '#eab308' :
-                    activeStatus === 'dnd'    ? '#ef4444' :
-                    'var(--text-muted)'
-                  }}>
-                    {activeStatus === 'online' ? 'Online' :
-                     activeStatus === 'away'   ? 'Away' :
-                     activeStatus === 'dnd'    ? 'Do Not Disturb' :
-                     'Offline'}
+                  <span style={{ color: PRESENCE_DOT_COLORS[activeStatus as PresenceStatus] || 'var(--text-muted)' }}>
+                    {STATUS_TEXTS[activeStatus as PresenceStatus] || 'Offline'}
                   </span>
                 </div>
               )}
