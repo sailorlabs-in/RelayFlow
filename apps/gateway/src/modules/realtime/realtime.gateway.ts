@@ -67,9 +67,9 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       if (existingRaw) {
         try {
           const existing = JSON.parse(existingRaw);
-          // Keep DND status across reconnects; reset away/offline to online
-          if (existing.status === 'dnd') {
-            currentStatus = 'dnd';
+          // Keep DND and offline status across reconnects; reset away to online
+          if (existing.status === 'dnd' || existing.status === 'offline') {
+            currentStatus = existing.status;
           }
         } catch (_) {}
       }
@@ -77,23 +77,28 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       await redisClient.hset('presence:status', payload.userId, JSON.stringify({
         userId: payload.userId,
         status: currentStatus,
+        autoStatus: 'online',
         lastSeen: new Date().toISOString(),
       }));
 
-      this.logger.log(`✔ Socket connected: User ${payload.userId} joined room ${userRoom} with status '${currentStatus}'`);
+      this.logger.log(`✔ Socket connected: User ${payload.userId} joined room ${userRoom} with status '${currentStatus}' (autoStatus: 'online')`);
 
       // Broadcast status change to all other users
-      this.server.emit('user.status.changed', { userId: payload.userId, status: currentStatus });
+      this.server.emit('user.status.changed', { userId: payload.userId, status: currentStatus, autoStatus: 'online' });
       // Legacy backward-compat event
       this.server.emit('user.online', { userId: payload.userId });
 
       // Fetch ALL presence data and send to the newly connected client
       const allPresence = await redisClient.hgetall('presence:status');
-      const presenceList: { userId: string; status: string }[] = [];
+      const presenceList: { userId: string; status: string; autoStatus: string }[] = [];
       for (const [uid, presenceJson] of Object.entries(allPresence)) {
         try {
           const presence = JSON.parse(presenceJson);
-          presenceList.push({ userId: uid, status: presence.status || 'offline' });
+          presenceList.push({
+            userId: uid,
+            status: presence.status || 'offline',
+            autoStatus: presence.autoStatus || 'online',
+          });
         } catch (_) {}
       }
       // Full sync with rich status strings
@@ -118,11 +123,12 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       await redisClient.hset('presence:status', userId, JSON.stringify({
         userId,
         status: 'away',
+        autoStatus: 'away',
         lastSeen: new Date().toISOString(),
       }));
 
       // Broadcast status change
-      this.server.emit('user.status.changed', { userId, status: 'away' });
+      this.server.emit('user.status.changed', { userId, status: 'away', autoStatus: 'away' });
       // Legacy backward-compat event
       this.server.emit('user.offline', { userId });
     }
@@ -186,27 +192,29 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
    */
   @SubscribeMessage('user.status.update')
   async handleUserStatusUpdate(
-    @MessageBody('status') status: string,
+    @MessageBody() payload: { status: string; autoStatus?: string },
     @ConnectedSocket() socket: Socket
   ): Promise<void> {
     const userId = socket.data.userId as string;
     const allowedStatuses = ['online', 'away', 'dnd', 'offline'];
-    const safeStatus = allowedStatuses.includes(status) ? status : 'online';
+    const safeStatus = allowedStatuses.includes(payload?.status) ? payload.status : 'online';
+    const safeAutoStatus = payload?.autoStatus === 'away' ? 'away' : 'online';
 
-    this.logger.log(`🟡 User ${userId} manually set status to '${safeStatus}'`);
+    this.logger.log(`🟡 User ${userId} set status to '${safeStatus}' (autoStatus: '${safeAutoStatus}')`);
 
     // Persist in Redis
     const redisClient = this.redisService.getClient();
     await redisClient.hset('presence:status', userId, JSON.stringify({
       userId,
       status: safeStatus,
+      autoStatus: safeAutoStatus,
       lastSeen: new Date().toISOString(),
     }));
 
     // Broadcast status change to all connected clients
-    this.server.emit('user.status.changed', { userId, status: safeStatus });
+    this.server.emit('user.status.changed', { userId, status: safeStatus, autoStatus: safeAutoStatus });
 
     // Acknowledge back to the requesting socket
-    socket.emit('user.status.ack', { status: safeStatus });
+    socket.emit('user.status.ack', { status: safeStatus, autoStatus: safeAutoStatus });
   }
 }

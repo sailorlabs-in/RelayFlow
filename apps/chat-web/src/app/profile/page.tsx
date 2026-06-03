@@ -10,7 +10,9 @@ import {
   logoutUser,
   setThemeMode as setReduxThemeMode,
   setThemeSchema as setReduxThemeSchema,
+  updateUserStatusOptimistic,
 } from '../../store/slices/authSlice';
+import { socketUpdateUserStatus } from '../../store/slices/chatSlice';
 import { socketManager } from '../../store/socketManager';
 import StoreProvider from '../../store/StoreProvider';
 
@@ -920,10 +922,21 @@ export function ProfileSettingsContent({
                       <button
                         key={st.id}
                         type="button"
-                        onClick={() => {
+                        onClick={async () => {
                           setUserStatus(st.id);
+                          // Optimistically update status in redux authSlice and chatSlice onlineUsers
+                          dispatch(updateUserStatusOptimistic(st.id));
+                          if (user?.id) {
+                            dispatch(socketUpdateUserStatus({ userId: user.id, status: st.id, autoStatus: 'online' }));
+                          }
                           // Immediately push status change via socket for real-time broadcast
                           socketManager.updateStatus(st.id);
+                          // Persist change to database
+                          try {
+                            await dispatch(updateUserProfile({ status: st.id })).unwrap();
+                          } catch (err) {
+                            console.error('Failed to auto-save status:', err);
+                          }
                         }}
                         className={`flex flex-col items-start p-4 rounded-xl cursor-pointer text-left transition-all duration-200 border ${
                           userStatus === st.id

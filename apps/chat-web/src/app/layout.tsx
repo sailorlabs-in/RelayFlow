@@ -1,4 +1,6 @@
 import './global.css';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,7 +35,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
       </head>
-      <body className="font-sans">{children}</body>
+      <body className="font-sans">
+        {children}
+        <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
+      </body>
     </html>
   );
 }

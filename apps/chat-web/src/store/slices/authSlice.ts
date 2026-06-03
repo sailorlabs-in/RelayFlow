@@ -151,6 +151,21 @@ const authSlice = createSlice({
         localStorage.setItem('rf-theme-schema', action.payload);
       }
     },
+    updateUserStatusOptimistic: (state, action) => {
+      if (state.user) {
+        state.user.status = action.payload;
+        if (isBrowser) {
+          const cachedUser = localStorage.getItem('chat_user');
+          if (cachedUser) {
+            try {
+              const u = JSON.parse(cachedUser);
+              u.status = action.payload;
+              localStorage.setItem('chat_user', JSON.stringify(u));
+            } catch (_) {}
+          }
+        }
+      }
+    },
   },
   extraReducers: (builder) => {
     // Register
@@ -226,5 +241,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { logoutUser, clearAuthError, setThemeMode, setThemeSchema } = authSlice.actions;
+export const { logoutUser, clearAuthError, setThemeMode, setThemeSchema, updateUserStatusOptimistic } = authSlice.actions;
 export default authSlice.reducer;

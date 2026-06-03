@@ -228,20 +228,20 @@ const chatSlice = createSlice({
       action: PayloadAction<{ userId: string; isOnline: boolean }>
     ) => {
       const { userId, isOnline } = action.payload;
-      // Only downgrade to offline; don't overwrite away/dnd with online from a generic event
+      // Only downgrade to offline; don't overwrite away/dnd/offline with online from a generic event
       if (!isOnline) {
         state.onlineUsers[userId] = 'offline';
-      } else if (!state.onlineUsers[userId] || state.onlineUsers[userId] === 'offline') {
+      } else if (!state.onlineUsers[userId]) {
         state.onlineUsers[userId] = 'online';
       }
     },
     // Granular status update from presence.changed socket events
     socketUpdateUserStatus: (
       state,
-      action: PayloadAction<{ userId: string; status: string }>
+      action: PayloadAction<{ userId: string; status: string; autoStatus?: string }>
     ) => {
-      const { userId, status } = action.payload;
-      state.onlineUsers[userId] = status;
+      const { userId, status, autoStatus } = action.payload;
+      state.onlineUsers[userId] = status === 'online' ? (autoStatus || 'online') : status;
     },
     socketUpdateTyping: (
       state,
