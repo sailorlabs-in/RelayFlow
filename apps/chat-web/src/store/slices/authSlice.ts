@@ -28,18 +28,14 @@ export interface AuthState {
 
 // Check localStorage for cached credentials safely in Next.js client
 const isBrowser = typeof window !== 'undefined';
-const initialToken = isBrowser ? localStorage.getItem('chat_token') : null;
-const initialUser = isBrowser ? localStorage.getItem('chat_user') : null;
-const initialTheme = isBrowser ? (localStorage.getItem('rf-theme') || 'system') : 'system';
-const initialSchema = isBrowser ? (localStorage.getItem('rf-theme-schema') || 'arctic_glass') : 'arctic_glass';
 
 const initialState: AuthState = {
-  user: initialUser ? JSON.parse(initialUser) : null,
-  accessToken: initialToken,
+  user: null,
+  accessToken: null,
   status: 'idle',
   error: null,
-  themeMode: initialTheme as 'dark' | 'light' | 'system',
-  themeSchema: initialSchema,
+  themeMode: 'system',
+  themeSchema: 'arctic_glass',
 };
 
 // Async Thunk for User Registration
@@ -122,6 +118,27 @@ const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
+    restoreSession: (state) => {
+      if (isBrowser) {
+        const token = localStorage.getItem('chat_token');
+        const userVal = localStorage.getItem('chat_user');
+        const theme = localStorage.getItem('rf-theme') || 'system';
+        const schema = localStorage.getItem('rf-theme-schema') || 'arctic_glass';
+
+        if (token && userVal) {
+          try {
+            state.accessToken = token;
+            state.user = JSON.parse(userVal);
+            state.themeMode = theme as 'dark' | 'light' | 'system';
+            state.themeSchema = schema;
+            state.status = 'succeeded';
+          } catch (_) {
+            localStorage.removeItem('chat_token');
+            localStorage.removeItem('chat_user');
+          }
+        }
+      }
+    },
     logoutUser: (state) => {
       state.user = null;
       state.accessToken = null;
@@ -241,5 +258,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { logoutUser, clearAuthError, setThemeMode, setThemeSchema, updateUserStatusOptimistic } = authSlice.actions;
+export const { logoutUser, clearAuthError, setThemeMode, setThemeSchema, updateUserStatusOptimistic, restoreSession } = authSlice.actions;
 export default authSlice.reducer;

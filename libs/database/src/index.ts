@@ -6,3 +6,5 @@ export * from './lib/entities/conversation.entity';
 export * from './lib/entities/conversation-member.entity';
 export * from './lib/entities/message.entity';
 export * from './lib/entities/read-receipt.entity';
+export * from './lib/entities/group.entity';
+export * from './lib/entities/group-member.entity';

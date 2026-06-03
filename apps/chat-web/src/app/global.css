@@ -70,6 +70,7 @@
   --accent-primary-hover: #0284C7;
   --accent-secondary:     #7DD3FC;
   --btn-shadow:           0 4px 14px rgba(56, 189, 248, 0.25);
+  --bg-rail:              rgba(8, 14, 28, 0.88);
 }
 
 /* ============================================================
@@ -119,6 +120,7 @@
   --accent-primary-hover: #A86200;
   --accent-secondary:     #E9A319;
   --btn-shadow:           0 4px 14px rgba(198, 124, 0, 0.25);
+  --bg-rail:              rgba(230, 224, 212, 0.96);
 }
 
 /* System preference auto */
@@ -206,6 +208,11 @@
     --accent-secondary:     #E9A319;
     --btn-shadow:           0 4px 14px rgba(198, 124, 0, 0.25);
   }
+}
+
+/* Fallback/Default for --bg-rail based on the theme's sidebar background */
+[data-theme] {
+  --bg-rail: color-mix(in srgb, var(--bg-sidebar) 88%, black 12%);
 }
 
 html {

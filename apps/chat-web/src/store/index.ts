@@ -2,11 +2,13 @@ import { configureStore } from '@reduxjs/toolkit';
 import { useDispatch, useSelector, TypedUseSelectorHook } from 'react-redux';
 import authReducer from './slices/authSlice';
 import chatReducer from './slices/chatSlice';
+import groupsReducer from './slices/groupsSlice';
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
     chat: chatReducer,
+    groups: groupsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

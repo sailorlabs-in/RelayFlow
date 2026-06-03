@@ -8,6 +8,17 @@ import {
   Message,
   fetchConversations,
 } from './slices/chatSlice';
+import {
+  socketGroupCreated,
+  socketGroupUpdated,
+  socketGroupDeleted,
+  socketGroupMemberAdded,
+  socketGroupMemberRemoved,
+  socketChannelCreated,
+  socketChannelUpdated,
+  socketChannelDeleted,
+  Group,
+} from './slices/groupsSlice';
 import { logoutUser } from './slices/authSlice';
 import { store } from './index';
 import { showToast } from '../components/toast';
@@ -80,8 +91,14 @@ class SocketManager {
       store.dispatch(socketReceiveMessage(message));
 
       // Keep conversations in sync: fetch list if it's a new conversation thread
-      const state = store.getState() as { chat: any; auth: { user: any } };
+      const state = store.getState() as { chat: any; auth: { user: any }; groups: { groups: any[] } };
       if (state.chat && state.chat.conversations && state.auth.user) {
+        // Bypass if this is a group channel message
+        const isChannel = state.groups?.groups?.some((g) =>
+          g.channels?.some((c: any) => c.id === message.conversationId)
+        );
+        if (isChannel) return;
+
         const exists = state.chat.conversations.some((c: any) => c.id === message.conversationId);
         if (!exists) {
           store.dispatch(fetchConversations(state.auth.user.id));
@@ -158,7 +175,51 @@ class SocketManager {
         store.dispatch(socketUpdateUserStatus({ userId, status, autoStatus }));
       });
     });
+
+    // ── Group / Server socket events ─────────────────────────────────────────
+    this.socket.on('group.created', (group: Group) => {
+      console.log('🏠 Socket group.created:', group.id);
+      store.dispatch(socketGroupCreated(group));
+    });
+
+    this.socket.on('group.updated', (group: Group) => {
+      console.log('🏠 Socket group.updated:', group.id);
+      store.dispatch(socketGroupUpdated(group));
+    });
+
+    this.socket.on('group.deleted', (data: { groupId: string }) => {
+      console.log('🗑️ Socket group.deleted:', data.groupId);
+      store.dispatch(socketGroupDeleted(data.groupId));
+      showToast.warning('A group you were in has been deleted.');
+    });
+
+    this.socket.on('group.member.added', (data: { groupId: string; group: Group }) => {
+      console.log('👤 Socket group.member.added:', data.groupId);
+      store.dispatch(socketGroupMemberAdded(data));
+    });
+
+    this.socket.on('group.member.removed', (data: { groupId: string }) => {
+      console.log('👤 Socket group.member.removed:', data.groupId);
+      store.dispatch(socketGroupMemberRemoved(data));
+      showToast.warning('You were removed from a group.');
+    });
+
+    this.socket.on('group.channel.created', (data: { groupId: string; channel: any }) => {
+      console.log('📢 Socket group.channel.created:', data.channel.id);
+      store.dispatch(socketChannelCreated(data));
+    });
+
+    this.socket.on('group.channel.updated', (data: { groupId: string; channel: any }) => {
+      console.log('📢 Socket group.channel.updated:', data.channel.id);
+      store.dispatch(socketChannelUpdated(data));
+    });
+
+    this.socket.on('group.channel.deleted', (data: { groupId: string; channelId: string }) => {
+      console.log('📢 Socket group.channel.deleted:', data.channelId);
+      store.dispatch(socketChannelDeleted(data));
+    });
   }
+
 
   // -------------------------------------------------------------
   // Emitters

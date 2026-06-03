@@ -1,4 +1,4 @@
-import { Conversation, ConversationMember, Message } from '@chat-app/database';
+import { Conversation, ConversationMember, Message, ConversationType } from '@chat-app/database';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
@@ -67,7 +67,12 @@ export class ChatService {
       return [];
     }
 
-    const conversations = await this.conversationRepository.find({ where: { id: In(conversationIds) } });
+    const conversations = await this.conversationRepository.find({
+      where: {
+        id: In(conversationIds),
+        type: ConversationType.DM,
+      },
+    });
     
     // Fetch all memberships for these conversation IDs to resolve participant details instantly
     const allMemberships = await this.memberRepository.find({

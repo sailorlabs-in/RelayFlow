@@ -3,6 +3,7 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateCol
 export enum ConversationType {
   DM = 'dm',
   GROUP = 'group',
+  CHANNEL = 'channel',
 }
 
 @Entity('conversation')
@@ -19,6 +20,9 @@ export class Conversation {
 
   @Column({ nullable: true })
   name?: string;
+
+  @Column({ name: 'group_id', type: 'uuid', nullable: true })
+  groupId?: string;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
