@@ -16,11 +16,11 @@ export const getActiveTheme = (): 'light' | 'dark' => {
 };
 
 export const showToast = {
-  success: (msg: string, options?: ToastOptions) => {
-    return toast.success(msg, { theme: getActiveTheme(), ...options });
+  success: (msg: React.ReactNode, options?: ToastOptions) => {
+    return toast.success(msg as any, { theme: getActiveTheme(), ...options });
   },
-  error: (msg: string, options?: ToastOptions) => {
-    if (msg) {
+  error: (msg: React.ReactNode, options?: ToastOptions) => {
+    if (typeof msg === 'string') {
       const lowerMsg = msg.toLowerCase();
       if (
         lowerMsg.includes('expired') ||
@@ -31,12 +31,17 @@ export const showToast = {
         return;
       }
     }
-    return toast.error(msg, { theme: getActiveTheme(), ...options });
+    return toast.error(msg as any, { theme: getActiveTheme(), ...options });
   },
-  info: (msg: string, options?: ToastOptions) => {
-    return toast.info(msg, { theme: getActiveTheme(), ...options });
+  info: (msg: React.ReactNode, options?: ToastOptions) => {
+    return toast.info(msg as any, { theme: getActiveTheme(), ...options });
   },
-  warning: (msg: string, options?: ToastOptions) => {
-    return toast.warn(msg, { theme: getActiveTheme(), ...options });
+  warning: (msg: React.ReactNode, options?: ToastOptions) => {
+    return toast.warn(msg as any, { theme: getActiveTheme(), ...options });
+  },
+  /** Custom notification toast — no Toastify theme applied so CSS variables control all colors */
+  notification: (msg: React.ReactNode, options?: ToastOptions) => {
+    return toast(msg as any, { ...options });
   },
 };
+

@@ -13,6 +13,10 @@ export interface User {
   themeSchema?: string;
   status?: string;
   visibility?: string;
+  notificationsEnabled?: boolean;
+  notificationsDmEnabled?: boolean;
+  notificationsGroupEnabled?: boolean;
+  notificationsInAppEnabled?: boolean;
   createdAt: string;
   updatedAt: string;
 }

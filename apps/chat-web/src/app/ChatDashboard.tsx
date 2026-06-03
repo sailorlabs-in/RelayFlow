@@ -28,11 +28,13 @@ import { socketManager } from '../store/socketManager';
 import StoreProvider from '../store/StoreProvider';
 
 import { ProfileSettingsContent } from './profile/page';
+import { useNotificationClient } from './useNotificationClient';
 
 function ChatDashboardContent() {
   const dispatch = useAppDispatch();
 
   const { user, accessToken } = useAppSelector((s) => s.auth);
+  useNotificationClient(user);
   const { activeConversationId } = useAppSelector((s) => s.chat);
   const { groups: rawGroups, activeGroupId, activeChannelId } = useAppSelector((s) => s.groups);
   const groups = Array.isArray(rawGroups) ? rawGroups : [];

@@ -151,4 +151,8 @@ export class ChatService {
   async deleteMessage(messageId: string): Promise<void> {
     await this.messageRepository.delete({ id: messageId });
   }
+
+  async getConversation(id: string): Promise<Conversation | null> {
+    return this.conversationRepository.findOne({ where: { id } });
+  }
 }

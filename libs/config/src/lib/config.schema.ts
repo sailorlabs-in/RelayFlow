@@ -20,6 +20,10 @@ export const environmentSchema = z.object({
   JWT_SECRET: z.string().default('relayflow-super-secret-key-12345'),
   JWT_ACCESS_EXPIRATION: z.string().default('15m'),
   JWT_REFRESH_EXPIRATION: z.string().default('7d'),
+
+  // Vibe Message Configurations
+  VIBE_APP_ID: z.string().optional(),
+  VIBE_SECRET_KEY: z.string().optional(),
 });
 
 export type Environment = z.infer<typeof environmentSchema>;

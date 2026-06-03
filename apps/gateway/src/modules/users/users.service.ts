@@ -85,6 +85,10 @@ export class UsersService {
     themeSchema?: string;
     status?: string;
     visibility?: string;
+    notificationsEnabled?: boolean;
+    notificationsDmEnabled?: boolean;
+    notificationsGroupEnabled?: boolean;
+    notificationsInAppEnabled?: boolean;
   }): Promise<User> {
     const user = await this.findById(id);
 
@@ -110,6 +114,22 @@ export class UsersService {
 
     if (data.visibility !== undefined) {
       user.visibility = data.visibility;
+    }
+
+    if (data.notificationsEnabled !== undefined) {
+      user.notificationsEnabled = data.notificationsEnabled;
+    }
+
+    if (data.notificationsDmEnabled !== undefined) {
+      user.notificationsDmEnabled = data.notificationsDmEnabled;
+    }
+
+    if (data.notificationsGroupEnabled !== undefined) {
+      user.notificationsGroupEnabled = data.notificationsGroupEnabled;
+    }
+
+    if (data.notificationsInAppEnabled !== undefined) {
+      user.notificationsInAppEnabled = data.notificationsInAppEnabled;
     }
 
     const updatedUser = await this.userRepository.save(user);

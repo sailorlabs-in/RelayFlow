@@ -1,3 +1,4 @@
+import { ConversationType } from '@chat-app/database';
 import { RedisService } from '@chat-app/redis';
 import { Logger, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
 import {
@@ -13,6 +14,9 @@ import { Server, Socket } from 'socket.io';
 
 import { AuthService } from '../auth/auth.service';
 import { ChatService } from '../chat/chat.service';
+import { NotificationService } from '../chat/notification.service';
+import { UsersService } from '../users/users.service';
+import { GroupsService } from '../groups/groups.service';
  
 
 @WebSocketGateway({
@@ -28,7 +32,10 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   constructor(
     private readonly authService: AuthService,
     private readonly chatService: ChatService,
-    private readonly redisService: RedisService
+    private readonly redisService: RedisService,
+    private readonly notificationService: NotificationService,
+    private readonly usersService: UsersService,
+    private readonly groupsService: GroupsService
   ) {}
 
   async handleConnection(socket: Socket): Promise<void> {
@@ -168,6 +175,85 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       this.server.to(memberRoom).emit('message.new', message);
     }
     this.logger.log(`✔ Broadcasted new message in conversation ${conversationId} to ${members.length} members from ${userId}`);
+
+    // Dispatch push notifications to other conversation members based on their preferences
+    const otherMemberIds = members
+      .map((m) => m.userId)
+      .filter((uid) => uid !== userId);
+
+    if (otherMemberIds.length > 0) {
+      const conversation = await this.chatService.getConversation(conversationId);
+      const isDm = conversation ? conversation.type === ConversationType.DM : true;
+
+      const recipientsToNotify: string[] = [];
+      for (const memberId of otherMemberIds) {
+        try {
+          const targetUser = await this.usersService.findById(memberId);
+          if (targetUser.notificationsEnabled) {
+            if (isDm && targetUser.notificationsDmEnabled) {
+              recipientsToNotify.push(memberId);
+            } else if (!isDm && targetUser.notificationsGroupEnabled) {
+              recipientsToNotify.push(memberId);
+            }
+          }
+        } catch (err) {
+          this.logger.error(`Failed to fetch user ${memberId} profile for notifications`, err);
+        }
+      }
+
+      if (recipientsToNotify.length > 0) {
+        // Fetch sender displayName from database
+        let senderDisplayName = 'Someone';
+        try {
+          const sender = await this.usersService.findById(userId);
+          senderDisplayName = sender.displayName || sender.email.split('@')[0];
+        } catch {
+          senderDisplayName = socket.data.email ? socket.data.email.split('@')[0] : 'Someone';
+        }
+
+        let pushTitle = '';
+        const isDmFlag = isDm ? 'true' : 'false';
+        const channelName = (!isDm && conversation) ? (conversation.name || 'general') : '';
+        let groupName = '';
+        let groupId = '';
+
+        if (isDm) {
+          pushTitle = senderDisplayName;
+        } else {
+          if (conversation.groupId) {
+            groupId = conversation.groupId;
+            try {
+              const group = await this.groupsService.getGroup(conversation.groupId);
+              if (group) {
+                groupName = group.name;
+              }
+            } catch {
+              groupName = 'Group';
+            }
+          }
+          pushTitle = `${senderDisplayName} at ${channelName}, ${groupName || 'Group'}`;
+        }
+
+        // Structured body payload — FE parses this JSON to extract metadata
+        const bodyPayload = JSON.stringify({
+          message: content,
+          conversationId,
+          messageId: message.id,
+          senderId: userId,
+          senderName: senderDisplayName,
+          isDm: isDmFlag,
+          groupId,
+          groupName,
+          channelName,
+        });
+
+        this.notificationService.sendPushNotification(
+          pushTitle,
+          bodyPayload,
+          recipientsToNotify,
+        ).catch((err) => this.logger.error('Failed to send message notification', err));
+      }
+    }
   }
 
   @SubscribeMessage('typing.started')

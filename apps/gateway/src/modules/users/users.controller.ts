@@ -43,6 +43,10 @@ export class UsersController {
         themeSchema: { type: 'string', example: 'emerald' },
         status: { type: 'string', example: 'away' },
         visibility: { type: 'string', example: 'everyone' },
+        notificationsEnabled: { type: 'boolean', example: true },
+        notificationsDmEnabled: { type: 'boolean', example: true },
+        notificationsGroupEnabled: { type: 'boolean', example: true },
+        notificationsInAppEnabled: { type: 'boolean', example: true },
       },
     },
   })
@@ -56,6 +60,10 @@ export class UsersController {
       themeSchema?: string;
       status?: string;
       visibility?: string;
+      notificationsEnabled?: boolean;
+      notificationsDmEnabled?: boolean;
+      notificationsGroupEnabled?: boolean;
+      notificationsInAppEnabled?: boolean;
     }
   ): Promise<User> {
     return this.usersService.updateProfile(currentUser.userId, body);

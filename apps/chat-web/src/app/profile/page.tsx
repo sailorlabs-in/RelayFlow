@@ -96,6 +96,19 @@ const IconLock = (): React.JSX.Element => (
   </svg>
 );
 
+const IconBell = (): React.JSX.Element => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    className="w-[18px] h-[18px]"
+  >
+    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+  </svg>
+);
+
 export function ProfileSettingsContent({
   isModal = false,
   onClose,
@@ -107,8 +120,8 @@ export function ProfileSettingsContent({
   const dispatch = useAppDispatch();
   const { user, accessToken, status } = useAppSelector((s) => s.auth);
 
-  // Active Tab: 'account' | 'theme' | 'status'
-  const [activeTab, setActiveTab] = useState<'account' | 'theme' | 'status'>(
+  // Active Tab: 'account' | 'theme' | 'status' | 'notifications'
+  const [activeTab, setActiveTab] = useState<'account' | 'theme' | 'status' | 'notifications'>(
     'account',
   );
 
@@ -124,6 +137,12 @@ export function ProfileSettingsContent({
   // Status & Visibility State
   const [userStatus, setUserStatus] = useState('online');
   const [visibility, setVisibility] = useState('everyone');
+
+  // Notification Preferences State
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [notificationsDmEnabled, setNotificationsDmEnabled] = useState(true);
+  const [notificationsGroupEnabled, setNotificationsGroupEnabled] = useState(true);
+  const [notificationsInAppEnabled, setNotificationsInAppEnabled] = useState(true);
 
   // Notification State
   const [message, setMessage] = useState<{
@@ -150,6 +169,10 @@ export function ProfileSettingsContent({
       setThemeSchema(user.themeSchema || 'arctic_glass');
       setUserStatus(user.status || 'online');
       setVisibility(user.visibility || 'everyone');
+      setNotificationsEnabled(user.notificationsEnabled ?? true);
+      setNotificationsDmEnabled(user.notificationsDmEnabled ?? true);
+      setNotificationsGroupEnabled(user.notificationsGroupEnabled ?? true);
+      setNotificationsInAppEnabled(user.notificationsInAppEnabled ?? true);
       hasInitializedRef.current = true;
     }
   }, [user, accessToken, router, isModal]);
@@ -196,6 +219,10 @@ export function ProfileSettingsContent({
         themeSchema,
         status: userStatus,
         visibility,
+        notificationsEnabled,
+        notificationsDmEnabled,
+        notificationsGroupEnabled,
+        notificationsInAppEnabled,
       };
 
       if (password) {
@@ -407,11 +434,16 @@ export function ProfileSettingsContent({
               label: 'Status & Visibility',
               icon: <IconActivity />,
             },
+            {
+              id: 'notifications',
+              label: 'Notifications',
+              icon: <IconBell />,
+            },
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => {
-                setActiveTab(tab.id as 'account' | 'theme' | 'status');
+                setActiveTab(tab.id as 'account' | 'theme' | 'status' | 'notifications');
               }}
               className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl text-[13.5px] font-semibold cursor-pointer text-left transition-all duration-200 border-none ${
                 activeTab === tab.id ? 'theme-btn-active' : ''
@@ -915,6 +947,134 @@ export function ProfileSettingsContent({
                     ))}
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* TAB: NOTIFICATIONS */}
+            {activeTab === 'notifications' && (
+              <div className="flex flex-col gap-6 flex-1 animate-fade-in">
+                <div>
+                  <h2
+                    className="text-[17px] font-bold text-[var(--text-primary)]"
+                  >
+                    Notification Preferences
+                  </h2>
+                  <p
+                    className="text-[12px] mt-0.5 text-[var(--text-muted)]"
+                  >
+                    Control when and how you receive push notifications.
+                  </p>
+                </div>
+
+                {/* Enable Notifications Switch */}
+                <div className="flex items-center justify-between p-4 rounded-xl border border-[var(--glass-border)] bg-[var(--theme-btn)] animate-fade-in">
+                   <div className="flex flex-col gap-0.5 pr-4">
+                     <span className="font-bold text-[14px] text-[var(--text-primary)]">
+                       Enable Push Notifications
+                     </span>
+                     <span className="text-[11.5px] text-[var(--text-muted)]">
+                       Request browser notification permissions to receive updates
+                     </span>
+                   </div>
+                   <label className="relative inline-flex items-center cursor-pointer select-none">
+                     <input
+                       type="checkbox"
+                       checked={notificationsEnabled}
+                       onChange={async (e) => {
+                         const checked = e.target.checked;
+                         setNotificationsEnabled(checked);
+                         if (checked) {
+                           try {
+                             const permission = await Notification.requestPermission();
+                             if (permission !== 'granted') {
+                               setMessage({
+                                 type: 'error',
+                                 text: '❌ Notification permission was blocked by the browser. Please check your browser settings.',
+                               });
+                               setNotificationsEnabled(false);
+                             }
+                           } catch (err) {
+                             console.error('Error requesting notification permission', err);
+                           }
+                         }
+                       }}
+                       className="sr-only peer"
+                     />
+                     <div className="w-11 h-6 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent-primary)]"></div>
+                   </label>
+                </div>
+
+                {/* Other preferences (conditional on notificationsEnabled) */}
+                {notificationsEnabled && (
+                  <div className="flex flex-col gap-4 border-t pt-4 border-[var(--border-muted)] animate-fade-in">
+                    <label className="text-[11.5px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                      Push Notification Filters
+                    </label>
+
+                    {/* In-App Toast Notifications Toggle */}
+                    <div className="flex items-center justify-between p-4 rounded-xl border border-[var(--glass-border)] bg-[var(--theme-btn)]">
+                      <div className="flex flex-col gap-0.5 pr-4">
+                        <span className="font-bold text-[13.5px] text-[var(--text-primary)]">
+                          In-App Toast Notifications
+                        </span>
+                        <span className="text-[11.5px] text-[var(--text-muted)]">
+                          Show alert toasts inside the app when messages arrive in other channels
+                        </span>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={notificationsInAppEnabled}
+                          onChange={(e) => setNotificationsInAppEnabled(e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent-primary)]"></div>
+                      </label>
+                    </div>
+
+                    {/* DM Notifications */}
+                    <div className="flex items-center justify-between p-4 rounded-xl border border-[var(--glass-border)] bg-[var(--theme-btn)]">
+                       <div className="flex flex-col gap-0.5 pr-4">
+                         <span className="font-bold text-[13.5px] text-[var(--text-primary)]">
+                           Direct Messages
+                         </span>
+                         <span className="text-[11.5px] text-[var(--text-muted)]">
+                           Receive push notifications for personal direct messages
+                         </span>
+                       </div>
+                       <label className="relative inline-flex items-center cursor-pointer select-none">
+                         <input
+                           type="checkbox"
+                           checked={notificationsDmEnabled}
+                           onChange={(e) => setNotificationsDmEnabled(e.target.checked)}
+                           className="sr-only peer"
+                         />
+                         <div className="w-11 h-6 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent-primary)]"></div>
+                       </label>
+                    </div>
+
+                    {/* Group Notifications */}
+                    <div className="flex items-center justify-between p-4 rounded-xl border border-[var(--glass-border)] bg-[var(--theme-btn)]">
+                       <div className="flex flex-col gap-0.5 pr-4">
+                         <span className="font-bold text-[13.5px] text-[var(--text-primary)]">
+                           Groups & Channels
+                         </span>
+                         <span className="text-[11.5px] text-[var(--text-muted)]">
+                           Receive push notifications for messages in group channels
+                         </span>
+                       </div>
+                       <label className="relative inline-flex items-center cursor-pointer select-none">
+                         <input
+                           type="checkbox"
+                           checked={notificationsGroupEnabled}
+                           onChange={(e) => setNotificationsGroupEnabled(e.target.checked)}
+                           className="sr-only peer"
+                         />
+                         <div className="w-11 h-6 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent-primary)]"></div>
+                       </label>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

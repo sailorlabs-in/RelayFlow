@@ -29,6 +29,18 @@ export class User {
   @Column({ name: 'visibility', default: 'everyone' })
   visibility!: string;
 
+  @Column({ name: 'notifications_enabled', default: true })
+  notificationsEnabled!: boolean;
+
+  @Column({ name: 'notifications_dm_enabled', default: true })
+  notificationsDmEnabled!: boolean;
+
+  @Column({ name: 'notifications_group_enabled', default: true })
+  notificationsGroupEnabled!: boolean;
+
+  @Column({ name: 'notifications_in_app_enabled', default: true })
+  notificationsInAppEnabled!: boolean;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 

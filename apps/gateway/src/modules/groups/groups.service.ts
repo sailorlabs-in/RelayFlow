@@ -300,5 +300,9 @@ export class GroupsService {
       order: { createdAt: 'ASC' },
     });
   }
+
+  async getGroup(groupId: string): Promise<Group | null> {
+    return this.groupRepo.findOne({ where: { id: groupId } });
+  }
 }
 
