@@ -178,7 +178,9 @@ const authSlice = createSlice({
               const u = JSON.parse(cachedUser);
               u.status = action.payload;
               localStorage.setItem('chat_user', JSON.stringify(u));
-            } catch (_) {}
+            } catch {
+              // Ignore invalid cached user data.
+            }
           }
         }
       }

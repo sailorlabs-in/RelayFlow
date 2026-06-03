@@ -1,5 +1,5 @@
 import { RedisService } from '@chat-app/redis';
-import { Logger } from '@nestjs/common';
+import { Logger, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
 import {
   WebSocketGateway,
   WebSocketServer,
@@ -71,7 +71,9 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
           if (existing.status === 'dnd' || existing.status === 'offline') {
             currentStatus = existing.status;
           }
-        } catch (_) {}
+        } catch {
+          // Ignore invalid cached presence payloads.
+        }
       }
 
       await redisClient.hset('presence:status', payload.userId, JSON.stringify({
@@ -99,7 +101,9 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
             status: presence.status || 'offline',
             autoStatus: presence.autoStatus || 'online',
           });
-        } catch (_) {}
+        } catch {
+          // Ignore invalid presence payloads from Redis.
+        }
       }
       // Full sync with rich status strings
       socket.emit('user.presence.full.sync', { users: presenceList });
@@ -216,5 +220,35 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
 
     // Acknowledge back to the requesting socket
     socket.emit('user.status.ack', { status: safeStatus, autoStatus: safeAutoStatus });
+  }
+
+  @SubscribeMessage('delete.message')
+  async handleDeleteMessage(
+    @MessageBody() body: { messageId: string; conversationId: string },
+    @ConnectedSocket() socket: Socket
+  ): Promise<void> {
+    const userId = socket.data.userId as string;
+    const { messageId, conversationId } = body;
+
+    const message = await this.chatService.getMessage(messageId);
+    if (!message) {
+      throw new NotFoundException('Message not found');
+    }
+    if (message.senderId !== userId) {
+      throw new ForbiddenException("You cannot delete someone else's message");
+    }
+    if (message.conversationId !== conversationId) {
+      throw new BadRequestException('Message does not belong to this conversation');
+    }
+
+    await this.chatService.deleteMessage(messageId);
+
+    // Broadcast to all conversation members
+    const members = await this.chatService.getConversationMembers(conversationId);
+    for (const member of members) {
+      const memberRoom = `user:${member.userId}`;
+      this.server.to(memberRoom).emit('message.deleted', { messageId, conversationId });
+    }
+    this.logger.log(`✔ Broadcasted deleted message ${messageId} in conversation ${conversationId} to ${members.length} members`);
   }
 }

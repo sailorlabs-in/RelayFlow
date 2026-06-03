@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
+
 import { useAppDispatch, useAppSelector } from '../store';
+import type { User } from '../store/slices/authSlice';
 import {
   searchUsers,
   clearSearchResults,
@@ -7,9 +9,8 @@ import {
   fetchUserProfile,
   setActiveConversation,
 } from '../store/slices/chatSlice';
-import { User } from '../store/slices/authSlice';
+
 import { Avatar } from './Avatar';
-import { ThemeSwitcher, Theme } from './ThemeSwitcher';
 import {
   IconSettings,
   IconCompose,
@@ -17,6 +18,8 @@ import {
   IconSearch,
   IconChat,
 } from './Icons';
+import type { Theme } from './ThemeSwitcher';
+import { ThemeSwitcher } from './ThemeSwitcher';
 
 interface ChatSidebarProps {
   ownStatus: string;
@@ -67,7 +70,7 @@ export const ChatSidebar = ({
   };
 
   const handleSelectSearchedUser = (selectedUser: User) => {
-    if (!user) return;
+    if (!user) {return;}
     dispatch(createConversation({ userIds: [user.id, selectedUser.id], recipient: selectedUser }));
     dispatch(fetchUserProfile(selectedUser.id));
     setSearchQuery('');
@@ -75,13 +78,13 @@ export const ChatSidebar = ({
   };
 
   const getConversationDetails = (convo: any) => {
-    if (convo.name) return { name: convo.name, letter: convo.name[0].toUpperCase() };
+    if (convo.name) {return { name: convo.name, letter: convo.name[0].toUpperCase() };}
 
     let recipientId = convoRecipients[convo.id];
     if (!recipientId) {
       const roomMsgs = messages[convo.id] || [];
       const recipientMsg = roomMsgs.find((m) => m.senderId !== user?.id);
-      if (recipientMsg) recipientId = recipientMsg.senderId;
+      if (recipientMsg) {recipientId = recipientMsg.senderId;}
     }
 
     if (recipientId && userProfiles[recipientId]) {
@@ -97,7 +100,7 @@ export const ChatSidebar = ({
     return { name: 'Direct Message', letter: 'D', email: '', id: null };
   };
 
-  if (!user) return <div className="w-[300px]" />;
+  if (!user) {return <div className="w-[300px]" />;}
 
   return (
     <div className="glass-panel flex flex-col overflow-hidden h-full w-[300px] flex-shrink-0">

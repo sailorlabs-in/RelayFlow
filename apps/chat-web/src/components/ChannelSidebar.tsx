@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
+
 import { useAppDispatch, useAppSelector } from '../store';
-import { setActiveChannel, deleteGroup, Group, GroupChannel } from '../store/slices/groupsSlice';
 import { setActiveConversation } from '../store/slices/chatSlice';
+import type { Group, GroupChannel } from '../store/slices/groupsSlice';
+import { setActiveChannel, deleteGroup } from '../store/slices/groupsSlice';
 import { socketManager } from '../store/socketManager';
+
 import {
   IconHash,
   IconPlus,
@@ -21,7 +24,6 @@ interface ChannelSidebarProps {
   onInviteMembers: () => void;
   ownStatus: string;
   setIsProfileOpen: (open: boolean) => void;
-  handleLogout: () => void;
 }
 
 export const ChannelSidebar = ({
@@ -32,7 +34,6 @@ export const ChannelSidebar = ({
   onInviteMembers,
   ownStatus,
   setIsProfileOpen,
-  handleLogout,
 }: ChannelSidebarProps): React.JSX.Element => {
   const dispatch = useAppDispatch();
   const { activeChannelId } = useAppSelector((s) => s.groups);
@@ -47,7 +48,7 @@ export const ChannelSidebar = ({
   };
 
   const handleDeleteGroup = async () => {
-    if (!window.confirm(`Delete "${group.name}" and all its channels? This cannot be undone.`)) return;
+    if (!window.confirm(`Delete "${group.name}" and all its channels? This cannot be undone.`)) {return;}
     try {
       await dispatch(deleteGroup(group.id)).unwrap();
       showToast.success(`Group "${group.name}" deleted.`);

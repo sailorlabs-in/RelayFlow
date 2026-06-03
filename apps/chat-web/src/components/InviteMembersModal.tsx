@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
+
 import { useAppDispatch, useAppSelector } from '../store';
 import { searchUsers, clearSearchResults } from '../store/slices/chatSlice';
-import { addGroupMembers, Group } from '../store/slices/groupsSlice';
+import type { Group } from '../store/slices/groupsSlice';
+import { addGroupMembers } from '../store/slices/groupsSlice';
+
 import { Avatar } from './Avatar';
 import { IconX, IconPeople } from './Icons';
 import { showToast } from './toast';
@@ -185,8 +188,8 @@ export const InviteMembersModal = ({
                     borderColor: isSelected ? 'var(--accent-primary)' : 'transparent',
                   }}
                   onClick={() => toggleSelectUser(u.id)}
-                  onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = 'var(--bg-input)'; }}
-                  onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
+                  onMouseEnter={(e) => { if (!isSelected) {e.currentTarget.style.background = 'var(--bg-input)';} }}
+                  onMouseLeave={(e) => { if (!isSelected) {e.currentTarget.style.background = 'transparent';} }}
                 >
                   <Avatar letter={(u.displayName || u.email)[0].toUpperCase()} size="md" />
                   <div style={{ flex: 1, minWidth: 0 }}>

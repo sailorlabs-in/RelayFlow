@@ -1,4 +1,5 @@
 import React from 'react';
+
 import { IconSun, IconMoon, IconMonitor } from './Icons';
 
 export type Theme = 'dark' | 'light' | 'system';
@@ -30,10 +31,10 @@ export const ThemeSwitcher = ({ theme, onChange }: ThemeSwitcherProps): React.JS
             color: 'var(--theme-btn-active-text)',
           } : {}}
           onMouseEnter={(e) => {
-            if (theme !== value) (e.currentTarget as HTMLButtonElement).style.background = 'var(--theme-btn-hover)';
+            if (theme !== value) {(e.currentTarget as HTMLButtonElement).style.background = 'var(--theme-btn-hover)';}
           }}
           onMouseLeave={(e) => {
-            if (theme !== value) (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
+            if (theme !== value) {(e.currentTarget as HTMLButtonElement).style.background = 'transparent';}
           }}
         >
           {icon}

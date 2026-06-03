@@ -1,7 +1,22 @@
 'use client';
 
+import { INACTIVITY_TIMEOUT_MS } from '@chat-app/shared-constants';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ProfileSettingsContent } from './profile/page';
+
+// Import modular components
+import { AuthGate } from '../components/AuthGate';
+import { ChannelSettingsModal } from '../components/ChannelSettingsModal';
+import { ChannelSidebar } from '../components/ChannelSidebar';
+import { ChatArea } from '../components/ChatArea';
+import { ChatSidebar } from '../components/ChatSidebar';
+import { ComposeModal } from '../components/ComposeModal';
+import { CreateChannelModal } from '../components/CreateChannelModal';
+import { CreateGroupModal } from '../components/CreateGroupModal';
+import { GroupRail } from '../components/GroupRail';
+import { GroupSettingsModal } from '../components/GroupSettingsModal';
+import { InviteMembersModal } from '../components/InviteMembersModal';
+import { MemberSidebar } from '../components/MemberSidebar';
+import type { Theme } from '../components/ThemeSwitcher';
 import { useAppDispatch, useAppSelector } from '../store';
 import {
   logoutUser,
@@ -10,25 +25,12 @@ import {
   restoreSession,
 } from '../store/slices/authSlice';
 import { fetchConversations } from '../store/slices/chatSlice';
-import { fetchGroups, setActiveGroup, GroupChannel } from '../store/slices/groupsSlice';
+import { fetchGroups, setActiveGroup } from '../store/slices/groupsSlice';
+import type { GroupChannel } from '../store/slices/groupsSlice';
 import { socketManager } from '../store/socketManager';
 import StoreProvider from '../store/StoreProvider';
-import { INACTIVITY_TIMEOUT_MS } from '@chat-app/shared-constants';
 
-// Import modular components
-import { AuthGate } from '../components/AuthGate';
-import { ChatSidebar } from '../components/ChatSidebar';
-import { ChannelSidebar } from '../components/ChannelSidebar';
-import { ChatArea } from '../components/ChatArea';
-import { ComposeModal } from '../components/ComposeModal';
-import { GroupRail } from '../components/GroupRail';
-import { CreateGroupModal } from '../components/CreateGroupModal';
-import { CreateChannelModal } from '../components/CreateChannelModal';
-import { MemberSidebar } from '../components/MemberSidebar';
-import { GroupSettingsModal } from '../components/GroupSettingsModal';
-import { ChannelSettingsModal } from '../components/ChannelSettingsModal';
-import { InviteMembersModal } from '../components/InviteMembersModal';
-import { Theme } from '../components/ThemeSwitcher';
+import { ProfileSettingsContent } from './profile/page';
 
 function ChatDashboardContent() {
   const dispatch = useAppDispatch();
@@ -121,7 +123,7 @@ function ChatDashboardContent() {
 
   // ---- Inactivity detection: auto-away after 2 minutes ----
   useEffect(() => {
-    if (!accessToken || !user) return;
+    if (!accessToken || !user) {return;}
 
     if (manualStatus !== 'online') {
       if (inactivityTimerRef.current) {
@@ -226,7 +228,6 @@ function ChatDashboardContent() {
           onInviteMembers={() => setIsInviteMembersOpen(true)}
           ownStatus={ownStatus}
           setIsProfileOpen={setIsProfileOpen}
-          handleLogout={handleLogout}
         />
       ) : (
         /* Fallback: no group selected yet */

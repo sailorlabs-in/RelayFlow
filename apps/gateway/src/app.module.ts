@@ -7,9 +7,9 @@ import { Module } from '@nestjs/common';
 import { HealthModule } from './infrastructure/health/health.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ChatModule } from './modules/chat/chat.module';
+import { GroupsModule } from './modules/groups/groups.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
 import { UsersModule } from './modules/users/users.module';
-import { GroupsModule } from './modules/groups/groups.module';
 
 @Module({
   imports: [

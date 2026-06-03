@@ -2,11 +2,12 @@ import { Conversation, Message } from '@chat-app/database';
 import { Controller, Post, Get, Body, Param, Query, Delete, Inject, forwardRef, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiQuery, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
 
-import { ChatService } from './chat.service';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { UsersService } from '../users/users.service';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { CurrentUser } from '../../common/decorators/current-user.decorator';
+
+import { ChatService } from './chat.service';
 
 @ApiTags('Chat & Conversations')
 @ApiBearerAuth()

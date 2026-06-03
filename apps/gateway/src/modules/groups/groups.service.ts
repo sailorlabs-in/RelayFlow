@@ -73,7 +73,7 @@ export class GroupsService {
   // ─── Get all groups a user is a member of ────────────────────────────────────
   async getGroupsForUser(userId: string): Promise<any[]> {
     const memberships = await this.groupMemberRepo.find({ where: { userId } });
-    if (memberships.length === 0) return [];
+    if (memberships.length === 0) {return [];}
 
     const groupIds = memberships.map((m) => m.groupId);
     const groups = await this.groupRepo.find({ where: { id: In(groupIds) } });
@@ -100,7 +100,7 @@ export class GroupsService {
     description?: string,
   ): Promise<any> {
     const group = await this.groupRepo.findOne({ where: { id: groupId } });
-    if (!group) throw new NotFoundException('Group not found');
+    if (!group) {throw new NotFoundException('Group not found');}
 
     const requesterMembership = await this.groupMemberRepo.findOne({ where: { groupId, userId: requesterId } });
     if (!requesterMembership || requesterMembership.role !== GroupMemberRole.OWNER) {
@@ -128,10 +128,10 @@ export class GroupsService {
   // ─── Add members to an existing group ────────────────────────────────────────
   async addMembers(groupId: string, requesterId: string, userIds: string[]): Promise<any[]> {
     const group = await this.groupRepo.findOne({ where: { id: groupId } });
-    if (!group) throw new NotFoundException('Group not found');
+    if (!group) {throw new NotFoundException('Group not found');}
 
     const requesterMembership = await this.groupMemberRepo.findOne({ where: { groupId, userId: requesterId } });
-    if (!requesterMembership) throw new ForbiddenException('You are not a member of this group');
+    if (!requesterMembership) {throw new ForbiddenException('You are not a member of this group');}
 
     // Get all channels in the group
     const channels = await this.conversationRepo.find({ where: { groupId, type: ConversationType.CHANNEL } });
@@ -162,7 +162,7 @@ export class GroupsService {
   // ─── Remove a member from a group ────────────────────────────────────────────
   async removeMember(groupId: string, requesterId: string, targetUserId: string): Promise<void> {
     const group = await this.groupRepo.findOne({ where: { id: groupId } });
-    if (!group) throw new NotFoundException('Group not found');
+    if (!group) {throw new NotFoundException('Group not found');}
 
     if (group.ownerId !== requesterId && requesterId !== targetUserId) {
       throw new ForbiddenException('Only the group owner can remove members');
@@ -184,11 +184,11 @@ export class GroupsService {
   // ─── Create a new channel inside a group ─────────────────────────────────────
   async createChannel(groupId: string, requesterId: string, name: string): Promise<Conversation> {
     const membership = await this.groupMemberRepo.findOne({ where: { groupId, userId: requesterId } });
-    if (!membership) throw new ForbiddenException('You are not a member of this group');
+    if (!membership) {throw new ForbiddenException('You are not a member of this group');}
 
     // Check for duplicate channel name
     const existing = await this.conversationRepo.findOne({ where: { groupId, name: name.trim().toLowerCase().replace(/\s+/g, '-') } });
-    if (existing) throw new ConflictException(`Channel #${name} already exists in this group`);
+    if (existing) {throw new ConflictException(`Channel #${name} already exists in this group`);}
 
     const channel = this.conversationRepo.create({
       name: name.trim().toLowerCase().replace(/\s+/g, '-'),
@@ -215,10 +215,10 @@ export class GroupsService {
     name: string,
   ): Promise<Conversation> {
     const group = await this.groupRepo.findOne({ where: { id: groupId } });
-    if (!group) throw new NotFoundException('Group not found');
+    if (!group) {throw new NotFoundException('Group not found');}
 
     const requesterMembership = await this.groupMemberRepo.findOne({ where: { groupId, userId: requesterId } });
-    if (!requesterMembership) throw new ForbiddenException('You are not a member of this group');
+    if (!requesterMembership) {throw new ForbiddenException('You are not a member of this group');}
 
     if (requesterMembership.role !== GroupMemberRole.OWNER && requesterMembership.role !== GroupMemberRole.ADMIN) {
       throw new ForbiddenException('Only group owners or admins can rename channels');
@@ -227,7 +227,7 @@ export class GroupsService {
     const channel = await this.conversationRepo.findOne({
       where: { id: channelId, groupId, type: ConversationType.CHANNEL },
     });
-    if (!channel) throw new NotFoundException('Channel not found in this group');
+    if (!channel) {throw new NotFoundException('Channel not found in this group');}
 
     if (channel.name === 'general') {
       throw new ForbiddenException('Cannot rename the general channel');
@@ -244,10 +244,10 @@ export class GroupsService {
     requesterId: string,
   ): Promise<void> {
     const group = await this.groupRepo.findOne({ where: { id: groupId } });
-    if (!group) throw new NotFoundException('Group not found');
+    if (!group) {throw new NotFoundException('Group not found');}
 
     const requesterMembership = await this.groupMemberRepo.findOne({ where: { groupId, userId: requesterId } });
-    if (!requesterMembership) throw new ForbiddenException('You are not a member of this group');
+    if (!requesterMembership) {throw new ForbiddenException('You are not a member of this group');}
 
     if (requesterMembership.role !== GroupMemberRole.OWNER && requesterMembership.role !== GroupMemberRole.ADMIN) {
       throw new ForbiddenException('Only group owners or admins can delete channels');
@@ -256,7 +256,7 @@ export class GroupsService {
     const channel = await this.conversationRepo.findOne({
       where: { id: channelId, groupId, type: ConversationType.CHANNEL },
     });
-    if (!channel) throw new NotFoundException('Channel not found in this group');
+    if (!channel) {throw new NotFoundException('Channel not found in this group');}
 
     if (channel.name === 'general') {
       throw new ForbiddenException('Cannot delete the general channel');
@@ -273,8 +273,8 @@ export class GroupsService {
   // ─── Delete a group and all its channels ─────────────────────────────────────
   async deleteGroup(groupId: string, requesterId: string): Promise<void> {
     const group = await this.groupRepo.findOne({ where: { id: groupId } });
-    if (!group) throw new NotFoundException('Group not found');
-    if (group.ownerId !== requesterId) throw new ForbiddenException('Only the group owner can delete the group');
+    if (!group) {throw new NotFoundException('Group not found');}
+    if (group.ownerId !== requesterId) {throw new ForbiddenException('Only the group owner can delete the group');}
 
     // Delete all channel messages + memberships
     const channels = await this.conversationRepo.find({ where: { groupId } });

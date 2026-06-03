@@ -1,5 +1,6 @@
 'use client';
 
+import { PRESENCE_STATUS_DETAILS } from '@chat-app/shared-constants';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
@@ -14,7 +15,6 @@ import {
 } from '../../store/slices/authSlice';
 import { socketUpdateUserStatus } from '../../store/slices/chatSlice';
 import { socketManager } from '../../store/socketManager';
-import { PRESENCE_STATUS_DETAILS } from '@chat-app/shared-constants';
 import StoreProvider from '../../store/StoreProvider';
 
 /* ── SVGs for icons ────────────────────────────────────────── */

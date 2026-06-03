@@ -1,5 +1,6 @@
+import type { PresenceStatus} from '@chat-app/shared-constants';
+import { PRESENCE_DOT_COLORS } from '@chat-app/shared-constants';
 import React from 'react';
-import { PresenceStatus, PRESENCE_DOT_COLORS } from '@chat-app/shared-constants';
 
 interface PresenceDotProps {
   status: PresenceStatus | string;

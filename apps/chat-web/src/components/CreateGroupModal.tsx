@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+
 import { useAppDispatch, useAppSelector } from '../store';
-import { createGroup } from '../store/slices/groupsSlice';
+import type { User } from '../store/slices/authSlice';
 import { searchUsers, clearSearchResults } from '../store/slices/chatSlice';
-import { User } from '../store/slices/authSlice';
+import { createGroup } from '../store/slices/groupsSlice';
+
 import { Avatar } from './Avatar';
 import { IconX, IconSearch, IconPlus } from './Icons';
 import { showToast } from './toast';

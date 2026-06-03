@@ -2,11 +2,12 @@ import { Conversation, ConversationMember, Message } from '@chat-app/database';
 import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { ChatController } from './chat.controller';
-import { ChatService } from './chat.service';
+import { AuthModule } from '../auth/auth.module';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { UsersModule } from '../users/users.module';
-import { AuthModule } from '../auth/auth.module';
+
+import { ChatController } from './chat.controller';
+import { ChatService } from './chat.service';
 
 @Module({
   imports: [

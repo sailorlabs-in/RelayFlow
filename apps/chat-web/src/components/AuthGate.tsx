@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+
 import { useAppDispatch, useAppSelector } from '../store';
 import {
   loginUser,
@@ -8,7 +9,7 @@ import {
   clearAuthError,
   setThemeMode,
 } from '../store/slices/authSlice';
-import { ThemeSwitcher, Theme } from './ThemeSwitcher';
+
 import {
   IconBolt,
   IconZap,
@@ -18,6 +19,8 @@ import {
   IconEye,
   IconEyeOff,
 } from './Icons';
+import type { Theme } from './ThemeSwitcher';
+import { ThemeSwitcher } from './ThemeSwitcher';
 
 export const AuthGate = (): React.JSX.Element => {
   const dispatch = useAppDispatch();

@@ -1,4 +1,5 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException, Inject, forwardRef } from '@nestjs/common';
+
 import { AuthService } from '../../modules/auth/auth.service';
 
 @Injectable()

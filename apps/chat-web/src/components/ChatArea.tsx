@@ -1,4 +1,7 @@
+import type { PresenceStatus} from '@chat-app/shared-constants';
+import { PRESENCE_DOT_COLORS, STATUS_TEXTS } from '@chat-app/shared-constants';
 import React, { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
+
 import { useAppDispatch, useAppSelector } from '../store';
 import {
   fetchMessages,
@@ -6,10 +9,10 @@ import {
   fetchUserProfile,
 } from '../store/slices/chatSlice';
 import { socketManager } from '../store/socketManager';
+
 import { Avatar } from './Avatar';
-import { PresenceDot } from './PresenceDot';
-import { PresenceStatus, PRESENCE_DOT_COLORS, STATUS_TEXTS } from '@chat-app/shared-constants';
 import { IconSend, IconTrash, IconChat } from './Icons';
+import { PresenceDot } from './PresenceDot';
 
 interface ChatAreaProps {
   activeConversationId: string | null;
@@ -75,6 +78,18 @@ export const ChatArea = ({
     }
   }, [activeConversationId, convoRecipients, userProfiles, user, dispatch]);
 
+  // Fetch profiles for typing users if they are not cached
+  useEffect(() => {
+    if (!activeConversationId || !typingUsers[activeConversationId] || !user) {
+      return;
+    }
+    Object.entries(typingUsers[activeConversationId]).forEach(([uid, isTyping]) => {
+      if (uid !== user.id && isTyping && !userProfiles[uid]) {
+        dispatch(fetchUserProfile(uid));
+      }
+    });
+  }, [activeConversationId, typingUsers, userProfiles, user, dispatch]);
+
   // ---- Scroll & Anchor Management ----
   const activeMessages = activeConversationId ? (messages[activeConversationId] || []) : [];
 
@@ -84,7 +99,7 @@ export const ChatArea = ({
 
   useLayoutEffect(() => {
     const container = feedContainerRef.current;
-    if (!container || !activeConversationId) return;
+    if (!container || !activeConversationId) {return;}
 
     const messagesLength = activeMessages.length;
 
@@ -136,10 +151,10 @@ export const ChatArea = ({
   const hasMore = activeConversationId ? hasMoreMessages[activeConversationId] !== false : false;
 
   const loadMoreMessages = useCallback(async () => {
-    if (isFetchingMore || !hasMore || !activeConversationId) return;
+    if (isFetchingMore || !hasMore || !activeConversationId) {return;}
     
     const container = feedContainerRef.current;
-    if (!container) return;
+    if (!container) {return;}
 
     // Record scroll positions before dispatching/loading
     scrollHeightBeforeLoadRef.current = container.scrollHeight;
@@ -185,9 +200,9 @@ export const ChatArea = ({
   // ---- Messages ----
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!messageInput.trim() || !activeConversationId) return;
+    if (!messageInput.trim() || !activeConversationId) {return;}
     socketManager.sendMessage(activeConversationId, messageInput.trim());
-    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    if (typingTimeoutRef.current) {clearTimeout(typingTimeoutRef.current);}
     socketManager.stopTyping(activeConversationId);
     setIsTypingState(false);
     setMessageInput('');
@@ -195,12 +210,12 @@ export const ChatArea = ({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setMessageInput(e.target.value);
-    if (!activeConversationId) return;
+    if (!activeConversationId) {return;}
     if (!isTypingState) {
       setIsTypingState(true);
       socketManager.startTyping(activeConversationId);
     }
-    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    if (typingTimeoutRef.current) {clearTimeout(typingTimeoutRef.current);}
     typingTimeoutRef.current = setTimeout(() => {
       socketManager.stopTyping(activeConversationId);
       setIsTypingState(false);
@@ -209,22 +224,29 @@ export const ChatArea = ({
 
   // ---- Delete conversation ----
   const handleDeleteConversation = (convoId: string | null) => {
-    if (!convoId) return;
+    if (!convoId) {return;}
     if (window.confirm('Remove this thread and all messages?')) {
       dispatch(deleteConversation(convoId));
     }
   };
 
+  const handleDeleteMessage = (messageId: string) => {
+    if (!activeConversationId) {return;}
+    if (window.confirm('Are you sure you want to delete this message?')) {
+      socketManager.deleteMessage(messageId, activeConversationId);
+    }
+  };
+
   // ---- Conversation display name helper ----
   const getConversationDetails = (convo: any) => {
-    if (!user) return null;
-    if (convo.name) return { name: convo.name, letter: convo.name[0].toUpperCase() };
+    if (!user) {return null;}
+    if (convo.name) {return { name: convo.name, letter: convo.name[0].toUpperCase() };}
 
     let recipientId = convoRecipients[convo.id];
     if (!recipientId) {
       const roomMsgs = messages[convo.id] || [];
       const recipientMsg = roomMsgs.find((m) => m.senderId !== user.id);
-      if (recipientMsg) recipientId = recipientMsg.senderId;
+      if (recipientMsg) {recipientId = recipientMsg.senderId;}
     }
 
     if (recipientId && userProfiles[recipientId]) {
@@ -240,7 +262,7 @@ export const ChatArea = ({
     return { name: 'Direct Message', letter: 'D', email: '', id: null };
   };
 
-  if (!user) return <div className="flex-1" />;
+  if (!user) {return <div className="flex-1" />;}
 
   const activeConvo   = conversations.find((c) => c.id === activeConversationId);
   const activeDetails = activeConvo ? getConversationDetails(activeConvo) : null;
@@ -248,6 +270,23 @@ export const ChatArea = ({
   const isActiveTyping = activeConversationId && typingUsers[activeConversationId]
     ? Object.entries(typingUsers[activeConversationId]).some(([uid, typing]) => uid !== user.id && typing)
     : false;
+
+  // Find all other users typing in the active conversation
+  const typingUsernames = activeConversationId && typingUsers[activeConversationId]
+    ? Object.entries(typingUsers[activeConversationId])
+        .filter(([uid, typing]) => uid !== user.id && typing)
+        .map(([uid]) => {
+          const profile = userProfiles[uid];
+          return profile?.displayName || profile?.email?.split('@')[0] || 'Someone';
+        })
+    : [];
+
+  const getTypingText = () => {
+    if (typingUsernames.length === 0) {return '';}
+    if (typingUsernames.length === 1) {return `${typingUsernames[0]} is typing`;}
+    if (typingUsernames.length === 2) {return `${typingUsernames[0]} and ${typingUsernames[1]} are typing`;}
+    return `${typingUsernames[0]}, ${typingUsernames[1]} and ${typingUsernames.length - 2} others are typing`;
+  };
 
   return (
     <div className="glass-panel flex flex-col overflow-hidden h-full flex-1 min-w-0">
@@ -274,7 +313,9 @@ export const ChatArea = ({
                   {activeChannelName || activeDetails?.name || ''}
                 </h3>
                 {isActiveTyping && (
-                  <span className="text-[11.5px] font-medium ml-2" style={{ color: 'var(--accent-primary)' }}>typing…</span>
+                  <span className="text-[11.5px] font-medium ml-2 animate-pulse" style={{ color: 'var(--accent-primary)' }}>
+                    {getTypingText()}…
+                  </span>
                 )}
               </div>
             ) : (
@@ -350,11 +391,11 @@ export const ChatArea = ({
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = 'var(--bg-input)';
-                  if (!isMembersListOpen) e.currentTarget.style.color = 'var(--text-primary)';
+                  if (!isMembersListOpen) {e.currentTarget.style.color = 'var(--text-primary)';}
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = 'transparent';
-                  if (!isMembersListOpen) e.currentTarget.style.color = 'var(--text-muted)';
+                  if (!isMembersListOpen) {e.currentTarget.style.color = 'var(--text-muted)';}
                 }}
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 18, height: 18 }}>
@@ -397,51 +438,89 @@ export const ChatArea = ({
                 if (isChannelMode) {
                   // Discord-style: messages left-aligned with sender name
                   return (
-                    <div key={msg.id} className="flex items-start gap-3 animate-fade-in group">
-                      <div
-                        style={{
-                          width: '36px',
-                          height: '36px',
-                          borderRadius: '50%',
-                          background: isOut ? 'var(--accent-primary)' : 'var(--bg-input)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '14px',
-                          fontWeight: 700,
-                          color: isOut ? 'white' : 'var(--text-primary)',
-                          flexShrink: 0,
-                          border: '2px solid var(--glass-border)',
-                        }}
-                      >
-                        {senderName[0]?.toUpperCase()}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '3px' }}>
-                          <span style={{ fontSize: '13.5px', fontWeight: 700, color: isOut ? 'var(--accent-primary)' : 'var(--text-primary)' }}>
-                            {senderName}
-                          </span>
-                          <span style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>
-                            {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
+                    <div key={msg.id} className="flex items-start gap-3 animate-fade-in group justify-between">
+                      <div className="flex items-start gap-3" style={{ flex: 1, minWidth: 0 }}>
+                        <div
+                          style={{
+                            width: '36px',
+                            height: '36px',
+                            borderRadius: '50%',
+                            background: isOut ? 'var(--accent-primary)' : 'var(--bg-input)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '14px',
+                            fontWeight: 700,
+                            color: isOut ? 'white' : 'var(--text-primary)',
+                            flexShrink: 0,
+                            border: '2px solid var(--glass-border)',
+                          }}
+                        >
+                          {senderName[0]?.toUpperCase()}
                         </div>
-                        <div style={{ fontSize: '14px', lineHeight: 1.5, color: 'var(--text-primary)', wordBreak: 'break-word' }}>
-                          {msg.content}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '3px' }}>
+                            <span style={{ fontSize: '13.5px', fontWeight: 700, color: isOut ? 'var(--accent-primary)' : 'var(--text-primary)' }}>
+                              {senderName}
+                            </span>
+                            <span style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>
+                              {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: '14px', lineHeight: 1.5, color: 'var(--text-primary)', wordBreak: 'break-word' }}>
+                            {msg.content}
+                          </div>
                         </div>
                       </div>
+                      {isOut && (
+                        <button
+                          onClick={() => handleDeleteMessage(msg.id)}
+                          className="msg-delete-btn flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer"
+                          style={{
+                            background: 'var(--danger-bg)',
+                            color: 'var(--danger)',
+                            marginTop: '2px',
+                          }}
+                          title="Delete message"
+                        >
+                          <IconTrash />
+                        </button>
+                      )}
                     </div>
                   );
                 }
 
                 return (
-                  <div key={msg.id}
-                    className={`flex flex-col max-w-[68%] animate-fade-in ${isOut ? 'self-end items-end' : 'self-start items-start'}`}>
-                    <div className={`px-4 py-2.5 rounded-[18px] text-[14px] leading-relaxed break-words ${isOut ? 'msg-bubble-out' : 'msg-bubble-in'}`}>
-                      {msg.content}
+                  <div
+                    key={msg.id}
+                    className="flex items-center gap-2 group"
+                    style={{
+                      alignSelf: isOut ? 'flex-end' : 'flex-start',
+                      maxWidth: '68%',
+                    }}
+                  >
+                    {isOut && (
+                      <button
+                        onClick={() => handleDeleteMessage(msg.id)}
+                        className="msg-delete-btn flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer"
+                        style={{
+                          background: 'var(--danger-bg)',
+                          color: 'var(--danger)',
+                          flexShrink: 0,
+                        }}
+                        title="Delete message"
+                      >
+                        <IconTrash />
+                      </button>
+                    )}
+                    <div className={`flex flex-col ${isOut ? 'items-end' : 'items-start'}`} style={{ minWidth: 0, flex: 1 }}>
+                      <div className={`px-4 py-2.5 rounded-[18px] text-[14px] leading-relaxed break-words ${isOut ? 'msg-bubble-out' : 'msg-bubble-in'}`}>
+                        {msg.content}
+                      </div>
+                      <span className="text-[10px] mt-1 px-1" style={{ color: 'var(--text-muted)' }}>
+                        {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
                     </div>
-                    <span className="text-[10px] mt-1 px-1" style={{ color: 'var(--text-muted)' }}>
-                      {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
                   </div>
                 );
               })
@@ -449,10 +528,24 @@ export const ChatArea = ({
 
             {/* Typing indicator */}
             {isActiveTyping && (
-              <div className="self-start flex items-center gap-1.5 px-4 py-3 rounded-[18px] animate-fade-in msg-bubble-in">
-                <span className="typing-dot" style={{ animationDelay: '0s' }} />
-                <span className="typing-dot" style={{ animationDelay: '0.15s' }} />
-                <span className="typing-dot" style={{ animationDelay: '0.30s' }} />
+              <div className="self-start flex items-center gap-2 px-4 py-2.5 rounded-[18px] animate-fade-in msg-bubble-in text-[13px]"
+                style={{ color: 'var(--text-secondary)' }}>
+                {isChannelMode ? (
+                  <>
+                    <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{getTypingText()}</span>
+                    <div className="flex items-center gap-1 ml-1">
+                      <span className="typing-dot" style={{ animationDelay: '0s', width: '5px', height: '5px' }} />
+                      <span className="typing-dot" style={{ animationDelay: '0.15s', width: '5px', height: '5px' }} />
+                      <span className="typing-dot" style={{ animationDelay: '0.30s', width: '5px', height: '5px' }} />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <span className="typing-dot" style={{ animationDelay: '0s' }} />
+                    <span className="typing-dot" style={{ animationDelay: '0.15s' }} />
+                    <span className="typing-dot" style={{ animationDelay: '0.30s' }} />
+                  </>
+                )}
               </div>
             )}
 

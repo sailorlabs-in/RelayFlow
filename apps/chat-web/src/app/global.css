@@ -2494,6 +2494,201 @@ body {
   color: var(--text-primary) !important;
   border-radius: 12px !important;
   box-shadow: var(--glass-shadow) !important;
+[data-theme="system"][data-theme-schema="arctic_glass"] {
+    --bg-primary:     #F8FBFF;
+    --bg-sidebar:     rgba(240, 246, 255, 0.88);
+    --bg-chat:        rgba(248, 251, 255, 0.94);
+    --bg-input:       rgba(0, 0, 0, 0.04);
+    --bg-input-focus: rgba(0, 0, 0, 0.07);
+    --glass-bg:     rgba(240, 246, 255, 0.76);
+    --glass-border: rgba(0, 0, 0, 0.08);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 153, 255, 0.10);
+    --border-muted: rgba(0, 0, 0, 0.07);
+    --text-primary:   #111827;
+    --text-secondary: #0077CC;
+    --text-muted:     #4B5563;
+    --msg-in-bg:     rgba(255, 255, 255, 0.92);
+    --msg-in-border: rgba(0, 0, 0, 0.07);
+    --dropdown-bg: #FFFFFF;
+    --scrollbar-thumb:       rgba(0, 0, 0, 0.15);
+    --scrollbar-thumb-hover: rgba(0, 0, 0, 0.30);
+    --danger:        #dc2626;
+    --danger-bg:     rgba(220, 38, 38, 0.08);
+    --danger-border: rgba(220, 38, 38, 0.20);
+    --theme-btn:        rgba(0, 0, 0, 0.06);
+    --theme-btn-hover:  rgba(0, 0, 0, 0.10);
+    --theme-btn-active: rgba(0, 153, 255, 0.14);
+    --theme-btn-active-text: #0099FF;
+    --bg-glow-1: rgba(0, 153, 255, 0.05);
+    --bg-glow-2: rgba(0, 194, 255, 0.05);
+    --accent-ring: rgba(0, 153, 255, 0.18);
+    --avatar-ring: rgba(0, 153, 255, 0.28);
+    --online-border: #F8FBFF;
+    --accent-primary:       #0099FF;
+    --accent-primary-hover: #007ACC;
+    --accent-secondary:     #00C2FF;
+    --btn-shadow:           0 4px 14px rgba(0, 153, 255, 0.25);
+  }
+
+  [data-theme="system"][data-theme-schema="carbon_red"] {
+    --bg-primary:     #FAFAFA;
+    --bg-sidebar:     rgba(243, 243, 244, 0.88);
+    --bg-chat:        rgba(250, 250, 250, 0.94);
+    --bg-input:       rgba(0, 0, 0, 0.04);
+    --bg-input-focus: rgba(0, 0, 0, 0.07);
+    --glass-bg:     rgba(243, 243, 244, 0.76);
+    --glass-border: rgba(0, 0, 0, 0.08);
+    --glass-shadow: 0 8px 32px 0 rgba(211, 47, 47, 0.10);
+    --border-muted: rgba(0, 0, 0, 0.07);
+    --text-primary:   #18181B;
+    --text-secondary: #A82020;
+    --text-muted:     #71717A;
+    --msg-in-bg:     rgba(255, 255, 255, 0.92);
+    --msg-in-border: rgba(0, 0, 0, 0.07);
+    --dropdown-bg: #FFFFFF;
+    --scrollbar-thumb:       rgba(0, 0, 0, 0.15);
+    --scrollbar-thumb-hover: rgba(0, 0, 0, 0.30);
+    --danger:        #dc2626;
+    --danger-bg:     rgba(220, 38, 38, 0.08);
+    --danger-border: rgba(220, 38, 38, 0.20);
+    --theme-btn:        rgba(0, 0, 0, 0.06);
+    --theme-btn-hover:  rgba(0, 0, 0, 0.10);
+    --theme-btn-active: rgba(211, 47, 47, 0.14);
+    --theme-btn-active-text: #D32F2F;
+    --bg-glow-1: rgba(211, 47, 47, 0.05);
+    --bg-glow-2: rgba(244, 67, 54, 0.05);
+    --accent-ring: rgba(211, 47, 47, 0.18);
+    --avatar-ring: rgba(211, 47, 47, 0.28);
+    --online-border: #FAFAFA;
+    --accent-primary:       #D32F2F;
+    --accent-primary-hover: #B71C1C;
+    --accent-secondary:     #F44336;
+    --btn-shadow:           0 4px 14px rgba(211, 47, 47, 0.25);
+  }
+
+  [data-theme="system"][data-theme-schema="tokyo_night"] {
+    --bg-primary:     #F6F7FB;
+    --bg-sidebar:     rgba(240, 242, 247, 0.88);
+    --bg-chat:        rgba(246, 247, 251, 0.94);
+    --bg-input:       rgba(0, 0, 0, 0.04);
+    --bg-input-focus: rgba(0, 0, 0, 0.07);
+    --glass-bg:     rgba(240, 242, 247, 0.76);
+    --glass-border: rgba(0, 0, 0, 0.08);
+    --glass-shadow: 0 8px 32px 0 rgba(59, 130, 246, 0.10);
+    --border-muted: rgba(0, 0, 0, 0.07);
+    --text-primary:   #24283B;
+    --text-secondary: #1F57B0;
+    --text-muted:     #565F89;
+    --msg-in-bg:     rgba(255, 255, 255, 0.92);
+    --msg-in-border: rgba(0, 0, 0, 0.07);
+    --dropdown-bg: #FFFFFF;
+    --scrollbar-thumb:       rgba(0, 0, 0, 0.15);
+    --scrollbar-thumb-hover: rgba(0, 0, 0, 0.30);
+    --danger:        #dc2626;
+    --danger-bg:     rgba(220, 38, 38, 0.08);
+    --danger-border: rgba(220, 38, 38, 0.20);
+    --theme-btn:        rgba(0, 0, 0, 0.06);
+    --theme-btn-hover:  rgba(0, 0, 0, 0.10);
+    --theme-btn-active: rgba(59, 130, 246, 0.14);
+    --theme-btn-active-text: #3B82F6;
+    --bg-glow-1: rgba(59, 130, 246, 0.05);
+    --bg-glow-2: rgba(124, 58, 237, 0.05);
+    --accent-ring: rgba(59, 130, 246, 0.18);
+    --avatar-ring: rgba(59, 130, 246, 0.28);
+    --online-border: #F6F7FB;
+    --accent-primary:       #3B82F6;
+    --accent-primary-hover: #2563EB;
+    --accent-secondary:     #7C3AED;
+    --btn-shadow:           0 4px 14px rgba(59, 130, 246, 0.25);
+  }
+
+  [data-theme="system"][data-theme-schema="matte_gold"] {
+    --bg-primary:     #FFFDF8;
+    --bg-sidebar:     rgba(248, 244, 234, 0.88);
+    --bg-chat:        rgba(255, 253, 248, 0.94);
+    --bg-input:       rgba(0, 0, 0, 0.04);
+    --bg-input-focus: rgba(0, 0, 0, 0.07);
+    --glass-bg:     rgba(248, 244, 234, 0.76);
+    --glass-border: rgba(0, 0, 0, 0.08);
+    --glass-shadow: 0 8px 32px 0 rgba(184, 134, 11, 0.10);
+    --border-muted: rgba(0, 0, 0, 0.07);
+    --text-primary:   #111111;
+    --text-secondary: #805E00;
+    --text-muted:     #7C7464;
+    --msg-in-bg:     rgba(255, 255, 255, 0.92);
+    --msg-in-border: rgba(0, 0, 0, 0.07);
+    --dropdown-bg: #FFFFFF;
+    --scrollbar-thumb:       rgba(0, 0, 0, 0.15);
+    --scrollbar-thumb-hover: rgba(0, 0, 0, 0.30);
+    --danger:        #dc2626;
+    --danger-bg:     rgba(220, 38, 38, 0.08);
+    --danger-border: rgba(220, 38, 38, 0.20);
+    --theme-btn:        rgba(0, 0, 0, 0.06);
+    --theme-btn-hover:  rgba(0, 0, 0, 0.10);
+    --theme-btn-active: rgba(184, 134, 11, 0.14);
+    --theme-btn-active-text: #B8860B;
+    --bg-glow-1: rgba(184, 134, 11, 0.05);
+    --bg-glow-2: rgba(212, 175, 55, 0.05);
+    --accent-ring: rgba(184, 134, 11, 0.18);
+    --avatar-ring: rgba(184, 134, 11, 0.28);
+    --online-border: #FFFDF8;
+    --accent-primary:       #B8860B;
+    --accent-primary-hover: #9E7200;
+    --accent-secondary:     #D4AF37;
+    --btn-shadow:           0 4px 14px rgba(184, 134, 11, 0.25);
+  }
+
+  [data-theme="system"][data-theme-schema="obsidian_cyan"] {
+    --bg-primary:     #F7FAFC;
+    --bg-sidebar:     rgba(240, 244, 248, 0.88);
+    --bg-chat:        rgba(247, 250, 252, 0.94);
+    --bg-input:       rgba(0, 0, 0, 0.04);
+    --bg-input-focus: rgba(0, 0, 0, 0.07);
+    --glass-bg:     rgba(240, 244, 248, 0.76);
+    --glass-border: rgba(0, 0, 0, 0.08);
+    --glass-shadow: 0 8px 32px 0 rgba(8, 145, 178, 0.10);
+    --border-muted: rgba(0, 0, 0, 0.07);
+    --text-primary:   #111827;
+    --text-secondary: #0E7490;
+    --text-muted:     #526372;
+    --msg-in-bg:     rgba(255, 255, 255, 0.92);
+    --msg-in-border: rgba(0, 0, 0, 0.07);
+    --dropdown-bg: #FFFFFF;
+    --scrollbar-thumb:       rgba(0, 0, 0, 0.15);
+    --scrollbar-thumb-hover: rgba(0, 0, 0, 0.30);
+    --danger:        #dc2626;
+    --danger-bg:     rgba(220, 38, 38, 0.08);
+    --danger-border: rgba(220, 38, 38, 0.20);
+    --theme-btn:        rgba(0, 0, 0, 0.06);
+    --theme-btn-hover:  rgba(0, 0, 0, 0.10);
+    --theme-btn-active: rgba(8, 145, 178, 0.14);
+    --theme-btn-active-text: #0891B2;
+    --bg-glow-1: rgba(8, 145, 178, 0.05);
+    --bg-glow-2: rgba(6, 182, 212, 0.05);
+    --accent-ring: rgba(8, 145, 178, 0.18);
+    --avatar-ring: rgba(8, 145, 178, 0.28);
+    --online-border: #F7FAFC;
+    --accent-primary:       #0891B2;
+    --accent-primary-hover: #0E7490;
+    --accent-secondary:     #06B6D4;
+    --btn-shadow:           0 4px 14px rgba(8, 145, 178, 0.25);
+  }
+}
+
+/* ============================================================
+   React Toastify Custom Overrides (Theme Schema Compatibility)
+   ============================================================ */
+.Toastify__toast-container {
+  z-index: 99999;
+}
+.Toastify__toast {
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  border: 1px solid var(--glass-border) !important;
+  color: var(--text-primary) !important;
+  border-radius: 12px !important;
+  box-shadow: var(--glass-shadow) !important;
   font-family: inherit !important;
 }
 .Toastify__toast-icon svg {
@@ -2501,4 +2696,18 @@ body {
 }
 .Toastify__progress-bar {
   background: var(--accent-primary) !important;
+}
+
+/* ============================================================
+   Message Delete Button Hover Styles
+   ============================================================ */
+.msg-delete-btn {
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.15s ease;
+}
+.msg-delete-btn:hover {
+  transform: scale(1.08);
+}
+.group:hover .msg-delete-btn {
+  opacity: 1;
 }

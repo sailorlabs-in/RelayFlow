@@ -1,11 +1,12 @@
+import { Group, GroupMember, Conversation, ConversationMember } from '@chat-app/database';
 import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Group, GroupMember, Conversation, ConversationMember } from '@chat-app/database';
 
-import { GroupsService } from './groups.service';
-import { GroupsController } from './groups.controller';
-import { RealtimeModule } from '../realtime/realtime.module';
 import { AuthModule } from '../auth/auth.module';
+import { RealtimeModule } from '../realtime/realtime.module';
+
+import { GroupsController } from './groups.controller';
+import { GroupsService } from './groups.service';
 
 @Module({
   imports: [

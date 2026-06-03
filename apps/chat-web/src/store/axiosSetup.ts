@@ -1,6 +1,8 @@
 import axios from 'axios';
-import { store } from './index';
+
 import { logoutUser } from './slices/authSlice';
+
+import { store } from './index';
 
 // Global response interceptor to handle 401 Unauthorized errors
 axios.interceptors.response.use(

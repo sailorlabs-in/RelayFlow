@@ -1,4 +1,5 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import type { PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
@@ -365,8 +366,8 @@ const groupsSlice = createSlice({
     // Create group
     builder
       .addCase(createGroup.fulfilled, (state, action) => {
-        if (!action.payload || !action.payload.id) return;
-        if (!Array.isArray(state.groups)) state.groups = [];
+        if (!action.payload || !action.payload.id) {return;}
+        if (!Array.isArray(state.groups)) {state.groups = [];}
         const exists = state.groups.some((g) => g.id === action.payload.id);
         if (!exists) {
           state.groups.push(action.payload);
@@ -392,7 +393,7 @@ const groupsSlice = createSlice({
       if (group) {
         action.payload.members.forEach((m: any) => {
           const exists = group.members.some((mem) => mem.id === m.id);
-          if (!exists) group.members.push(m);
+          if (!exists) {group.members.push(m);}
         });
       }
     });

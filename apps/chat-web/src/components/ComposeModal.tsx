@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
+
 import { useAppDispatch, useAppSelector } from '../store';
+import type { User } from '../store/slices/authSlice';
 import {
   searchUsers,
   clearSearchResults,
   createConversation,
   fetchUserProfile,
 } from '../store/slices/chatSlice';
-import { User } from '../store/slices/authSlice';
+
 import { Avatar } from './Avatar';
 import { IconChat } from './Icons';
 
@@ -39,7 +41,7 @@ export const ComposeModal = ({ onClose }: ComposeModalProps): React.JSX.Element 
   };
 
   const handleSelectSearchedUser = (selectedUser: User) => {
-    if (!user) return;
+    if (!user) {return;}
     dispatch(createConversation({ userIds: [user.id, selectedUser.id], recipient: selectedUser }));
     dispatch(fetchUserProfile(selectedUser.id));
     dispatch(clearSearchResults());

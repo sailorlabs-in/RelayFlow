@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+
 import { useAppDispatch, useAppSelector } from '../store';
 import { setActiveGroup } from '../store/slices/groupsSlice';
-import { IconMessageDm, IconPlus, IconServer } from './Icons';
+
+import { IconMessageDm, IconPlus } from './Icons';
 
 interface GroupRailProps {
   onCreateGroup: () => void;
@@ -19,7 +21,9 @@ export const GroupRail = ({
   const dispatch = useAppDispatch();
   const { groups: rawGroups, activeGroupId } = useAppSelector((s) => s.groups);
   const groups = Array.isArray(rawGroups) ? rawGroups : [];
-  const [tooltip, setTooltip] = useState<{ text: string; id: string } | null>(null);
+  const [tooltip, setTooltip] = useState<{ text: string; id: string } | null>(
+    null,
+  );
 
   const handleSelectGroup = (groupId: string) => {
     dispatch(setActiveGroup(groupId));
@@ -59,14 +63,16 @@ export const GroupRail = ({
       </RailButton>
 
       {/* Divider */}
-      <div style={{
-        width: '32px',
-        height: '2px',
-        borderRadius: '1px',
-        background: 'var(--border-muted)',
-        margin: '2px 0',
-        flexShrink: 0,
-      }} />
+      <div
+        style={{
+          width: '32px',
+          height: '2px',
+          borderRadius: '1px',
+          background: 'var(--border-muted)',
+          margin: '2px 0',
+          flexShrink: 0,
+        }}
+      />
 
       {/* Group Buttons */}
       {groups.map((group) => {
@@ -81,13 +87,15 @@ export const GroupRail = ({
             tooltip_state={tooltip}
             setTooltip={setTooltip}
           >
-            <span style={{
-              fontSize: '17px',
-              fontWeight: 700,
-              color: isActive ? 'white' : 'var(--text-primary)',
-              lineHeight: 1,
-              letterSpacing: '-0.5px',
-            }}>
+            <span
+              style={{
+                fontSize: '17px',
+                fontWeight: 700,
+                color: isActive ? 'white' : 'var(--text-primary)',
+                lineHeight: 1,
+                letterSpacing: '-0.5px',
+              }}
+            >
               {group.iconLetter}
             </span>
           </RailButton>
@@ -154,11 +162,17 @@ const RailButton = ({
           flexShrink: 0,
           transition: 'all 0.2s cubic-bezier(0.4,0,0.2,1)',
           background: isCreate
-            ? (isActive ? 'var(--accent-primary)' : 'var(--bg-input)')
-            : (isActive ? 'var(--accent-primary)' : 'var(--bg-sidebar)'),
+            ? isActive
+              ? 'var(--accent-primary)'
+              : 'var(--bg-input)'
+            : isActive
+              ? 'var(--accent-primary)'
+              : 'var(--bg-sidebar)',
           color: isCreate
             ? 'var(--accent-primary)'
-            : (isActive ? 'white' : 'var(--text-muted)'),
+            : isActive
+              ? 'white'
+              : 'var(--text-muted)',
           boxShadow: isActive ? '0 4px 16px var(--accent-ring)' : 'none',
           outline: isActive ? '2.5px solid var(--accent-primary)' : 'none',
           outlineOffset: '2px',
@@ -166,7 +180,14 @@ const RailButton = ({
         }}
       >
         {isCreate ? (
-          <span style={{ color: showTooltip ? 'var(--accent-primary)' : 'var(--text-muted)', transition: 'color 0.15s' }}>
+          <span
+            style={{
+              color: showTooltip
+                ? 'var(--accent-primary)'
+                : 'var(--text-muted)',
+              transition: 'color 0.15s',
+            }}
+          >
             {children}
           </span>
         ) : (
@@ -197,17 +218,19 @@ const RailButton = ({
         >
           {tooltip}
           {/* Arrow */}
-          <span style={{
-            position: 'absolute',
-            right: '100%',
-            top: '50%',
-            transform: 'translateY(-50%)',
-            width: 0,
-            height: 0,
-            borderTop: '5px solid transparent',
-            borderBottom: '5px solid transparent',
-            borderRight: '5px solid var(--glass-border)',
-          }} />
+          <span
+            style={{
+              position: 'absolute',
+              right: '100%',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              width: 0,
+              height: 0,
+              borderTop: '5px solid transparent',
+              borderBottom: '5px solid transparent',
+              borderRight: '5px solid var(--glass-border)',
+            }}
+          />
         </div>
       )}
     </div>

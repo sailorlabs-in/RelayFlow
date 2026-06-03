@@ -2,9 +2,10 @@ import { User } from '@chat-app/database';
 import { Controller, Get, Query, Param, Patch, Body, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiParam, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 
-import { UsersService } from './users.service';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+
+import { UsersService } from './users.service';
 
 @ApiTags('Users')
 @Controller('users')

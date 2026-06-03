@@ -1,11 +1,12 @@
-import { toast, ToastOptions } from 'react-toastify';
+import type { ToastOptions } from 'react-toastify';
+import { toast } from 'react-toastify';
 
 /**
  * Returns the currently active theme ('light' or 'dark') by querying the HTML element's attributes
  * or checking media queries for system preference.
  */
 export const getActiveTheme = (): 'light' | 'dark' => {
-  if (typeof window === 'undefined') return 'dark';
+  if (typeof window === 'undefined') {return 'dark';}
   
   const theme = document.documentElement.getAttribute('data-theme') || 'dark';
   if (theme === 'system') {

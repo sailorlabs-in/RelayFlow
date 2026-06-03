@@ -1,23 +1,24 @@
 import {
-  Controller,
-  Post,
-  Get,
-  Delete,
-  Patch,
   Body,
-  Param,
-  Query,
-  UseGuards,
+  Controller,
+  Delete,
+  forwardRef,
+  Get,
   HttpCode,
   HttpStatus,
+  Inject,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 
-import { GroupsService } from './groups.service';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
-import { Inject, forwardRef } from '@nestjs/common';
+
+import { GroupsService } from './groups.service';
 
 @ApiTags('Groups (Servers)')
 @ApiBearerAuth()

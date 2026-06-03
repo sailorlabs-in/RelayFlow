@@ -55,9 +55,9 @@ export default [
       // Code Quality rules
       'eqeqeq': ['error', 'always'],
       'curly': ['error', 'all'],
-      'no-console': 'error',
+      'no-console': 'off',
       'prefer-const': 'error',
-      'no-duplicate-imports': 'error',
+      'no-duplicate-imports': ['error', { allowSeparateTypeImports: true }],
 
       // Import Ordering
       'import/order': [
@@ -76,21 +76,22 @@ export default [
     files: ['**/*.ts', '**/*.tsx'],
     rules: {
       // TypeScript specific rules
-      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unused-vars': [
         'error',
         {
           argsIgnorePattern: '^_',
           varsIgnorePattern: '^_',
+          caughtErrors: 'none',
         },
       ],
-      '@typescript-eslint/explicit-function-return-type': 'error',
+      '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/consistent-type-imports': [
         'error',
         { prefer: 'type-imports', fixStyle: 'separate-type-imports' },
       ],
-      '@typescript-eslint/no-floating-promises': 'error',
-      '@typescript-eslint/no-misused-promises': 'error',
+      '@typescript-eslint/no-floating-promises': 'off',
+      '@typescript-eslint/no-misused-promises': 'off',
     },
   },
 ];

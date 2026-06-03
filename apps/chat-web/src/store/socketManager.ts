@@ -1,13 +1,22 @@
-import { io, Socket } from 'socket.io-client';
+import type { Socket } from 'socket.io-client';
+import { io } from 'socket.io-client';
+
+import { showToast } from '../components/toast';
+
+import { logoutUser } from './slices/authSlice';
+import type {
+  Message} from './slices/chatSlice';
 import {
   socketReceiveMessage,
   socketUpdatePresence,
   socketUpdateUserStatus,
   socketUpdateTyping,
+  socketDeleteMessage,
   socketRemoveConversation,
-  Message,
   fetchConversations,
 } from './slices/chatSlice';
+import type {
+  Group} from './slices/groupsSlice';
 import {
   socketGroupCreated,
   socketGroupUpdated,
@@ -16,12 +25,11 @@ import {
   socketGroupMemberRemoved,
   socketChannelCreated,
   socketChannelUpdated,
-  socketChannelDeleted,
-  Group,
+  socketChannelDeleted
 } from './slices/groupsSlice';
-import { logoutUser } from './slices/authSlice';
+
 import { store } from './index';
-import { showToast } from '../components/toast';
+
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:4001/chat';
 
@@ -97,7 +105,7 @@ class SocketManager {
         const isChannel = state.groups?.groups?.some((g) =>
           g.channels?.some((c: any) => c.id === message.conversationId)
         );
-        if (isChannel) return;
+        if (isChannel) {return;}
 
         const exists = state.chat.conversations.some((c: any) => c.id === message.conversationId);
         if (!exists) {
@@ -160,6 +168,12 @@ class SocketManager {
       }
       
       store.dispatch(socketRemoveConversation(data.conversationId));
+    });
+
+    // Handle real-time message deletion
+    this.socket.on('message.deleted', (data: { messageId: string; conversationId: string }) => {
+      console.log('🗑️ Socket message.deleted event received:', data);
+      store.dispatch(socketDeleteMessage(data));
     });
 
     // Handle granular presence/status changes broadcast by the server
@@ -254,6 +268,13 @@ class SocketManager {
   stopTyping(conversationId: string) {
     if (this.socket?.connected) {
       this.socket.emit('typing.stopped', { conversationId });
+    }
+  }
+
+  deleteMessage(messageId: string, conversationId: string) {
+    if (this.socket?.connected) {
+      console.log(`📡 Emitting delete.message for messageId=${messageId} in conversationId=${conversationId}`);
+      this.socket.emit('delete.message', { messageId, conversationId });
     }
   }
 

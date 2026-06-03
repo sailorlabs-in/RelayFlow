@@ -143,4 +143,12 @@ export class ChatService {
       skip: offset,
     });
   }
+
+  async getMessage(messageId: string): Promise<Message | null> {
+    return this.messageRepository.findOne({ where: { id: messageId } });
+  }
+
+  async deleteMessage(messageId: string): Promise<void> {
+    await this.messageRepository.delete({ id: messageId });
+  }
 }

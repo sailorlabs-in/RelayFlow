@@ -1,4 +1,4 @@
-import { PresenceStatus } from './enums';
+import { PresenceStatus } from '@chat-app/shared-constants';
 
 export const PRESENCE_STATUS_DETAILS = [
   {

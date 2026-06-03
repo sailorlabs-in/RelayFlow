@@ -1,6 +1,8 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import type { PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
-import { User } from './authSlice';
+
+import type { User } from './authSlice';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
 
@@ -253,6 +255,28 @@ const chatSlice = createSlice({
       }
       state.typingUsers[conversationId][userId] = isTyping;
     },
+    socketDeleteMessage: (
+      state,
+      action: PayloadAction<{ messageId: string; conversationId: string }>
+    ) => {
+      const { messageId, conversationId } = action.payload;
+      if (state.messages[conversationId]) {
+        state.messages[conversationId] = state.messages[conversationId].filter(
+          (m) => m.id !== messageId
+        );
+      }
+
+      // Update lastMessage in the conversation list if needed
+      const convo = state.conversations.find((c) => c.id === conversationId);
+      if (convo) {
+        const convoMessages = state.messages[conversationId] || [];
+        if (convoMessages.length > 0) {
+          convo.lastMessage = convoMessages[convoMessages.length - 1];
+        } else {
+          convo.lastMessage = null;
+        }
+      }
+    },
     clearSearchResults: (state) => {
       state.searchResults = [];
     },
@@ -387,6 +411,7 @@ export const {
   socketUpdatePresence,
   socketUpdateUserStatus,
   socketUpdateTyping,
+  socketDeleteMessage,
   clearSearchResults,
   socketRemoveConversation,
 } = chatSlice.actions;

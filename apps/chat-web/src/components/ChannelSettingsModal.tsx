@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
+
 import { useAppDispatch } from '../store';
-import { updateChannel, deleteChannel, GroupChannel } from '../store/slices/groupsSlice';
+import type { GroupChannel } from '../store/slices/groupsSlice';
+import { updateChannel, deleteChannel } from '../store/slices/groupsSlice';
+
 import { IconX, IconHash, IconTrash } from './Icons';
 import { showToast } from './toast';
 

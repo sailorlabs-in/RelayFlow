@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
+
 import { useAppDispatch } from '../store';
-import { updateGroup, Group } from '../store/slices/groupsSlice';
+import type { Group } from '../store/slices/groupsSlice';
+import { updateGroup } from '../store/slices/groupsSlice';
+
 import { IconX } from './Icons';
 import { showToast } from './toast';
 
