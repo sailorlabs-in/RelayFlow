@@ -10,6 +10,8 @@ interface GroupRailProps {
   onShowDMs: () => void;
   onSelectGroup: (groupId: string) => void;
   isDMMode: boolean;
+  isCollapsed: boolean;
+  onToggle: () => void;
 }
 
 export const GroupRail = ({
@@ -17,6 +19,8 @@ export const GroupRail = ({
   onShowDMs,
   onSelectGroup,
   isDMMode,
+  isCollapsed,
+  onToggle,
 }: GroupRailProps): React.JSX.Element => {
   const dispatch = useAppDispatch();
   const { groups: rawGroups, activeGroupId } = useAppSelector((s) => s.groups);
@@ -29,6 +33,11 @@ export const GroupRail = ({
     dispatch(setActiveGroup(groupId));
     onSelectGroup(groupId);
   };
+
+  // Completely hidden — parent renders toggle in sidebar header
+  if (isCollapsed) {
+    return null as unknown as React.JSX.Element;
+  }
 
   return (
     <div
@@ -114,6 +123,42 @@ export const GroupRail = ({
       >
         <IconPlus size={20} />
       </RailButton>
+
+      {/* Collapse button — pinned at the bottom, same icon as sidebar toggle */}
+      <div style={{ flex: 1 }} />
+      <button
+        id="rail-collapse-btn"
+        title="Hide navigation rail"
+        onClick={onToggle}
+        style={{
+          width: '36px',
+          height: '36px',
+          borderRadius: '10px',
+          border: 'none',
+          background: 'transparent',
+          color: 'var(--text-muted)',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: 'all 0.15s',
+          flexShrink: 0,
+          marginBottom: '6px',
+        }}
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-input)';
+          (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)';
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
+          (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)';
+        }}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 15, height: 15 }}>
+          <rect x="3" y="3" width="18" height="18" rx="2" />
+          <line x1="9" y1="3" x2="9" y2="21" />
+        </svg>
+      </button>
     </div>
   );
 };

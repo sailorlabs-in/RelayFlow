@@ -16,12 +16,9 @@ import { GroupRail } from '../components/GroupRail';
 import { GroupSettingsModal } from '../components/GroupSettingsModal';
 import { InviteMembersModal } from '../components/InviteMembersModal';
 import { MemberSidebar } from '../components/MemberSidebar';
-import type { Theme } from '../components/ThemeSwitcher';
 import { useAppDispatch, useAppSelector } from '../store';
 import {
   logoutUser,
-  updateUserProfile,
-  setThemeMode,
   restoreSession,
 } from '../store/slices/authSlice';
 import { fetchConversations } from '../store/slices/chatSlice';
@@ -46,7 +43,8 @@ function ChatDashboardContent() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
   const [isCreateChannelOpen, setIsCreateChannelOpen] = useState(false);
-  
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
   // New settings and member features states
   const [isMembersListOpen, setIsMembersListOpen] = useState(true);
   const [isGroupSettingsOpen, setIsGroupSettingsOpen] = useState(false);
@@ -64,13 +62,6 @@ function ChatDashboardContent() {
     dispatch(restoreSession());
     setIsHydrated(true);
   }, [dispatch]);
-
-  const handleThemeChange = useCallback((t: Theme) => {
-    dispatch(setThemeMode(t));
-    if (user && user.themeMode !== t) {
-      dispatch(updateUserProfile({ themeMode: t }));
-    }
-  }, [user, dispatch]);
 
   const handleLogout = useCallback(() => {
     socketManager.disconnect();
@@ -205,6 +196,8 @@ function ChatDashboardContent() {
         onShowDMs={handleShowDMs}
         onSelectGroup={handleSelectGroup}
         isDMMode={isDMMode}
+        isCollapsed={isSidebarCollapsed}
+        onToggle={() => setIsSidebarCollapsed((v) => !v)}
       />
 
       {/* ── Middle: DM Sidebar OR Channel Sidebar ────────────────── */}
@@ -214,7 +207,8 @@ function ChatDashboardContent() {
           setIsProfileOpen={setIsProfileOpen}
           setIsComposeOpen={setIsComposeOpen}
           handleLogout={handleLogout}
-          handleThemeChange={handleThemeChange}
+          isRailCollapsed={isSidebarCollapsed}
+          onToggleRail={() => setIsSidebarCollapsed((v) => !v)}
         />
       ) : activeGroup ? (
         <ChannelSidebar
@@ -228,6 +222,8 @@ function ChatDashboardContent() {
           onInviteMembers={() => setIsInviteMembersOpen(true)}
           ownStatus={ownStatus}
           setIsProfileOpen={setIsProfileOpen}
+          isRailCollapsed={isSidebarCollapsed}
+          onToggleRail={() => setIsSidebarCollapsed((v) => !v)}
         />
       ) : (
         /* Fallback: no group selected yet */
