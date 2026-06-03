@@ -5,29 +5,10 @@ import React from 'react';
 
 export default function NotFound() {
   return (
-    <div style={{ 
-      display: 'flex', 
-      flexDirection: 'column', 
-      alignItems: 'center', 
-      justifyContent: 'center', 
-      height: '100vh', 
-      gap: '16px', 
-      background: '#070a13', 
-      color: '#f8fafc',
-      fontFamily: 'system-ui, -apple-system, sans-serif'
-    }}>
-      <h2 style={{ fontSize: '32px', fontWeight: '700' }}>404</h2>
-      <p style={{ color: 'var(--text-muted)', fontSize: '15px' }}>The requested workspace route does not exist.</p>
-      <Link href="/" style={{ 
-        color: 'var(--accent-primary)', 
-        textDecoration: 'none',
-        fontWeight: '600',
-        border: '1px solid var(--accent-ring)',
-        padding: '10px 20px',
-        borderRadius: '8px',
-        background: 'var(--theme-btn)',
-        transition: 'all 0.2s ease'
-      }}>
+    <div className="flex flex-col items-center justify-center h-screen gap-4 bg-[#070a13] text-[#f8fafc] font-sans">
+      <h2 className="text-3xl font-bold">404</h2>
+      <p className="text-[var(--text-muted)] text-[15px]">The requested workspace route does not exist.</p>
+      <Link href="/" className="text-[var(--accent-primary)] no-underline font-semibold border border-[var(--accent-ring)] px-5 py-2.5 rounded-lg bg-[var(--theme-btn)] transition-all duration-200 hover:bg-[var(--theme-btn-hover)]">
         Return Home
       </Link>
     </div>

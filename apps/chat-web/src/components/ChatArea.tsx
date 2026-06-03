@@ -293,27 +293,21 @@ export const ChatArea = ({
       {activeConversationId && (activeDetails || isChannelMode) ? (
         <>
           {/* Chat Header */}
-          <div className="flex items-center gap-3 px-5 py-3.5 border-b"
-            style={{
-              borderColor: 'var(--border-muted)',
-              background: 'var(--bg-sidebar)',
-              borderTopLeftRadius: '1rem',
-              borderTopRightRadius: '1rem',
-            }}>
+          <div className="flex items-center gap-3 px-5 py-3.5 border-b border-[var(--border-muted)] bg-[var(--bg-sidebar)] rounded-t-2xl">
             {isChannelMode ? (
               /* Channel mode header */
               <div className="flex-1 min-w-0 flex items-center gap-2.5">
-                <span style={{ color: 'var(--text-muted)', display: 'flex', flexShrink: 0 }}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 20, height: 20 }}>
+                <span className="text-[var(--text-muted)] flex shrink-0">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
                     <line x1="4" y1="9" x2="20" y2="9" /><line x1="4" y1="15" x2="20" y2="15" />
                     <line x1="10" y1="3" x2="8" y2="21" /><line x1="16" y1="3" x2="14" y2="21" />
                   </svg>
                 </span>
-                <h3 className="text-[16px] font-bold tracking-tight truncate" style={{ color: 'var(--text-primary)' }}>
+                <h3 className="text-[16px] font-bold tracking-tight truncate text-[var(--text-primary)]">
                   {activeChannelName || activeDetails?.name || ''}
                 </h3>
                 {isActiveTyping && (
-                  <span className="text-[11.5px] font-medium ml-2 animate-pulse" style={{ color: 'var(--accent-primary)' }}>
+                  <span className="text-[11.5px] font-medium ml-2 animate-pulse text-[var(--accent-primary)]">
                     {getTypingText()}…
                   </span>
                 )}
@@ -322,11 +316,11 @@ export const ChatArea = ({
               <>
                 <Avatar letter={activeDetails?.letter || ''} status={activeStatus} size="md" />
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-[16px] font-bold tracking-tight truncate" style={{ color: 'var(--text-primary)' }}>
+                  <h3 className="text-[16px] font-bold tracking-tight truncate text-[var(--text-primary)]">
                     {activeDetails?.name || ''}
                   </h3>
                   {isActiveTyping ? (
-                    <span className="text-[11.5px] font-medium" style={{ color: 'var(--accent-primary)' }}>
+                    <span className="text-[11.5px] font-medium text-[var(--accent-primary)]">
                       typing…
                     </span>
                   ) : (
@@ -345,26 +339,7 @@ export const ChatArea = ({
               <button
                 id="delete-thread-btn"
                 title="Delete thread"
-                className="flex items-center gap-1.5 rounded-[9px] px-3 py-1.5 text-[12px] font-semibold cursor-pointer transition-all duration-200 flex-shrink-0"
-                style={{
-                  background: 'var(--danger-bg)',
-                  color: 'var(--danger)',
-                  border: '1.5px solid var(--danger-border)',
-                }}
-                onMouseEnter={(e) => {
-                  const b = e.currentTarget as HTMLButtonElement;
-                  b.style.background = 'var(--danger)';
-                  b.style.color = 'white';
-                  b.style.borderColor = 'var(--danger)';
-                  b.style.boxShadow = '0 4px 14px rgba(239,68,68,0.3)';
-                }}
-                onMouseLeave={(e) => {
-                  const b = e.currentTarget as HTMLButtonElement;
-                  b.style.background = 'var(--danger-bg)';
-                  b.style.color = 'var(--danger)';
-                  b.style.borderColor = 'var(--danger-border)';
-                  b.style.boxShadow = 'none';
-                }}
+                className="flex items-center gap-1.5 rounded-[9px] px-3 py-1.5 text-[12px] font-semibold cursor-pointer transition-all duration-200 shrink-0 border-[1.5px] bg-[var(--danger-bg)] text-[var(--danger)] border-[var(--danger-border)] hover:bg-[var(--danger)] hover:text-white hover:border-[var(--danger)] hover:shadow-[0_4px_14px_rgba(239,68,68,0.3)]"
                 onClick={() => handleDeleteConversation(activeConversationId)}
               >
                 <IconTrash />
@@ -378,27 +353,10 @@ export const ChatArea = ({
                 id="toggle-members-btn"
                 title="Toggle Member List"
                 onClick={onToggleMembersList}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: isMembersListOpen ? 'var(--accent-primary)' : 'var(--text-muted)',
-                  padding: '6px',
-                  borderRadius: '6px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  transition: 'all 0.15s',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'var(--bg-input)';
-                  if (!isMembersListOpen) {e.currentTarget.style.color = 'var(--text-primary)';}
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent';
-                  if (!isMembersListOpen) {e.currentTarget.style.color = 'var(--text-muted)';}
-                }}
+                className={`bg-transparent border-none cursor-pointer p-1.5 rounded-[6px] flex items-center transition-all duration-150 
+                  ${isMembersListOpen ? 'text-[var(--accent-primary)]' : 'text-[var(--text-muted)] hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)]'}`}
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 18, height: 18 }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-[18px] h-[18px]">
                   <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
                   <circle cx="9" cy="7" r="4" />
                   <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
@@ -412,18 +370,16 @@ export const ChatArea = ({
           <div 
             ref={feedContainerRef}
             onScroll={handleScroll}
-            className="flex-1 overflow-y-auto flex flex-col gap-3.5 p-5"
-            style={{ background: 'var(--bg-chat)' }}>
+            className="flex-1 overflow-y-auto flex flex-col gap-3.5 p-5 bg-[var(--bg-chat)]"
+          >
             
             {isFetchingMore && (
-              <div className="flex justify-center py-2 flex-shrink-0">
-                <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin"
-                  style={{ borderColor: 'var(--accent-primary)', borderTopColor: 'transparent' }} />
+              <div className="flex justify-center py-2 shrink-0">
+                <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin border-[var(--accent-primary)]" />
               </div>
             )}
             {activeMessages.length === 0 ? (
-              <div className="flex-1 flex flex-col items-center justify-center gap-2.5 text-[13.5px]"
-                style={{ color: 'var(--text-muted)' }}>
+              <div className="flex-1 flex flex-col items-center justify-center gap-2.5 text-[13.5px] text-[var(--text-muted)]">
                 <IconChat />
                 <span>No messages yet. Send a greeting to begin.</span>
               </div>
@@ -436,38 +392,24 @@ export const ChatArea = ({
                   : (senderProfile?.displayName || senderProfile?.email?.split('@')[0] || 'User');
 
                 if (isChannelMode) {
-                  // Discord-style: messages left-aligned with sender name
                   return (
                     <div key={msg.id} className="flex items-start gap-3 animate-fade-in group justify-between">
-                      <div className="flex items-start gap-3" style={{ flex: 1, minWidth: 0 }}>
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
                         <div
-                          style={{
-                            width: '36px',
-                            height: '36px',
-                            borderRadius: '50%',
-                            background: isOut ? 'var(--accent-primary)' : 'var(--bg-input)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '14px',
-                            fontWeight: 700,
-                            color: isOut ? 'white' : 'var(--text-primary)',
-                            flexShrink: 0,
-                            border: '2px solid var(--glass-border)',
-                          }}
+                          className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0 border-2 border-[var(--glass-border)] ${isOut ? 'bg-[var(--accent-primary)] text-white' : 'bg-[var(--bg-input)] text-[var(--text-primary)]'}`}
                         >
                           {senderName[0]?.toUpperCase()}
                         </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '3px' }}>
-                            <span style={{ fontSize: '13.5px', fontWeight: 700, color: isOut ? 'var(--accent-primary)' : 'var(--text-primary)' }}>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-baseline gap-2 mb-1">
+                            <span className={`text-[13.5px] font-bold ${isOut ? 'text-[var(--accent-primary)]' : 'text-[var(--text-primary)]'}`}>
                               {senderName}
                             </span>
-                            <span style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>
+                            <span className="text-[10.5px] text-[var(--text-muted)]">
                               {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
-                          <div style={{ fontSize: '14px', lineHeight: 1.5, color: 'var(--text-primary)', wordBreak: 'break-word' }}>
+                          <div className="text-sm leading-relaxed text-[var(--text-primary)] break-all">
                             {msg.content}
                           </div>
                         </div>
@@ -475,12 +417,7 @@ export const ChatArea = ({
                       {isOut && (
                         <button
                           onClick={() => handleDeleteMessage(msg.id)}
-                          className="msg-delete-btn flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer"
-                          style={{
-                            background: 'var(--danger-bg)',
-                            color: 'var(--danger)',
-                            marginTop: '2px',
-                          }}
+                          className="msg-delete-btn flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-[var(--danger-bg)] text-[var(--danger)] mt-0.5"
                           title="Delete message"
                         >
                           <IconTrash />
@@ -493,31 +430,22 @@ export const ChatArea = ({
                 return (
                   <div
                     key={msg.id}
-                    className="flex items-center gap-2 group"
-                    style={{
-                      alignSelf: isOut ? 'flex-end' : 'flex-start',
-                      maxWidth: '68%',
-                    }}
+                    className={`flex items-center gap-2 group max-w-[68%] ${isOut ? 'self-end' : 'self-start'}`}
                   >
                     {isOut && (
                       <button
                         onClick={() => handleDeleteMessage(msg.id)}
-                        className="msg-delete-btn flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer"
-                        style={{
-                          background: 'var(--danger-bg)',
-                          color: 'var(--danger)',
-                          flexShrink: 0,
-                        }}
+                        className="msg-delete-btn flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-[var(--danger-bg)] text-[var(--danger)] shrink-0"
                         title="Delete message"
                       >
                         <IconTrash />
                       </button>
                     )}
-                    <div className={`flex flex-col ${isOut ? 'items-end' : 'items-start'}`} style={{ minWidth: 0, flex: 1 }}>
+                    <div className={`flex flex-col ${isOut ? 'items-end' : 'items-start'} min-w-0 flex-1`}>
                       <div className={`px-4 py-2.5 rounded-[18px] text-[14px] leading-relaxed break-words ${isOut ? 'msg-bubble-out' : 'msg-bubble-in'}`}>
                         {msg.content}
                       </div>
-                      <span className="text-[10px] mt-1 px-1" style={{ color: 'var(--text-muted)' }}>
+                      <span className="text-[10px] mt-1 px-1 text-[var(--text-muted)]">
                         {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
@@ -528,11 +456,10 @@ export const ChatArea = ({
 
             {/* Typing indicator */}
             {isActiveTyping && (
-              <div className="self-start flex items-center gap-2 px-4 py-2.5 rounded-[18px] animate-fade-in msg-bubble-in text-[13px]"
-                style={{ color: 'var(--text-secondary)' }}>
+              <div className="self-start flex items-center gap-2 px-4 py-2.5 rounded-[18px] animate-fade-in msg-bubble-in text-[13px] text-[var(--text-secondary)]">
                 {isChannelMode ? (
                   <>
-                    <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{getTypingText()}</span>
+                    <span className="font-semibold text-[var(--text-primary)]">{getTypingText()}</span>
                     <div className="flex items-center gap-1 ml-1">
                       <span className="typing-dot" style={{ animationDelay: '0s', width: '5px', height: '5px' }} />
                       <span className="typing-dot" style={{ animationDelay: '0.15s', width: '5px', height: '5px' }} />
@@ -553,29 +480,14 @@ export const ChatArea = ({
           </div>
 
           {/* Input Area */}
-          <div className="px-4 py-3.5 border-t"
-            style={{
-              borderColor: 'var(--border-muted)',
-              background: 'var(--bg-sidebar)',
-              borderBottomLeftRadius: '1rem',
-              borderBottomRightRadius: '1rem',
-            }}>
+          <div className="px-4 py-3.5 border-t border-[var(--border-muted)] bg-[var(--bg-sidebar)] rounded-b-2xl">
             <form className="flex gap-2.5 items-end" onSubmit={handleSendMessage}>
               <textarea
                 id="message-input"
-                className="input-base flex-1 rounded-xl px-4 py-3 text-[14px] resize-none leading-relaxed"
-                style={{
-                  minHeight: '46px',
-                  maxHeight: '120px',
-                  background: 'var(--bg-input)',
-                  border: '1.5px solid var(--glass-border)',
-                  color: 'var(--text-primary)',
-                }}
+                className="input-base flex-1 rounded-xl px-4 py-3 text-[14px] resize-none leading-relaxed min-h-[46px] max-h-[120px] bg-[var(--bg-input)] border-[1.5px] border-[var(--glass-border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[3px] focus:ring-[var(--accent-ring)]"
                 placeholder="Type a message… (Enter to send)"
                 value={messageInput}
                 onChange={handleInputChange}
-                onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-ring)'; }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.boxShadow = 'none'; }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(e); }
                 }}
@@ -584,9 +496,7 @@ export const ChatArea = ({
                 id="send-message-btn"
                 type="submit"
                 disabled={!messageInput.trim()}
-                className="btn-send w-[46px] h-[46px] rounded-xl flex-shrink-0 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
-                onMouseEnter={(e) => { if (messageInput.trim()) { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = 'var(--btn-shadow)'; } }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = ''; (e.currentTarget as HTMLButtonElement).style.boxShadow = ''; }}
+                className="btn-send w-[46px] h-[46px] rounded-xl flex-shrink-0 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed hover:-translate-y-0.5 hover:shadow-[var(--btn-shadow)]"
               >
                 <IconSend />
               </button>
@@ -595,26 +505,19 @@ export const ChatArea = ({
         </>
       ) : (
         /* Empty state */
-        <div className="flex-1 flex flex-col items-center justify-center gap-4"
-          style={{ background: 'var(--bg-chat)', borderRadius: '1rem' }}>
-          <div className="w-16 h-16 rounded-full flex items-center justify-center animate-float border"
-            style={{
-              background: 'var(--theme-btn-active)',
-              borderColor: 'var(--accent-primary)',
-            }}>
+        <div className="flex-1 flex flex-col items-center justify-center gap-4 bg-[var(--bg-chat)] rounded-2xl">
+          <div className="w-16 h-16 rounded-full flex items-center justify-center animate-float border bg-[var(--theme-btn-active)] border-[var(--accent-primary)]">
             <IconChat />
           </div>
-          <h2 className="text-[20px] font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+          <h2 className="text-[20px] font-bold tracking-tight text-[var(--text-primary)]">
             RelayFlow Workspace
           </h2>
-          <p className="text-[13.5px] max-w-[290px] text-center leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+          <p className="text-[13.5px] max-w-[290px] text-center leading-relaxed text-[var(--text-secondary)]">
             Select a conversation from the sidebar or search for a contact to start messaging.
           </p>
           <button
             id="empty-compose-btn"
-            className="mt-1 px-5 py-2.5 rounded-xl text-[13.5px] font-semibold text-white cursor-pointer transition-all duration-200 border-none btn-send"
-            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = 'var(--btn-shadow)'; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = ''; (e.currentTarget as HTMLButtonElement).style.boxShadow = ''; }}
+            className="mt-1 px-5 py-2.5 rounded-xl text-[13.5px] font-semibold text-white cursor-pointer transition-all duration-200 border-none btn-send hover:-translate-y-0.5 hover:shadow-[var(--btn-shadow)]"
             onClick={() => setIsComposeOpen(true)}
           >
             Start a conversation

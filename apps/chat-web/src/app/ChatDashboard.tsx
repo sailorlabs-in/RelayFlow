@@ -172,7 +172,7 @@ function ChatDashboardContent() {
 
   // ── RENDER: Hydration & Auth Gate ──
   if (!isHydrated) {
-    return <div style={{ background: 'var(--bg-primary)', height: '100vh', width: '100vw' }} />;
+    return <div className="bg-[var(--bg-primary)] h-screen w-screen" />;
   }
 
   if (!accessToken || !user) {
@@ -187,8 +187,7 @@ function ChatDashboardContent() {
 
   return (
     <div
-      className="flex h-screen w-screen p-3.5 gap-3.5"
-      style={{ background: 'var(--bg-primary)' }}
+      className="flex h-screen w-screen p-3.5 gap-3.5 bg-[var(--bg-primary)]"
     >
       {/* ── Left: Group Rail ─────────────────────────────────────── */}
       <GroupRail
@@ -228,10 +227,9 @@ function ChatDashboardContent() {
       ) : (
         /* Fallback: no group selected yet */
         <div
-          className="glass-panel flex flex-col items-center justify-center"
-          style={{ width: '240px', minWidth: '240px', height: '100%' }}
+          className="glass-panel flex flex-col items-center justify-center w-[240px] min-w-[240px] h-full"
         >
-          <p style={{ color: 'var(--text-muted)', fontSize: '13px', textAlign: 'center', padding: '20px' }}>
+          <p className="text-[var(--text-muted)] text-[13px] text-center p-5">
             Select a group from the rail or create a new one.
           </p>
         </div>
@@ -308,20 +306,11 @@ function ChatDashboardContent() {
       {/* Profile Settings Modal */}
       {isProfileOpen && (
         <div
-          className="fixed inset-0 z-[1000] flex items-center justify-center p-4 animate-fade-in"
-          style={{ background: 'rgba(4,6,12,0.65)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)' }}
+          className="fixed inset-0 z-[1000] flex items-center justify-center p-4 animate-fade-in bg-[rgba(4,6,12,0.65)] backdrop-blur-[14px]"
           onClick={() => setIsProfileOpen(false)}
         >
           <div
-            className="w-[800px] max-w-full h-[85vh] flex flex-col overflow-hidden animate-slide-up"
-            style={{
-              background: 'var(--glass-bg)',
-              border: '1.5px solid var(--glass-border)',
-              backdropFilter: 'blur(20px)',
-              WebkitBackdropFilter: 'blur(20px)',
-              borderRadius: '18px',
-              boxShadow: 'var(--glass-shadow)',
-            }}
+            className="w-[800px] max-w-full h-[85vh] flex flex-col overflow-hidden animate-slide-up bg-[var(--glass-bg)] border-[1.5px] border-[var(--glass-border)] backdrop-blur-[20px] rounded-[18px] shadow-[var(--glass-shadow)]"
             onClick={(e) => e.stopPropagation()}
           >
             <ProfileSettingsContent isModal onClose={() => setIsProfileOpen(false)} />

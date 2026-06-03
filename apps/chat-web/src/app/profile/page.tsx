@@ -347,28 +347,13 @@ export function ProfileSettingsContent({
       }
     >
       {/* Header bar */}
-      <div
-        className="flex items-center justify-between px-6 py-4.5 border-b"
-        style={{ borderColor: 'var(--border-muted)' }}
-      >
+      <div className="flex items-center justify-between px-6 py-4.5 border-b border-[var(--border-muted)]">
         <div className="flex items-center gap-4">
           {isModal ? (
             <button
               type="button"
               onClick={onClose}
-              className="flex items-center text-[13px] font-semibold rounded-lg px-3 py-2 cursor-pointer transition-all duration-200 border-none"
-              style={{
-                background: 'var(--theme-btn)',
-                color: 'var(--text-muted)',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'var(--theme-btn-hover)';
-                e.currentTarget.style.color = 'var(--text-primary)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'var(--theme-btn)';
-                e.currentTarget.style.color = 'var(--text-muted)';
-              }}
+              className="flex items-center text-[13px] font-semibold rounded-lg px-3 py-2 cursor-pointer transition-all duration-200 border-none bg-[var(--theme-btn)] text-[var(--text-muted)] hover:bg-[var(--theme-btn-hover)] hover:text-[var(--text-primary)]"
             >
               <IconArrowLeft />
               Close Settings
@@ -376,35 +361,17 @@ export function ProfileSettingsContent({
           ) : (
             <Link
               href="/"
-              className="flex items-center text-[13px] font-semibold rounded-lg px-3 py-2 cursor-pointer transition-all duration-200"
-              style={{
-                background: 'var(--theme-btn)',
-                color: 'var(--text-muted)',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'var(--theme-btn-hover)';
-                e.currentTarget.style.color = 'var(--text-primary)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'var(--theme-btn)';
-                e.currentTarget.style.color = 'var(--text-muted)';
-              }}
+              className="flex items-center text-[13px] font-semibold rounded-lg px-3 py-2 cursor-pointer transition-all duration-200 bg-[var(--theme-btn)] text-[var(--text-muted)] hover:bg-[var(--theme-btn-hover)] hover:text-[var(--text-primary)]"
             >
               <IconArrowLeft />
               Back to Chat
             </Link>
           )}
           <div>
-            <h1
-              className="text-[20px] font-bold tracking-tight"
-              style={{ color: 'var(--text-primary)' }}
-            >
+            <h1 className="text-[20px] font-bold tracking-tight text-[var(--text-primary)]">
               Profile Settings
             </h1>
-            <p
-              className="text-[11.5px] mt-0.5"
-              style={{ color: 'var(--text-muted)' }}
-            >
+            <p className="text-[11.5px] mt-0.5 text-[var(--text-muted)]">
               Configure your display name, theme layouts, and active status.
             </p>
           </div>
@@ -412,18 +379,7 @@ export function ProfileSettingsContent({
 
         <button
           onClick={() => dispatch(logoutUser())}
-          className="text-[12.5px] font-semibold px-3.5 py-2 rounded-lg cursor-pointer transition-all duration-200 border border-transparent"
-          style={{
-            background: 'var(--danger-bg)',
-            color: 'var(--danger)',
-            borderColor: 'var(--danger-border)',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.opacity = '0.85';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.opacity = '1';
-          }}
+          className="text-[12.5px] font-semibold px-3.5 py-2 rounded-lg cursor-pointer transition-all duration-200 border border-[var(--danger-border)] bg-[var(--danger-bg)] text-[var(--danger)] hover:opacity-85"
         >
           Sign Out
         </button>

@@ -74,95 +74,50 @@ export const InviteMembersModal = ({
 
   return (
     <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 1100,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '16px',
-        background: 'rgba(4,6,12,0.65)',
-        backdropFilter: 'blur(14px)',
-        WebkitBackdropFilter: 'blur(14px)',
-      }}
+      className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-[rgba(4,6,12,0.65)] backdrop-blur-[14px]"
       onClick={onClose}
     >
       <div
-        style={{
-          width: '460px',
-          maxWidth: '100%',
-          maxHeight: '80vh',
-          display: 'flex',
-          flexDirection: 'column',
-          background: 'var(--glass-bg)',
-          border: '1.5px solid var(--glass-border)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          borderRadius: '18px',
-          boxShadow: 'var(--glass-shadow)',
-          overflow: 'hidden',
-          animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-        }}
+        className="w-[460px] max-w-full max-h-[80vh] flex flex-col overflow-hidden bg-[var(--glass-bg)] border-[1.5px] border-[var(--glass-border)] backdrop-blur-[20px] rounded-[18px] shadow-[var(--glass-shadow)] animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div
-          style={{
-            padding: '20px 24px 16px',
-            borderBottom: '1.5px solid var(--border-muted)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
+        <div className="px-5 py-4 border-b border-[var(--border-muted)] flex items-center justify-between">
           <div>
-            <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>
+            <h2 className="m-0 text-[18px] font-bold text-[var(--text-primary)]">
               Invite Friends
             </h2>
-            <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: 'var(--text-muted)' }}>
-              Add new members to <strong style={{ color: 'var(--text-secondary)' }}>{group.name}</strong>
+            <p className="m-1 text-[12.5px] text-[var(--text-muted)]">
+              Add new members to <strong className="text-[var(--text-secondary)]">{group.name}</strong>
             </p>
           </div>
           <button
             id="close-invite-modal"
             onClick={onClose}
-            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '4px', borderRadius: '6px', display: 'flex', alignItems: 'center' }}
+            className="bg-transparent border-none cursor-pointer text-[var(--text-muted)] p-1 rounded-md flex items-center"
           >
             <IconX size={18} />
           </button>
         </div>
 
         {/* Search */}
-        <div style={{ padding: '14px 24px', borderBottom: '1.5px solid var(--border-muted)' }}>
+        <div className="px-5 py-3.5 border-b border-[var(--border-muted)]">
           <input
             id="invite-search-input"
             type="text"
-            className="input-base"
-            style={{
-              width: '100%',
-              padding: '10px 14px',
-              borderRadius: '10px',
-              background: 'var(--bg-input)',
-              border: '1.5px solid var(--glass-border)',
-              color: 'var(--text-primary)',
-              fontSize: '14px',
-              boxSizing: 'border-box',
-            }}
+            className="input-base w-full px-3.5 py-2.5 rounded-[10px] bg-[var(--bg-input)] border-[1.5px] border-[var(--glass-border)] text-[var(--text-primary)] text-sm box-border focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[2.5px] focus:ring-[var(--accent-ring)]"
             placeholder="Search users by name or email..."
             value={searchQuery}
             onChange={handleSearchChange}
             autoFocus
-            onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.boxShadow = '0 0 0 2.5px var(--accent-ring)'; }}
-            onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.boxShadow = 'none'; }}
           />
         </div>
 
         {/* User list */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '10px 24px' }}>
+        <div className="flex-1 overflow-y-auto px-5 py-2.5">
           {filteredResults.length === 0 ? (
-            <div style={{ padding: '40px 20px', textAlign: 'center', fontSize: '13.5px', color: 'var(--text-muted)' }}>
-              <div style={{ opacity: 0.3, marginBottom: '8px' }}>
+            <div className="py-10 px-5 text-center text-[13.5px] text-[var(--text-muted)]">
+              <div className="opacity-30 mb-2">
                 <IconPeople />
               </div>
               No eligible users found.
@@ -174,49 +129,21 @@ export const InviteMembersModal = ({
                 <div
                   key={u.id}
                   id={`invite-user-${u.id}`}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    padding: '8px 10px',
-                    borderRadius: '10px',
-                    cursor: 'pointer',
-                    marginBottom: '4px',
-                    transition: 'all 0.15s',
-                    background: isSelected ? 'var(--theme-btn-active)' : 'transparent',
-                    border: '1px solid',
-                    borderColor: isSelected ? 'var(--accent-primary)' : 'transparent',
-                  }}
+                  className={`flex items-center gap-3 px-2.5 py-2 rounded-xl cursor-pointer mb-1 transition-all duration-150 border ${isSelected ? 'bg-[var(--theme-btn-active)] border-[var(--accent-primary)]' : 'bg-transparent border-transparent hover:bg-[var(--bg-input)]'}`}
                   onClick={() => toggleSelectUser(u.id)}
-                  onMouseEnter={(e) => { if (!isSelected) {e.currentTarget.style.background = 'var(--bg-input)';} }}
-                  onMouseLeave={(e) => { if (!isSelected) {e.currentTarget.style.background = 'transparent';} }}
                 >
                   <Avatar letter={(u.displayName || u.email)[0].toUpperCase()} size="md" />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '13.5px', fontWeight: 600, color: isSelected ? 'var(--theme-btn-active-text)' : 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div className="flex-1 min-w-0">
+                    <div className={`text-[13.5px] font-semibold truncate ${isSelected ? 'text-[var(--theme-btn-active-text)]' : 'text-[var(--text-primary)]'}`}>
                       {u.displayName}
                     </div>
-                    <div style={{ fontSize: '11px', color: isSelected ? 'var(--theme-btn-active-text)' : 'var(--text-muted)', opacity: isSelected ? 0.8 : 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '1px' }}>
+                    <div className={`text-[11px] truncate mt-0.5 ${isSelected ? 'text-[var(--theme-btn-active-text)] opacity-80' : 'text-[var(--text-muted)]'}`}>
                       {u.email}
                     </div>
                   </div>
                   {/* Custom Checkbox */}
                   <div
-                    style={{
-                      width: '18px',
-                      height: '18px',
-                      borderRadius: '4px',
-                      border: '1.5px solid',
-                      borderColor: isSelected ? 'var(--accent-primary)' : 'var(--text-muted)',
-                      background: isSelected ? 'var(--accent-primary)' : 'transparent',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'white',
-                      fontSize: '11px',
-                      fontWeight: 'bold',
-                      flexShrink: 0,
-                    }}
+                    className={`w-[18px] h-[18px] rounded-[4px] border-[1.5px] flex items-center justify-center text-[11px] font-bold shrink-0 text-white ${isSelected ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]' : 'border-[var(--text-muted)] bg-transparent'}`}
                   >
                     {isSelected && '✓'}
                   </div>
@@ -228,22 +155,16 @@ export const InviteMembersModal = ({
 
         {/* Footer */}
         <div
-          style={{
-            padding: '16px 24px 20px',
-            borderTop: '1.5px solid var(--border-muted)',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
+          className="px-5 py-4 border-t border-[var(--border-muted)] flex justify-between items-center"
         >
-          <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+          <div className="text-[13px] text-[var(--text-muted)]">
             {selectedUserIds.length} user{selectedUserIds.length !== 1 ? 's' : ''} selected
           </div>
-          <div style={{ display: 'flex', gap: '10px' }}>
+          <div className="flex gap-2.5">
             <button
               type="button"
               onClick={onClose}
-              style={{ padding: '10px 20px', borderRadius: '10px', border: '1.5px solid var(--glass-border)', background: 'transparent', color: 'var(--text-secondary)', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}
+              className="px-5 py-2.5 rounded-[10px] border-[1.5px] border-[var(--glass-border)] bg-transparent text-[var(--text-secondary)] text-sm font-semibold cursor-pointer"
             >
               Cancel
             </button>
@@ -252,8 +173,7 @@ export const InviteMembersModal = ({
               type="button"
               onClick={handleInviteSubmit}
               disabled={isLoading || selectedUserIds.length === 0}
-              className="btn-send"
-              style={{ padding: '10px 24px', borderRadius: '10px', border: 'none', fontSize: '14px', fontWeight: 600, cursor: isLoading || selectedUserIds.length === 0 ? 'not-allowed' : 'pointer', opacity: isLoading || selectedUserIds.length === 0 ? 0.5 : 1, color: 'white' }}
+              className="btn-send px-6 py-2.5 rounded-[10px] border-none text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isLoading ? 'Inviting…' : 'Invite'}
             </button>

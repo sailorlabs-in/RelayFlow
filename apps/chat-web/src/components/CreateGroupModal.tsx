@@ -77,85 +77,41 @@ export const CreateGroupModal = ({ onClose }: CreateGroupModalProps): React.JSX.
 
   return (
     <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 1000,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '16px',
-        background: 'rgba(4,6,12,0.65)',
-        backdropFilter: 'blur(14px)',
-        WebkitBackdropFilter: 'blur(14px)',
-      }}
+      className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-[rgba(4,6,12,0.65)] backdrop-blur-[14px]"
       onClick={onClose}
     >
       <div
-        style={{
-          width: '480px',
-          maxWidth: '100%',
-          maxHeight: '90vh',
-          display: 'flex',
-          flexDirection: 'column',
-          background: 'var(--glass-bg)',
-          border: '1.5px solid var(--glass-border)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          borderRadius: '18px',
-          boxShadow: 'var(--glass-shadow)',
-          overflow: 'hidden',
-          animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-        }}
+        className="w-[480px] max-w-full max-h-[90vh] flex flex-col overflow-hidden animate-slide-up bg-[var(--glass-bg)] border-[1.5px] border-[var(--glass-border)] backdrop-blur-[20px] rounded-[18px] shadow-[var(--glass-shadow)]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div
-          style={{
-            padding: '20px 24px 16px',
-            borderBottom: '1.5px solid var(--border-muted)',
-            display: 'flex',
-            alignItems: 'flex-start',
-            justifyContent: 'space-between',
-            gap: '12px',
-          }}
-        >
+        <div className="px-5 py-4 border-b border-[var(--border-muted)] flex items-start justify-between gap-3">
           <div>
-            <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>
+            <h2 className="m-0 text-[18px] font-bold text-[var(--text-primary)]">
               Create a Group
             </h2>
-            <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-muted)' }}>
+            <p className="m-1 text-[13px] text-[var(--text-muted)]">
               Your group is where your friends hang out.
             </p>
           </div>
           <button
             id="close-create-group-modal"
             onClick={onClose}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              color: 'var(--text-muted)',
-              padding: '4px',
-              borderRadius: '6px',
-              display: 'flex',
-              alignItems: 'center',
-              flexShrink: 0,
-            }}
+            className="bg-transparent border-none cursor-pointer text-[var(--text-muted)] p-1 rounded-md flex items-center shrink-0"
           >
             <IconX size={18} />
           </button>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-5 py-5 flex flex-col gap-4">
           {/* Group Name */}
           <div>
             <label
               htmlFor="group-name-input"
-              style={{ display: 'block', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', marginBottom: '8px' }}
+              className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2"
             >
-              Group Name <span style={{ color: 'var(--danger)' }}>*</span>
+              Group Name <span className="text-[var(--danger)]">*</span>
             </label>
             <input
               id="group-name-input"
@@ -165,19 +121,7 @@ export const CreateGroupModal = ({ onClose }: CreateGroupModalProps): React.JSX.
               placeholder="e.g. The Squad, Dev Team…"
               maxLength={100}
               required
-              className="input-base"
-              style={{
-                width: '100%',
-                padding: '10px 14px',
-                borderRadius: '10px',
-                background: 'var(--bg-input)',
-                border: '1.5px solid var(--glass-border)',
-                color: 'var(--text-primary)',
-                fontSize: '14px',
-                boxSizing: 'border-box',
-              }}
-              onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.boxShadow = '0 0 0 2.5px var(--accent-ring)'; }}
-              onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.boxShadow = 'none'; }}
+              className="input-base w-full px-3.5 py-2.5 rounded-[10px] bg-[var(--bg-input)] border-[1.5px] border-[var(--glass-border)] text-[var(--text-primary)] text-sm box-border focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[2.5px] focus:ring-[var(--accent-ring)]"
             />
           </div>
 
@@ -185,9 +129,9 @@ export const CreateGroupModal = ({ onClose }: CreateGroupModalProps): React.JSX.
           <div>
             <label
               htmlFor="group-desc-input"
-              style={{ display: 'block', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', marginBottom: '8px' }}
+              className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2"
             >
-              Description <span style={{ fontSize: '10px', textTransform: 'none', fontWeight: 400, letterSpacing: 0 }}>(optional)</span>
+              Description <span className="text-xs text-normal normal-case tracking-none font-normal">(optional)</span>
             </label>
             <input
               id="group-desc-input"
@@ -196,54 +140,34 @@ export const CreateGroupModal = ({ onClose }: CreateGroupModalProps): React.JSX.
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What's this group about?"
               maxLength={500}
-              className="input-base"
-              style={{
-                width: '100%',
-                padding: '10px 14px',
-                borderRadius: '10px',
-                background: 'var(--bg-input)',
-                border: '1.5px solid var(--glass-border)',
-                color: 'var(--text-primary)',
-                fontSize: '14px',
-                boxSizing: 'border-box',
-              }}
-              onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.boxShadow = '0 0 0 2.5px var(--accent-ring)'; }}
-              onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.boxShadow = 'none'; }}
+              className="input-base w-full px-3.5 py-2.5 rounded-[10px] bg-[var(--bg-input)] border-[1.5px] border-[var(--glass-border)] text-[var(--text-primary)] text-sm box-border focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[2.5px] focus:ring-[var(--accent-ring)]"
             />
           </div>
 
           {/* Add Members */}
           <div>
             <label
-              style={{ display: 'block', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', marginBottom: '8px' }}
+              className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2"
             >
-              Add Members <span style={{ fontSize: '10px', textTransform: 'none', fontWeight: 400, letterSpacing: 0 }}>(optional)</span>
+              Add Members <span className="text-xs text-normal normal-case tracking-none font-normal">(optional)</span>
             </label>
 
             {/* Selected users chips */}
             {selectedUsers.length > 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+              <div className="flex flex-wrap gap-1.5 mb-2">
                 {selectedUsers.map((u) => (
                   <div
                     key={u.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      padding: '4px 8px 4px 6px',
-                      borderRadius: '20px',
-                      background: 'var(--theme-btn-active)',
-                      border: '1px solid var(--accent-primary)',
-                    }}
+                    className="flex items-center gap-1.5 py-1 pl-1.5 pr-2 rounded-full bg-[var(--theme-btn-active)] border border-[var(--accent-primary)]"
                   >
                     <Avatar letter={(u.displayName || u.email)[0].toUpperCase()} size="sm" />
-                    <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--theme-btn-active-text)' }}>
+                    <span className="text-xs font-semibold text-[var(--theme-btn-active-text)]">
                       {u.displayName || u.email.split('@')[0]}
                     </span>
                     <button
                       type="button"
                       onClick={() => handleRemoveUser(u.id)}
-                      style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '0', display: 'flex', alignItems: 'center', color: 'var(--text-muted)' }}
+                      className="bg-transparent border-none cursor-pointer p-0 flex items-center text-[var(--text-muted)]"
                     >
                       <IconX size={12} />
                     </button>
@@ -253,8 +177,8 @@ export const CreateGroupModal = ({ onClose }: CreateGroupModalProps): React.JSX.
             )}
 
             {/* Search input */}
-            <div style={{ position: 'relative' }}>
-              <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none', display: 'flex' }}>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none flex">
                 <IconSearch />
               </span>
               <input
@@ -263,61 +187,26 @@ export const CreateGroupModal = ({ onClose }: CreateGroupModalProps): React.JSX.
                 value={searchQuery}
                 onChange={handleSearchChange}
                 placeholder="Search by name or email…"
-                className="input-base"
-                style={{
-                  width: '100%',
-                  padding: '10px 14px 10px 36px',
-                  borderRadius: '10px',
-                  background: 'var(--bg-input)',
-                  border: '1.5px solid var(--glass-border)',
-                  color: 'var(--text-primary)',
-                  fontSize: '13.5px',
-                  boxSizing: 'border-box',
-                }}
-                onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.boxShadow = '0 0 0 2.5px var(--accent-ring)'; }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.boxShadow = 'none'; }}
+                className="input-base w-full py-2.5 pl-9 pr-3.5 rounded-[10px] bg-[var(--bg-input)] border-[1.5px] border-[var(--glass-border)] text-[var(--text-primary)] text-[13.5px] box-border focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[2.5px] focus:ring-[var(--accent-ring)]"
               />
 
               {/* Search Dropdown */}
               {filteredResults.length > 0 && (
                 <div
-                  style={{
-                    position: 'absolute',
-                    top: 'calc(100% + 4px)',
-                    left: 0,
-                    right: 0,
-                    background: 'var(--glass-bg)',
-                    border: '1.5px solid var(--glass-border)',
-                    borderRadius: '10px',
-                    overflow: 'hidden',
-                    maxHeight: '180px',
-                    overflowY: 'auto',
-                    zIndex: 100,
-                    boxShadow: 'var(--glass-shadow)',
-                  }}
+                  className="absolute top-[calc(100%+4px)] left-0 right-0 bg-[var(--glass-bg)] border-[1.5px] border-[var(--glass-border)] rounded-[10px] overflow-y-auto max-h-[180px] z-[100] shadow-[var(--glass-shadow)]"
                 >
                   {filteredResults.map((u) => (
                     <div
                       key={u.id}
                       onClick={() => handleAddUser(u)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
-                        padding: '10px 14px',
-                        cursor: 'pointer',
-                        transition: 'background 0.15s',
-                        borderBottom: '1px solid var(--border-muted)',
-                      }}
-                      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-input)'; }}
-                      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
+                      className="flex items-center gap-2.5 px-3.5 py-2.5 cursor-pointer border-b border-[var(--border-muted)] hover:bg-[var(--bg-input)] transition-colors duration-150"
                     >
                       <Avatar letter={(u.displayName || u.email)[0].toUpperCase()} size="sm" />
                       <div>
-                        <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>{u.displayName}</div>
-                        <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{u.email}</div>
+                        <div className="text-[13px] font-semibold text-[var(--text-primary)]">{u.displayName}</div>
+                        <div className="text-[11px] text-[var(--text-muted)]">{u.email}</div>
                       </div>
-                      <div style={{ marginLeft: 'auto', color: 'var(--accent-primary)', display: 'flex' }}>
+                      <div className="ml-auto text-[var(--accent-primary)] flex">
                         <IconPlus size={14} />
                       </div>
                     </div>
@@ -330,27 +219,12 @@ export const CreateGroupModal = ({ onClose }: CreateGroupModalProps): React.JSX.
 
         {/* Footer */}
         <div
-          style={{
-            padding: '16px 24px',
-            borderTop: '1.5px solid var(--border-muted)',
-            display: 'flex',
-            justifyContent: 'flex-end',
-            gap: '10px',
-          }}
+          className="px-5 py-4 border-t border-[var(--border-muted)] flex justify-end gap-2.5"
         >
           <button
             type="button"
             onClick={onClose}
-            style={{
-              padding: '10px 20px',
-              borderRadius: '10px',
-              border: '1.5px solid var(--glass-border)',
-              background: 'transparent',
-              color: 'var(--text-secondary)',
-              fontSize: '14px',
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
+            className="px-5 py-2.5 rounded-[10px] border-[1.5px] border-[var(--glass-border)] bg-transparent text-[var(--text-secondary)] text-sm font-semibold cursor-pointer"
           >
             Cancel
           </button>
@@ -359,17 +233,7 @@ export const CreateGroupModal = ({ onClose }: CreateGroupModalProps): React.JSX.
             type="button"
             onClick={handleSubmit}
             disabled={isLoading || !groupName.trim()}
-            className="btn-send"
-            style={{
-              padding: '10px 24px',
-              borderRadius: '10px',
-              border: 'none',
-              fontSize: '14px',
-              fontWeight: 600,
-              cursor: isLoading || !groupName.trim() ? 'not-allowed' : 'pointer',
-              opacity: isLoading || !groupName.trim() ? 0.5 : 1,
-              color: 'white',
-            }}
+            className="btn-send px-6 py-2.5 rounded-[10px] border-none text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isLoading ? 'Creating…' : 'Create Group'}
           </button>

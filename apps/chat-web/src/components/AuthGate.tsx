@@ -63,8 +63,7 @@ export const AuthGate = (): React.JSX.Element => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen w-screen p-6"
-      style={{ background: 'var(--bg-primary)' }}>
+    <div className="flex items-center justify-center min-h-screen w-screen p-6 bg-[var(--bg-primary)]">
 
       {/* Theme switcher in corner */}
       <div className="fixed top-5 right-5 z-50">
@@ -74,16 +73,12 @@ export const AuthGate = (): React.JSX.Element => {
       <div className="flex w-[900px] max-w-full min-h-[580px] overflow-hidden glass-panel animate-fade-in">
 
         {/* Left Branding Panel */}
-        <div className="relative flex-[1.1] flex flex-col justify-center items-center p-12 text-white text-center overflow-hidden"
-          style={{ background: 'linear-gradient(140deg, var(--accent-primary) 0%, var(--accent-secondary) 100%)' }}>
-          <div className="absolute inset-0"
-            style={{ background: 'radial-gradient(circle at 30% 20%, rgba(255,255,255,0.18) 0%, transparent 65%)' }} />
-          <div className="absolute -bottom-14 -right-14 w-56 h-56 rounded-full"
-            style={{ background: 'rgba(255,255,255,0.06)' }} />
+        <div className="relative flex-[1.1] flex flex-col justify-center items-center p-12 text-white text-center overflow-hidden bg-gradient-to-br from-[var(--accent-primary)] to-[var(--accent-secondary)]">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.18)_0%,transparent_65%)]" />
+          <div className="absolute -bottom-14 -right-14 w-56 h-56 rounded-full bg-[rgba(255,255,255,0.06)]" />
 
           {/* Brand icon */}
-          <div className="relative z-10 w-14 h-14 rounded-2xl flex items-center justify-center mb-6"
-            style={{ background: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(8px)' }}>
+          <div className="relative z-10 w-14 h-14 rounded-2xl flex items-center justify-center mb-6 bg-[rgba(255,255,255,0.18)] backdrop-blur-[8px]">
             <IconBolt />
           </div>
 
@@ -98,8 +93,7 @@ export const AuthGate = (): React.JSX.Element => {
               { icon: <IconShield />, text: 'JWT-secured channels' },
               { icon: <IconGlobe />,  text: 'Real-time presence sync' },
             ].map(({ icon, text }) => (
-              <div key={text} className="flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-[13px] text-left"
-                style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)' }}>
+              <div key={text} className="flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-[13px] text-left bg-[rgba(255,255,255,0.12)] backdrop-blur-[8px]">
                 {icon}
                 <span>{text}</span>
               </div>
@@ -108,14 +102,12 @@ export const AuthGate = (): React.JSX.Element => {
         </div>
 
         {/* Right Form Panel */}
-        <div className="flex-1 flex flex-col justify-center p-12"
-          style={{ background: 'var(--bg-chat)' }}>
+        <div className="flex-1 flex flex-col justify-center p-12 bg-[var(--bg-chat)]">
           <div className="mb-8">
-            <h2 className="text-[28px] font-bold tracking-tight mb-2"
-              style={{ color: 'var(--text-primary)' }}>
+            <h2 className="text-[28px] font-bold tracking-tight mb-2 text-[var(--text-primary)]">
               {isLoginMode ? 'Welcome back' : 'Create account'}
             </h2>
-            <p className="text-[14px]" style={{ color: 'var(--text-secondary)' }}>
+            <p className="text-[14px] text-[var(--text-secondary)]">
               {isLoginMode
                 ? 'Enter your credentials to open your workspace.'
                 : 'Register a profile to start instant messaging.'}
@@ -123,8 +115,7 @@ export const AuthGate = (): React.JSX.Element => {
           </div>
 
           {(localError || authError) && (
-            <div className="flex items-center gap-2 rounded-xl px-4 py-3 mb-5 text-[13.5px] animate-fade-in"
-              style={{ background: 'var(--danger-bg)', border: '1px solid var(--danger-border)', color: 'var(--danger)' }}>
+            <div className="flex items-center gap-2 rounded-xl px-4 py-3 mb-5 text-[13.5px] animate-fade-in bg-[var(--danger-bg)] border border-[var(--danger-border)] text-[var(--danger)]">
               <IconAlertCircle />
               {localError || authError}
             </div>
@@ -133,64 +124,54 @@ export const AuthGate = (): React.JSX.Element => {
           <form className="flex flex-col gap-4" onSubmit={handleAuthSubmit}>
             {!isLoginMode && (
               <div className="flex flex-col gap-1.5">
-                <label className="text-[11.5px] font-semibold uppercase tracking-wide"
-                  style={{ color: 'var(--text-secondary)' }}>
+                <label className="text-[11.5px] font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                   Display Name
                 </label>
                 <input
                   id="auth-display-name"
                   type="text"
-                  className="input-base rounded-[10px] px-4 py-3 text-[14.5px]"
+                  className="input-base rounded-[10px] px-4 py-3 text-[14.5px] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[3px] focus:ring-[var(--accent-ring)]"
                   placeholder="e.g. Umang"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   required={!isLoginMode}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-ring)'; }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.boxShadow = 'none'; }}
                 />
               </div>
             )}
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[11.5px] font-semibold uppercase tracking-wide"
-                style={{ color: 'var(--text-secondary)' }}>
+              <label className="text-[11.5px] font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                 Email
               </label>
               <input
                 id="auth-email"
                 type="email"
-                className="input-base rounded-[10px] px-4 py-3 text-[14.5px]"
+                className="input-base rounded-[10px] px-4 py-3 text-[14.5px] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[3px] focus:ring-[var(--accent-ring)]"
                 placeholder="user@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-ring)'; }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.boxShadow = 'none'; }}
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[11.5px] font-semibold uppercase tracking-wide"
-                style={{ color: 'var(--text-secondary)' }}>
+              <label className="text-[11.5px] font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                 Password
               </label>
               <div className="relative flex items-center">
                 <input
                   id="auth-password"
                   type={showPassword ? 'text' : 'password'}
-                  className="input-base w-full rounded-[10px] pl-4 pr-10 py-3 text-[14.5px]"
+                  className="input-base w-full rounded-[10px] pl-4 pr-10 py-3 text-[14.5px] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[3px] focus:ring-[var(--accent-ring)]"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-ring)'; }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.boxShadow = 'none'; }}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 cursor-pointer transition-colors duration-200"
-                  style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)' }}
+                  className="absolute right-3 cursor-pointer transition-colors duration-200 bg-transparent border-none text-[var(--text-muted)]"
                 >
                   {showPassword ? <IconEyeOff /> : <IconEye />}
                 </button>
@@ -199,27 +180,23 @@ export const AuthGate = (): React.JSX.Element => {
 
             {!isLoginMode && (
               <div className="flex flex-col gap-1.5">
-                <label className="text-[11.5px] font-semibold uppercase tracking-wide"
-                  style={{ color: 'var(--text-secondary)' }}>
+                <label className="text-[11.5px] font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                   Confirm Password
                 </label>
                 <div className="relative flex items-center">
                   <input
                     id="auth-confirm-password"
                     type={showConfirmPassword ? 'text' : 'password'}
-                    className="input-base w-full rounded-[10px] pl-4 pr-10 py-3 text-[14.5px]"
+                    className="input-base w-full rounded-[10px] pl-4 pr-10 py-3 text-[14.5px] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[3px] focus:ring-[var(--accent-ring)]"
                     placeholder="••••••••"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
-                    onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-ring)'; }}
-                    onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.boxShadow = 'none'; }}
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 cursor-pointer transition-colors duration-200"
-                    style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)' }}
+                    className="absolute right-3 cursor-pointer transition-colors duration-200 bg-transparent border-none text-[var(--text-muted)]"
                   >
                     {showConfirmPassword ? <IconEyeOff /> : <IconEye />}
                   </button>
@@ -231,20 +208,17 @@ export const AuthGate = (): React.JSX.Element => {
               id="auth-submit-btn"
               type="submit"
               disabled={authStatus === 'loading'}
-              className="mt-2 rounded-[10px] py-3.5 text-[15px] font-semibold text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 relative overflow-hidden btn-send"
-              onMouseEnter={(e) => { if (authStatus !== 'loading') { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = 'var(--btn-shadow)'; } }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = ''; (e.currentTarget as HTMLButtonElement).style.boxShadow = ''; }}
+              className="mt-2 rounded-[10px] py-3.5 text-[15px] font-semibold text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 relative overflow-hidden btn-send hover:-translate-y-0.5 hover:shadow-[var(--btn-shadow)]"
             >
               {authStatus === 'loading' ? 'Processing…' : isLoginMode ? 'Sign In' : 'Sign Up'}
             </button>
           </form>
 
-          <div className="text-center mt-6 text-[14px]" style={{ color: 'var(--text-secondary)' }}>
+          <div className="text-center mt-6 text-[14px] text-[var(--text-secondary)]">
             {isLoginMode ? "Don't have an account?" : 'Already registered?'}
             <button
               id="auth-toggle-btn"
-              className="ml-1.5 font-semibold cursor-pointer transition-colors duration-200"
-              style={{ color: 'var(--accent-primary)', background: 'none', border: 'none' }}
+              className="ml-1.5 font-semibold cursor-pointer transition-colors duration-200 text-[var(--accent-primary)] bg-transparent border-none"
               onClick={() => {
                 setIsLoginMode(!isLoginMode);
                 dispatch(clearAuthError());

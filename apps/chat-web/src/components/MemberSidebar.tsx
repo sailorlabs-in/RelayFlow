@@ -70,52 +70,28 @@ export const MemberSidebar = ({ group }: MemberSidebarProps): React.JSX.Element 
     <div
       key={m.id}
       id={`member-row-${m.id}`}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '10px',
-        padding: '8px 10px',
-        borderRadius: '10px',
-        transition: 'background 0.15s, transform 0.1s',
-        marginBottom: '4px',
-        cursor: 'default',
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.background = 'var(--bg-input)';
-        e.currentTarget.style.transform = 'translateX(2px)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = 'transparent';
-        e.currentTarget.style.transform = 'none';
-      }}
+      className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-all duration-150 mb-1 cursor-default hover:bg-[var(--bg-input)] hover:translate-x-0.5"
     >
       <Avatar letter={m.displayName[0].toUpperCase()} status={m.presence} size="sm" />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1">
           <span
-            style={{
-              fontSize: '13px',
-              fontWeight: 500,
-              color: m.presence === 'offline' ? 'var(--text-muted)' : 'var(--text-primary)',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
+            className={`text-[13px] font-medium truncate ${m.presence === 'offline' ? 'text-[var(--text-muted)]' : 'text-[var(--text-primary)]'}`}
           >
             {m.displayName}
           </span>
           {m.isOwner && (
-            <span style={{ color: '#eab308', display: 'flex', flexShrink: 0 }} title="Group Owner">
+            <span className="text-[#eab308] flex shrink-0" title="Group Owner">
               <IconCrown />
             </span>
           )}
         </div>
         {m.isTyping ? (
-          <div style={{ fontSize: '10px', color: 'var(--accent-secondary)', fontWeight: 500 }}>
+          <div className="text-[10px] text-[var(--accent-secondary)] font-medium">
             typing...
           </div>
         ) : m.role !== 'member' ? (
-          <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'capitalize' }}>
+          <div className="text-[10px] text-[var(--text-muted)] capitalize">
             {m.role}
           </div>
         ) : null}
@@ -132,48 +108,20 @@ export const MemberSidebar = ({ group }: MemberSidebarProps): React.JSX.Element 
 
   return (
     <div
-      className="glass-panel"
-      style={{
-        width: '240px',
-        minWidth: '240px',
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-      }}
+      className="glass-panel w-[240px] min-w-[240px] h-full flex flex-col overflow-hidden"
     >
       {/* Title */}
       <div
-        style={{
-          padding: '14px 16px',
-          borderBottom: '1.5px solid var(--border-muted)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
-          color: 'var(--text-primary)',
-          fontSize: '14px',
-          fontWeight: 700,
-          background: 'var(--bg-sidebar)',
-          borderTopLeftRadius: '1rem',
-          borderTopRightRadius: '1rem',
-        }}
+        className="px-4 py-3.5 border-b-[1.5px] border-[var(--border-muted)] flex items-center gap-1.5 text-[var(--text-primary)] text-sm font-bold bg-[var(--bg-sidebar)] rounded-t-2xl"
       >
         <IconPeople />
         <span>Group Members ({members.length})</span>
       </div>
 
       {/* Tabs Selector UI - Rounded like other switcher */}
-      <div style={{ padding: '10px 12px 6px 12px', background: 'rgba(0,0,0,0.01)' }}>
+      <div className="px-3 pt-2.5 pb-1.5 bg-[rgba(0,0,0,0.01)]">
         <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
-            gap: '2px',
-            background: 'var(--theme-btn)',
-            borderRadius: '12px',
-            padding: '3px',
-            border: '1px solid var(--glass-border)',
-          }}
+          className="grid grid-cols-4 gap-0.5 bg-[var(--theme-btn)] rounded-xl p-0.5 border border-[var(--glass-border)]"
         >
           {tabOptions.map((tab) => {
             const isActive = activeTab === tab.id;
@@ -182,35 +130,10 @@ export const MemberSidebar = ({ group }: MemberSidebarProps): React.JSX.Element 
                 key={tab.id}
                 id={`member-tab-${tab.id}`}
                 onClick={() => setActiveTab(tab.id)}
-                style={{
-                  background: isActive ? 'var(--theme-btn-active)' : 'transparent',
-                  color: isActive ? 'var(--theme-btn-active-text)' : 'var(--text-muted)',
-                  border: 'none',
-                  borderRadius: '9px',
-                  padding: '6px 2px',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'all 0.15s ease',
-                  outline: 'none',
-                }}
-                onMouseEnter={(e) => {
-                  if (!isActive) {
-                    e.currentTarget.style.background = 'var(--theme-btn-hover)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isActive) {
-                    e.currentTarget.style.background = 'transparent';
-                  }
-                }}
+                className={`border-0 rounded-[9px] py-1.5 px-0.5 text-[11px] font-semibold cursor-pointer flex flex-col items-center justify-center transition-all duration-150 outline-none ${isActive ? 'bg-[var(--theme-btn-active)] text-[var(--theme-btn-active-text)]' : 'bg-transparent text-[var(--text-muted)] hover:bg-[var(--theme-btn-hover)]'}`}
               >
-                <span style={{ fontSize: '10px', textTransform: 'capitalize' }}>{tab.label}</span>
-                <span style={{ fontSize: '9px', opacity: 0.8, marginTop: '1px' }}>({tab.count})</span>
+                <span className="text-[10px] capitalize">{tab.label}</span>
+                <span className="text-[9px] opacity-80 mt-0.5">({tab.count})</span>
               </button>
             );
           })}
@@ -218,30 +141,16 @@ export const MemberSidebar = ({ group }: MemberSidebarProps): React.JSX.Element 
       </div>
 
       {/* Member Lists Content */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '8px 12px' }}>
+      <div className="flex-1 overflow-y-auto px-3 py-2">
         {currentTabMembers.length > 0 ? (
           <div>
             <div
-              style={{
-                fontSize: '10px',
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                letterSpacing: '0.06em',
-                color: 'var(--text-muted)',
-                paddingLeft: '8px',
-                marginBottom: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-              }}
+              className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] pl-2 mb-2 flex items-center gap-1.5"
             >
               <span
+                className="w-1.5 h-1.5 rounded-full inline-block"
                 style={{
-                  width: '6px',
-                  height: '6px',
-                  borderRadius: '50%',
                   backgroundColor: tabOptions.find((t) => t.id === activeTab)?.color,
-                  display: 'inline-block',
                 }}
               />
               {activeTab === 'dnd' ? 'Do Not Disturb' : activeTab} — {currentTabMembers.length}
@@ -250,13 +159,7 @@ export const MemberSidebar = ({ group }: MemberSidebarProps): React.JSX.Element 
           </div>
         ) : (
           <div
-            style={{
-              padding: '24px 16px',
-              textAlign: 'center',
-              color: 'var(--text-muted)',
-              fontSize: '12px',
-              fontStyle: 'italic',
-            }}
+            className="py-6 px-4 text-center text-[var(--text-muted)] text-xs italic"
           >
             No members are {activeTab}
           </div>

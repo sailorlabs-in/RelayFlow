@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 
 import { useAppDispatch, useAppSelector } from '../store';
 import { setActiveConversation } from '../store/slices/chatSlice';
-import type {
-  Group,
-  GroupChannel,
+import type { Group, GroupChannel } from '../store/slices/groupsSlice';
+import {
   setActiveChannel,
   deleteGroup,
+  deleteChannel,
 } from '../store/slices/groupsSlice';
 import { socketManager } from '../store/socketManager';
 
@@ -72,36 +72,11 @@ export const ChannelSidebar = ({
   };
 
   return (
-    <div
-      className="glass-panel"
-      style={{
-        width: '240px',
-        minWidth: '240px',
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-      }}
-    >
+    <div className="glass-panel w-60 min-w-60 h-full flex flex-col overflow-hidden select-none transition-all duration-300 ease-in-out">
       {/* Group Header */}
-      <div
-        style={{
-          padding: '14px 16px',
-          borderBottom: '1.5px solid var(--border-muted)',
-          background: 'var(--bg-sidebar)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '8px',
-        }}
-      >
+      <div className="px-4 py-3.5 border-b-[1.5px] border-theme bg-theme-sidebar flex flex-col gap-2.5 shadow-sm">
         {/* Header row: rail toggle + group name + action buttons */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
+        <div className="flex items-center justify-between gap-2">
           {/* Rail toggle — leftmost, same pattern as ChatSidebar */}
           <button
             id="channel-rail-toggle-btn"
@@ -109,91 +84,40 @@ export const ChannelSidebar = ({
               isRailCollapsed ? 'Show navigation rail' : 'Hide navigation rail'
             }
             onClick={onToggleRail}
-            style={{
-              background: isRailCollapsed
-                ? 'var(--theme-btn-active)'
-                : 'transparent',
-              color: isRailCollapsed
-                ? 'var(--theme-btn-active-text)'
-                : 'var(--text-muted)',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '5px',
-              borderRadius: '7px',
-              display: 'flex',
-              alignItems: 'center',
-              transition: 'all 0.15s',
-              flexShrink: 0,
-              marginRight: '4px',
-            }}
-            onMouseEnter={(e) => {
-              if (!isRailCollapsed) {
-                (e.currentTarget as HTMLButtonElement).style.background =
-                  'var(--bg-input)';
-                (e.currentTarget as HTMLButtonElement).style.color =
-                  'var(--text-primary)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!isRailCollapsed) {
-                (e.currentTarget as HTMLButtonElement).style.background =
-                  'transparent';
-                (e.currentTarget as HTMLButtonElement).style.color =
-                  'var(--text-muted)';
-              }
-            }}
+            className={`p-1 rounded-md flex items-center justify-center cursor-pointer transition-all duration-150 flex-shrink-0 mr-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]
+              ${
+                isRailCollapsed
+                  ? 'bg-[var(--theme-btn-active)] text-[var(--theme-btn-active-text)]'
+                  : 'bg-transparent text-[var(--text-muted)] hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)]'
+              }`}
           >
             <svg
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
-              style={{ width: 14, height: 14 }}
+              className="w-3.5 h-3.5"
             >
               <rect x="3" y="3" width="18" height="18" rx="2" />
               <line x1="9" y1="3" x2="9" y2="21" />
             </svg>
           </button>
-          <div style={{ flex: 1, minWidth: 0, paddingRight: '8px' }}>
-            <div
-              style={{
-                fontWeight: 700,
-                fontSize: '15px',
-                color: 'var(--text-primary)',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
+          
+          <div className="flex-1 min-w-0 pr-2">
+            <div className="font-bold text-[15px] text-[var(--text-primary)] truncate">
               {group.name}
             </div>
             {group.description && (
-              <div
-                style={{
-                  fontSize: '11px',
-                  color: 'var(--text-muted)',
-                  marginTop: '2px',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
+              <div className="text-[11px] text-[var(--text-muted)] mt-0.5 truncate">
                 {group.description}
               </div>
             )}
           </div>
         </div>
-        <div className="fs-12 flex gap-4 items-center justify-between">
+        
+        <div className="text-xs flex gap-3 items-center justify-between mt-1">
           {/* Member count */}
-          <div
-            style={{
-              fontSize: '11px',
-              color: 'var(--text-muted)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-            }}
-          >
+          <div className="text-[11px] text-[var(--text-muted)] flex items-center gap-1.5">
             <IconButton
               title="Invite Members"
               onClick={onInviteMembers}
@@ -201,13 +125,12 @@ export const ChannelSidebar = ({
             >
               <IconPeople />
             </IconButton>
-            <span>
-              {group.members.length} member
-              {group.members.length !== 1 ? 's' : ''}
+            <span className="font-medium">
+              {group.members.length} member{group.members.length !== 1 ? 's' : ''}
             </span>
           </div>
           {/* Action buttons */}
-          <div style={{ display: 'flex', gap: '2px', flexShrink: 0 }}>
+          <div className="flex gap-1.5 flex-shrink-0 items-center">
             {isOwner && (
               <IconButton
                 title="Group Settings"
@@ -232,49 +155,21 @@ export const ChannelSidebar = ({
       </div>
 
       {/* Channel List */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '8px 6px' }}>
+      <div className="flex-1 overflow-y-auto p-2 space-y-1.5 custom-scrollbar">
         {/* Section Header */}
         <div
           onClick={() => setShowChannels((v) => !v)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '4px 8px 4px 6px',
-            cursor: 'pointer',
-            borderRadius: '6px',
-            marginBottom: '2px',
-            userSelect: 'none',
-          }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLDivElement).style.background =
-              'var(--bg-input)';
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLDivElement).style.background =
-              'transparent';
-          }}
+          className="flex items-center justify-between py-1 px-2 cursor-pointer rounded-md select-none transition-all duration-150 hover:bg-[var(--bg-input)]"
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <div className="flex items-center gap-1">
             <span
-              style={{
-                transition: 'transform 0.2s',
-                transform: showChannels ? 'rotate(0deg)' : 'rotate(-90deg)',
-                color: 'var(--text-muted)',
-                display: 'flex',
-              }}
+              className={`flex transition-transform duration-200 text-[var(--text-muted)] ${
+                showChannels ? 'rotate-0' : '-rotate-90'
+              }`}
             >
               <IconChevronDown />
             </span>
-            <span
-              style={{
-                fontSize: '11px',
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                letterSpacing: '0.06em',
-                color: 'var(--text-muted)',
-              }}
-            >
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
               Text Channels
             </span>
           </div>
@@ -286,25 +181,7 @@ export const ChannelSidebar = ({
                 e.stopPropagation();
                 onCreateChannel();
               }}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '2px',
-                borderRadius: '4px',
-                display: 'flex',
-                alignItems: 'center',
-                color: 'var(--text-muted)',
-                transition: 'color 0.15s',
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.color =
-                  'var(--text-primary)';
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.color =
-                  'var(--text-muted)';
-              }}
+              className="bg-transparent border-none cursor-pointer p-0.5 rounded flex items-center text-[var(--text-muted)] transition-colors duration-150 hover:text-[var(--text-primary)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-primary)]"
             >
               <IconPlus size={14} />
             </button>
@@ -313,16 +190,9 @@ export const ChannelSidebar = ({
 
         {/* Channels */}
         {showChannels && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+          <div className="flex flex-col gap-[2px] mt-1">
             {group.channels.length === 0 ? (
-              <div
-                style={{
-                  padding: '12px 10px',
-                  fontSize: '12px',
-                  color: 'var(--text-muted)',
-                  textAlign: 'center',
-                }}
-              >
+              <div className="py-3 px-2 text-xs text-[var(--text-muted)] text-center">
                 No channels yet. Create one!
               </div>
             ) : (
@@ -331,96 +201,76 @@ export const ChannelSidebar = ({
                 return (
                   <div
                     key={channel.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      width: '100%',
-                      borderRadius: '8px',
-                      transition: 'all 0.15s',
-                      background: isActive
-                        ? 'var(--theme-btn-active)'
-                        : 'transparent',
-                      paddingRight: '6px',
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isActive) {
-                        e.currentTarget.style.background = 'var(--bg-input)';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isActive) {
-                        e.currentTarget.style.background = 'transparent';
-                      }
-                    }}
+                    className={`group/channel flex items-center justify-between w-full rounded-lg transition-all duration-150 pr-1.5 ${
+                      isActive
+                        ? 'bg-[var(--theme-btn-active)]'
+                        : 'bg-transparent hover:bg-[var(--bg-input)]'
+                    }`}
                   >
                     <button
-                      key={channel.id}
                       id={`channel-${channel.id}`}
                       onClick={() => handleSelectChannel(channel)}
-                      style={{
-                        flex: 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        padding: '7px 8px',
-                        borderRadius: '8px',
-                        border: 'none',
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                        transition: 'all 0.15s',
-                        background: 'transparent',
-                        color: isActive
-                          ? 'var(--theme-btn-active-text)'
-                          : 'var(--text-secondary)',
-                        fontWeight: isActive ? 600 : 400,
-                        fontSize: '14px',
-                        minWidth: 0,
-                      }}
+                      className={`flex-1 flex items-center gap-1.5 py-1.5 px-2 rounded-lg border-none cursor-pointer text-left transition-all duration-150 bg-transparent text-sm min-w-0 outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-primary)] ${
+                        isActive
+                          ? 'text-[var(--theme-btn-active-text)] font-semibold'
+                          : 'text-[var(--text-secondary)] font-normal'
+                      }`}
                     >
                       <span
-                        style={{ opacity: isActive ? 1 : 0.6, flexShrink: 0 }}
+                        className={`flex-shrink-0 transition-opacity duration-150 ${
+                          isActive
+                            ? 'opacity-100'
+                            : 'opacity-60 group-hover/channel:opacity-80'
+                        }`}
                       >
                         <IconHash />
                       </span>
-                      <span
-                        style={{
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {channel.name}
-                      </span>
+                      <span className="truncate">{channel.name}</span>
                     </button>
+                    
                     {isOwner && channel.name !== 'general' && (
-                      <button
-                        title="Channel Settings"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onEditChannel(channel);
-                        }}
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          cursor: 'pointer',
-                          color: 'var(--text-muted)',
-                          padding: '4px',
-                          borderRadius: '4px',
-                          display: 'flex',
-                          alignItems: 'center',
-                        }}
-                        onMouseEnter={(e) => {
-                          (e.currentTarget as HTMLButtonElement).style.color =
-                            'var(--text-primary)';
-                        }}
-                        onMouseLeave={(e) => {
-                          (e.currentTarget as HTMLButtonElement).style.color =
-                            'var(--text-muted)';
-                        }}
-                      >
-                        <IconSettings />
-                      </button>
+                      <div className="flex gap-1 items-center">
+                        <button
+                          title="Channel Settings"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEditChannel(channel);
+                          }}
+                          className="bg-transparent border-none cursor-pointer text-[var(--text-muted)] p-1 rounded hover:text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center transition-all duration-150 opacity-0 group-hover/channel:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-primary)]"
+                        >
+                          <IconSettings />
+                        </button>
+                        <button
+                          title="Delete Channel"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            if (
+                              window.confirm(
+                                `Delete channel #${channel.name}? This will permanently erase all message history in this channel.`,
+                              )
+                            ) {
+                              try {
+                                await dispatch(
+                                  deleteChannel({
+                                    groupId: group.id,
+                                    channelId: channel.id,
+                                  }),
+                                ).unwrap();
+                                showToast.success(
+                                  `Channel #${channel.name} deleted.`,
+                                );
+                              } catch (err: any) {
+                                showToast.error(
+                                  err || 'Failed to delete channel.',
+                                );
+                              }
+                            }
+                          }}
+                          className="bg-transparent border-none cursor-pointer text-[var(--danger)] p-1 rounded hover:bg-[var(--danger-bg)] flex items-center transition-all duration-150 opacity-0 group-hover/channel:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-primary)]"
+                        >
+                          <IconTrash />
+                        </button>
+                      </div>
                     )}
                   </div>
                 );
@@ -431,70 +281,24 @@ export const ChannelSidebar = ({
       </div>
 
       {/* Bottom user bar */}
-      <div
-        style={{
-          padding: '10px 12px',
-          borderTop: '1.5px solid var(--border-muted)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-        }}
-      >
-        <div
-          style={{
-            width: '32px',
-            height: '32px',
-            borderRadius: '50%',
-            background: 'var(--accent-primary)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '13px',
-            fontWeight: 700,
-            color: 'white',
-            flexShrink: 0,
-            position: 'relative',
-          }}
-        >
+      <div className="p-3 border-t-[1.5px] border-theme flex items-center gap-2 bg-[rgba(0,0,0,0.05)] dark:bg-[rgba(255,255,255,0.015)] shadow-inner">
+        <div className="w-8 h-8 rounded-full bg-[var(--accent-primary)] flex items-center justify-center text-[13px] font-bold text-white flex-shrink-0 relative shadow-sm">
           {(user?.displayName || user?.email || 'U')[0].toUpperCase()}
           <span
-            style={{
-              position: 'absolute',
-              bottom: '1px',
-              right: '1px',
-              width: '9px',
-              height: '9px',
-              borderRadius: '50%',
-              background:
-                ownStatus === 'online'
-                  ? '#22c55e'
-                  : ownStatus === 'away'
-                    ? '#f59e0b'
-                    : '#6b7280',
-              border: '2px solid var(--bg-sidebar)',
-            }}
+            className={`absolute bottom-0 right-0 w-[9px] h-[9px] rounded-full border-2 border-[var(--bg-sidebar)] ${
+              ownStatus === 'online'
+                ? 'bg-emerald-500'
+                : ownStatus === 'away'
+                  ? 'bg-amber-500'
+                  : 'bg-slate-500'
+            }`}
           />
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div
-            style={{
-              fontSize: '12.5px',
-              fontWeight: 600,
-              color: 'var(--text-primary)',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
+        <div className="flex-1 min-w-0">
+          <div className="text-[12.5px] font-semibold text-[var(--text-primary)] truncate">
             {user?.displayName || user?.email?.split('@')[0] || 'User'}
           </div>
-          <div
-            style={{
-              fontSize: '10.5px',
-              color: 'var(--text-muted)',
-              textTransform: 'capitalize',
-            }}
-          >
+          <div className="text-[10.5px] text-[var(--text-muted)] capitalize">
             {ownStatus}
           </div>
         </div>
@@ -530,27 +334,12 @@ const IconButton = ({
     id={id}
     title={title}
     onClick={onClick}
-    style={{
-      background: 'transparent',
-      border: 'none',
-      cursor: 'pointer',
-      padding: '5px',
-      borderRadius: '6px',
-      display: 'flex',
-      alignItems: 'center',
-      color: danger ? 'var(--danger)' : 'var(--text-muted)',
-      transition: 'all 0.15s',
-    }}
-    onMouseEnter={(e) => {
-      const b = e.currentTarget as HTMLButtonElement;
-      b.style.background = danger ? 'var(--danger-bg)' : 'var(--bg-input)';
-      b.style.color = danger ? 'var(--danger)' : 'var(--text-primary)';
-    }}
-    onMouseLeave={(e) => {
-      const b = e.currentTarget as HTMLButtonElement;
-      b.style.background = 'transparent';
-      b.style.color = danger ? 'var(--danger)' : 'var(--text-muted)';
-    }}
+    className={`p-1.5 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-150 border-none outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]
+      ${
+        danger
+          ? 'text-[var(--danger)] hover:bg-[var(--danger-bg)]'
+          : 'text-[var(--text-muted)] hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)]'
+      }`}
   >
     {children}
   </button>

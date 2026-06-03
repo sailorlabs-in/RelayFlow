@@ -41,70 +41,40 @@ export const GroupSettingsModal = ({
 
   return (
     <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 1100,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '16px',
-        background: 'rgba(4,6,12,0.65)',
-        backdropFilter: 'blur(14px)',
-        WebkitBackdropFilter: 'blur(14px)',
-      }}
+      className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-[rgba(4,6,12,0.65)] backdrop-blur-[14px]"
       onClick={onClose}
     >
       <div
-        style={{
-          width: '440px',
-          maxWidth: '100%',
-          background: 'var(--glass-bg)',
-          border: '1.5px solid var(--glass-border)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          borderRadius: '18px',
-          boxShadow: 'var(--glass-shadow)',
-          overflow: 'hidden',
-          animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-        }}
+        className="w-[440px] max-w-full bg-[var(--glass-bg)] border-[1.5px] border-[var(--glass-border)] backdrop-blur-[20px] rounded-[18px] shadow-[var(--glass-shadow)] overflow-hidden animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div
-          style={{
-            padding: '20px 24px 16px',
-            borderBottom: '1.5px solid var(--border-muted)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
+        <div className="px-5 py-4 border-b border-[var(--border-muted)] flex items-center justify-between">
           <div>
-            <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>
+            <h2 className="m-0 text-[18px] font-bold text-[var(--text-primary)]">
               Group Settings
             </h2>
-            <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: 'var(--text-muted)' }}>
+            <p className="m-1 text-[12.5px] text-[var(--text-muted)]">
               Customize your server settings
             </p>
           </div>
           <button
             id="close-group-settings-modal"
             onClick={onClose}
-            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '4px', borderRadius: '6px', display: 'flex', alignItems: 'center' }}
+            className="bg-transparent border-none cursor-pointer text-[var(--text-muted)] p-1 rounded-md flex items-center"
           >
             <IconX size={18} />
           </button>
         </div>
 
         {/* Body */}
-        <form onSubmit={handleSubmit} style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <form onSubmit={handleSubmit} className="px-5 py-5 flex flex-col gap-4">
           <div>
             <label
               htmlFor="group-name-input"
-              style={{ display: 'block', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', marginBottom: '8px' }}
+              className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2"
             >
-              Group Name <span style={{ color: 'var(--danger)' }}>*</span>
+              Group Name <span className="text-[var(--danger)]">*</span>
             </label>
             <input
               id="group-name-input"
@@ -115,26 +85,14 @@ export const GroupSettingsModal = ({
               maxLength={100}
               required
               autoFocus
-              className="input-base"
-              style={{
-                width: '100%',
-                padding: '10px 14px',
-                borderRadius: '10px',
-                background: 'var(--bg-input)',
-                border: '1.5px solid var(--glass-border)',
-                color: 'var(--text-primary)',
-                fontSize: '14px',
-                boxSizing: 'border-box',
-              }}
-              onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.boxShadow = '0 0 0 2.5px var(--accent-ring)'; }}
-              onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.boxShadow = 'none'; }}
+              className="input-base w-full px-3.5 py-2.5 rounded-[10px] bg-[var(--bg-input)] border-[1.5px] border-[var(--glass-border)] text-[var(--text-primary)] text-sm box-border focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[2.5px] focus:ring-[var(--accent-ring)]"
             />
           </div>
 
           <div>
             <label
               htmlFor="group-desc-input"
-              style={{ display: 'block', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', marginBottom: '8px' }}
+              className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2"
             >
               Description
             </label>
@@ -145,38 +103,19 @@ export const GroupSettingsModal = ({
               placeholder="A brief description for your group..."
               maxLength={300}
               rows={3}
-              className="input-base"
-              style={{
-                width: '100%',
-                padding: '10px 14px',
-                borderRadius: '10px',
-                background: 'var(--bg-input)',
-                border: '1.5px solid var(--glass-border)',
-                color: 'var(--text-primary)',
-                fontSize: '14px',
-                boxSizing: 'border-box',
-                resize: 'none',
-                fontFamily: 'inherit',
-              }}
-              onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.boxShadow = '0 0 0 2.5px var(--accent-ring)'; }}
-              onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.boxShadow = 'none'; }}
+              className="input-base w-full px-3.5 py-2.5 rounded-[10px] bg-[var(--bg-input)] border-[1.5px] border-[var(--glass-border)] text-[var(--text-primary)] text-sm box-border resize-none font-sans focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[2.5px] focus:ring-[var(--accent-ring)]"
             />
           </div>
         </form>
 
         {/* Footer */}
         <div
-          style={{
-            padding: '0 24px 20px',
-            display: 'flex',
-            justifyContent: 'flex-end',
-            gap: '10px',
-          }}
+          className="px-5 pb-5 flex justify-end gap-2.5"
         >
           <button
             type="button"
             onClick={onClose}
-            style={{ padding: '10px 20px', borderRadius: '10px', border: '1.5px solid var(--glass-border)', background: 'transparent', color: 'var(--text-secondary)', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}
+            className="px-5 py-2.5 rounded-[10px] border-[1.5px] border-[var(--glass-border)] bg-transparent text-[var(--text-secondary)] text-sm font-semibold cursor-pointer"
           >
             Cancel
           </button>
@@ -185,8 +124,7 @@ export const GroupSettingsModal = ({
             type="button"
             onClick={handleSubmit}
             disabled={isLoading || !name.trim()}
-            className="btn-send"
-            style={{ padding: '10px 24px', borderRadius: '10px', border: 'none', fontSize: '14px', fontWeight: 600, cursor: isLoading || !name.trim() ? 'not-allowed' : 'pointer', opacity: isLoading || !name.trim() ? 0.5 : 1, color: 'white' }}
+            className="btn-send px-6 py-2.5 rounded-[10px] border-none text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isLoading ? 'Saving…' : 'Save Changes'}
           </button>

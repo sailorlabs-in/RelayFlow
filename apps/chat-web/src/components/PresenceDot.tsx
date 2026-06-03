@@ -11,16 +11,12 @@ export const PresenceDot = ({ status, size = 10 }: PresenceDotProps): React.JSX.
   const s = (status as PresenceStatus) in PRESENCE_DOT_COLORS ? (status as PresenceStatus) : 'offline';
   return (
     <span
+      className="inline-block rounded-full shrink-0 border-2 border-[var(--glass-bg)] transition-colors duration-300"
       style={{
-        display: 'inline-block',
         width: size,
         height: size,
-        borderRadius: '50%',
         background: PRESENCE_DOT_COLORS[s],
-        border: '2px solid var(--glass-bg)',
-        flexShrink: 0,
         boxShadow: s !== 'offline' ? `0 0 0 1px ${PRESENCE_DOT_COLORS[s]}33` : 'none',
-        transition: 'background 0.3s ease',
       }}
       title={s.charAt(0).toUpperCase() + s.slice(1)}
       aria-label={`Status: ${s}`}
