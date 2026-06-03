@@ -42,14 +42,20 @@ self.addEventListener("push", (event) => {
           });
         } else {
           // App is not visible - show OS push notification
-          // Parse the JSON body to extract the human-readable message
           let displayBody = data.body || "";
-          let meta = {};
-          try {
-            meta = JSON.parse(data.body || "{}");
-            displayBody = meta.message || displayBody;
-          } catch (_) {
-            // body is plain text, use as-is
+          let meta = data.data || {};
+
+          // Fallback if metadata was stringified in body (old behavior support)
+          if (typeof displayBody === "string" && displayBody.trim().startsWith("{")) {
+            try {
+              const parsed = JSON.parse(displayBody);
+              if (parsed && typeof parsed === "object") {
+                meta = parsed;
+                displayBody = parsed.message || displayBody;
+              }
+            } catch (_) {
+              // Ignore parse error
+            }
           }
 
           const title = data.title || "Notification";

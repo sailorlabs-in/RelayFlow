@@ -4,6 +4,7 @@ import { PRESENCE_STATUS_DETAILS } from '@chat-app/shared-constants';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
+import { getNotificationClient } from '../useNotificationClient';
 
 import { useAppDispatch, useAppSelector } from '../../store';
 import {
@@ -981,23 +982,47 @@ export function ProfileSettingsContent({
                        type="checkbox"
                        checked={notificationsEnabled}
                        onChange={async (e) => {
-                         const checked = e.target.checked;
-                         setNotificationsEnabled(checked);
-                         if (checked) {
-                           try {
-                             const permission = await Notification.requestPermission();
-                             if (permission !== 'granted') {
-                               setMessage({
-                                 type: 'error',
-                                 text: '❌ Notification permission was blocked by the browser. Please check your browser settings.',
-                               });
-                               setNotificationsEnabled(false);
-                             }
-                           } catch (err) {
-                             console.error('Error requesting notification permission', err);
-                           }
-                         }
-                       }}
+                          const checked = e.target.checked;
+                          setNotificationsEnabled(checked);
+                          if (checked) {
+                            try {
+                              const permission = await Notification.requestPermission();
+                              if (permission !== 'granted') {
+                                setMessage({
+                                  type: 'error',
+                                  text: '❌ Notification permission was blocked by the browser. Please check your browser settings.',
+                                });
+                                setNotificationsEnabled(false);
+                              } else {
+                                // Register device immediately to generate VAPID subscription
+                                const client = getNotificationClient();
+                                if (client && user?.id) {
+                                  console.log('Registering device immediately on toggle ON...');
+                                  await client.registerDevice({
+                                    externalUserId: user.id,
+                                    serviceWorkerPath: '/push-sw.js',
+                                    serviceWorkerScope: '/',
+                                  });
+                                  console.log('Device registered successfully on toggle ON.');
+                                }
+                              }
+                            } catch (err) {
+                              console.error('Error requesting notification permission', err);
+                            }
+                          } else {
+                            // Unregister device immediately on toggle OFF
+                            try {
+                              const client = getNotificationClient();
+                              if (client && user?.id) {
+                                console.log('Unregistering device immediately on toggle OFF...');
+                                await client.unregisterDevice(user.id);
+                                console.log('Device unregistered successfully on toggle OFF.');
+                              }
+                            } catch (err) {
+                              console.error('Error unregistering device on toggle OFF', err);
+                            }
+                          }
+                        }}
                        className="sr-only peer"
                      />
                      <div className="w-11 h-6 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent-primary)]"></div>

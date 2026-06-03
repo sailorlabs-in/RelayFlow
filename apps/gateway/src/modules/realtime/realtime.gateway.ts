@@ -234,8 +234,8 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
           pushTitle = `${senderDisplayName} at ${channelName}, ${groupName || 'Group'}`;
         }
 
-        // Structured body payload — FE parses this JSON to extract metadata
-        const bodyPayload = JSON.stringify({
+        // Structured metadata payload — FE reads this to identify active threads
+        const metadataPayload = {
           message: content,
           conversationId,
           messageId: message.id,
@@ -245,12 +245,13 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
           groupId,
           groupName,
           channelName,
-        });
+        };
 
         this.notificationService.sendPushNotification(
           pushTitle,
-          bodyPayload,
+          content,
           recipientsToNotify,
+          metadataPayload,
         ).catch((err) => this.logger.error('Failed to send message notification', err));
       }
     }

@@ -29,7 +29,7 @@ export class NotificationService implements OnModuleInit {
     }
   }
 
-  async sendPushNotification(title: string, body: string, userIds: string[]) {
+  async sendPushNotification(title: string, body: string, userIds: string[], data?: Record<string, any>) {
     if (!this.serverClient) {
       this.logger.warn('vibe-message is not initialized. Skipping notification.');
       return;
@@ -43,6 +43,7 @@ export class NotificationService implements OnModuleInit {
           body,
           icon: '/logo.png',
           click_action: '/',
+          data,
         },
         externalUsers: userIds,
       });
