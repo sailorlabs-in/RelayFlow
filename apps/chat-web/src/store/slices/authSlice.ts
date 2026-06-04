@@ -145,13 +145,13 @@ const authSlice = createSlice({
       state.accessToken = null;
       state.status = 'idle';
       state.error = null;
-      state.themeMode = 'system';
-      state.themeSchema = 'arctic_glass';
+      // state.themeMode = 'system';
+      // state.themeSchema = 'arctic_glass';
       if (isBrowser) {
         localStorage.removeItem('chat_token');
         localStorage.removeItem('chat_user');
-        localStorage.setItem('rf-theme', 'system');
-        localStorage.setItem('rf-theme-schema', 'arctic_glass');
+        // localStorage.setItem('rf-theme', 'system');
+        // localStorage.setItem('rf-theme-schema', 'arctic_glass');
       }
     },
     clearAuthError: (state) => {

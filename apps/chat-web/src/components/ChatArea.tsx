@@ -107,6 +107,12 @@ export const ChatArea = ({
 
   // ---- Messages on conversation change ----
   useEffect(() => {
+    setMessageInput('');
+    setIsTypingState(false);
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
     if (activeConversationId) {
       dispatch(
         fetchMessages({
@@ -712,8 +718,9 @@ export const ChatArea = ({
             >
               <textarea
                 id="message-input"
-                className="input-base flex-1 rounded-xl px-4 py-3 text-[14px] resize-none leading-relaxed min-h-[46px] max-h-[120px] bg-[var(--bg-input)] border-[1.5px] border-[var(--glass-border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[3px] focus:ring-[var(--accent-ring)]"
+                className="input-base flex-1 rounded-xl px-4 py-2.5 text-[14px] resize-none leading-relaxed min-h-7.5 max-h-30 bg-theme-input border-[1.5px] border-glass text-theme-primary focus:outline-none focus:border-(--accent-primary) focus:ring-[3px] focus:ring-[var(--accent-ring)]"
                 placeholder="Type a message… (Enter to send)"
+                rows={1}
                 value={messageInput}
                 onChange={handleInputChange}
                 onKeyDown={(e) => {
