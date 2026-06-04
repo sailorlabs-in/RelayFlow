@@ -163,7 +163,7 @@ export const ChatSidebar = ({
       {/* Conversation List */}
       <div className="flex-1 overflow-y-auto px-1.5 pb-2">
         {conversations.length === 0 ? (
-          <div className="py-10 px-5 text-center text-[13px] leading-relaxed text-[var(--text-muted)]">
+          <div className="py-10 px-5 text-center text-[13px] leading-relaxed text-theme-muted flex items-center justify-center flex-col h-full">
             <IconChat />
             <p className="mt-3">
               No conversations yet.

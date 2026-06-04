@@ -11,7 +11,6 @@ interface GroupRailProps {
   onSelectGroup: (groupId: string) => void;
   isDMMode: boolean;
   isCollapsed: boolean;
-  onToggle: () => void;
 }
 
 export const GroupRail = ({
@@ -20,7 +19,6 @@ export const GroupRail = ({
   onSelectGroup,
   isDMMode,
   isCollapsed,
-  onToggle,
 }: GroupRailProps): React.JSX.Element => {
   const dispatch = useAppDispatch();
   const { groups: rawGroups, activeGroupId } = useAppSelector((s) => s.groups);
@@ -40,7 +38,7 @@ export const GroupRail = ({
   }
 
   return (
-    <div className="group-rail w-[68px] min-w-[68px] h-full flex flex-col items-center py-2.5 gap-1.5 overflow-y-auto overflow-x-hidden bg-[var(--bg-rail)] rounded-[14px] relative">
+    <div className="group-rail w-[68px] min-w-[68px] h-full flex flex-col items-center py-2.5 gap-1.5 bg-[var(--bg-rail)] rounded-[14px] relative overflow-hidden">
       {/* DMs Button */}
       <RailButton
         id="rail-dm-btn"
@@ -56,60 +54,43 @@ export const GroupRail = ({
       {/* Divider */}
       <div className="w-8 h-[2px] rounded-[1px] bg-[var(--border-muted)] my-0.5 shrink-0" />
 
-      {/* Group Buttons */}
-      {groups.map((group) => {
-        const isActive = group.id === activeGroupId && !isDMMode;
-        return (
-          <RailButton
-            key={group.id}
-            id={`rail-group-${group.id}`}
-            isActive={isActive}
-            tooltip={group.name}
-            onClick={() => handleSelectGroup(group.id)}
-            tooltip_state={tooltip}
-            setTooltip={setTooltip}
-          >
-            <span
-              className={`text-[17px] font-bold leading-none tracking-[-0.5px] ${isActive ? 'text-white' : 'text-[var(--text-primary)]'}`}
+      {/* Scrollable Groups Container */}
+      <div className="flex-1 w-full flex flex-col items-center gap-1.5 overflow-y-auto overflow-x-hidden pr-0 mr-0 custom-scrollbar">
+        {/* Group Buttons */}
+        {groups.map((group) => {
+          const isActive = group.id === activeGroupId && !isDMMode;
+          return (
+            <RailButton
+              key={group.id}
+              id={`rail-group-${group.id}`}
+              isActive={isActive}
+              tooltip={group.name}
+              onClick={() => handleSelectGroup(group.id)}
+              tooltip_state={tooltip}
+              setTooltip={setTooltip}
             >
-              {group.iconLetter}
-            </span>
-          </RailButton>
-        );
-      })}
+              <span
+                className={`text-[17px] font-bold leading-none tracking-[-0.5px] ${isActive ? 'text-white' : 'text-[var(--text-primary)]'}`}
+              >
+                {group.iconLetter}
+              </span>
+            </RailButton>
+          );
+        })}
 
-      {/* Add Group Button */}
-      <RailButton
-        id="rail-create-group-btn"
-        isActive={false}
-        tooltip="Create a Group"
-        onClick={onCreateGroup}
-        tooltip_state={tooltip}
-        setTooltip={setTooltip}
-        isCreate
-      >
-        <IconPlus size={20} />
-      </RailButton>
-
-      {/* Collapse button — pinned at the bottom, same icon as sidebar toggle */}
-      <div className="flex-1" />
-      <button
-        id="rail-collapse-btn"
-        title="Hide navigation rail"
-        onClick={onToggle}
-        className="w-9 h-9 rounded-lg border-0 bg-transparent text-[var(--text-muted)] cursor-pointer flex items-center justify-center transition-all duration-150 shrink-0 mb-1.5 hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)]"
-      >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          className="w-[15px] h-[15px]"
+        {/* Add Group Button */}
+        <RailButton
+          id="rail-create-group-btn"
+          isActive={false}
+          tooltip="Create a Group"
+          onClick={onCreateGroup}
+          tooltip_state={tooltip}
+          setTooltip={setTooltip}
+          isCreate
         >
-          <rect x="3" y="3" width="18" height="18" rx="2" />
-          <line x1="9" y1="3" x2="9" y2="21" />
-        </svg>
-      </button>
+          <IconPlus size={20} />
+        </RailButton>
+      </div>
     </div>
   );
 };

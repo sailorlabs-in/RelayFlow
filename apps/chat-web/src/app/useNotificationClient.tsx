@@ -1,6 +1,7 @@
 'use client';
 import React, { useEffect, useRef, useState } from 'react';
 import { initNotificationClient } from 'vibe-message';
+import { PrintLog } from '../utils/logger';
 import { showToast } from '../components/toast';
 import { useAppSelector } from '../store';
 import type { User } from '../store/slices/authSlice';
@@ -81,11 +82,11 @@ export function useNotificationClient(user: User | null) {
       setClient(c);
 
       c.onMessage((payload: any) => {
-        console.log('Vibe Message Foreground payload:', payload);
+        PrintLog('Vibe Message Foreground payload:', payload);
 
         // Suppress if user turned off in-app notifications in settings
         if (userRef.current?.notificationsInAppEnabled === false) {
-          console.log(
+          PrintLog(
             'Ignored foreground notification: In-app notifications are disabled',
           );
           return;
@@ -112,16 +113,13 @@ export function useNotificationClient(user: User | null) {
 
         // Suppress if user is currently viewing this DM conversation
         if (msgConvoId && msgConvoId === activeConversationIdRef.current) {
-          console.log(
-            'Suppressed: user is viewing DM conversation',
-            msgConvoId,
-          );
+          PrintLog('Suppressed: user is viewing DM conversation', msgConvoId);
           return;
         }
 
         // Suppress if user is currently viewing this group channel
         if (msgConvoId && msgConvoId === activeChannelIdRef.current) {
-          console.log('Suppressed: user is viewing group channel', msgConvoId);
+          PrintLog('Suppressed: user is viewing group channel', msgConvoId);
           return;
         }
 
@@ -131,7 +129,7 @@ export function useNotificationClient(user: User | null) {
           msgGroupId === activeGroupIdRef.current &&
           msgConvoId === activeChannelIdRef.current
         ) {
-          console.log(
+          PrintLog(
             'Suppressed: user is viewing this group channel',
             msgGroupId,
             msgConvoId,
@@ -206,11 +204,11 @@ export function useNotificationClient(user: User | null) {
       });
 
       c.onBackgroundMessage((payload: any) => {
-        console.log('Vibe Message Background click payload:', payload);
+        PrintLog('Vibe Message Background click payload:', payload);
       });
 
       c.onSilentMessage((data: any) => {
-        console.log('Vibe Message Silent payload:', data);
+        PrintLog('Vibe Message Silent payload:', data);
       });
     }
   }, []);
@@ -227,14 +225,14 @@ export function useNotificationClient(user: User | null) {
           return;
         }
         try {
-          console.log(`Registering device for user: ${user.id}`);
+          PrintLog(`Registering device for user: ${user.id}`);
           await client.registerDevice({
             externalUserId: user.id,
             serviceWorkerPath: '/push-sw.js',
             serviceWorkerScope: '/',
           });
           registeredUserIdRef.current = user.id;
-          console.log('Device registered successfully for notifications.');
+          PrintLog('Device registered successfully for notifications.');
         } catch (error) {
           console.error(
             'Failed to register device for push notifications:',
@@ -245,10 +243,10 @@ export function useNotificationClient(user: User | null) {
         const oldUserId = registeredUserIdRef.current;
         if (oldUserId) {
           try {
-            console.log(`Unregistering device for user: ${oldUserId}`);
+            PrintLog(`Unregistering device for user: ${oldUserId}`);
             await client.unregisterDevice(oldUserId);
             registeredUserIdRef.current = null;
-            console.log('Device unregistered successfully.');
+            PrintLog('Device unregistered successfully.');
           } catch (error) {
             console.error(
               'Failed to unregister device for push notifications:',

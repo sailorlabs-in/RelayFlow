@@ -237,6 +237,37 @@ export const deleteChannel = createAsyncThunk(
   },
 );
 
+// ── Remove a member (kick or leave) ───────────────────────────────────────────
+export const removeGroupMember = createAsyncThunk(
+  'groups/removeMember',
+  async (
+    payload: { groupId: string; userId: string },
+    { getState, rejectWithValue },
+  ) => {
+    try {
+      const state = getState() as {
+        auth: { accessToken: string | null; user: { id: string } | null };
+      };
+      await axios.delete(
+        `${API_URL}/groups/${payload.groupId}/members/${payload.userId}`,
+        getAuthHeaders(state.auth.accessToken),
+      );
+      const isCurrentUser = state.auth.user?.id === payload.userId;
+      return {
+        groupId: payload.groupId,
+        userId: payload.userId,
+        isCurrentUser,
+      };
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.error?.message ||
+          error.response?.data?.message ||
+          'Failed to remove member.',
+      );
+    }
+  },
+);
+
 // ── Delete a group ────────────────────────────────────────────────────────────
 export const deleteGroup = createAsyncThunk(
   'groups/deleteGroup',
@@ -466,6 +497,23 @@ const groupsSlice = createSlice({
         state.activeChannelId === channelId
       ) {
         state.activeChannelId = group?.channels?.[0]?.id || null;
+      }
+    });
+
+    // Remove group member
+    builder.addCase(removeGroupMember.fulfilled, (state, action) => {
+      const { groupId, userId, isCurrentUser } = action.payload;
+      if (isCurrentUser) {
+        state.groups = state.groups.filter((g) => g.id !== groupId);
+        if (state.activeGroupId === groupId) {
+          state.activeGroupId = null;
+          state.activeChannelId = null;
+        }
+      } else {
+        const group = state.groups.find((g) => g.id === groupId);
+        if (group) {
+          group.members = group.members.filter((m) => m.userId !== userId);
+        }
       }
     });
 

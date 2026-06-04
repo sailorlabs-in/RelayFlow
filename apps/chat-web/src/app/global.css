@@ -214,7 +214,7 @@
 
 /* Fallback/Default for --bg-rail based on the theme's sidebar background */
 [data-theme] {
-  --bg-rail: color-mix(in srgb, var(--bg-sidebar) 88%, black 12%);
+  --bg-rail: color-mix(in srgb, var(--bg-sidebar) 88%, black 4%);
 }
 
 html {

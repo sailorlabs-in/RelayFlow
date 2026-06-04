@@ -233,7 +233,6 @@ function ChatDashboardContent() {
         onSelectGroup={handleSelectGroup}
         isDMMode={isDMMode}
         isCollapsed={isSidebarCollapsed}
-        onToggle={() => setIsSidebarCollapsed((v) => !v)}
       />
 
       {/* ── Middle: DM Sidebar OR Channel Sidebar ────────────────── */}

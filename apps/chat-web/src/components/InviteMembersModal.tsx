@@ -89,7 +89,7 @@ export const InviteMembersModal = ({
         <div className="px-5 py-4 border-b border-[var(--border-muted)] flex items-center justify-between">
           <div>
             <h2 className="m-0 text-[18px] font-bold text-[var(--text-primary)]">
-              Invite Friends
+              Add Friends
             </h2>
             <p className="m-1 text-[12.5px] text-[var(--text-muted)]">
               Add new members to{' '}
@@ -123,8 +123,8 @@ export const InviteMembersModal = ({
         {/* User list */}
         <div className="flex-1 overflow-y-auto px-5 py-2.5">
           {filteredResults.length === 0 ? (
-            <div className="py-10 px-5 text-center text-[13.5px] text-[var(--text-muted)]">
-              <div className="opacity-30 mb-2">
+            <div className="py-10 px-5 text-center text-[13.5px] text-[var(--text-muted)] flex items-center justify-center gap-2">
+              <div>
                 <IconPeople />
               </div>
               No eligible users found.
@@ -188,7 +188,7 @@ export const InviteMembersModal = ({
               disabled={isLoading || selectedUserIds.length === 0}
               className="btn-send px-6 py-2.5 rounded-[10px] border-none text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 active-press"
             >
-              {isLoading ? 'Inviting…' : 'Invite'}
+              {isLoading ? 'Adding…' : 'Add'}
             </button>
           </div>
         </div>

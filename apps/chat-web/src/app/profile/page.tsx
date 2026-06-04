@@ -4,6 +4,7 @@ import { PRESENCE_STATUS_DETAILS } from '@chat-app/shared-constants';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
+import { PrintLog } from '../../utils/logger';
 import { getNotificationClient } from '../useNotificationClient';
 import { ConfirmationModal } from '../../components/ConfirmationModal';
 
@@ -1045,7 +1046,7 @@ export function ProfileSettingsContent({
                               // Register device immediately to generate VAPID subscription
                               const client = getNotificationClient();
                               if (client && user?.id) {
-                                console.log(
+                                PrintLog(
                                   'Registering device immediately on toggle ON...',
                                 );
                                 await client.registerDevice({
@@ -1053,7 +1054,7 @@ export function ProfileSettingsContent({
                                   serviceWorkerPath: '/push-sw.js',
                                   serviceWorkerScope: '/',
                                 });
-                                console.log(
+                                PrintLog(
                                   'Device registered successfully on toggle ON.',
                                 );
                               }
@@ -1069,11 +1070,11 @@ export function ProfileSettingsContent({
                           try {
                             const client = getNotificationClient();
                             if (client && user?.id) {
-                              console.log(
+                              PrintLog(
                                 'Unregistering device immediately on toggle OFF...',
                               );
                               await client.unregisterDevice(user.id);
-                              console.log(
+                              PrintLog(
                                 'Device unregistered successfully on toggle OFF.',
                               );
                             }

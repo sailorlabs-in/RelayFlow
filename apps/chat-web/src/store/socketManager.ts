@@ -1,6 +1,7 @@
 import type { Socket } from 'socket.io-client';
 import { io } from 'socket.io-client';
 
+import { PrintLog } from '../utils/logger';
 import { showToast } from '../components/toast';
 
 import { logoutUser } from './slices/authSlice';
@@ -36,11 +37,11 @@ class SocketManager {
 
   connect(token: string) {
     if (this.socket) {
-      console.log('🔌 Socket already connected or connecting.');
+      PrintLog('🔌 Socket already connected or connecting.');
       return;
     }
 
-    console.log('🔌 Connecting to WebSocket server:', SOCKET_URL);
+    PrintLog('🔌 Connecting to WebSocket server:', SOCKET_URL);
     this.connectErrorCount = 0;
 
     // Secure custom handshake options for multi-transport (polling and websockets) browser compatibility
@@ -64,7 +65,7 @@ class SocketManager {
     // Register Real-time Listeners
     // -------------------------------------------------------------
     this.socket.on('connect', () => {
-      console.log('✔ Socket successfully connected with ID:', this.socket?.id);
+      PrintLog('✔ Socket successfully connected with ID:', this.socket?.id);
       this.connectErrorCount = 0;
 
       // Auto-broadcast manual status upon connection/reconnection to sync with server presence
@@ -92,7 +93,7 @@ class SocketManager {
 
     // Handle new message arrival
     this.socket.on('message.new', (message: Message) => {
-      console.log('💬 Socket message.new event received:', message);
+      PrintLog('💬 Socket message.new event received:', message);
       store.dispatch(socketReceiveMessage(message));
 
       // Keep conversations in sync: fetch list if it's a new conversation thread
@@ -123,21 +124,21 @@ class SocketManager {
     this.socket.on(
       'messages.read',
       (data: { conversationId: string; readBy: string }) => {
-        console.log('📖 Socket messages.read event received:', data);
+        PrintLog('📖 Socket messages.read event received:', data);
         store.dispatch(socketMarkMessagesAsRead(data));
       },
     );
 
     // Handle online status broadcasts
     this.socket.on('user.online', (data: { userId: string }) => {
-      console.log('🟢 User came online:', data.userId);
+      PrintLog('🟢 User came online:', data.userId);
       store.dispatch(
         socketUpdatePresence({ userId: data.userId, isOnline: true }),
       );
     });
 
     this.socket.on('user.offline', (data: { userId: string }) => {
-      console.log('🔴 User went offline:', data.userId);
+      PrintLog('🔴 User went offline:', data.userId);
       store.dispatch(
         socketUpdatePresence({ userId: data.userId, isOnline: false }),
       );
@@ -147,7 +148,7 @@ class SocketManager {
     this.socket.on(
       'user.presence.sync',
       (data: { onlineUserIds: string[] }) => {
-        console.log('🟢 Presence sync received:', data.onlineUserIds);
+        PrintLog('🟢 Presence sync received:', data.onlineUserIds);
         data.onlineUserIds.forEach((userId) => {
           store.dispatch(socketUpdatePresence({ userId, isOnline: true }));
         });
@@ -189,7 +190,7 @@ class SocketManager {
         deletedBy?: string;
         deletedById?: string;
       }) => {
-        console.log('🗑️ Socket conversation.deleted event received:', data);
+        PrintLog('🗑️ Socket conversation.deleted event received:', data);
 
         const state = store.getState() as { auth: { user: any } };
         const currentUserId = state.auth?.user?.id;
@@ -212,7 +213,7 @@ class SocketManager {
     this.socket.on(
       'message.deleted',
       (data: { messageId: string; conversationId: string }) => {
-        console.log('🗑️ Socket message.deleted event received:', data);
+        PrintLog('🗑️ Socket message.deleted event received:', data);
         store.dispatch(socketDeleteMessage(data));
       },
     );
@@ -221,7 +222,7 @@ class SocketManager {
     this.socket.on(
       'user.status.changed',
       (data: { userId: string; status: string; autoStatus?: string }) => {
-        console.log(
+        PrintLog(
           `🟡 User status changed: ${data.userId} -> ${data.status} (autoStatus: ${data.autoStatus})`,
         );
         store.dispatch(
@@ -240,11 +241,7 @@ class SocketManager {
       (data: {
         users: { userId: string; status: string; autoStatus?: string }[];
       }) => {
-        console.log(
-          '🟢 Full presence sync received:',
-          data.users.length,
-          'users',
-        );
+        PrintLog('🟢 Full presence sync received:', data.users.length, 'users');
         data.users.forEach(({ userId, status, autoStatus }) => {
           store.dispatch(
             socketUpdateUserStatus({ userId, status, autoStatus }),
@@ -255,17 +252,17 @@ class SocketManager {
 
     // ── Group / Server socket events ─────────────────────────────────────────
     this.socket.on('group.created', (group: Group) => {
-      console.log('🏠 Socket group.created:', group.id);
+      PrintLog('🏠 Socket group.created:', group.id);
       store.dispatch(socketGroupCreated(group));
     });
 
     this.socket.on('group.updated', (group: Group) => {
-      console.log('🏠 Socket group.updated:', group.id);
+      PrintLog('🏠 Socket group.updated:', group.id);
       store.dispatch(socketGroupUpdated(group));
     });
 
     this.socket.on('group.deleted', (data: { groupId: string }) => {
-      console.log('🗑️ Socket group.deleted:', data.groupId);
+      PrintLog('🗑️ Socket group.deleted:', data.groupId);
       store.dispatch(socketGroupDeleted(data.groupId));
       showToast.warning('A group you were in has been deleted.');
     });
@@ -273,13 +270,13 @@ class SocketManager {
     this.socket.on(
       'group.member.added',
       (data: { groupId: string; group: Group }) => {
-        console.log('👤 Socket group.member.added:', data.groupId);
+        PrintLog('👤 Socket group.member.added:', data.groupId);
         store.dispatch(socketGroupMemberAdded(data));
       },
     );
 
     this.socket.on('group.member.removed', (data: { groupId: string }) => {
-      console.log('👤 Socket group.member.removed:', data.groupId);
+      PrintLog('👤 Socket group.member.removed:', data.groupId);
       store.dispatch(socketGroupMemberRemoved(data));
       showToast.warning('You were removed from a group.');
     });
@@ -287,7 +284,7 @@ class SocketManager {
     this.socket.on(
       'group.channel.created',
       (data: { groupId: string; channel: any }) => {
-        console.log('📢 Socket group.channel.created:', data.channel.id);
+        PrintLog('📢 Socket group.channel.created:', data.channel.id);
         store.dispatch(socketChannelCreated(data));
       },
     );
@@ -295,7 +292,7 @@ class SocketManager {
     this.socket.on(
       'group.channel.updated',
       (data: { groupId: string; channel: any }) => {
-        console.log('📢 Socket group.channel.updated:', data.channel.id);
+        PrintLog('📢 Socket group.channel.updated:', data.channel.id);
         store.dispatch(socketChannelUpdated(data));
       },
     );
@@ -303,7 +300,7 @@ class SocketManager {
     this.socket.on(
       'group.channel.deleted',
       (data: { groupId: string; channelId: string }) => {
-        console.log('📢 Socket group.channel.deleted:', data.channelId);
+        PrintLog('📢 Socket group.channel.deleted:', data.channelId);
         store.dispatch(socketChannelDeleted(data));
       },
     );
@@ -314,24 +311,21 @@ class SocketManager {
   // -------------------------------------------------------------
   joinConversation(conversationId: string) {
     if (this.socket?.connected) {
-      console.log(`📡 Emitting join.conversation for room: ${conversationId}`);
+      PrintLog(`📡 Emitting join.conversation for room: ${conversationId}`);
       this.socket.emit('join.conversation', { conversationId });
     }
   }
 
   leaveConversation(conversationId: string) {
     if (this.socket?.connected) {
-      console.log(`📡 Emitting leave.conversation for room: ${conversationId}`);
+      PrintLog(`📡 Emitting leave.conversation for room: ${conversationId}`);
       this.socket.emit('leave.conversation', { conversationId });
     }
   }
 
   sendMessage(conversationId: string, content: string) {
     if (this.socket?.connected) {
-      console.log(
-        `📡 Emitting send.message for room ${conversationId}:`,
-        content,
-      );
+      PrintLog(`📡 Emitting send.message for room ${conversationId}:`, content);
       this.socket.emit('send.message', { conversationId, content });
     } else {
       console.error('❌ Cannot send message: Socket is not connected');
@@ -357,7 +351,7 @@ class SocketManager {
 
   deleteMessage(messageId: string, conversationId: string) {
     if (this.socket?.connected) {
-      console.log(
+      PrintLog(
         `📡 Emitting delete.message for messageId=${messageId} in conversationId=${conversationId}`,
       );
       this.socket.emit('delete.message', { messageId, conversationId });
@@ -371,7 +365,7 @@ class SocketManager {
    */
   updateStatus(status: string, autoStatus?: string) {
     if (this.socket?.connected) {
-      console.log(
+      PrintLog(
         `📡 Emitting user.status.update: status=${status}, autoStatus=${autoStatus}`,
       );
       this.socket.emit('user.status.update', {
@@ -383,7 +377,7 @@ class SocketManager {
 
   disconnect() {
     if (this.socket) {
-      console.log('🔌 Disconnecting socket...');
+      PrintLog('🔌 Disconnecting socket...');
       this.socket.disconnect();
       this.socket = null;
     }

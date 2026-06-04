@@ -7,6 +7,7 @@ import {
   setActiveChannel,
   deleteGroup,
   deleteChannel,
+  removeGroupMember,
 } from '../store/slices/groupsSlice';
 import { socketManager } from '../store/socketManager';
 
@@ -17,6 +18,7 @@ import {
   IconTrash,
   IconChevronDown,
   IconSettings,
+  IconLogout,
 } from './Icons';
 import { showToast } from './toast';
 import { ConfirmationModal } from './ConfirmationModal';
@@ -79,6 +81,33 @@ export const ChannelSidebar = ({
           showToast.success(`Group "${group.name}" deleted.`);
         } catch {
           showToast.error('Failed to delete group.');
+        } finally {
+          setConfirmModal(null);
+        }
+      },
+    });
+  };
+
+  const handleLeaveGroup = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Leave Group',
+      message: `Are you sure you want to leave the group "${group.name}"? You will lose access to all its channels.`,
+      confirmLabel: 'Leave',
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          if (user) {
+            await dispatch(
+              removeGroupMember({
+                groupId: group.id,
+                userId: user.id,
+              }),
+            ).unwrap();
+            showToast.success(`You have left the group "${group.name}".`);
+          }
+        } catch {
+          showToast.error('Failed to leave group.');
         } finally {
           setConfirmModal(null);
         }
@@ -189,6 +218,16 @@ export const ChannelSidebar = ({
                 danger
               >
                 <IconTrash />
+              </IconButton>
+            )}
+            {!isOwner && (
+              <IconButton
+                title="Leave Group"
+                onClick={handleLeaveGroup}
+                id="leave-group-btn"
+                danger
+              >
+                <IconLogout />
               </IconButton>
             )}
           </div>
