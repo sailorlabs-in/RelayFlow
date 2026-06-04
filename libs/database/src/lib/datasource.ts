@@ -6,11 +6,15 @@ import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
 // Core database options configuration
 export const dbOptions: DataSourceOptions = {
   type: 'postgres',
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432', 10),
-  username: process.env.DB_USERNAME || 'postgres',
-  password: process.env.DB_PASSWORD || 'postgres',
-  database: process.env.DB_NAME || 'relayflow',
+  ...(process.env.DATABASE_URL
+    ? { url: process.env.DATABASE_URL }
+    : {
+        host: process.env.DB_HOST || 'localhost',
+        port: parseInt(process.env.DB_PORT || '5432', 10),
+        username: process.env.DB_USERNAME || 'postgres',
+        password: process.env.DB_PASSWORD || 'postgres',
+        database: process.env.DB_NAME || 'relayflow',
+      }),
   
   // Check env variable for synchronization (development/testing)
   synchronize: process.env.DB_SYNCHRONIZE === 'true',
