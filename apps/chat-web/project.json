@@ -6,6 +6,7 @@
   "tags": ["type:app"],
   "targets": {
     "build": {
+      "dependsOn": ["^build"],
       "executor": "nx:run-commands",
       "outputs": ["{projectRoot}/.next"],
       "options": {
@@ -14,6 +15,7 @@
       }
     },
     "serve": {
+      "dependsOn": ["^build"],
       "executor": "@nx/next:server",
       "options": {
         "buildTarget": "@chat-app/chat-web:build:development",
