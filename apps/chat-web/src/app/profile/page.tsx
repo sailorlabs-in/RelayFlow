@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
 import { getNotificationClient } from '../useNotificationClient';
+import { ConfirmationModal } from '../../components/ConfirmationModal';
 
 import { useAppDispatch, useAppSelector } from '../../store';
 import {
@@ -125,6 +126,31 @@ export function ProfileSettingsContent({
   const [activeTab, setActiveTab] = useState<
     'account' | 'theme' | 'status' | 'notifications'
   >('account');
+
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    type?: 'danger' | 'info';
+    onConfirm: () => void;
+  } | null>(null);
+
+  const handleSignOut = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Sign Out',
+      message: 'Are you sure you want to sign out of your account?',
+      confirmLabel: 'Sign Out',
+      type: 'info',
+      onConfirm: () => {
+        socketManager.disconnect();
+        dispatch(logoutUser());
+        setConfirmModal(null);
+      },
+    });
+  };
 
   // Account State
   const [displayName, setDisplayName] = useState('');
@@ -414,7 +440,7 @@ export function ProfileSettingsContent({
         </div>
 
         <button
-          onClick={() => dispatch(logoutUser())}
+          onClick={handleSignOut}
           className="text-[12.5px] font-semibold px-3.5 py-2 rounded-lg cursor-pointer transition-all duration-200 border border-[var(--danger-border)] bg-[var(--danger-bg)] text-[var(--danger)] hover:opacity-85"
         >
           Sign Out
@@ -1181,32 +1207,45 @@ export function ProfileSettingsContent({
     </div>
   );
 
-  if (isModal) {
-    return innerContent;
-  }
-
   return (
-    <div
-      className="flex items-center justify-center min-h-screen w-screen p-4 md:p-6"
-      style={{
-        background: 'var(--bg-primary)',
-        transition: 'background 0.3s ease',
-      }}
-    >
-      {/* Background radial glows mapping the active theme */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          backgroundImage: `
-          radial-gradient(circle at 15% 15%, var(--bg-glow-1) 0%, transparent 40%),
-          radial-gradient(circle at 85% 85%, var(--bg-glow-2) 0%, transparent 40%)
-        `,
-          opacity: 0.8,
-        }}
-      />
+    <>
+      {isModal ? (
+        innerContent
+      ) : (
+        <div
+          className="flex items-center justify-center min-h-screen w-screen p-4 md:p-6"
+          style={{
+            background: 'var(--bg-primary)',
+            transition: 'background 0.3s ease',
+          }}
+        >
+          {/* Background radial glows mapping the active theme */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              backgroundImage: `
+              radial-gradient(circle at 15% 15%, var(--bg-glow-1) 0%, transparent 40%),
+              radial-gradient(circle at 85% 85%, var(--bg-glow-2) 0%, transparent 40%)
+            `,
+              opacity: 0.8,
+            }}
+          />
 
-      {innerContent}
-    </div>
+          {innerContent}
+        </div>
+      )}
+      {confirmModal && (
+        <ConfirmationModal
+          isOpen={confirmModal.isOpen}
+          title={confirmModal.title}
+          message={confirmModal.message}
+          confirmLabel={confirmModal.confirmLabel}
+          type={confirmModal.type}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={() => setConfirmModal(null)}
+        />
+      )}
+    </>
   );
 }
 

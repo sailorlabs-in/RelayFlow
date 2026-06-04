@@ -17,6 +17,7 @@ import {
 import { socketManager } from '../store/socketManager';
 
 import { Avatar } from './Avatar';
+import { ConfirmationModal } from './ConfirmationModal';
 import {
   IconSend,
   IconTrash,
@@ -83,6 +84,15 @@ export const ChatArea = ({
   const [messageInput, setMessageInput] = useState('');
   const [isTypingState, setIsTypingState] = useState(false);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    type?: 'danger' | 'info';
+    onConfirm: () => void;
+  } | null>(null);
 
   // --- Pagination & Scroll UX state ---
   const isFetchingMoreRef = useRef(false);
@@ -306,18 +316,36 @@ export const ChatArea = ({
     if (!convoId) {
       return;
     }
-    if (window.confirm('Remove this thread and all messages?')) {
-      dispatch(deleteConversation(convoId));
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Thread',
+      message:
+        'Are you sure you want to remove this thread and all its messages? This action cannot be undone.',
+      confirmLabel: 'Delete',
+      type: 'danger',
+      onConfirm: () => {
+        dispatch(deleteConversation(convoId));
+        setConfirmModal(null);
+      },
+    });
   };
 
   const handleDeleteMessage = (messageId: string) => {
     if (!activeConversationId) {
       return;
     }
-    if (window.confirm('Are you sure you want to delete this message?')) {
-      socketManager.deleteMessage(messageId, activeConversationId);
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Message',
+      message:
+        'Are you sure you want to delete this message? This action is permanent and cannot be undone.',
+      confirmLabel: 'Delete',
+      type: 'danger',
+      onConfirm: () => {
+        socketManager.deleteMessage(messageId, activeConversationId);
+        setConfirmModal(null);
+      },
+    });
   };
 
   // ---- Conversation display name helper ----
@@ -466,7 +494,7 @@ export const ChatArea = ({
               <button
                 id="delete-thread-btn"
                 title="Delete thread"
-                className="flex items-center gap-1.5 rounded-[9px] px-3 py-1.5 text-[12px] font-semibold cursor-pointer transition-all duration-200 shrink-0 border-[1.5px] bg-[var(--danger-bg)] text-[var(--danger)] border-[var(--danger-border)] hover:bg-[var(--danger)] hover:text-white hover:border-[var(--danger)] hover:shadow-[0_4px_14px_rgba(239,68,68,0.3)]"
+                className="flex items-center gap-1.5 rounded-[9px] px-3 py-1.5 text-[12px] font-semibold cursor-pointer transition-all duration-200 shrink-0 border-[1.5px] bg-[var(--danger-bg)] text-[var(--danger)] border-[var(--danger-border)] hover:bg-[var(--danger)] hover:text-white hover:border-[var(--danger)] hover:shadow-[0_4px_14px_rgba(239,68,68,0.3)] active-press"
                 onClick={() => handleDeleteConversation(activeConversationId)}
               >
                 <IconTrash />
@@ -480,7 +508,7 @@ export const ChatArea = ({
                 id="toggle-members-btn"
                 title="Toggle Member List"
                 onClick={onToggleMembersList}
-                className={`bg-transparent border-none cursor-pointer p-1.5 rounded-[6px] flex items-center transition-all duration-150 
+                className={`bg-transparent border-none cursor-pointer p-1.5 rounded-[6px] flex items-center transition-all duration-150 active-press 
                   ${isMembersListOpen ? 'text-[var(--accent-primary)]' : 'text-[var(--text-muted)] hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)]'}`}
               >
                 <svg
@@ -529,7 +557,7 @@ export const ChatArea = ({
                   return (
                     <div
                       key={msg.id}
-                      className="flex items-start gap-3 animate-fade-in group justify-between"
+                      className="flex items-start gap-3 animate-fade-in group justify-between hover:bg-[rgba(0,0,0,0.015)] dark:hover:bg-[rgba(255,255,255,0.01)] rounded-xl px-2 py-1.5 transition-colors duration-150 -mx-2"
                     >
                       <div className="flex items-start gap-3 flex-1 min-w-0">
                         <div
@@ -561,7 +589,7 @@ export const ChatArea = ({
                       {isOut && (
                         <button
                           onClick={() => handleDeleteMessage(msg.id)}
-                          className="msg-delete-btn flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-[var(--danger-bg)] text-[var(--danger)] mt-0.5"
+                          className="msg-delete-btn flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-[var(--danger-bg)] text-[var(--danger)] mt-0.5 active-press"
                           title="Delete message"
                         >
                           <IconTrash />
@@ -574,12 +602,12 @@ export const ChatArea = ({
                 return (
                   <div
                     key={msg.id}
-                    className={`flex items-center gap-2 group max-w-[68%] ${isOut ? 'self-end' : 'self-start'}`}
+                    className={`flex items-center gap-2 group max-w-[68%] animate-fade-in ${isOut ? 'self-end' : 'self-start'}`}
                   >
                     {isOut && (
                       <button
                         onClick={() => handleDeleteMessage(msg.id)}
-                        className="msg-delete-btn flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-[var(--danger-bg)] text-[var(--danger)] shrink-0"
+                        className="msg-delete-btn flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-[var(--danger-bg)] text-[var(--danger)] shrink-0 active-press"
                         title="Delete message"
                       >
                         <IconTrash />
@@ -699,7 +727,7 @@ export const ChatArea = ({
                 id="send-message-btn"
                 type="submit"
                 disabled={!messageInput.trim()}
-                className="btn-send w-[46px] h-[46px] rounded-xl flex-shrink-0 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed hover:-translate-y-0.5 hover:shadow-[var(--btn-shadow)]"
+                className="btn-send w-[46px] h-[46px] rounded-xl flex-shrink-0 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed hover:-translate-y-0.5 hover:shadow-[var(--btn-shadow)] active-press"
               >
                 <IconSend />
               </button>
@@ -708,7 +736,7 @@ export const ChatArea = ({
         </>
       ) : (
         /* Empty state */
-        <div className="flex-1 flex flex-col items-center justify-center gap-4 bg-[var(--bg-chat)] rounded-2xl">
+        <div className="flex-1 flex flex-col items-center justify-center gap-4 bg-[var(--bg-chat)] rounded-2xl animate-fade-in">
           <div className="w-16 h-16 rounded-full flex items-center justify-center animate-float border bg-[var(--theme-btn-active)] border-[var(--accent-primary)]">
             <IconChat />
           </div>
@@ -721,12 +749,23 @@ export const ChatArea = ({
           </p>
           <button
             id="empty-compose-btn"
-            className="mt-1 px-5 py-2.5 rounded-xl text-[13.5px] font-semibold text-white cursor-pointer transition-all duration-200 border-none btn-send hover:-translate-y-0.5 hover:shadow-[var(--btn-shadow)]"
+            className="mt-1 px-5 py-2.5 rounded-xl text-[13.5px] font-semibold text-white cursor-pointer transition-all duration-200 border-none btn-send hover:-translate-y-0.5 hover:shadow-[var(--btn-shadow)] active-press"
             onClick={() => setIsComposeOpen(true)}
           >
             Start a conversation
           </button>
         </div>
+      )}
+      {confirmModal && (
+        <ConfirmationModal
+          isOpen={confirmModal.isOpen}
+          title={confirmModal.title}
+          message={confirmModal.message}
+          confirmLabel={confirmModal.confirmLabel}
+          type={confirmModal.type}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={() => setConfirmModal(null)}
+        />
       )}
     </div>
   );

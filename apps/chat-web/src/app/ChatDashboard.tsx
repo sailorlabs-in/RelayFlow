@@ -5,6 +5,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 // Import modular components
 import { AuthGate } from '../components/AuthGate';
+import { ConfirmationModal } from '../components/ConfirmationModal';
 import { ChannelSettingsModal } from '../components/ChannelSettingsModal';
 import { ChannelSidebar } from '../components/ChannelSidebar';
 import { ChatArea } from '../components/ChatArea';
@@ -17,10 +18,7 @@ import { GroupSettingsModal } from '../components/GroupSettingsModal';
 import { InviteMembersModal } from '../components/InviteMembersModal';
 import { MemberSidebar } from '../components/MemberSidebar';
 import { useAppDispatch, useAppSelector } from '../store';
-import {
-  logoutUser,
-  restoreSession,
-} from '../store/slices/authSlice';
+import { logoutUser, restoreSession } from '../store/slices/authSlice';
 import { fetchConversations } from '../store/slices/chatSlice';
 import { fetchGroups, setActiveGroup } from '../store/slices/groupsSlice';
 import type { GroupChannel } from '../store/slices/groupsSlice';
@@ -36,12 +34,25 @@ function ChatDashboardContent() {
   const { user, accessToken } = useAppSelector((s) => s.auth);
   useNotificationClient(user);
   const { activeConversationId } = useAppSelector((s) => s.chat);
-  const { groups: rawGroups, activeGroupId, activeChannelId } = useAppSelector((s) => s.groups);
+  const {
+    groups: rawGroups,
+    activeGroupId,
+    activeChannelId,
+  } = useAppSelector((s) => s.groups);
   const groups = Array.isArray(rawGroups) ? rawGroups : [];
 
   // --- Modal & Panel States ---
   const [isHydrated, setIsHydrated] = useState(false);
   const [isComposeOpen, setIsComposeOpen] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    type?: 'danger' | 'info';
+    onConfirm: () => void;
+  } | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
   const [isCreateChannelOpen, setIsCreateChannelOpen] = useState(false);
@@ -66,8 +77,18 @@ function ChatDashboardContent() {
   }, [dispatch]);
 
   const handleLogout = useCallback(() => {
-    socketManager.disconnect();
-    dispatch(logoutUser());
+    setConfirmModal({
+      isOpen: true,
+      title: 'Sign Out',
+      message: 'Are you sure you want to sign out of your account?',
+      confirmLabel: 'Sign Out',
+      type: 'info',
+      onConfirm: () => {
+        socketManager.disconnect();
+        dispatch(logoutUser());
+        setConfirmModal(null);
+      },
+    });
   }, [dispatch]);
 
   // ---- Socket + conversations + groups fetch on login ----
@@ -116,7 +137,9 @@ function ChatDashboardContent() {
 
   // ---- Inactivity detection: auto-away after 2 minutes ----
   useEffect(() => {
-    if (!accessToken || !user) {return;}
+    if (!accessToken || !user) {
+      return;
+    }
 
     if (manualStatus !== 'online') {
       if (inactivityTimerRef.current) {
@@ -157,8 +180,16 @@ function ChatDashboardContent() {
       }
     };
 
-    const activityEvents = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
-    activityEvents.forEach((ev) => window.addEventListener(ev, resetTimer, { passive: true }));
+    const activityEvents = [
+      'mousemove',
+      'keydown',
+      'click',
+      'scroll',
+      'touchstart',
+    ];
+    activityEvents.forEach((ev) =>
+      window.addEventListener(ev, resetTimer, { passive: true }),
+    );
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     resetTimer();
@@ -167,7 +198,9 @@ function ChatDashboardContent() {
       if (inactivityTimerRef.current) {
         clearTimeout(inactivityTimerRef.current);
       }
-      activityEvents.forEach((ev) => window.removeEventListener(ev, resetTimer));
+      activityEvents.forEach((ev) =>
+        window.removeEventListener(ev, resetTimer),
+      );
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [accessToken, user?.id, manualStatus]);
@@ -182,15 +215,17 @@ function ChatDashboardContent() {
   }
 
   // Resolve active group
-  const activeGroup = activeGroupId ? groups.find((g) => g.id === activeGroupId) || null : null;
+  const activeGroup = activeGroupId
+    ? groups.find((g) => g.id === activeGroupId) || null
+    : null;
 
   // In group mode, the active conversation is the selected channel
-  const effectiveActiveConversationId = isDMMode ? activeConversationId : activeChannelId;
+  const effectiveActiveConversationId = isDMMode
+    ? activeConversationId
+    : activeChannelId;
 
   return (
-    <div
-      className="flex h-screen w-screen p-3.5 gap-3.5 bg-[var(--bg-primary)]"
-    >
+    <div className="flex h-screen w-screen p-3.5 gap-3.5 bg-[var(--bg-primary)]">
       {/* ── Left: Group Rail ─────────────────────────────────────── */}
       <GroupRail
         onCreateGroup={() => setIsCreateGroupOpen(true)}
@@ -228,9 +263,7 @@ function ChatDashboardContent() {
         />
       ) : (
         /* Fallback: no group selected yet */
-        <div
-          className="glass-panel flex flex-col items-center justify-center w-[240px] min-w-[240px] h-full"
-        >
+        <div className="glass-panel flex flex-col items-center justify-center w-[240px] min-w-[240px] h-full">
           <p className="text-[var(--text-muted)] text-[13px] text-center p-5">
             Select a group from the rail or create a new one.
           </p>
@@ -244,7 +277,8 @@ function ChatDashboardContent() {
         isChannelMode={!isDMMode}
         activeChannelName={
           !isDMMode && activeGroup && activeChannelId
-            ? activeGroup.channels.find((c) => c.id === activeChannelId)?.name || null
+            ? activeGroup.channels.find((c) => c.id === activeChannelId)
+                ?.name || null
             : null
         }
         isMembersListOpen={isMembersListOpen}
@@ -308,16 +342,30 @@ function ChatDashboardContent() {
       {/* Profile Settings Modal */}
       {isProfileOpen && (
         <div
-          className="fixed inset-0 z-[1000] flex items-center justify-center p-4 animate-fade-in bg-[rgba(4,6,12,0.65)] backdrop-blur-[14px]"
+          className="fixed inset-0 z-[1000] flex items-center justify-center p-4 animate-fade-in bg-[rgba(4,6,12,0.65)] backdrop-blur-[4px]"
           onClick={() => setIsProfileOpen(false)}
         >
           <div
             className="w-[800px] max-w-full h-[85vh] flex flex-col overflow-hidden animate-slide-up bg-[var(--glass-bg)] border-[1.5px] border-[var(--glass-border)] backdrop-blur-[20px] rounded-[18px] shadow-[var(--glass-shadow)]"
             onClick={(e) => e.stopPropagation()}
           >
-            <ProfileSettingsContent isModal onClose={() => setIsProfileOpen(false)} />
+            <ProfileSettingsContent
+              isModal
+              onClose={() => setIsProfileOpen(false)}
+            />
           </div>
         </div>
+      )}
+      {confirmModal && (
+        <ConfirmationModal
+          isOpen={confirmModal.isOpen}
+          title={confirmModal.title}
+          message={confirmModal.message}
+          confirmLabel={confirmModal.confirmLabel}
+          type={confirmModal.type}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={() => setConfirmModal(null)}
+        />
       )}
     </div>
   );

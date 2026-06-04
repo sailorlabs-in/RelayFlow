@@ -19,6 +19,7 @@ import {
   IconSettings,
 } from './Icons';
 import { showToast } from './toast';
+import { ConfirmationModal } from './ConfirmationModal';
 
 interface ChannelSidebarProps {
   group: Group;
@@ -49,6 +50,15 @@ export const ChannelSidebar = ({
   const { messages } = useAppSelector((s) => s.chat);
   const [showChannels, setShowChannels] = useState(true);
   const isOwner = group.ownerId === user?.id;
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    type?: 'danger' | 'info';
+    onConfirm: () => void;
+  } | null>(null);
 
   const handleSelectChannel = (channel: GroupChannel) => {
     dispatch(setActiveChannel(channel.id));
@@ -56,20 +66,49 @@ export const ChannelSidebar = ({
     socketManager.joinConversation(channel.id);
   };
 
-  const handleDeleteGroup = async () => {
-    if (
-      !window.confirm(
-        `Delete "${group.name}" and all its channels? This cannot be undone.`,
-      )
-    ) {
-      return;
-    }
-    try {
-      await dispatch(deleteGroup(group.id)).unwrap();
-      showToast.success(`Group "${group.name}" deleted.`);
-    } catch {
-      showToast.error('Failed to delete group.');
-    }
+  const handleDeleteGroup = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Group',
+      message: `Are you sure you want to delete "${group.name}" and all its channels? This action is permanent and cannot be undone.`,
+      confirmLabel: 'Delete',
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          await dispatch(deleteGroup(group.id)).unwrap();
+          showToast.success(`Group "${group.name}" deleted.`);
+        } catch {
+          showToast.error('Failed to delete group.');
+        } finally {
+          setConfirmModal(null);
+        }
+      },
+    });
+  };
+
+  const handleDeleteChannel = (channel: GroupChannel) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Channel',
+      message: `Are you sure you want to delete channel #${channel.name}? This will permanently erase all message history in this channel.`,
+      confirmLabel: 'Delete',
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          await dispatch(
+            deleteChannel({
+              groupId: group.id,
+              channelId: channel.id,
+            }),
+          ).unwrap();
+          showToast.success(`Channel #${channel.name} deleted.`);
+        } catch (err: any) {
+          showToast.error(err || 'Failed to delete channel.');
+        } finally {
+          setConfirmModal(null);
+        }
+      },
+    });
   };
 
   return (
@@ -85,7 +124,7 @@ export const ChannelSidebar = ({
               isRailCollapsed ? 'Show navigation rail' : 'Hide navigation rail'
             }
             onClick={onToggleRail}
-            className={`p-1 rounded-md flex items-center justify-center cursor-pointer transition-all duration-150 flex-shrink-0 mr-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]
+            className={`p-1 rounded-md flex items-center justify-center cursor-pointer transition-all duration-150 flex-shrink-0 mr-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] active-press
               ${
                 isRailCollapsed
                   ? 'bg-[var(--theme-btn-active)] text-[var(--theme-btn-active-text)]'
@@ -103,7 +142,7 @@ export const ChannelSidebar = ({
               <line x1="9" y1="3" x2="9" y2="21" />
             </svg>
           </button>
-          
+
           <div className="flex-1 min-w-0 pr-2">
             <div className="font-bold text-[15px] text-[var(--text-primary)] truncate">
               {group.name}
@@ -115,7 +154,7 @@ export const ChannelSidebar = ({
             )}
           </div>
         </div>
-        
+
         <div className="text-xs flex gap-3 items-center justify-between mt-1">
           {/* Member count */}
           <div className="text-[11px] text-[var(--text-muted)] flex items-center gap-1.5">
@@ -127,7 +166,8 @@ export const ChannelSidebar = ({
               <IconPeople />
             </IconButton>
             <span className="font-medium">
-              {group.members.length} member{group.members.length !== 1 ? 's' : ''}
+              {group.members.length} member
+              {group.members.length !== 1 ? 's' : ''}
             </span>
           </div>
           {/* Action buttons */}
@@ -182,7 +222,7 @@ export const ChannelSidebar = ({
                 e.stopPropagation();
                 onCreateChannel();
               }}
-              className="bg-transparent border-none cursor-pointer p-0.5 rounded flex items-center text-[var(--text-muted)] transition-colors duration-150 hover:text-[var(--text-primary)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-primary)]"
+              className="bg-transparent border-none cursor-pointer p-0.5 rounded flex items-center text-[var(--text-muted)] transition-colors duration-150 hover:text-[var(--text-primary)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-primary)] active-press"
             >
               <IconPlus size={14} />
             </button>
@@ -201,20 +241,26 @@ export const ChannelSidebar = ({
                 const isActive = channel.id === activeChannelId;
                 const channelMsgs = messages[channel.id] || [];
                 const lastMsg = channelMsgs[channelMsgs.length - 1];
-                const hasUnread = lastMsg && lastMsg.senderId !== user?.id && !lastMsg.isRead;
+                const hasUnread =
+                  lastMsg && lastMsg.senderId !== user?.id && !lastMsg.isRead;
                 return (
                   <div
                     key={channel.id}
-                    className={`group/channel flex items-center justify-between w-full rounded-lg transition-all duration-150 pr-1.5 ${
+                    className={`group/channel relative flex items-center justify-between w-full rounded-lg transition-all duration-150 pr-1.5 fade-in-list ${
                       isActive
                         ? 'bg-[var(--theme-btn-active)]'
                         : 'bg-transparent hover:bg-[var(--bg-input)]'
                     }`}
                   >
+                    {/* Left active glow bar */}
+                    <span
+                      className={`absolute left-0 w-[3px] rounded-r bg-[var(--accent-primary)] transition-all duration-200
+                      ${isActive ? 'h-5 top-[7.5px]' : 'h-0 top-[17.5px] opacity-0'}`}
+                    />
                     <button
                       id={`channel-${channel.id}`}
                       onClick={() => handleSelectChannel(channel)}
-                      className={`flex-1 flex items-center gap-1.5 py-1.5 px-2 rounded-lg border-none cursor-pointer text-left transition-all duration-150 bg-transparent text-sm min-w-0 outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-primary)] ${
+                      className={`flex-1 flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg border-none cursor-pointer text-left transition-all duration-150 bg-transparent text-sm min-w-0 outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-primary)] active-press ${
                         isActive
                           ? 'text-[var(--theme-btn-active-text)] font-semibold'
                           : 'text-[var(--text-secondary)] font-normal'
@@ -229,12 +275,16 @@ export const ChannelSidebar = ({
                       >
                         <IconHash />
                       </span>
-                      <span className={`truncate ${hasUnread ? 'font-bold text-[var(--text-primary)]' : ''}`}>{channel.name}</span>
+                      <span
+                        className={`truncate ${hasUnread ? 'font-bold text-[var(--text-primary)]' : ''}`}
+                      >
+                        {channel.name}
+                      </span>
                       {hasUnread && (
                         <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-primary)] animate-pulse shrink-0 ml-1.5" />
                       )}
                     </button>
-                    
+
                     {isOwner && channel.name !== 'general' && (
                       <div className="flex gap-1 items-center">
                         <button
@@ -243,37 +293,17 @@ export const ChannelSidebar = ({
                             e.stopPropagation();
                             onEditChannel(channel);
                           }}
-                          className="bg-transparent border-none cursor-pointer text-[var(--text-muted)] p-1 rounded hover:text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center transition-all duration-150 opacity-0 group-hover/channel:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-primary)]"
+                          className="bg-transparent border-none cursor-pointer text-[var(--text-muted)] p-1 rounded hover:text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center transition-all duration-150 opacity-0 group-hover/channel:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-primary)] spin-hover active-press"
                         >
                           <IconSettings />
                         </button>
                         <button
                           title="Delete Channel"
-                          onClick={async (e) => {
+                          onClick={(e) => {
                             e.stopPropagation();
-                            if (
-                              window.confirm(
-                                `Delete channel #${channel.name}? This will permanently erase all message history in this channel.`,
-                              )
-                            ) {
-                              try {
-                                await dispatch(
-                                  deleteChannel({
-                                    groupId: group.id,
-                                    channelId: channel.id,
-                                  }),
-                                ).unwrap();
-                                showToast.success(
-                                  `Channel #${channel.name} deleted.`,
-                                );
-                              } catch (err: any) {
-                                showToast.error(
-                                  err || 'Failed to delete channel.',
-                                );
-                              }
-                            }
+                            handleDeleteChannel(channel);
                           }}
-                          className="bg-transparent border-none cursor-pointer text-[var(--danger)] p-1 rounded hover:bg-[var(--danger-bg)] flex items-center transition-all duration-150 opacity-0 group-hover/channel:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-primary)]"
+                          className="bg-transparent border-none cursor-pointer text-[var(--danger)] p-1 rounded hover:bg-[var(--danger-bg)] flex items-center transition-all duration-150 opacity-0 group-hover/channel:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-primary)] active-press"
                         >
                           <IconTrash />
                         </button>
@@ -317,6 +347,17 @@ export const ChannelSidebar = ({
           <IconSettings />
         </IconButton>
       </div>
+      {confirmModal && (
+        <ConfirmationModal
+          isOpen={confirmModal.isOpen}
+          title={confirmModal.title}
+          message={confirmModal.message}
+          confirmLabel={confirmModal.confirmLabel}
+          type={confirmModal.type}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={() => setConfirmModal(null)}
+        />
+      )}
     </div>
   );
 };
@@ -341,12 +382,12 @@ const IconButton = ({
     id={id}
     title={title}
     onClick={onClick}
-    className={`p-1.5 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-150 border-none outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]
+    className={`p-1.5 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-150 border-none outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] active-press
       ${
         danger
           ? 'text-[var(--danger)] hover:bg-[var(--danger-bg)]'
           : 'text-[var(--text-muted)] hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)]'
-      }`}
+      } ${id.includes('settings') ? 'spin-hover' : ''}`}
   >
     {children}
   </button>

@@ -13,7 +13,9 @@ interface CreateGroupModalProps {
   onClose: () => void;
 }
 
-export const CreateGroupModal = ({ onClose }: CreateGroupModalProps): React.JSX.Element => {
+export const CreateGroupModal = ({
+  onClose,
+}: CreateGroupModalProps): React.JSX.Element => {
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((s) => s.auth);
   const { searchResults } = useAppSelector((s) => s.chat);
@@ -77,7 +79,7 @@ export const CreateGroupModal = ({ onClose }: CreateGroupModalProps): React.JSX.
 
   return (
     <div
-      className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-[rgba(4,6,12,0.65)] backdrop-blur-[14px]"
+      className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-[rgba(4,6,12,0.65)] backdrop-blur-[4px]"
       onClick={onClose}
     >
       <div
@@ -97,14 +99,17 @@ export const CreateGroupModal = ({ onClose }: CreateGroupModalProps): React.JSX.
           <button
             id="close-create-group-modal"
             onClick={onClose}
-            className="bg-transparent border-none cursor-pointer text-[var(--text-muted)] p-1 rounded-md flex items-center shrink-0"
+            className="bg-transparent border-none cursor-pointer text-[var(--text-muted)] p-1 rounded-md flex items-center shrink-0 active-press"
           >
             <IconX size={18} />
           </button>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-5 py-5 flex flex-col gap-4">
+        <form
+          onSubmit={handleSubmit}
+          className="flex-1 overflow-y-auto px-5 py-5 flex flex-col gap-4"
+        >
           {/* Group Name */}
           <div>
             <label
@@ -131,7 +136,10 @@ export const CreateGroupModal = ({ onClose }: CreateGroupModalProps): React.JSX.
               htmlFor="group-desc-input"
               className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2"
             >
-              Description <span className="text-xs text-normal normal-case tracking-none font-normal">(optional)</span>
+              Description{' '}
+              <span className="text-xs text-normal normal-case tracking-none font-normal">
+                (optional)
+              </span>
             </label>
             <input
               id="group-desc-input"
@@ -146,10 +154,11 @@ export const CreateGroupModal = ({ onClose }: CreateGroupModalProps): React.JSX.
 
           {/* Add Members */}
           <div>
-            <label
-              className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2"
-            >
-              Add Members <span className="text-xs text-normal normal-case tracking-none font-normal">(optional)</span>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2">
+              Add Members{' '}
+              <span className="text-xs text-normal normal-case tracking-none font-normal">
+                (optional)
+              </span>
             </label>
 
             {/* Selected users chips */}
@@ -160,14 +169,17 @@ export const CreateGroupModal = ({ onClose }: CreateGroupModalProps): React.JSX.
                     key={u.id}
                     className="flex items-center gap-1.5 py-1 pl-1.5 pr-2 rounded-full bg-[var(--theme-btn-active)] border border-[var(--accent-primary)]"
                   >
-                    <Avatar letter={(u.displayName || u.email)[0].toUpperCase()} size="sm" />
+                    <Avatar
+                      letter={(u.displayName || u.email)[0].toUpperCase()}
+                      size="sm"
+                    />
                     <span className="text-xs font-semibold text-[var(--theme-btn-active-text)]">
                       {u.displayName || u.email.split('@')[0]}
                     </span>
                     <button
                       type="button"
                       onClick={() => handleRemoveUser(u.id)}
-                      className="bg-transparent border-none cursor-pointer p-0 flex items-center text-[var(--text-muted)]"
+                      className="bg-transparent border-none cursor-pointer p-0 flex items-center text-[var(--text-muted)] active-press"
                     >
                       <IconX size={12} />
                     </button>
@@ -192,19 +204,24 @@ export const CreateGroupModal = ({ onClose }: CreateGroupModalProps): React.JSX.
 
               {/* Search Dropdown */}
               {filteredResults.length > 0 && (
-                <div
-                  className="absolute top-[calc(100%+4px)] left-0 right-0 bg-[var(--glass-bg)] border-[1.5px] border-[var(--glass-border)] rounded-[10px] overflow-y-auto max-h-[180px] z-[100] shadow-[var(--glass-shadow)]"
-                >
+                <div className="absolute top-[calc(100%+4px)] left-0 right-0 bg-[var(--glass-bg)] border-[1.5px] border-[var(--glass-border)] rounded-[10px] overflow-y-auto max-h-[180px] z-[100] shadow-[var(--glass-shadow)]">
                   {filteredResults.map((u) => (
                     <div
                       key={u.id}
                       onClick={() => handleAddUser(u)}
-                      className="flex items-center gap-2.5 px-3.5 py-2.5 cursor-pointer border-b border-[var(--border-muted)] hover:bg-[var(--bg-input)] transition-colors duration-150"
+                      className="flex items-center gap-2.5 px-3.5 py-2.5 cursor-pointer border-b border-[var(--border-muted)] hover:bg-[var(--bg-input)] transition-colors duration-150 active-press fade-in-list"
                     >
-                      <Avatar letter={(u.displayName || u.email)[0].toUpperCase()} size="sm" />
+                      <Avatar
+                        letter={(u.displayName || u.email)[0].toUpperCase()}
+                        size="sm"
+                      />
                       <div>
-                        <div className="text-[13px] font-semibold text-[var(--text-primary)]">{u.displayName}</div>
-                        <div className="text-[11px] text-[var(--text-muted)]">{u.email}</div>
+                        <div className="text-[13px] font-semibold text-[var(--text-primary)]">
+                          {u.displayName}
+                        </div>
+                        <div className="text-[11px] text-[var(--text-muted)]">
+                          {u.email}
+                        </div>
                       </div>
                       <div className="ml-auto text-[var(--accent-primary)] flex">
                         <IconPlus size={14} />
@@ -218,13 +235,11 @@ export const CreateGroupModal = ({ onClose }: CreateGroupModalProps): React.JSX.
         </form>
 
         {/* Footer */}
-        <div
-          className="px-5 py-4 border-t border-[var(--border-muted)] flex justify-end gap-2.5"
-        >
+        <div className="px-5 py-4 border-t border-[var(--border-muted)] flex justify-end gap-2.5">
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2.5 rounded-[10px] border-[1.5px] border-[var(--glass-border)] bg-transparent text-[var(--text-secondary)] text-sm font-semibold cursor-pointer"
+            className="px-5 py-2.5 rounded-[10px] border-[1.5px] border-[var(--glass-border)] bg-transparent text-[var(--text-secondary)] text-sm font-semibold cursor-pointer active-press"
           >
             Cancel
           </button>
@@ -233,7 +248,7 @@ export const CreateGroupModal = ({ onClose }: CreateGroupModalProps): React.JSX.
             type="button"
             onClick={handleSubmit}
             disabled={isLoading || !groupName.trim()}
-            className="btn-send px-6 py-2.5 rounded-[10px] border-none text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="btn-send px-6 py-2.5 rounded-[10px] border-none text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 active-press"
           >
             {isLoading ? 'Creating…' : 'Create Group'}
           </button>

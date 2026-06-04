@@ -29,7 +29,13 @@ export const GroupSettingsModal = ({
     }
     setIsLoading(true);
     try {
-      await dispatch(updateGroup({ groupId: group.id, name: name.trim(), description: description.trim() })).unwrap();
+      await dispatch(
+        updateGroup({
+          groupId: group.id,
+          name: name.trim(),
+          description: description.trim(),
+        }),
+      ).unwrap();
       showToast.success('Group settings updated!');
       onClose();
     } catch (err: any) {
@@ -41,7 +47,7 @@ export const GroupSettingsModal = ({
 
   return (
     <div
-      className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-[rgba(4,6,12,0.65)] backdrop-blur-[14px]"
+      className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-[rgba(4,6,12,0.65)] backdrop-blur-[4px]"
       onClick={onClose}
     >
       <div
@@ -61,7 +67,7 @@ export const GroupSettingsModal = ({
           <button
             id="close-group-settings-modal"
             onClick={onClose}
-            className="bg-transparent border-none cursor-pointer text-[var(--text-muted)] p-1 rounded-md flex items-center"
+            className="bg-transparent border-none cursor-pointer text-[var(--text-muted)] p-1 rounded-md flex items-center active-press"
           >
             <IconX size={18} />
           </button>
@@ -109,13 +115,11 @@ export const GroupSettingsModal = ({
         </form>
 
         {/* Footer */}
-        <div
-          className="px-5 pb-5 flex justify-end gap-2.5"
-        >
+        <div className="px-5 pb-5 flex justify-end gap-2.5">
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2.5 rounded-[10px] border-[1.5px] border-[var(--glass-border)] bg-transparent text-[var(--text-secondary)] text-sm font-semibold cursor-pointer"
+            className="px-5 py-2.5 rounded-[10px] border-[1.5px] border-[var(--glass-border)] bg-transparent text-[var(--text-secondary)] text-sm font-semibold cursor-pointer active-press"
           >
             Cancel
           </button>
@@ -124,7 +128,7 @@ export const GroupSettingsModal = ({
             type="button"
             onClick={handleSubmit}
             disabled={isLoading || !name.trim()}
-            className="btn-send px-6 py-2.5 rounded-[10px] border-none text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="btn-send px-6 py-2.5 rounded-[10px] border-none text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 active-press"
           >
             {isLoading ? 'Saving…' : 'Save Changes'}
           </button>

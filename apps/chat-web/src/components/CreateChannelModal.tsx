@@ -22,7 +22,10 @@ export const CreateChannelModal = ({
   const [isLoading, setIsLoading] = useState(false);
 
   const sanitize = (val: string) =>
-    val.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    val
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-]/g, '');
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setChannelName(sanitize(e.target.value));
@@ -49,7 +52,7 @@ export const CreateChannelModal = ({
 
   return (
     <div
-      className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-[rgba(4,6,12,0.65)] backdrop-blur-[14px]"
+      className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-[rgba(4,6,12,0.65)] backdrop-blur-[4px]"
       onClick={onClose}
     >
       <div
@@ -63,13 +66,16 @@ export const CreateChannelModal = ({
               Create Channel
             </h2>
             <p className="m-1 text-[12.5px] text-[var(--text-muted)]">
-              In <strong className="text-[var(--text-secondary)]">{groupName}</strong>
+              In{' '}
+              <strong className="text-[var(--text-secondary)]">
+                {groupName}
+              </strong>
             </p>
           </div>
           <button
             id="close-create-channel-modal"
             onClick={onClose}
-            className="bg-transparent border-none cursor-pointer text-[var(--text-muted)] p-1 rounded-md flex items-center"
+            className="bg-transparent border-none cursor-pointer text-[var(--text-muted)] p-1 rounded-md flex items-center active-press"
           >
             <IconX size={18} />
           </button>
@@ -102,18 +108,17 @@ export const CreateChannelModal = ({
           </div>
 
           <p className="m-2 text-xs text-[var(--text-muted)]">
-            Channel names must be lowercase, with no spaces. Spaces become dashes.
+            Channel names must be lowercase, with no spaces. Spaces become
+            dashes.
           </p>
         </form>
 
         {/* Footer */}
-        <div
-          className="px-5 pb-5 flex justify-end gap-2.5"
-        >
+        <div className="px-5 pb-5 flex justify-end gap-2.5">
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2.5 rounded-[10px] border-[1.5px] border-[var(--glass-border)] bg-transparent text-[var(--text-secondary)] text-sm font-semibold cursor-pointer"
+            className="px-5 py-2.5 rounded-[10px] border-[1.5px] border-[var(--glass-border)] bg-transparent text-[var(--text-secondary)] text-sm font-semibold cursor-pointer active-press"
           >
             Cancel
           </button>
@@ -122,7 +127,7 @@ export const CreateChannelModal = ({
             type="button"
             onClick={handleSubmit}
             disabled={isLoading || !channelName.trim()}
-            className="btn-send px-6 py-2.5 rounded-[10px] border-none text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="btn-send px-6 py-2.5 rounded-[10px] border-none text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 active-press"
           >
             {isLoading ? 'Creating…' : 'Create Channel'}
           </button>

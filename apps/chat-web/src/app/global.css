@@ -2581,201 +2581,6 @@ body {
   color: var(--text-primary) !important;
   border-radius: 12px !important;
   box-shadow: var(--glass-shadow) !important;
-  [data-theme='system'][data-theme-schema='arctic_glass'] {
-    --bg-primary: #f8fbff;
-    --bg-sidebar: rgba(240, 246, 255, 0.88);
-    --bg-chat: rgba(248, 251, 255, 0.94);
-    --bg-input: rgba(0, 0, 0, 0.04);
-    --bg-input-focus: rgba(0, 0, 0, 0.07);
-    --glass-bg: rgba(240, 246, 255, 0.76);
-    --glass-border: rgba(0, 0, 0, 0.08);
-    --glass-shadow: 0 8px 32px 0 rgba(0, 153, 255, 0.1);
-    --border-muted: rgba(0, 0, 0, 0.07);
-    --text-primary: #111827;
-    --text-secondary: #0077cc;
-    --text-muted: #4b5563;
-    --msg-in-bg: rgba(255, 255, 255, 0.92);
-    --msg-in-border: rgba(0, 0, 0, 0.07);
-    --dropdown-bg: #ffffff;
-    --scrollbar-thumb: rgba(0, 0, 0, 0.15);
-    --scrollbar-thumb-hover: rgba(0, 0, 0, 0.3);
-    --danger: #dc2626;
-    --danger-bg: rgba(220, 38, 38, 0.08);
-    --danger-border: rgba(220, 38, 38, 0.2);
-    --theme-btn: rgba(0, 0, 0, 0.06);
-    --theme-btn-hover: rgba(0, 0, 0, 0.1);
-    --theme-btn-active: rgba(0, 153, 255, 0.14);
-    --theme-btn-active-text: #0099ff;
-    --bg-glow-1: rgba(0, 153, 255, 0.05);
-    --bg-glow-2: rgba(0, 194, 255, 0.05);
-    --accent-ring: rgba(0, 153, 255, 0.18);
-    --avatar-ring: rgba(0, 153, 255, 0.28);
-    --online-border: #f8fbff;
-    --accent-primary: #0099ff;
-    --accent-primary-hover: #007acc;
-    --accent-secondary: #00c2ff;
-    --btn-shadow: 0 4px 14px rgba(0, 153, 255, 0.25);
-  }
-
-  [data-theme='system'][data-theme-schema='carbon_red'] {
-    --bg-primary: #fafafa;
-    --bg-sidebar: rgba(243, 243, 244, 0.88);
-    --bg-chat: rgba(250, 250, 250, 0.94);
-    --bg-input: rgba(0, 0, 0, 0.04);
-    --bg-input-focus: rgba(0, 0, 0, 0.07);
-    --glass-bg: rgba(243, 243, 244, 0.76);
-    --glass-border: rgba(0, 0, 0, 0.08);
-    --glass-shadow: 0 8px 32px 0 rgba(211, 47, 47, 0.1);
-    --border-muted: rgba(0, 0, 0, 0.07);
-    --text-primary: #18181b;
-    --text-secondary: #a82020;
-    --text-muted: #71717a;
-    --msg-in-bg: rgba(255, 255, 255, 0.92);
-    --msg-in-border: rgba(0, 0, 0, 0.07);
-    --dropdown-bg: #ffffff;
-    --scrollbar-thumb: rgba(0, 0, 0, 0.15);
-    --scrollbar-thumb-hover: rgba(0, 0, 0, 0.3);
-    --danger: #dc2626;
-    --danger-bg: rgba(220, 38, 38, 0.08);
-    --danger-border: rgba(220, 38, 38, 0.2);
-    --theme-btn: rgba(0, 0, 0, 0.06);
-    --theme-btn-hover: rgba(0, 0, 0, 0.1);
-    --theme-btn-active: rgba(211, 47, 47, 0.14);
-    --theme-btn-active-text: #d32f2f;
-    --bg-glow-1: rgba(211, 47, 47, 0.05);
-    --bg-glow-2: rgba(244, 67, 54, 0.05);
-    --accent-ring: rgba(211, 47, 47, 0.18);
-    --avatar-ring: rgba(211, 47, 47, 0.28);
-    --online-border: #fafafa;
-    --accent-primary: #d32f2f;
-    --accent-primary-hover: #b71c1c;
-    --accent-secondary: #f44336;
-    --btn-shadow: 0 4px 14px rgba(211, 47, 47, 0.25);
-  }
-
-  [data-theme='system'][data-theme-schema='tokyo_night'] {
-    --bg-primary: #f6f7fb;
-    --bg-sidebar: rgba(240, 242, 247, 0.88);
-    --bg-chat: rgba(246, 247, 251, 0.94);
-    --bg-input: rgba(0, 0, 0, 0.04);
-    --bg-input-focus: rgba(0, 0, 0, 0.07);
-    --glass-bg: rgba(240, 242, 247, 0.76);
-    --glass-border: rgba(0, 0, 0, 0.08);
-    --glass-shadow: 0 8px 32px 0 rgba(59, 130, 246, 0.1);
-    --border-muted: rgba(0, 0, 0, 0.07);
-    --text-primary: #24283b;
-    --text-secondary: #1f57b0;
-    --text-muted: #565f89;
-    --msg-in-bg: rgba(255, 255, 255, 0.92);
-    --msg-in-border: rgba(0, 0, 0, 0.07);
-    --dropdown-bg: #ffffff;
-    --scrollbar-thumb: rgba(0, 0, 0, 0.15);
-    --scrollbar-thumb-hover: rgba(0, 0, 0, 0.3);
-    --danger: #dc2626;
-    --danger-bg: rgba(220, 38, 38, 0.08);
-    --danger-border: rgba(220, 38, 38, 0.2);
-    --theme-btn: rgba(0, 0, 0, 0.06);
-    --theme-btn-hover: rgba(0, 0, 0, 0.1);
-    --theme-btn-active: rgba(59, 130, 246, 0.14);
-    --theme-btn-active-text: #3b82f6;
-    --bg-glow-1: rgba(59, 130, 246, 0.05);
-    --bg-glow-2: rgba(124, 58, 237, 0.05);
-    --accent-ring: rgba(59, 130, 246, 0.18);
-    --avatar-ring: rgba(59, 130, 246, 0.28);
-    --online-border: #f6f7fb;
-    --accent-primary: #3b82f6;
-    --accent-primary-hover: #2563eb;
-    --accent-secondary: #7c3aed;
-    --btn-shadow: 0 4px 14px rgba(59, 130, 246, 0.25);
-  }
-
-  [data-theme='system'][data-theme-schema='matte_gold'] {
-    --bg-primary: #fffdf8;
-    --bg-sidebar: rgba(248, 244, 234, 0.88);
-    --bg-chat: rgba(255, 253, 248, 0.94);
-    --bg-input: rgba(0, 0, 0, 0.04);
-    --bg-input-focus: rgba(0, 0, 0, 0.07);
-    --glass-bg: rgba(248, 244, 234, 0.76);
-    --glass-border: rgba(0, 0, 0, 0.08);
-    --glass-shadow: 0 8px 32px 0 rgba(184, 134, 11, 0.1);
-    --border-muted: rgba(0, 0, 0, 0.07);
-    --text-primary: #111111;
-    --text-secondary: #805e00;
-    --text-muted: #7c7464;
-    --msg-in-bg: rgba(255, 255, 255, 0.92);
-    --msg-in-border: rgba(0, 0, 0, 0.07);
-    --dropdown-bg: #ffffff;
-    --scrollbar-thumb: rgba(0, 0, 0, 0.15);
-    --scrollbar-thumb-hover: rgba(0, 0, 0, 0.3);
-    --danger: #dc2626;
-    --danger-bg: rgba(220, 38, 38, 0.08);
-    --danger-border: rgba(220, 38, 38, 0.2);
-    --theme-btn: rgba(0, 0, 0, 0.06);
-    --theme-btn-hover: rgba(0, 0, 0, 0.1);
-    --theme-btn-active: rgba(184, 134, 11, 0.14);
-    --theme-btn-active-text: #b8860b;
-    --bg-glow-1: rgba(184, 134, 11, 0.05);
-    --bg-glow-2: rgba(212, 175, 55, 0.05);
-    --accent-ring: rgba(184, 134, 11, 0.18);
-    --avatar-ring: rgba(184, 134, 11, 0.28);
-    --online-border: #fffdf8;
-    --accent-primary: #b8860b;
-    --accent-primary-hover: #9e7200;
-    --accent-secondary: #d4af37;
-    --btn-shadow: 0 4px 14px rgba(184, 134, 11, 0.25);
-  }
-
-  [data-theme='system'][data-theme-schema='obsidian_cyan'] {
-    --bg-primary: #f7fafc;
-    --bg-sidebar: rgba(240, 244, 248, 0.88);
-    --bg-chat: rgba(247, 250, 252, 0.94);
-    --bg-input: rgba(0, 0, 0, 0.04);
-    --bg-input-focus: rgba(0, 0, 0, 0.07);
-    --glass-bg: rgba(240, 244, 248, 0.76);
-    --glass-border: rgba(0, 0, 0, 0.08);
-    --glass-shadow: 0 8px 32px 0 rgba(8, 145, 178, 0.1);
-    --border-muted: rgba(0, 0, 0, 0.07);
-    --text-primary: #111827;
-    --text-secondary: #0e7490;
-    --text-muted: #526372;
-    --msg-in-bg: rgba(255, 255, 255, 0.92);
-    --msg-in-border: rgba(0, 0, 0, 0.07);
-    --dropdown-bg: #ffffff;
-    --scrollbar-thumb: rgba(0, 0, 0, 0.15);
-    --scrollbar-thumb-hover: rgba(0, 0, 0, 0.3);
-    --danger: #dc2626;
-    --danger-bg: rgba(220, 38, 38, 0.08);
-    --danger-border: rgba(220, 38, 38, 0.2);
-    --theme-btn: rgba(0, 0, 0, 0.06);
-    --theme-btn-hover: rgba(0, 0, 0, 0.1);
-    --theme-btn-active: rgba(8, 145, 178, 0.14);
-    --theme-btn-active-text: #0891b2;
-    --bg-glow-1: rgba(8, 145, 178, 0.05);
-    --bg-glow-2: rgba(6, 182, 212, 0.05);
-    --accent-ring: rgba(8, 145, 178, 0.18);
-    --avatar-ring: rgba(8, 145, 178, 0.28);
-    --online-border: #f7fafc;
-    --accent-primary: #0891b2;
-    --accent-primary-hover: #0e7490;
-    --accent-secondary: #06b6d4;
-    --btn-shadow: 0 4px 14px rgba(8, 145, 178, 0.25);
-  }
-}
-
-/* ============================================================
-   React Toastify Custom Overrides (Theme Schema Compatibility)
-   ============================================================ */
-.Toastify__toast-container {
-  z-index: 99999;
-}
-.Toastify__toast {
-  background: var(--glass-bg) !important;
-  backdrop-filter: blur(14px) !important;
-  -webkit-backdrop-filter: blur(14px) !important;
-  border: 1px solid var(--glass-border) !important;
-  color: var(--text-primary) !important;
-  border-radius: 12px !important;
-  box-shadow: var(--glass-shadow) !important;
   font-family: inherit !important;
 }
 .Toastify__toast-icon svg {
@@ -2850,4 +2655,63 @@ body {
 }
 .group:hover .msg-delete-btn {
   opacity: 1;
+}
+
+/* ============================================================
+   Premium UI/UX Interaction & Animation Utilities
+   ============================================================ */
+
+/* Soft scale-down click feedback */
+.active-press {
+  transition: transform 0.12s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+.active-press:active {
+  transform: scale(0.96) !important;
+}
+
+/* Smooth rotation for gear/settings icons */
+.spin-hover {
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+.spin-hover:hover {
+  transform: rotate(45deg) !important;
+}
+
+/* Left glow vertical bar indicator for active/hover list items */
+.sidebar-indicator {
+  position: absolute;
+  left: 0;
+  width: 4px;
+  height: 0;
+  border-radius: 0 4px 4px 0;
+  background-color: var(--accent-primary);
+  box-shadow: 0 0 10px var(--accent-ring);
+  transition:
+    height 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    top 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Subtle border hover effect for cards */
+.premium-card {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+.premium-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* Smooth list entry transitions */
+.fade-in-list {
+  animation: fadeInList 0.3s ease-out forwards;
+}
+
+@keyframes fadeInList {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

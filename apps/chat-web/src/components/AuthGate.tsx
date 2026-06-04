@@ -24,11 +24,15 @@ import { ThemeSwitcher } from './ThemeSwitcher';
 
 export const AuthGate = (): React.JSX.Element => {
   const dispatch = useAppDispatch();
-  const { status: authStatus, error: authError, themeMode: theme } = useAppSelector((s) => s.auth);
+  const {
+    status: authStatus,
+    error: authError,
+    themeMode: theme,
+  } = useAppSelector((s) => s.auth);
 
   const [isLoginMode, setIsLoginMode] = useState(true);
-  const [email, setEmail]             = useState('');
-  const [password, setPassword]       = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
 
@@ -64,14 +68,12 @@ export const AuthGate = (): React.JSX.Element => {
 
   return (
     <div className="flex items-center justify-center min-h-screen w-screen p-6 bg-[var(--bg-primary)]">
-
       {/* Theme switcher in corner */}
       <div className="fixed top-5 right-5 z-50">
         <ThemeSwitcher theme={theme} onChange={handleThemeChange} />
       </div>
 
       <div className="flex w-[900px] max-w-full min-h-[580px] overflow-hidden glass-panel animate-fade-in">
-
         {/* Left Branding Panel */}
         <div className="relative flex-[1.1] flex flex-col justify-center items-center p-12 text-white text-center overflow-hidden bg-gradient-to-br from-[var(--accent-primary)] to-[var(--accent-secondary)]">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.18)_0%,transparent_65%)]" />
@@ -82,18 +84,23 @@ export const AuthGate = (): React.JSX.Element => {
             <IconBolt />
           </div>
 
-          <h1 className="relative z-10 text-[38px] font-bold tracking-tight mb-3">RelayFlow</h1>
+          <h1 className="relative z-10 text-[38px] font-bold tracking-tight mb-3">
+            RelayFlow
+          </h1>
           <p className="relative z-10 text-[15px] leading-relaxed opacity-85 max-w-[260px]">
             Ultra-fast, real-time messaging with NestJS WebSocket Gateway.
           </p>
 
           <div className="relative z-10 flex flex-col gap-2.5 mt-8 w-full">
             {[
-              { icon: <IconZap />,    text: 'Sub-millisecond delivery' },
+              { icon: <IconZap />, text: 'Sub-millisecond delivery' },
               { icon: <IconShield />, text: 'JWT-secured channels' },
-              { icon: <IconGlobe />,  text: 'Real-time presence sync' },
+              { icon: <IconGlobe />, text: 'Real-time presence sync' },
             ].map(({ icon, text }) => (
-              <div key={text} className="flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-[13px] text-left bg-[rgba(255,255,255,0.12)] backdrop-blur-[8px]">
+              <div
+                key={text}
+                className="flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-[13px] text-left bg-[rgba(255,255,255,0.12)] backdrop-blur-[8px]"
+              >
                 {icon}
                 <span>{text}</span>
               </div>
@@ -208,9 +215,13 @@ export const AuthGate = (): React.JSX.Element => {
               id="auth-submit-btn"
               type="submit"
               disabled={authStatus === 'loading'}
-              className="mt-2 rounded-[10px] py-3.5 text-[15px] font-semibold text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 relative overflow-hidden btn-send hover:-translate-y-0.5 hover:shadow-[var(--btn-shadow)]"
+              className="mt-2 rounded-[10px] py-3.5 text-[15px] font-semibold text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 relative overflow-hidden btn-send hover:-translate-y-0.5 hover:shadow-[var(--btn-shadow)] active-press"
             >
-              {authStatus === 'loading' ? 'Processing…' : isLoginMode ? 'Sign In' : 'Sign Up'}
+              {authStatus === 'loading'
+                ? 'Processing…'
+                : isLoginMode
+                  ? 'Sign In'
+                  : 'Sign Up'}
             </button>
           </form>
 
@@ -218,7 +229,7 @@ export const AuthGate = (): React.JSX.Element => {
             {isLoginMode ? "Don't have an account?" : 'Already registered?'}
             <button
               id="auth-toggle-btn"
-              className="ml-1.5 font-semibold cursor-pointer transition-colors duration-200 text-[var(--accent-primary)] bg-transparent border-none"
+              className="ml-1.5 font-semibold cursor-pointer transition-colors duration-200 text-[var(--accent-primary)] bg-transparent border-none active-press"
               onClick={() => {
                 setIsLoginMode(!isLoginMode);
                 dispatch(clearAuthError());
