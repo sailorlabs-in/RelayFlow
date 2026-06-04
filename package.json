@@ -3,13 +3,15 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
+    "prepare": "husky",
     "serve-all": "nx run-many -t serve --parallel=10",
     "serve-all:prod": "nx run-many -t serve --configuration=production --parallel=10",
     "build-all": "nx run-many -t build --exclude=@chat-app/chat-web && npm run --prefix apps/chat-web build",
     "build-all:prod": "nx run-many -t build --exclude=@chat-app/chat-web --configuration=production && npm run --prefix apps/chat-web build",
     "preview-gateway": "node apps/gateway/dist/main.js",
     "preview-worker-service": "node apps/worker-service/dist/main.js",
-    "preview-all": "npx --yes concurrently \"npm run preview-gateway\" \"npm run preview-worker-service\""
+    "preview-all": "npx --yes concurrently \"npm run preview-gateway\" \"npm run preview-worker-service\"",
+    "prepare": "husky"
   },
   "private": true,
   "dependencies": {
@@ -82,10 +84,12 @@
     "eslint-plugin-jsx-a11y": "6.10.1",
     "eslint-plugin-react": "7.35.0",
     "eslint-plugin-react-hooks": "5.0.0",
+    "husky": "^9.1.7",
     "jest": "~30.3.0",
     "jest-environment-node": "~30.3.0",
     "jest-util": "~30.3.0",
     "jsonc-eslint-parser": "^2.1.0",
+    "lint-staged": "^17.0.7",
     "nx": "22.7.5",
     "prettier": "~3.6.2",
     "tailwindcss": "^4.3.0",
@@ -99,5 +103,10 @@
   "workspaces": [
     "apps/*",
     "libs/*"
-  ]
+  ],
+  "lint-staged": {
+    "**/*.{ts,tsx}": [
+      "eslint --max-warnings=0"
+    ]
+  }
 }
