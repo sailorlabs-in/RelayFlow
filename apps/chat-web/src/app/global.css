@@ -29,13 +29,13 @@
    ============================================================ */
 :root,
 [data-theme='dark'] {
-  --bg-primary: #050a12;
-  --bg-sidebar: rgba(15, 23, 42, 0.72);
-  --bg-chat: rgba(5, 10, 18, 0.82);
-  --bg-input: rgba(255, 255, 255, 0.03);
-  --bg-input-focus: rgba(255, 255, 255, 0.05);
+  --bg-primary: #0d1829;
+  --bg-sidebar: rgba(22, 35, 62, 0.8);
+  --bg-chat: rgba(13, 24, 41, 0.9);
+  --bg-input: rgba(255, 255, 255, 0.04);
+  --bg-input-focus: rgba(255, 255, 255, 0.07);
 
-  --glass-bg: rgba(15, 23, 42, 0.5);
+  --glass-bg: rgba(22, 35, 62, 0.55);
   --glass-border: rgba(255, 255, 255, 0.06);
   --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.55);
   --border-muted: rgba(255, 255, 255, 0.06);
@@ -47,7 +47,7 @@
   --msg-in-bg: rgba(255, 255, 255, 0.05);
   --msg-in-border: rgba(255, 255, 255, 0.03);
 
-  --dropdown-bg: #0f172a;
+  --dropdown-bg: #1a2540;
 
   --scrollbar-thumb: rgba(255, 255, 255, 0.12);
   --scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
@@ -56,9 +56,9 @@
   --danger-bg: rgba(239, 68, 68, 0.12);
   --danger-border: rgba(239, 68, 68, 0.22);
 
-  --theme-btn: rgba(255, 255, 255, 0.06);
-  --theme-btn-hover: rgba(255, 255, 255, 0.12);
-  --theme-btn-active: rgba(56, 189, 248, 0.22);
+  --theme-btn: rgba(56, 189, 248, 0.08);
+  --theme-btn-hover: rgba(56, 189, 248, 0.15);
+  --theme-btn-active: rgba(56, 189, 248, 0.28);
   --theme-btn-active-text: #7dd3fc;
 
   --bg-glow-1: rgba(56, 189, 248, 0.07);
@@ -66,7 +66,7 @@
 
   --accent-ring: rgba(56, 189, 248, 0.18);
   --avatar-ring: rgba(56, 189, 248, 0.28);
-  --online-border: #050a12;
+  --online-border: #0d1829;
 
   --accent-primary: #38bdf8;
   --accent-primary-hover: #0284c7;
@@ -128,13 +128,13 @@
 /* System preference auto */
 @media (prefers-color-scheme: dark) {
   [data-theme='system'] {
-    --bg-primary: #050a12;
-    --bg-sidebar: rgba(15, 23, 42, 0.72);
-    --bg-chat: rgba(5, 10, 18, 0.82);
-    --bg-input: rgba(255, 255, 255, 0.03);
-    --bg-input-focus: rgba(255, 255, 255, 0.05);
+    --bg-primary: #0d1829;
+    --bg-sidebar: rgba(22, 35, 62, 0.8);
+    --bg-chat: rgba(13, 24, 41, 0.9);
+    --bg-input: rgba(255, 255, 255, 0.04);
+    --bg-input-focus: rgba(255, 255, 255, 0.07);
 
-    --glass-bg: rgba(15, 23, 42, 0.5);
+    --glass-bg: rgba(22, 35, 62, 0.55);
     --glass-border: rgba(255, 255, 255, 0.06);
     --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.55);
     --border-muted: rgba(255, 255, 255, 0.06);
@@ -146,7 +146,7 @@
     --msg-in-bg: rgba(255, 255, 255, 0.05);
     --msg-in-border: rgba(255, 255, 255, 0.03);
 
-    --dropdown-bg: #0f172a;
+    --dropdown-bg: #1a2540;
 
     --scrollbar-thumb: rgba(255, 255, 255, 0.12);
     --scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
@@ -155,9 +155,9 @@
     --danger-bg: rgba(239, 68, 68, 0.12);
     --danger-border: rgba(239, 68, 68, 0.22);
 
-    --theme-btn: rgba(255, 255, 255, 0.06);
-    --theme-btn-hover: rgba(255, 255, 255, 0.12);
-    --theme-btn-active: rgba(56, 189, 248, 0.22);
+    --theme-btn: rgba(56, 189, 248, 0.08);
+    --theme-btn-hover: rgba(56, 189, 248, 0.15);
+    --theme-btn-active: rgba(56, 189, 248, 0.28);
     --theme-btn-active-text: #7dd3fc;
 
     --bg-glow-1: rgba(56, 189, 248, 0.07);
@@ -165,7 +165,7 @@
 
     --accent-ring: rgba(56, 189, 248, 0.18);
     --avatar-ring: rgba(56, 189, 248, 0.28);
-    --online-border: #050a12;
+    --online-border: #0d1829;
 
     --accent-primary: #38bdf8;
     --accent-primary-hover: #0284c7;
@@ -553,13 +553,13 @@ body {
    Emerald/Forest Green Theme Variables (Option 1)
    ============================================================ */
 [data-theme='dark'][data-theme-schema='emerald'] {
-  --bg-primary: #0a0f0d;
-  --bg-sidebar: rgba(18, 27, 22, 0.72);
-  --bg-chat: rgba(10, 15, 13, 0.82);
-  --bg-input: rgba(255, 255, 255, 0.03);
-  --bg-input-focus: rgba(255, 255, 255, 0.05);
+  --bg-primary: #131d18;
+  --bg-sidebar: rgba(25, 38, 30, 0.8);
+  --bg-chat: rgba(19, 29, 24, 0.9);
+  --bg-input: rgba(255, 255, 255, 0.04);
+  --bg-input-focus: rgba(255, 255, 255, 0.07);
 
-  --glass-bg: rgba(18, 27, 22, 0.5);
+  --glass-bg: rgba(25, 38, 30, 0.55);
   --glass-border: rgba(255, 255, 255, 0.06);
   --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.55);
   --border-muted: rgba(255, 255, 255, 0.06);
@@ -571,7 +571,7 @@ body {
   --msg-in-bg: rgba(255, 255, 255, 0.05);
   --msg-in-border: rgba(255, 255, 255, 0.03);
 
-  --dropdown-bg: #121b16;
+  --dropdown-bg: #1b2820;
 
   --scrollbar-thumb: rgba(255, 255, 255, 0.12);
   --scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
@@ -580,9 +580,9 @@ body {
   --danger-bg: rgba(239, 68, 68, 0.12);
   --danger-border: rgba(239, 68, 68, 0.22);
 
-  --theme-btn: rgba(255, 255, 255, 0.06);
-  --theme-btn-hover: rgba(255, 255, 255, 0.12);
-  --theme-btn-active: rgba(16, 185, 129, 0.22);
+  --theme-btn: rgba(16, 185, 129, 0.08);
+  --theme-btn-hover: rgba(16, 185, 129, 0.15);
+  --theme-btn-active: rgba(16, 185, 129, 0.28);
   --theme-btn-active-text: #34d399;
 
   --bg-glow-1: rgba(16, 185, 129, 0.07);
@@ -590,7 +590,7 @@ body {
 
   --accent-ring: rgba(16, 185, 129, 0.18);
   --avatar-ring: rgba(16, 185, 129, 0.28);
-  --online-border: #0a0f0d;
+  --online-border: #131d18;
 
   --accent-primary: #10b981;
   --accent-primary-hover: #059669;
@@ -648,13 +648,13 @@ body {
    Golden Amber Theme Variables (Option 2 - Brand Active)
    ============================================================ */
 [data-theme='dark'][data-theme-schema='golden'] {
-  --bg-primary: #111111;
-  --bg-sidebar: rgba(28, 28, 28, 0.72);
-  --bg-chat: rgba(17, 17, 17, 0.82);
-  --bg-input: rgba(255, 255, 255, 0.03);
-  --bg-input-focus: rgba(255, 255, 255, 0.05);
+  --bg-primary: #1b1a16;
+  --bg-sidebar: rgba(38, 36, 28, 0.8);
+  --bg-chat: rgba(27, 26, 22, 0.9);
+  --bg-input: rgba(255, 255, 255, 0.04);
+  --bg-input-focus: rgba(255, 255, 255, 0.07);
 
-  --glass-bg: rgba(28, 28, 28, 0.5);
+  --glass-bg: rgba(38, 36, 28, 0.55);
   --glass-border: rgba(255, 255, 255, 0.07);
   --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.55);
   --border-muted: rgba(255, 255, 255, 0.07);
@@ -666,7 +666,7 @@ body {
   --msg-in-bg: rgba(255, 255, 255, 0.05);
   --msg-in-border: rgba(255, 255, 255, 0.04);
 
-  --dropdown-bg: #1c1c1c;
+  --dropdown-bg: #252420;
 
   --scrollbar-thumb: rgba(255, 255, 255, 0.12);
   --scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
@@ -675,9 +675,9 @@ body {
   --danger-bg: rgba(239, 68, 68, 0.12);
   --danger-border: rgba(239, 68, 68, 0.22);
 
-  --theme-btn: rgba(255, 255, 255, 0.06);
-  --theme-btn-hover: rgba(255, 255, 255, 0.12);
-  --theme-btn-active: rgba(233, 163, 25, 0.22);
+  --theme-btn: rgba(233, 163, 25, 0.08);
+  --theme-btn-hover: rgba(233, 163, 25, 0.15);
+  --theme-btn-active: rgba(233, 163, 25, 0.28);
   --theme-btn-active-text: #fbbf24;
 
   --bg-glow-1: rgba(233, 163, 25, 0.07);
@@ -685,7 +685,7 @@ body {
 
   --accent-ring: rgba(233, 163, 25, 0.18);
   --avatar-ring: rgba(233, 163, 25, 0.28);
-  --online-border: #111111;
+  --online-border: #1b1a16;
 
   --accent-primary: #e9a319;
   --accent-primary-hover: #c67c00;
@@ -743,13 +743,13 @@ body {
    Warm Coffee Theme Variables (Option 3)
    ============================================================ */
 [data-theme='dark'][data-theme-schema='coffee'] {
-  --bg-primary: #1f1815;
-  --bg-sidebar: rgba(42, 33, 29, 0.72);
-  --bg-chat: rgba(31, 24, 21, 0.82);
-  --bg-input: rgba(255, 255, 255, 0.035);
-  --bg-input-focus: rgba(255, 255, 255, 0.06);
+  --bg-primary: #2a221d;
+  --bg-sidebar: rgba(48, 38, 32, 0.8);
+  --bg-chat: rgba(42, 34, 29, 0.9);
+  --bg-input: rgba(255, 255, 255, 0.04);
+  --bg-input-focus: rgba(255, 255, 255, 0.07);
 
-  --glass-bg: rgba(42, 33, 29, 0.5);
+  --glass-bg: rgba(48, 38, 32, 0.55);
   --glass-border: rgba(255, 255, 255, 0.07);
   --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45);
   --border-muted: rgba(255, 255, 255, 0.07);
@@ -761,7 +761,7 @@ body {
   --msg-in-bg: rgba(255, 255, 255, 0.06);
   --msg-in-border: rgba(255, 255, 255, 0.04);
 
-  --dropdown-bg: #2a211d;
+  --dropdown-bg: #342b25;
 
   --scrollbar-thumb: rgba(255, 255, 255, 0.12);
   --scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
@@ -770,9 +770,9 @@ body {
   --danger-bg: rgba(239, 68, 68, 0.12);
   --danger-border: rgba(239, 68, 68, 0.22);
 
-  --theme-btn: rgba(255, 255, 255, 0.06);
-  --theme-btn-hover: rgba(255, 255, 255, 0.12);
-  --theme-btn-active: rgba(200, 159, 123, 0.22);
+  --theme-btn: rgba(200, 159, 123, 0.08);
+  --theme-btn-hover: rgba(200, 159, 123, 0.15);
+  --theme-btn-active: rgba(200, 159, 123, 0.28);
   --theme-btn-active-text: #e8b980;
 
   --bg-glow-1: rgba(200, 159, 123, 0.07);
@@ -780,7 +780,7 @@ body {
 
   --accent-ring: rgba(200, 159, 123, 0.18);
   --avatar-ring: rgba(200, 159, 123, 0.28);
-  --online-border: #1f1815;
+  --online-border: #2a221d;
 
   --accent-primary: #c89f7b;
   --accent-primary-hover: #d7b18e;
@@ -838,13 +838,13 @@ body {
    Deep Violet Theme Variables (Option 4)
    ============================================================ */
 [data-theme='dark'][data-theme-schema='violet'] {
-  --bg-primary: #0e0a16;
-  --bg-sidebar: rgba(24, 18, 35, 0.72);
-  --bg-chat: rgba(14, 10, 22, 0.82);
-  --bg-input: rgba(255, 255, 255, 0.03);
-  --bg-input-focus: rgba(255, 255, 255, 0.05);
+  --bg-primary: #181227;
+  --bg-sidebar: rgba(32, 24, 50, 0.8);
+  --bg-chat: rgba(24, 18, 39, 0.9);
+  --bg-input: rgba(255, 255, 255, 0.04);
+  --bg-input-focus: rgba(255, 255, 255, 0.07);
 
-  --glass-bg: rgba(24, 18, 35, 0.5);
+  --glass-bg: rgba(32, 24, 50, 0.55);
   --glass-border: rgba(255, 255, 255, 0.07);
   --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.55);
   --border-muted: rgba(255, 255, 255, 0.07);
@@ -856,7 +856,7 @@ body {
   --msg-in-bg: rgba(255, 255, 255, 0.05);
   --msg-in-border: rgba(255, 255, 255, 0.04);
 
-  --dropdown-bg: #181223;
+  --dropdown-bg: #231a36;
 
   --scrollbar-thumb: rgba(255, 255, 255, 0.12);
   --scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
@@ -865,9 +865,9 @@ body {
   --danger-bg: rgba(239, 68, 68, 0.12);
   --danger-border: rgba(239, 68, 68, 0.22);
 
-  --theme-btn: rgba(255, 255, 255, 0.06);
-  --theme-btn-hover: rgba(255, 255, 255, 0.12);
-  --theme-btn-active: rgba(158, 119, 237, 0.22);
+  --theme-btn: rgba(158, 119, 237, 0.08);
+  --theme-btn-hover: rgba(158, 119, 237, 0.15);
+  --theme-btn-active: rgba(158, 119, 237, 0.28);
   --theme-btn-active-text: #b794f4;
 
   --bg-glow-1: rgba(158, 119, 237, 0.07);
@@ -875,7 +875,7 @@ body {
 
   --accent-ring: rgba(158, 119, 237, 0.18);
   --avatar-ring: rgba(158, 119, 237, 0.28);
-  --online-border: #0e0a16;
+  --online-border: #181227;
 
   --accent-primary: #9e77ed;
   --accent-primary-hover: #7f56d9;
@@ -934,12 +934,12 @@ body {
    ============================================================ */
 @media (prefers-color-scheme: dark) {
   [data-theme='system'][data-theme-schema='emerald'] {
-    --bg-primary: #0a0f0d;
-    --bg-sidebar: rgba(18, 27, 22, 0.72);
-    --bg-chat: rgba(10, 15, 13, 0.82);
-    --bg-input: rgba(255, 255, 255, 0.03);
-    --bg-input-focus: rgba(255, 255, 255, 0.05);
-    --glass-bg: rgba(18, 27, 22, 0.5);
+    --bg-primary: #131d18;
+    --bg-sidebar: rgba(25, 38, 30, 0.8);
+    --bg-chat: rgba(19, 29, 24, 0.9);
+    --bg-input: rgba(255, 255, 255, 0.04);
+    --bg-input-focus: rgba(255, 255, 255, 0.07);
+    --glass-bg: rgba(25, 38, 30, 0.55);
     --glass-border: rgba(255, 255, 255, 0.07);
     --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.55);
     --border-muted: rgba(255, 255, 255, 0.06);
@@ -948,21 +948,21 @@ body {
     --text-muted: #7fa392;
     --msg-in-bg: rgba(255, 255, 255, 0.05);
     --msg-in-border: rgba(255, 255, 255, 0.03);
-    --dropdown-bg: #121b16;
+    --dropdown-bg: #1b2820;
     --scrollbar-thumb: rgba(255, 255, 255, 0.12);
     --scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
     --danger: #ef4444;
     --danger-bg: rgba(239, 68, 68, 0.12);
     --danger-border: rgba(239, 68, 68, 0.22);
-    --theme-btn: rgba(255, 255, 255, 0.06);
-    --theme-btn-hover: rgba(255, 255, 255, 0.12);
-    --theme-btn-active: rgba(16, 185, 129, 0.22);
+    --theme-btn: rgba(16, 185, 129, 0.08);
+    --theme-btn-hover: rgba(16, 185, 129, 0.15);
+    --theme-btn-active: rgba(16, 185, 129, 0.28);
     --theme-btn-active-text: #34d399;
     --bg-glow-1: rgba(16, 185, 129, 0.07);
     --bg-glow-2: rgba(52, 211, 153, 0.07);
     --accent-ring: rgba(16, 185, 129, 0.18);
     --avatar-ring: rgba(16, 185, 129, 0.28);
-    --online-border: #0a0f0d;
+    --online-border: #131d18;
     --accent-primary: #10b981;
     --accent-primary-hover: #059669;
     --accent-secondary: #34d399;
@@ -970,12 +970,12 @@ body {
   }
 
   [data-theme='system'][data-theme-schema='coffee'] {
-    --bg-primary: #1f1815;
-    --bg-sidebar: rgba(42, 33, 29, 0.72);
-    --bg-chat: rgba(31, 24, 21, 0.82);
-    --bg-input: rgba(255, 255, 255, 0.035);
-    --bg-input-focus: rgba(255, 255, 255, 0.06);
-    --glass-bg: rgba(42, 33, 29, 0.5);
+    --bg-primary: #2a221d;
+    --bg-sidebar: rgba(48, 38, 32, 0.8);
+    --bg-chat: rgba(42, 34, 29, 0.9);
+    --bg-input: rgba(255, 255, 255, 0.04);
+    --bg-input-focus: rgba(255, 255, 255, 0.07);
+    --glass-bg: rgba(48, 38, 32, 0.55);
     --glass-border: rgba(255, 255, 255, 0.07);
     --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45);
     --border-muted: rgba(255, 255, 255, 0.07);
@@ -984,21 +984,21 @@ body {
     --text-muted: #8c776c;
     --msg-in-bg: rgba(255, 255, 255, 0.06);
     --msg-in-border: rgba(255, 255, 255, 0.04);
-    --dropdown-bg: #2a211d;
+    --dropdown-bg: #342b25;
     --scrollbar-thumb: rgba(255, 255, 255, 0.12);
     --scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
     --danger: #ef4444;
     --danger-bg: rgba(239, 68, 68, 0.12);
     --danger-border: rgba(239, 68, 68, 0.22);
-    --theme-btn: rgba(255, 255, 255, 0.06);
-    --theme-btn-hover: rgba(255, 255, 255, 0.12);
-    --theme-btn-active: rgba(200, 159, 123, 0.22);
+    --theme-btn: rgba(200, 159, 123, 0.08);
+    --theme-btn-hover: rgba(200, 159, 123, 0.15);
+    --theme-btn-active: rgba(200, 159, 123, 0.28);
     --theme-btn-active-text: #e8b980;
     --bg-glow-1: rgba(200, 159, 123, 0.07);
     --bg-glow-2: rgba(232, 185, 128, 0.07);
     --accent-ring: rgba(200, 159, 123, 0.18);
     --avatar-ring: rgba(200, 159, 123, 0.28);
-    --online-border: #1f1815;
+    --online-border: #2a221d;
     --accent-primary: #c89f7b;
     --accent-primary-hover: #d7b18e;
     --accent-secondary: #e8b980;
@@ -1006,12 +1006,12 @@ body {
   }
 
   [data-theme='system'][data-theme-schema='violet'] {
-    --bg-primary: #0e0a16;
-    --bg-sidebar: rgba(24, 18, 35, 0.72);
-    --bg-chat: rgba(14, 10, 22, 0.82);
-    --bg-input: rgba(255, 255, 255, 0.03);
-    --bg-input-focus: rgba(255, 255, 255, 0.05);
-    --glass-bg: rgba(24, 18, 35, 0.5);
+    --bg-primary: #181227;
+    --bg-sidebar: rgba(32, 24, 50, 0.8);
+    --bg-chat: rgba(24, 18, 39, 0.9);
+    --bg-input: rgba(255, 255, 255, 0.04);
+    --bg-input-focus: rgba(255, 255, 255, 0.07);
+    --glass-bg: rgba(32, 24, 50, 0.55);
     --glass-border: rgba(255, 255, 255, 0.07);
     --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.55);
     --border-muted: rgba(255, 255, 255, 0.07);
@@ -1020,21 +1020,21 @@ body {
     --text-muted: #857b9e;
     --msg-in-bg: rgba(255, 255, 255, 0.05);
     --msg-in-border: rgba(255, 255, 255, 0.04);
-    --dropdown-bg: #181223;
+    --dropdown-bg: #231a36;
     --scrollbar-thumb: rgba(255, 255, 255, 0.12);
     --scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
     --danger: #ef4444;
     --danger-bg: rgba(239, 68, 68, 0.12);
     --danger-border: rgba(239, 68, 68, 0.22);
-    --theme-btn: rgba(255, 255, 255, 0.06);
-    --theme-btn-hover: rgba(255, 255, 255, 0.12);
-    --theme-btn-active: rgba(158, 119, 237, 0.22);
+    --theme-btn: rgba(158, 119, 237, 0.08);
+    --theme-btn-hover: rgba(158, 119, 237, 0.15);
+    --theme-btn-active: rgba(158, 119, 237, 0.28);
     --theme-btn-active-text: #b794f4;
     --bg-glow-1: rgba(158, 119, 237, 0.07);
     --bg-glow-2: rgba(183, 148, 244, 0.07);
     --accent-ring: rgba(158, 119, 237, 0.18);
     --avatar-ring: rgba(158, 119, 237, 0.28);
-    --online-border: #0e0a16;
+    --online-border: #181227;
     --accent-primary: #9e77ed;
     --accent-primary-hover: #7f56d9;
     --accent-secondary: #b794f4;
@@ -1042,12 +1042,12 @@ body {
   }
 
   [data-theme='system'][data-theme-schema='golden'] {
-    --bg-primary: #111111;
-    --bg-sidebar: rgba(28, 28, 28, 0.72);
-    --bg-chat: rgba(17, 17, 17, 0.82);
-    --bg-input: rgba(255, 255, 255, 0.03);
-    --bg-input-focus: rgba(255, 255, 255, 0.05);
-    --glass-bg: rgba(28, 28, 28, 0.5);
+    --bg-primary: #1b1a16;
+    --bg-sidebar: rgba(38, 36, 28, 0.8);
+    --bg-chat: rgba(27, 26, 22, 0.9);
+    --bg-input: rgba(255, 255, 255, 0.04);
+    --bg-input-focus: rgba(255, 255, 255, 0.07);
+    --glass-bg: rgba(38, 36, 28, 0.55);
     --glass-border: rgba(255, 255, 255, 0.07);
     --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.55);
     --border-muted: rgba(255, 255, 255, 0.07);
@@ -1056,21 +1056,21 @@ body {
     --text-muted: #8c8c8c;
     --msg-in-bg: rgba(255, 255, 255, 0.05);
     --msg-in-border: rgba(255, 255, 255, 0.04);
-    --dropdown-bg: #1c1c1c;
+    --dropdown-bg: #252420;
     --scrollbar-thumb: rgba(255, 255, 255, 0.12);
     --scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
     --danger: #ef4444;
     --danger-bg: rgba(239, 68, 68, 0.12);
     --danger-border: rgba(239, 68, 68, 0.22);
-    --theme-btn: rgba(255, 255, 255, 0.06);
-    --theme-btn-hover: rgba(255, 255, 255, 0.12);
-    --theme-btn-active: rgba(233, 163, 25, 0.22);
+    --theme-btn: rgba(233, 163, 25, 0.08);
+    --theme-btn-hover: rgba(233, 163, 25, 0.15);
+    --theme-btn-active: rgba(233, 163, 25, 0.28);
     --theme-btn-active-text: #fbbf24;
     --bg-glow-1: rgba(233, 163, 25, 0.07);
     --bg-glow-2: rgba(251, 191, 36, 0.07);
     --accent-ring: rgba(233, 163, 25, 0.18);
     --avatar-ring: rgba(233, 163, 25, 0.28);
-    --online-border: #111111;
+    --online-border: #1b1a16;
     --accent-primary: #e9a319;
     --accent-primary-hover: #c67c00;
     --accent-secondary: #fbbf24;
@@ -1228,13 +1228,13 @@ body {
    Linear Inspired Theme Variables (Option 5)
    ============================================================ */
 [data-theme='dark'][data-theme-schema='linear'] {
-  --bg-primary: #08090a;
-  --bg-sidebar: rgba(15, 16, 17, 0.72);
-  --bg-chat: rgba(8, 9, 10, 0.82);
-  --bg-input: rgba(255, 255, 255, 0.03);
-  --bg-input-focus: rgba(255, 255, 255, 0.05);
+  --bg-primary: #0e1018;
+  --bg-sidebar: rgba(20, 22, 32, 0.8);
+  --bg-chat: rgba(14, 16, 24, 0.9);
+  --bg-input: rgba(255, 255, 255, 0.04);
+  --bg-input-focus: rgba(255, 255, 255, 0.07);
 
-  --glass-bg: rgba(15, 16, 17, 0.5);
+  --glass-bg: rgba(20, 22, 32, 0.55);
   --glass-border: rgba(255, 255, 255, 0.06);
   --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.55);
   --border-muted: rgba(255, 255, 255, 0.06);
@@ -1246,7 +1246,7 @@ body {
   --msg-in-bg: rgba(255, 255, 255, 0.05);
   --msg-in-border: rgba(255, 255, 255, 0.03);
 
-  --dropdown-bg: #141517;
+  --dropdown-bg: #1a1c26;
 
   --scrollbar-thumb: rgba(255, 255, 255, 0.12);
   --scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
@@ -1255,9 +1255,9 @@ body {
   --danger-bg: rgba(239, 68, 68, 0.12);
   --danger-border: rgba(239, 68, 68, 0.22);
 
-  --theme-btn: rgba(255, 255, 255, 0.06);
-  --theme-btn-hover: rgba(255, 255, 255, 0.12);
-  --theme-btn-active: rgba(123, 137, 255, 0.22);
+  --theme-btn: rgba(123, 137, 255, 0.08);
+  --theme-btn-hover: rgba(123, 137, 255, 0.15);
+  --theme-btn-active: rgba(123, 137, 255, 0.28);
   --theme-btn-active-text: #a78bfa;
 
   --bg-glow-1: rgba(123, 137, 255, 0.07);
@@ -1265,7 +1265,7 @@ body {
 
   --accent-ring: rgba(123, 137, 255, 0.18);
   --avatar-ring: rgba(123, 137, 255, 0.28);
-  --online-border: #08090a;
+  --online-border: #0e1018;
 
   --accent-primary: #7b89ff;
   --accent-primary-hover: #5e6ad2;
@@ -1323,13 +1323,13 @@ body {
    Midnight Emerald Theme Variables (Option 6)
    ============================================================ */
 [data-theme='dark'][data-theme-schema='midnight_emerald'] {
-  --bg-primary: #071412;
-  --bg-sidebar: rgba(13, 29, 26, 0.72);
-  --bg-chat: rgba(7, 20, 18, 0.82);
-  --bg-input: rgba(255, 255, 255, 0.03);
-  --bg-input-focus: rgba(255, 255, 255, 0.05);
+  --bg-primary: #0f2220;
+  --bg-sidebar: rgba(18, 40, 36, 0.8);
+  --bg-chat: rgba(15, 34, 32, 0.9);
+  --bg-input: rgba(255, 255, 255, 0.04);
+  --bg-input-focus: rgba(255, 255, 255, 0.07);
 
-  --glass-bg: rgba(13, 29, 26, 0.5);
+  --glass-bg: rgba(18, 40, 36, 0.55);
   --glass-border: rgba(255, 255, 255, 0.06);
   --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.55);
   --border-muted: rgba(255, 255, 255, 0.06);
@@ -1341,7 +1341,7 @@ body {
   --msg-in-bg: rgba(255, 255, 255, 0.05);
   --msg-in-border: rgba(255, 255, 255, 0.03);
 
-  --dropdown-bg: #0d1d1a;
+  --dropdown-bg: #172e2b;
 
   --scrollbar-thumb: rgba(255, 255, 255, 0.12);
   --scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
@@ -1350,9 +1350,9 @@ body {
   --danger-bg: rgba(239, 68, 68, 0.12);
   --danger-border: rgba(239, 68, 68, 0.22);
 
-  --theme-btn: rgba(255, 255, 255, 0.06);
-  --theme-btn-hover: rgba(255, 255, 255, 0.12);
-  --theme-btn-active: rgba(45, 212, 191, 0.22);
+  --theme-btn: rgba(45, 212, 191, 0.08);
+  --theme-btn-hover: rgba(45, 212, 191, 0.15);
+  --theme-btn-active: rgba(45, 212, 191, 0.28);
   --theme-btn-active-text: #5eead4;
 
   --bg-glow-1: rgba(45, 212, 191, 0.07);
@@ -1360,7 +1360,7 @@ body {
 
   --accent-ring: rgba(45, 212, 191, 0.18);
   --avatar-ring: rgba(45, 212, 191, 0.28);
-  --online-border: #071412;
+  --online-border: #0f2220;
 
   --accent-primary: #2dd4bf;
   --accent-primary-hover: #14b8a6;
@@ -1418,13 +1418,13 @@ body {
    Graphite Orange Theme Variables (Option 7)
    ============================================================ */
 [data-theme='dark'][data-theme-schema='graphite_orange'] {
-  --bg-primary: #0b0b0b;
-  --bg-sidebar: rgba(24, 24, 27, 0.72);
-  --bg-chat: rgba(11, 11, 11, 0.82);
-  --bg-input: rgba(255, 255, 255, 0.03);
-  --bg-input-focus: rgba(255, 255, 255, 0.05);
+  --bg-primary: #151413;
+  --bg-sidebar: rgba(30, 28, 26, 0.8);
+  --bg-chat: rgba(21, 20, 19, 0.9);
+  --bg-input: rgba(255, 255, 255, 0.04);
+  --bg-input-focus: rgba(255, 255, 255, 0.07);
 
-  --glass-bg: rgba(24, 24, 27, 0.5);
+  --glass-bg: rgba(30, 28, 26, 0.55);
   --glass-border: rgba(255, 255, 255, 0.06);
   --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.55);
   --border-muted: rgba(255, 255, 255, 0.06);
@@ -1436,7 +1436,7 @@ body {
   --msg-in-bg: rgba(255, 255, 255, 0.05);
   --msg-in-border: rgba(255, 255, 255, 0.03);
 
-  --dropdown-bg: #18181b;
+  --dropdown-bg: #222020;
 
   --scrollbar-thumb: rgba(255, 255, 255, 0.12);
   --scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
@@ -1445,9 +1445,9 @@ body {
   --danger-bg: rgba(239, 68, 68, 0.12);
   --danger-border: rgba(239, 68, 68, 0.22);
 
-  --theme-btn: rgba(255, 255, 255, 0.06);
-  --theme-btn-hover: rgba(255, 255, 255, 0.12);
-  --theme-btn-active: rgba(255, 179, 71, 0.22);
+  --theme-btn: rgba(255, 179, 71, 0.08);
+  --theme-btn-hover: rgba(255, 179, 71, 0.15);
+  --theme-btn-active: rgba(255, 179, 71, 0.28);
   --theme-btn-active-text: #ffd08a;
 
   --bg-glow-1: rgba(255, 179, 71, 0.07);
@@ -1455,7 +1455,7 @@ body {
 
   --accent-ring: rgba(255, 179, 71, 0.18);
   --avatar-ring: rgba(255, 179, 71, 0.28);
-  --online-border: #0b0b0b;
+  --online-border: #151413;
 
   --accent-primary: #ffb347;
   --accent-primary-hover: #e57a00;
@@ -1513,13 +1513,13 @@ body {
    Arctic Glass Theme Variables (Option 8)
    ============================================================ */
 [data-theme='dark'][data-theme-schema='arctic_glass'] {
-  --bg-primary: #050a12;
-  --bg-sidebar: rgba(15, 23, 42, 0.72);
-  --bg-chat: rgba(5, 10, 18, 0.82);
-  --bg-input: rgba(255, 255, 255, 0.03);
-  --bg-input-focus: rgba(255, 255, 255, 0.05);
+  --bg-primary: #0d1829;
+  --bg-sidebar: rgba(22, 35, 62, 0.8);
+  --bg-chat: rgba(13, 24, 41, 0.9);
+  --bg-input: rgba(255, 255, 255, 0.04);
+  --bg-input-focus: rgba(255, 255, 255, 0.07);
 
-  --glass-bg: rgba(15, 23, 42, 0.5);
+  --glass-bg: rgba(22, 35, 62, 0.55);
   --glass-border: rgba(255, 255, 255, 0.06);
   --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.55);
   --border-muted: rgba(255, 255, 255, 0.06);
@@ -1531,7 +1531,7 @@ body {
   --msg-in-bg: rgba(255, 255, 255, 0.05);
   --msg-in-border: rgba(255, 255, 255, 0.03);
 
-  --dropdown-bg: #0f172a;
+  --dropdown-bg: #1a2540;
 
   --scrollbar-thumb: rgba(255, 255, 255, 0.12);
   --scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
@@ -1540,9 +1540,9 @@ body {
   --danger-bg: rgba(239, 68, 68, 0.12);
   --danger-border: rgba(239, 68, 68, 0.22);
 
-  --theme-btn: rgba(255, 255, 255, 0.06);
-  --theme-btn-hover: rgba(255, 255, 255, 0.12);
-  --theme-btn-active: rgba(56, 189, 248, 0.22);
+  --theme-btn: rgba(56, 189, 248, 0.08);
+  --theme-btn-hover: rgba(56, 189, 248, 0.15);
+  --theme-btn-active: rgba(56, 189, 248, 0.28);
   --theme-btn-active-text: #7dd3fc;
 
   --bg-glow-1: rgba(56, 189, 248, 0.07);
@@ -1550,7 +1550,7 @@ body {
 
   --accent-ring: rgba(56, 189, 248, 0.18);
   --avatar-ring: rgba(56, 189, 248, 0.28);
-  --online-border: #050a12;
+  --online-border: #0d1829;
 
   --accent-primary: #38bdf8;
   --accent-primary-hover: #0284c7;
@@ -1608,13 +1608,13 @@ body {
    Carbon Red Theme Variables (Option 9)
    ============================================================ */
 [data-theme='dark'][data-theme-schema='carbon_red'] {
-  --bg-primary: #090909;
-  --bg-sidebar: rgba(21, 21, 21, 0.72);
-  --bg-chat: rgba(9, 9, 9, 0.82);
-  --bg-input: rgba(255, 255, 255, 0.03);
-  --bg-input-focus: rgba(255, 255, 255, 0.05);
+  --bg-primary: #131213;
+  --bg-sidebar: rgba(28, 26, 26, 0.8);
+  --bg-chat: rgba(19, 18, 19, 0.9);
+  --bg-input: rgba(255, 255, 255, 0.04);
+  --bg-input-focus: rgba(255, 255, 255, 0.07);
 
-  --glass-bg: rgba(21, 21, 21, 0.5);
+  --glass-bg: rgba(28, 26, 26, 0.55);
   --glass-border: rgba(255, 255, 255, 0.06);
   --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.55);
   --border-muted: rgba(255, 255, 255, 0.06);
@@ -1626,7 +1626,7 @@ body {
   --msg-in-bg: rgba(255, 255, 255, 0.05);
   --msg-in-border: rgba(255, 255, 255, 0.03);
 
-  --dropdown-bg: #151515;
+  --dropdown-bg: #1e1c1c;
 
   --scrollbar-thumb: rgba(255, 255, 255, 0.12);
   --scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
@@ -1635,9 +1635,9 @@ body {
   --danger-bg: rgba(239, 68, 68, 0.12);
   --danger-border: rgba(239, 68, 68, 0.22);
 
-  --theme-btn: rgba(255, 255, 255, 0.06);
-  --theme-btn-hover: rgba(255, 255, 255, 0.12);
-  --theme-btn-active: rgba(255, 107, 107, 0.22);
+  --theme-btn: rgba(255, 107, 107, 0.08);
+  --theme-btn-hover: rgba(255, 107, 107, 0.15);
+  --theme-btn-active: rgba(255, 107, 107, 0.28);
   --theme-btn-active-text: #ff8787;
 
   --bg-glow-1: rgba(255, 107, 107, 0.07);
@@ -1645,7 +1645,7 @@ body {
 
   --accent-ring: rgba(255, 107, 107, 0.18);
   --avatar-ring: rgba(255, 107, 107, 0.28);
-  --online-border: #090909;
+  --online-border: #131213;
 
   --accent-primary: #ff6b6b;
   --accent-primary-hover: #e84e4e;
@@ -1703,13 +1703,13 @@ body {
    Tokyo Night Theme Variables (Option 10)
    ============================================================ */
 [data-theme='dark'][data-theme-schema='tokyo_night'] {
-  --bg-primary: #1a1b26;
-  --bg-sidebar: rgba(36, 40, 59, 0.72);
-  --bg-chat: rgba(26, 27, 38, 0.82);
-  --bg-input: rgba(255, 255, 255, 0.03);
-  --bg-input-focus: rgba(255, 255, 255, 0.05);
+  --bg-primary: #1e2030;
+  --bg-sidebar: rgba(40, 44, 65, 0.8);
+  --bg-chat: rgba(30, 32, 48, 0.9);
+  --bg-input: rgba(255, 255, 255, 0.04);
+  --bg-input-focus: rgba(255, 255, 255, 0.07);
 
-  --glass-bg: rgba(36, 40, 59, 0.5);
+  --glass-bg: rgba(40, 44, 65, 0.55);
   --glass-border: rgba(255, 255, 255, 0.06);
   --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.55);
   --border-muted: rgba(255, 255, 255, 0.06);
@@ -1721,7 +1721,7 @@ body {
   --msg-in-bg: rgba(255, 255, 255, 0.05);
   --msg-in-border: rgba(255, 255, 255, 0.03);
 
-  --dropdown-bg: #24283b;
+  --dropdown-bg: #282d42;
 
   --scrollbar-thumb: rgba(255, 255, 255, 0.12);
   --scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
@@ -1730,9 +1730,9 @@ body {
   --danger-bg: rgba(247, 118, 142, 0.12);
   --danger-border: rgba(247, 118, 142, 0.22);
 
-  --theme-btn: rgba(255, 255, 255, 0.06);
-  --theme-btn-hover: rgba(255, 255, 255, 0.12);
-  --theme-btn-active: rgba(122, 162, 247, 0.22);
+  --theme-btn: rgba(122, 162, 247, 0.08);
+  --theme-btn-hover: rgba(122, 162, 247, 0.15);
+  --theme-btn-active: rgba(122, 162, 247, 0.28);
   --theme-btn-active-text: #bb9af7;
 
   --bg-glow-1: rgba(122, 162, 247, 0.07);
@@ -1740,7 +1740,7 @@ body {
 
   --accent-ring: rgba(122, 162, 247, 0.18);
   --avatar-ring: rgba(122, 162, 247, 0.28);
-  --online-border: #1a1b26;
+  --online-border: #1e2030;
 
   --accent-primary: #7aa2f7;
   --accent-primary-hover: #568af2;
@@ -1798,13 +1798,13 @@ body {
    Matte Black + Gold Theme Variables (Option 11)
    ============================================================ */
 [data-theme='dark'][data-theme-schema='matte_gold'] {
-  --bg-primary: #050505;
-  --bg-sidebar: rgba(17, 17, 17, 0.72);
-  --bg-chat: rgba(5, 5, 5, 0.82);
-  --bg-input: rgba(255, 255, 255, 0.03);
-  --bg-input-focus: rgba(255, 255, 255, 0.05);
+  --bg-primary: #121110;
+  --bg-sidebar: rgba(26, 25, 22, 0.8);
+  --bg-chat: rgba(18, 17, 16, 0.9);
+  --bg-input: rgba(255, 255, 255, 0.04);
+  --bg-input-focus: rgba(255, 255, 255, 0.07);
 
-  --glass-bg: rgba(17, 17, 17, 0.5);
+  --glass-bg: rgba(26, 25, 22, 0.55);
   --glass-border: rgba(255, 255, 255, 0.06);
   --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.55);
   --border-muted: rgba(255, 255, 255, 0.06);
@@ -1816,7 +1816,7 @@ body {
   --msg-in-bg: rgba(255, 255, 255, 0.05);
   --msg-in-border: rgba(255, 255, 255, 0.03);
 
-  --dropdown-bg: #111111;
+  --dropdown-bg: #1c1b18;
 
   --scrollbar-thumb: rgba(255, 255, 255, 0.12);
   --scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
@@ -1825,9 +1825,9 @@ body {
   --danger-bg: rgba(239, 68, 68, 0.12);
   --danger-border: rgba(239, 68, 68, 0.22);
 
-  --theme-btn: rgba(255, 255, 255, 0.06);
-  --theme-btn-hover: rgba(255, 255, 255, 0.12);
-  --theme-btn-active: rgba(212, 175, 55, 0.22);
+  --theme-btn: rgba(212, 175, 55, 0.08);
+  --theme-btn-hover: rgba(212, 175, 55, 0.15);
+  --theme-btn-active: rgba(212, 175, 55, 0.28);
   --theme-btn-active-text: #f4d03f;
 
   --bg-glow-1: rgba(212, 175, 55, 0.07);
@@ -1835,7 +1835,7 @@ body {
 
   --accent-ring: rgba(212, 175, 55, 0.18);
   --avatar-ring: rgba(212, 175, 55, 0.28);
-  --online-border: #050505;
+  --online-border: #121110;
 
   --accent-primary: #d4af37;
   --accent-primary-hover: #b8860b;
@@ -1893,13 +1893,13 @@ body {
    Obsidian + Cyan Theme Variables (Option 12)
    ============================================================ */
 [data-theme='dark'][data-theme-schema='obsidian_cyan'] {
-  --bg-primary: #09090b;
-  --bg-sidebar: rgba(24, 24, 27, 0.72);
-  --bg-chat: rgba(9, 9, 11, 0.82);
-  --bg-input: rgba(255, 255, 255, 0.03);
-  --bg-input-focus: rgba(255, 255, 255, 0.05);
+  --bg-primary: #131318;
+  --bg-sidebar: rgba(28, 28, 36, 0.8);
+  --bg-chat: rgba(19, 19, 24, 0.9);
+  --bg-input: rgba(255, 255, 255, 0.04);
+  --bg-input-focus: rgba(255, 255, 255, 0.07);
 
-  --glass-bg: rgba(24, 24, 27, 0.5);
+  --glass-bg: rgba(28, 28, 36, 0.55);
   --glass-border: rgba(255, 255, 255, 0.06);
   --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.55);
   --border-muted: rgba(255, 255, 255, 0.06);
@@ -1911,7 +1911,7 @@ body {
   --msg-in-bg: rgba(255, 255, 255, 0.05);
   --msg-in-border: rgba(255, 255, 255, 0.03);
 
-  --dropdown-bg: #18181b;
+  --dropdown-bg: #1e1e28;
 
   --scrollbar-thumb: rgba(255, 255, 255, 0.12);
   --scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
@@ -1920,9 +1920,9 @@ body {
   --danger-bg: rgba(239, 68, 68, 0.12);
   --danger-border: rgba(239, 68, 68, 0.22);
 
-  --theme-btn: rgba(255, 255, 255, 0.06);
-  --theme-btn-hover: rgba(255, 255, 255, 0.12);
-  --theme-btn-active: rgba(34, 211, 238, 0.22);
+  --theme-btn: rgba(34, 211, 238, 0.08);
+  --theme-btn-hover: rgba(34, 211, 238, 0.15);
+  --theme-btn-active: rgba(34, 211, 238, 0.28);
   --theme-btn-active-text: #67e8f9;
 
   --bg-glow-1: rgba(34, 211, 238, 0.07);
@@ -1930,7 +1930,7 @@ body {
 
   --accent-ring: rgba(34, 211, 238, 0.18);
   --avatar-ring: rgba(34, 211, 238, 0.28);
-  --online-border: #09090b;
+  --online-border: #131318;
 
   --accent-primary: #22d3ee;
   --accent-primary-hover: #0891b2;
@@ -1989,12 +1989,12 @@ body {
    ============================================================ */
 @media (prefers-color-scheme: dark) {
   [data-theme='system'][data-theme-schema='linear'] {
-    --bg-primary: #08090a;
-    --bg-sidebar: rgba(15, 16, 17, 0.72);
-    --bg-chat: rgba(8, 9, 10, 0.82);
-    --bg-input: rgba(255, 255, 255, 0.03);
-    --bg-input-focus: rgba(255, 255, 255, 0.05);
-    --glass-bg: rgba(15, 16, 17, 0.5);
+    --bg-primary: #0e1018;
+    --bg-sidebar: rgba(20, 22, 32, 0.8);
+    --bg-chat: rgba(14, 16, 24, 0.9);
+    --bg-input: rgba(255, 255, 255, 0.04);
+    --bg-input-focus: rgba(255, 255, 255, 0.07);
+    --glass-bg: rgba(20, 22, 32, 0.55);
     --glass-border: rgba(255, 255, 255, 0.06);
     --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.55);
     --border-muted: rgba(255, 255, 255, 0.06);
@@ -2003,21 +2003,21 @@ body {
     --text-muted: #8e9bae;
     --msg-in-bg: rgba(255, 255, 255, 0.05);
     --msg-in-border: rgba(255, 255, 255, 0.03);
-    --dropdown-bg: #141517;
+    --dropdown-bg: #1a1c26;
     --scrollbar-thumb: rgba(255, 255, 255, 0.12);
     --scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
     --danger: #ef4444;
     --danger-bg: rgba(239, 68, 68, 0.12);
     --danger-border: rgba(239, 68, 68, 0.22);
-    --theme-btn: rgba(255, 255, 255, 0.06);
-    --theme-btn-hover: rgba(255, 255, 255, 0.12);
-    --theme-btn-active: rgba(123, 137, 255, 0.22);
+    --theme-btn: rgba(123, 137, 255, 0.08);
+    --theme-btn-hover: rgba(123, 137, 255, 0.15);
+    --theme-btn-active: rgba(123, 137, 255, 0.28);
     --theme-btn-active-text: #a78bfa;
     --bg-glow-1: rgba(123, 137, 255, 0.07);
     --bg-glow-2: rgba(167, 139, 250, 0.07);
     --accent-ring: rgba(123, 137, 255, 0.18);
     --avatar-ring: rgba(123, 137, 255, 0.28);
-    --online-border: #08090a;
+    --online-border: #0e1018;
     --accent-primary: #7b89ff;
     --accent-primary-hover: #5e6ad2;
     --accent-secondary: #a78bfa;
@@ -2025,12 +2025,12 @@ body {
   }
 
   [data-theme='system'][data-theme-schema='midnight_emerald'] {
-    --bg-primary: #071412;
-    --bg-sidebar: rgba(13, 29, 26, 0.72);
-    --bg-chat: rgba(7, 20, 18, 0.82);
-    --bg-input: rgba(255, 255, 255, 0.03);
-    --bg-input-focus: rgba(255, 255, 255, 0.05);
-    --glass-bg: rgba(13, 29, 26, 0.5);
+    --bg-primary: #0f2220;
+    --bg-sidebar: rgba(18, 40, 36, 0.8);
+    --bg-chat: rgba(15, 34, 32, 0.9);
+    --bg-input: rgba(255, 255, 255, 0.04);
+    --bg-input-focus: rgba(255, 255, 255, 0.07);
+    --glass-bg: rgba(18, 40, 36, 0.55);
     --glass-border: rgba(255, 255, 255, 0.06);
     --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.55);
     --border-muted: rgba(255, 255, 255, 0.06);
@@ -2039,21 +2039,21 @@ body {
     --text-muted: #57857e;
     --msg-in-bg: rgba(255, 255, 255, 0.05);
     --msg-in-border: rgba(255, 255, 255, 0.03);
-    --dropdown-bg: #0d1d1a;
+    --dropdown-bg: #172e2b;
     --scrollbar-thumb: rgba(255, 255, 255, 0.12);
     --scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
     --danger: #ef4444;
     --danger-bg: rgba(239, 68, 68, 0.12);
     --danger-border: rgba(239, 68, 68, 0.22);
-    --theme-btn: rgba(255, 255, 255, 0.06);
-    --theme-btn-hover: rgba(255, 255, 255, 0.12);
-    --theme-btn-active: rgba(45, 212, 191, 0.22);
+    --theme-btn: rgba(45, 212, 191, 0.08);
+    --theme-btn-hover: rgba(45, 212, 191, 0.15);
+    --theme-btn-active: rgba(45, 212, 191, 0.28);
     --theme-btn-active-text: #5eead4;
     --bg-glow-1: rgba(45, 212, 191, 0.07);
     --bg-glow-2: rgba(94, 234, 212, 0.07);
     --accent-ring: rgba(45, 212, 191, 0.18);
     --avatar-ring: rgba(45, 212, 191, 0.28);
-    --online-border: #071412;
+    --online-border: #0f2220;
     --accent-primary: #2dd4bf;
     --accent-primary-hover: #14b8a6;
     --accent-secondary: #5eead4;
@@ -2061,12 +2061,12 @@ body {
   }
 
   [data-theme='system'][data-theme-schema='graphite_orange'] {
-    --bg-primary: #0b0b0b;
-    --bg-sidebar: rgba(24, 24, 27, 0.72);
-    --bg-chat: rgba(11, 11, 11, 0.82);
-    --bg-input: rgba(255, 255, 255, 0.03);
-    --bg-input-focus: rgba(255, 255, 255, 0.05);
-    --glass-bg: rgba(24, 24, 27, 0.5);
+    --bg-primary: #151413;
+    --bg-sidebar: rgba(30, 28, 26, 0.8);
+    --bg-chat: rgba(21, 20, 19, 0.9);
+    --bg-input: rgba(255, 255, 255, 0.04);
+    --bg-input-focus: rgba(255, 255, 255, 0.07);
+    --glass-bg: rgba(30, 28, 26, 0.55);
     --glass-border: rgba(255, 255, 255, 0.06);
     --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.55);
     --border-muted: rgba(255, 255, 255, 0.06);
@@ -2075,21 +2075,21 @@ body {
     --text-muted: #8e8a85;
     --msg-in-bg: rgba(255, 255, 255, 0.05);
     --msg-in-border: rgba(255, 255, 255, 0.03);
-    --dropdown-bg: #18181b;
+    --dropdown-bg: #222020;
     --scrollbar-thumb: rgba(255, 255, 255, 0.12);
     --scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
     --danger: #ef4444;
     --danger-bg: rgba(239, 68, 68, 0.12);
     --danger-border: rgba(239, 68, 68, 0.22);
-    --theme-btn: rgba(255, 255, 255, 0.06);
-    --theme-btn-hover: rgba(255, 255, 255, 0.12);
-    --theme-btn-active: rgba(255, 179, 71, 0.22);
+    --theme-btn: rgba(255, 179, 71, 0.08);
+    --theme-btn-hover: rgba(255, 179, 71, 0.15);
+    --theme-btn-active: rgba(255, 179, 71, 0.28);
     --theme-btn-active-text: #ffd08a;
     --bg-glow-1: rgba(255, 179, 71, 0.07);
     --bg-glow-2: rgba(255, 208, 138, 0.07);
     --accent-ring: rgba(255, 179, 71, 0.18);
     --avatar-ring: rgba(255, 179, 71, 0.28);
-    --online-border: #0b0b0b;
+    --online-border: #151413;
     --accent-primary: #ffb347;
     --accent-primary-hover: #e57a00;
     --accent-secondary: #ffd08a;
@@ -2097,12 +2097,12 @@ body {
   }
 
   [data-theme='system'][data-theme-schema='arctic_glass'] {
-    --bg-primary: #050a12;
-    --bg-sidebar: rgba(15, 23, 42, 0.72);
-    --bg-chat: rgba(5, 10, 18, 0.82);
-    --bg-input: rgba(255, 255, 255, 0.03);
-    --bg-input-focus: rgba(255, 255, 255, 0.05);
-    --glass-bg: rgba(15, 23, 42, 0.5);
+    --bg-primary: #0d1829;
+    --bg-sidebar: rgba(22, 35, 62, 0.8);
+    --bg-chat: rgba(13, 24, 41, 0.9);
+    --bg-input: rgba(255, 255, 255, 0.04);
+    --bg-input-focus: rgba(255, 255, 255, 0.07);
+    --glass-bg: rgba(22, 35, 62, 0.55);
     --glass-border: rgba(255, 255, 255, 0.06);
     --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.55);
     --border-muted: rgba(255, 255, 255, 0.06);
@@ -2111,21 +2111,21 @@ body {
     --text-muted: #64748b;
     --msg-in-bg: rgba(255, 255, 255, 0.05);
     --msg-in-border: rgba(255, 255, 255, 0.03);
-    --dropdown-bg: #0f172a;
+    --dropdown-bg: #1a2540;
     --scrollbar-thumb: rgba(255, 255, 255, 0.12);
     --scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
     --danger: #ef4444;
     --danger-bg: rgba(239, 68, 68, 0.12);
     --danger-border: rgba(239, 68, 68, 0.22);
-    --theme-btn: rgba(255, 255, 255, 0.06);
-    --theme-btn-hover: rgba(255, 255, 255, 0.12);
-    --theme-btn-active: rgba(56, 189, 248, 0.22);
+    --theme-btn: rgba(56, 189, 248, 0.08);
+    --theme-btn-hover: rgba(56, 189, 248, 0.15);
+    --theme-btn-active: rgba(56, 189, 248, 0.28);
     --theme-btn-active-text: #7dd3fc;
     --bg-glow-1: rgba(56, 189, 248, 0.07);
     --bg-glow-2: rgba(125, 211, 252, 0.07);
     --accent-ring: rgba(56, 189, 248, 0.18);
     --avatar-ring: rgba(56, 189, 248, 0.28);
-    --online-border: #050a12;
+    --online-border: #0d1829;
     --accent-primary: #38bdf8;
     --accent-primary-hover: #0284c7;
     --accent-secondary: #7dd3fc;
@@ -2133,12 +2133,12 @@ body {
   }
 
   [data-theme='system'][data-theme-schema='carbon_red'] {
-    --bg-primary: #090909;
-    --bg-sidebar: rgba(21, 21, 21, 0.72);
-    --bg-chat: rgba(9, 9, 9, 0.82);
-    --bg-input: rgba(255, 255, 255, 0.03);
-    --bg-input-focus: rgba(255, 255, 255, 0.05);
-    --glass-bg: rgba(21, 21, 21, 0.5);
+    --bg-primary: #131213;
+    --bg-sidebar: rgba(28, 26, 26, 0.8);
+    --bg-chat: rgba(19, 18, 19, 0.9);
+    --bg-input: rgba(255, 255, 255, 0.04);
+    --bg-input-focus: rgba(255, 255, 255, 0.07);
+    --glass-bg: rgba(28, 26, 26, 0.55);
     --glass-border: rgba(255, 255, 255, 0.06);
     --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.55);
     --border-muted: rgba(255, 255, 255, 0.06);
@@ -2147,21 +2147,21 @@ body {
     --text-muted: #8e8585;
     --msg-in-bg: rgba(255, 255, 255, 0.05);
     --msg-in-border: rgba(255, 255, 255, 0.03);
-    --dropdown-bg: #151515;
+    --dropdown-bg: #1e1c1c;
     --scrollbar-thumb: rgba(255, 255, 255, 0.12);
     --scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
     --danger: #ef4444;
     --danger-bg: rgba(239, 68, 68, 0.12);
     --danger-border: rgba(239, 68, 68, 0.22);
-    --theme-btn: rgba(255, 255, 255, 0.06);
-    --theme-btn-hover: rgba(255, 255, 255, 0.12);
-    --theme-btn-active: rgba(255, 107, 107, 0.22);
+    --theme-btn: rgba(255, 107, 107, 0.08);
+    --theme-btn-hover: rgba(255, 107, 107, 0.15);
+    --theme-btn-active: rgba(255, 107, 107, 0.28);
     --theme-btn-active-text: #ff8787;
     --bg-glow-1: rgba(255, 107, 107, 0.07);
     --bg-glow-2: rgba(255, 135, 135, 0.07);
     --accent-ring: rgba(255, 107, 107, 0.18);
     --avatar-ring: rgba(255, 107, 107, 0.28);
-    --online-border: #090909;
+    --online-border: #131213;
     --accent-primary: #ff6b6b;
     --accent-primary-hover: #e84e4e;
     --accent-secondary: #ff8787;
@@ -2169,12 +2169,12 @@ body {
   }
 
   [data-theme='system'][data-theme-schema='tokyo_night'] {
-    --bg-primary: #1a1b26;
-    --bg-sidebar: rgba(36, 40, 59, 0.72);
-    --bg-chat: rgba(26, 27, 38, 0.82);
-    --bg-input: rgba(255, 255, 255, 0.03);
-    --bg-input-focus: rgba(255, 255, 255, 0.05);
-    --glass-bg: rgba(36, 40, 59, 0.5);
+    --bg-primary: #1e2030;
+    --bg-sidebar: rgba(40, 44, 65, 0.8);
+    --bg-chat: rgba(30, 32, 48, 0.9);
+    --bg-input: rgba(255, 255, 255, 0.04);
+    --bg-input-focus: rgba(255, 255, 255, 0.07);
+    --glass-bg: rgba(40, 44, 65, 0.55);
     --glass-border: rgba(255, 255, 255, 0.06);
     --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.55);
     --border-muted: rgba(255, 255, 255, 0.06);
@@ -2183,21 +2183,21 @@ body {
     --text-muted: #565f89;
     --msg-in-bg: rgba(255, 255, 255, 0.05);
     --msg-in-border: rgba(255, 255, 255, 0.03);
-    --dropdown-bg: #24283b;
+    --dropdown-bg: #282d42;
     --scrollbar-thumb: rgba(255, 255, 255, 0.12);
     --scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
     --danger: #f7768e;
     --danger-bg: rgba(247, 118, 142, 0.12);
     --danger-border: rgba(247, 118, 142, 0.22);
-    --theme-btn: rgba(255, 255, 255, 0.06);
-    --theme-btn-hover: rgba(255, 255, 255, 0.12);
-    --theme-btn-active: rgba(122, 162, 247, 0.22);
+    --theme-btn: rgba(122, 162, 247, 0.08);
+    --theme-btn-hover: rgba(122, 162, 247, 0.15);
+    --theme-btn-active: rgba(122, 162, 247, 0.28);
     --theme-btn-active-text: #bb9af7;
     --bg-glow-1: rgba(122, 162, 247, 0.07);
     --bg-glow-2: rgba(187, 154, 247, 0.07);
     --accent-ring: rgba(122, 162, 247, 0.18);
     --avatar-ring: rgba(122, 162, 247, 0.28);
-    --online-border: #1a1b26;
+    --online-border: #1e2030;
     --accent-primary: #7aa2f7;
     --accent-primary-hover: #568af2;
     --accent-secondary: #bb9af7;
@@ -2205,12 +2205,12 @@ body {
   }
 
   [data-theme='system'][data-theme-schema='matte_gold'] {
-    --bg-primary: #050505;
-    --bg-sidebar: rgba(17, 17, 17, 0.72);
-    --bg-chat: rgba(5, 5, 5, 0.82);
-    --bg-input: rgba(255, 255, 255, 0.03);
-    --bg-input-focus: rgba(255, 255, 255, 0.05);
-    --glass-bg: rgba(17, 17, 17, 0.5);
+    --bg-primary: #121110;
+    --bg-sidebar: rgba(26, 25, 22, 0.8);
+    --bg-chat: rgba(18, 17, 16, 0.9);
+    --bg-input: rgba(255, 255, 255, 0.04);
+    --bg-input-focus: rgba(255, 255, 255, 0.07);
+    --glass-bg: rgba(26, 25, 22, 0.55);
     --glass-border: rgba(255, 255, 255, 0.06);
     --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.55);
     --border-muted: rgba(255, 255, 255, 0.06);
@@ -2219,21 +2219,21 @@ body {
     --text-muted: #8a816e;
     --msg-in-bg: rgba(255, 255, 255, 0.05);
     --msg-in-border: rgba(255, 255, 255, 0.03);
-    --dropdown-bg: #111111;
+    --dropdown-bg: #1c1b18;
     --scrollbar-thumb: rgba(255, 255, 255, 0.12);
     --scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
     --danger: #ef4444;
     --danger-bg: rgba(239, 68, 68, 0.12);
     --danger-border: rgba(239, 68, 68, 0.22);
-    --theme-btn: rgba(255, 255, 255, 0.06);
-    --theme-btn-hover: rgba(255, 255, 255, 0.12);
-    --theme-btn-active: rgba(212, 175, 55, 0.22);
+    --theme-btn: rgba(212, 175, 55, 0.08);
+    --theme-btn-hover: rgba(212, 175, 55, 0.15);
+    --theme-btn-active: rgba(212, 175, 55, 0.28);
     --theme-btn-active-text: #f4d03f;
     --bg-glow-1: rgba(212, 175, 55, 0.07);
     --bg-glow-2: rgba(244, 208, 63, 0.07);
     --accent-ring: rgba(212, 175, 55, 0.18);
     --avatar-ring: rgba(212, 175, 55, 0.28);
-    --online-border: #050505;
+    --online-border: #121110;
     --accent-primary: #d4af37;
     --accent-primary-hover: #b8860b;
     --accent-secondary: #f4d03f;
@@ -2241,12 +2241,12 @@ body {
   }
 
   [data-theme='system'][data-theme-schema='obsidian_cyan'] {
-    --bg-primary: #09090b;
-    --bg-sidebar: rgba(24, 24, 27, 0.72);
-    --bg-chat: rgba(9, 9, 11, 0.82);
-    --bg-input: rgba(255, 255, 255, 0.03);
-    --bg-input-focus: rgba(255, 255, 255, 0.05);
-    --glass-bg: rgba(24, 24, 27, 0.5);
+    --bg-primary: #131318;
+    --bg-sidebar: rgba(28, 28, 36, 0.8);
+    --bg-chat: rgba(19, 19, 24, 0.9);
+    --bg-input: rgba(255, 255, 255, 0.04);
+    --bg-input-focus: rgba(255, 255, 255, 0.07);
+    --glass-bg: rgba(28, 28, 36, 0.55);
     --glass-border: rgba(255, 255, 255, 0.06);
     --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.55);
     --border-muted: rgba(255, 255, 255, 0.06);
@@ -2255,21 +2255,21 @@ body {
     --text-muted: #52676b;
     --msg-in-bg: rgba(255, 255, 255, 0.05);
     --msg-in-border: rgba(255, 255, 255, 0.03);
-    --dropdown-bg: #18181b;
+    --dropdown-bg: #1e1e28;
     --scrollbar-thumb: rgba(255, 255, 255, 0.12);
     --scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
     --danger: #ef4444;
     --danger-bg: rgba(239, 68, 68, 0.12);
     --danger-border: rgba(239, 68, 68, 0.22);
-    --theme-btn: rgba(255, 255, 255, 0.06);
-    --theme-btn-hover: rgba(255, 255, 255, 0.12);
-    --theme-btn-active: rgba(34, 211, 238, 0.22);
+    --theme-btn: rgba(34, 211, 238, 0.08);
+    --theme-btn-hover: rgba(34, 211, 238, 0.15);
+    --theme-btn-active: rgba(34, 211, 238, 0.28);
     --theme-btn-active-text: #67e8f9;
     --bg-glow-1: rgba(34, 211, 238, 0.07);
     --bg-glow-2: rgba(103, 232, 249, 0.07);
     --accent-ring: rgba(34, 211, 238, 0.18);
     --avatar-ring: rgba(34, 211, 238, 0.28);
-    --online-border: #09090b;
+    --online-border: #131318;
     --accent-primary: #22d3ee;
     --accent-primary-hover: #0891b2;
     --accent-secondary: #67e8f9;
