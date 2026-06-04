@@ -11,7 +11,7 @@ import {
 import { socketManager } from '../store/socketManager';
 
 import { Avatar } from './Avatar';
-import { IconSend, IconTrash, IconChat } from './Icons';
+import { IconSend, IconTrash, IconChat, IconCheck, IconDoubleCheck } from './Icons';
 import { PresenceDot } from './PresenceDot';
 
 interface ChatAreaProps {
@@ -66,7 +66,12 @@ export const ChatArea = ({
     if (activeConversationId) {
       dispatch(fetchMessages({ conversationId: activeConversationId, limit: 20, offset: 0 }));
       socketManager.joinConversation(activeConversationId);
+      
+      return () => {
+        socketManager.leaveConversation(activeConversationId);
+      };
     }
+    return undefined;
   }, [activeConversationId, dispatch]);
 
   useEffect(() => {
@@ -445,9 +450,16 @@ export const ChatArea = ({
                       <div className={`px-4 py-2.5 rounded-[18px] text-[14px] leading-relaxed break-words ${isOut ? 'msg-bubble-out' : 'msg-bubble-in'}`}>
                         {msg.content}
                       </div>
-                      <span className="text-[10px] mt-1 px-1 text-[var(--text-muted)]">
-                        {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
+                      <div className="flex items-center gap-1 mt-1 px-1 select-none">
+                        <span className="text-[10px] text-[var(--text-muted)]">
+                          {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        {isOut && (
+                          <span className={`inline-flex items-center ${msg.isRead ? 'text-[var(--accent-primary)]' : 'text-[var(--text-muted)]'}`} title={msg.isRead ? 'Read' : 'Sent'}>
+                            {msg.isRead ? <IconDoubleCheck /> : <IconCheck />}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );

@@ -46,6 +46,7 @@ export const ChannelSidebar = ({
   const dispatch = useAppDispatch();
   const { activeChannelId } = useAppSelector((s) => s.groups);
   const { user } = useAppSelector((s) => s.auth);
+  const { messages } = useAppSelector((s) => s.chat);
   const [showChannels, setShowChannels] = useState(true);
   const isOwner = group.ownerId === user?.id;
 
@@ -198,6 +199,9 @@ export const ChannelSidebar = ({
             ) : (
               group.channels.map((channel) => {
                 const isActive = channel.id === activeChannelId;
+                const channelMsgs = messages[channel.id] || [];
+                const lastMsg = channelMsgs[channelMsgs.length - 1];
+                const hasUnread = lastMsg && lastMsg.senderId !== user?.id && !lastMsg.isRead;
                 return (
                   <div
                     key={channel.id}
@@ -225,7 +229,10 @@ export const ChannelSidebar = ({
                       >
                         <IconHash />
                       </span>
-                      <span className="truncate">{channel.name}</span>
+                      <span className={`truncate ${hasUnread ? 'font-bold text-[var(--text-primary)]' : ''}`}>{channel.name}</span>
+                      {hasUnread && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-primary)] animate-pulse shrink-0 ml-1.5" />
+                      )}
                     </button>
                     
                     {isOwner && channel.name !== 'general' && (

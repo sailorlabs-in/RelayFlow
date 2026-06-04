@@ -122,9 +122,9 @@ export function ProfileSettingsContent({
   const { user, accessToken, status } = useAppSelector((s) => s.auth);
 
   // Active Tab: 'account' | 'theme' | 'status' | 'notifications'
-  const [activeTab, setActiveTab] = useState<'account' | 'theme' | 'status' | 'notifications'>(
-    'account',
-  );
+  const [activeTab, setActiveTab] = useState<
+    'account' | 'theme' | 'status' | 'notifications'
+  >('account');
 
   // Account State
   const [displayName, setDisplayName] = useState('');
@@ -142,8 +142,10 @@ export function ProfileSettingsContent({
   // Notification Preferences State
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [notificationsDmEnabled, setNotificationsDmEnabled] = useState(true);
-  const [notificationsGroupEnabled, setNotificationsGroupEnabled] = useState(true);
-  const [notificationsInAppEnabled, setNotificationsInAppEnabled] = useState(true);
+  const [notificationsGroupEnabled, setNotificationsGroupEnabled] =
+    useState(true);
+  const [notificationsInAppEnabled, setNotificationsInAppEnabled] =
+    useState(true);
 
   // Notification State
   const [message, setMessage] = useState<{
@@ -237,13 +239,19 @@ export function ProfileSettingsContent({
 
       // Update HTML Attributes & localStorage instantly
       const root = document.documentElement;
-      root.setAttribute('data-theme-schema', result.themeSchema || 'golden');
+      root.setAttribute(
+        'data-theme-schema',
+        result.themeSchema || 'arctic_glass',
+      );
 
       const finalTheme = result.themeMode || 'system';
       root.setAttribute('data-theme', finalTheme);
 
       localStorage.setItem('rf-theme', finalTheme);
-      localStorage.setItem('rf-theme-schema', result.themeSchema || 'golden');
+      localStorage.setItem(
+        'rf-theme-schema',
+        result.themeSchema || 'arctic_glass',
+      );
 
       // Clear password inputs
       setPassword('');
@@ -444,7 +452,9 @@ export function ProfileSettingsContent({
             <button
               key={tab.id}
               onClick={() => {
-                setActiveTab(tab.id as 'account' | 'theme' | 'status' | 'notifications');
+                setActiveTab(
+                  tab.id as 'account' | 'theme' | 'status' | 'notifications',
+                );
               }}
               className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl text-[13.5px] font-semibold cursor-pointer text-left transition-all duration-200 border-none ${
                 activeTab === tab.id ? 'theme-btn-active' : ''
@@ -892,13 +902,21 @@ export function ProfileSettingsContent({
                           // Optimistically update status in redux authSlice and chatSlice onlineUsers
                           dispatch(updateUserStatusOptimistic(st.id));
                           if (user?.id) {
-                            dispatch(socketUpdateUserStatus({ userId: user.id, status: st.id, autoStatus: 'online' }));
+                            dispatch(
+                              socketUpdateUserStatus({
+                                userId: user.id,
+                                status: st.id,
+                                autoStatus: 'online',
+                              }),
+                            );
                           }
                           // Immediately push status change via socket for real-time broadcast
                           socketManager.updateStatus(st.id);
                           // Persist change to database
                           try {
-                            await dispatch(updateUserProfile({ status: st.id })).unwrap();
+                            await dispatch(
+                              updateUserProfile({ status: st.id }),
+                            ).unwrap();
                           } catch (err) {
                             console.error('Failed to auto-save status:', err);
                           }
@@ -955,78 +973,90 @@ export function ProfileSettingsContent({
             {activeTab === 'notifications' && (
               <div className="flex flex-col gap-6 flex-1 animate-fade-in">
                 <div>
-                  <h2
-                    className="text-[17px] font-bold text-[var(--text-primary)]"
-                  >
+                  <h2 className="text-[17px] font-bold text-[var(--text-primary)]">
                     Notification Preferences
                   </h2>
-                  <p
-                    className="text-[12px] mt-0.5 text-[var(--text-muted)]"
-                  >
+                  <p className="text-[12px] mt-0.5 text-[var(--text-muted)]">
                     Control when and how you receive push notifications.
                   </p>
                 </div>
 
                 {/* Enable Notifications Switch */}
                 <div className="flex items-center justify-between p-4 rounded-xl border border-[var(--glass-border)] bg-[var(--theme-btn)] animate-fade-in">
-                   <div className="flex flex-col gap-0.5 pr-4">
-                     <span className="font-bold text-[14px] text-[var(--text-primary)]">
-                       Enable Push Notifications
-                     </span>
-                     <span className="text-[11.5px] text-[var(--text-muted)]">
-                       Request browser notification permissions to receive updates
-                     </span>
-                   </div>
-                   <label className="relative inline-flex items-center cursor-pointer select-none">
-                     <input
-                       type="checkbox"
-                       checked={notificationsEnabled}
-                       onChange={async (e) => {
-                          const checked = e.target.checked;
-                          setNotificationsEnabled(checked);
-                          if (checked) {
-                            try {
-                              const permission = await Notification.requestPermission();
-                              if (permission !== 'granted') {
-                                setMessage({
-                                  type: 'error',
-                                  text: '❌ Notification permission was blocked by the browser. Please check your browser settings.',
-                                });
-                                setNotificationsEnabled(false);
-                              } else {
-                                // Register device immediately to generate VAPID subscription
-                                const client = getNotificationClient();
-                                if (client && user?.id) {
-                                  console.log('Registering device immediately on toggle ON...');
-                                  await client.registerDevice({
-                                    externalUserId: user.id,
-                                    serviceWorkerPath: '/push-sw.js',
-                                    serviceWorkerScope: '/',
-                                  });
-                                  console.log('Device registered successfully on toggle ON.');
-                                }
-                              }
-                            } catch (err) {
-                              console.error('Error requesting notification permission', err);
-                            }
-                          } else {
-                            // Unregister device immediately on toggle OFF
-                            try {
+                  <div className="flex flex-col gap-0.5 pr-4">
+                    <span className="font-bold text-[14px] text-[var(--text-primary)]">
+                      Enable Push Notifications
+                    </span>
+                    <span className="text-[11.5px] text-[var(--text-muted)]">
+                      Request browser notification permissions to receive
+                      updates
+                    </span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={notificationsEnabled}
+                      onChange={async (e) => {
+                        const checked = e.target.checked;
+                        setNotificationsEnabled(checked);
+                        if (checked) {
+                          try {
+                            const permission =
+                              await Notification.requestPermission();
+                            if (permission !== 'granted') {
+                              setMessage({
+                                type: 'error',
+                                text: '❌ Notification permission was blocked by the browser. Please check your browser settings.',
+                              });
+                              setNotificationsEnabled(false);
+                            } else {
+                              // Register device immediately to generate VAPID subscription
                               const client = getNotificationClient();
                               if (client && user?.id) {
-                                console.log('Unregistering device immediately on toggle OFF...');
-                                await client.unregisterDevice(user.id);
-                                console.log('Device unregistered successfully on toggle OFF.');
+                                console.log(
+                                  'Registering device immediately on toggle ON...',
+                                );
+                                await client.registerDevice({
+                                  externalUserId: user.id,
+                                  serviceWorkerPath: '/push-sw.js',
+                                  serviceWorkerScope: '/',
+                                });
+                                console.log(
+                                  'Device registered successfully on toggle ON.',
+                                );
                               }
-                            } catch (err) {
-                              console.error('Error unregistering device on toggle OFF', err);
                             }
+                          } catch (err) {
+                            console.error(
+                              'Error requesting notification permission',
+                              err,
+                            );
                           }
-                        }}
-                       className="sr-only peer"
-                     />
-                     <div className="w-11 h-6 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent-primary)]"></div>
-                   </label>
+                        } else {
+                          // Unregister device immediately on toggle OFF
+                          try {
+                            const client = getNotificationClient();
+                            if (client && user?.id) {
+                              console.log(
+                                'Unregistering device immediately on toggle OFF...',
+                              );
+                              await client.unregisterDevice(user.id);
+                              console.log(
+                                'Device unregistered successfully on toggle OFF.',
+                              );
+                            }
+                          } catch (err) {
+                            console.error(
+                              'Error unregistering device on toggle OFF',
+                              err,
+                            );
+                          }
+                        }
+                      }}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent-primary)]"></div>
+                  </label>
                 </div>
 
                 {/* Other preferences (conditional on notificationsEnabled) */}
@@ -1043,14 +1073,17 @@ export function ProfileSettingsContent({
                           In-App Toast Notifications
                         </span>
                         <span className="text-[11.5px] text-[var(--text-muted)]">
-                          Show alert toasts inside the app when messages arrive in other channels
+                          Show alert toasts inside the app when messages arrive
+                          in other channels
                         </span>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer select-none">
                         <input
                           type="checkbox"
                           checked={notificationsInAppEnabled}
-                          onChange={(e) => setNotificationsInAppEnabled(e.target.checked)}
+                          onChange={(e) =>
+                            setNotificationsInAppEnabled(e.target.checked)
+                          }
                           className="sr-only peer"
                         />
                         <div className="w-11 h-6 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent-primary)]"></div>
@@ -1059,44 +1092,50 @@ export function ProfileSettingsContent({
 
                     {/* DM Notifications */}
                     <div className="flex items-center justify-between p-4 rounded-xl border border-[var(--glass-border)] bg-[var(--theme-btn)]">
-                       <div className="flex flex-col gap-0.5 pr-4">
-                         <span className="font-bold text-[13.5px] text-[var(--text-primary)]">
-                           Direct Messages
-                         </span>
-                         <span className="text-[11.5px] text-[var(--text-muted)]">
-                           Receive push notifications for personal direct messages
-                         </span>
-                       </div>
-                       <label className="relative inline-flex items-center cursor-pointer select-none">
-                         <input
-                           type="checkbox"
-                           checked={notificationsDmEnabled}
-                           onChange={(e) => setNotificationsDmEnabled(e.target.checked)}
-                           className="sr-only peer"
-                         />
-                         <div className="w-11 h-6 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent-primary)]"></div>
-                       </label>
+                      <div className="flex flex-col gap-0.5 pr-4">
+                        <span className="font-bold text-[13.5px] text-[var(--text-primary)]">
+                          Direct Messages
+                        </span>
+                        <span className="text-[11.5px] text-[var(--text-muted)]">
+                          Receive push notifications for personal direct
+                          messages
+                        </span>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={notificationsDmEnabled}
+                          onChange={(e) =>
+                            setNotificationsDmEnabled(e.target.checked)
+                          }
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent-primary)]"></div>
+                      </label>
                     </div>
 
                     {/* Group Notifications */}
                     <div className="flex items-center justify-between p-4 rounded-xl border border-[var(--glass-border)] bg-[var(--theme-btn)]">
-                       <div className="flex flex-col gap-0.5 pr-4">
-                         <span className="font-bold text-[13.5px] text-[var(--text-primary)]">
-                           Groups & Channels
-                         </span>
-                         <span className="text-[11.5px] text-[var(--text-muted)]">
-                           Receive push notifications for messages in group channels
-                         </span>
-                       </div>
-                       <label className="relative inline-flex items-center cursor-pointer select-none">
-                         <input
-                           type="checkbox"
-                           checked={notificationsGroupEnabled}
-                           onChange={(e) => setNotificationsGroupEnabled(e.target.checked)}
-                           className="sr-only peer"
-                         />
-                         <div className="w-11 h-6 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent-primary)]"></div>
-                       </label>
+                      <div className="flex flex-col gap-0.5 pr-4">
+                        <span className="font-bold text-[13.5px] text-[var(--text-primary)]">
+                          Groups & Channels
+                        </span>
+                        <span className="text-[11.5px] text-[var(--text-muted)]">
+                          Receive push notifications for messages in group
+                          channels
+                        </span>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={notificationsGroupEnabled}
+                          onChange={(e) =>
+                            setNotificationsGroupEnabled(e.target.checked)
+                          }
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent-primary)]"></div>
+                      </label>
                     </div>
                   </div>
                 )}

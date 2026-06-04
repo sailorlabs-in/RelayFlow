@@ -1,6 +1,10 @@
 import { ConversationType } from '@chat-app/database';
 import { RedisService } from '@chat-app/redis';
-import { Logger, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Logger, ForbiddenException, NotFoundException, BadRequestException, UseGuards } from '@nestjs/common';
+import { RateLimitGuard } from '../../common/guards/rate-limit.guard';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
+import { QueueNames } from '@chat-app/queues';
 import {
   WebSocketGateway,
   WebSocketServer,
@@ -35,7 +39,9 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     private readonly redisService: RedisService,
     private readonly notificationService: NotificationService,
     private readonly usersService: UsersService,
-    private readonly groupsService: GroupsService
+    private readonly groupsService: GroupsService,
+    @InjectQueue(QueueNames.NOTIFICATIONS)
+    private readonly notificationsQueue: Queue
   ) {}
 
   async handleConnection(socket: Socket): Promise<void> {
@@ -71,12 +77,17 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       const redisClient = this.redisService.getClient();
       const existingRaw = await redisClient.hget('presence:status', payload.userId);
       let currentStatus = 'online';
+      let currentAutoStatus = 'online';
       if (existingRaw) {
         try {
           const existing = JSON.parse(existingRaw);
           // Keep DND and offline status across reconnects; reset away to online
           if (existing.status === 'dnd' || existing.status === 'offline') {
             currentStatus = existing.status;
+          }
+          // Preserve automatically detected status if reconnecting
+          if (existing.autoStatus === 'away') {
+            currentAutoStatus = 'away';
           }
         } catch {
           // Ignore invalid cached presence payloads.
@@ -86,16 +97,18 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       await redisClient.hset('presence:status', payload.userId, JSON.stringify({
         userId: payload.userId,
         status: currentStatus,
-        autoStatus: 'online',
+        autoStatus: currentAutoStatus,
         lastSeen: new Date().toISOString(),
       }));
 
-      this.logger.log(`✔ Socket connected: User ${payload.userId} joined room ${userRoom} with status '${currentStatus}' (autoStatus: 'online')`);
+      this.logger.log(`✔ Socket connected: User ${payload.userId} joined room ${userRoom} with status '${currentStatus}' (autoStatus: '${currentAutoStatus}')`);
 
       // Broadcast status change to all other users
-      this.server.emit('user.status.changed', { userId: payload.userId, status: currentStatus, autoStatus: 'online' });
+      this.server.emit('user.status.changed', { userId: payload.userId, status: currentStatus, autoStatus: currentAutoStatus });
       // Legacy backward-compat event
-      this.server.emit('user.online', { userId: payload.userId });
+      if (currentStatus === 'online' && currentAutoStatus === 'online') {
+        this.server.emit('user.online', { userId: payload.userId });
+      }
 
       // Fetch ALL presence data and send to the newly connected client
       const allPresence = await redisClient.hgetall('presence:status');
@@ -146,35 +159,134 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   }
 
   @SubscribeMessage('join.conversation')
+  @UseGuards(RateLimitGuard)
   async handleJoinConversation(
     @MessageBody('conversationId') conversationId: string,
     @ConnectedSocket() socket: Socket
   ): Promise<void> {
     const userId = socket.data.userId as string;
-    const roomName = `conv:${conversationId}`;
+    this.logger.log(`📥 Received join.conversation for: ${JSON.stringify(conversationId)} (type: ${typeof conversationId}) from user ${userId}`);
+    
+    // If conversationId is passed as an object, extract string
+    const targetConvoId = typeof conversationId === 'object' && conversationId !== null
+      ? (conversationId as any).conversationId
+      : conversationId;
+
+    const roomName = `conv:${targetConvoId}`;
+    
+    // Self-healing: Leave all other conversation rooms safely (copying array to avoid mutation during iteration)
+    const currentRooms = Array.from(socket.rooms);
+    for (const room of currentRooms) {
+      if (room.startsWith('conv:') && room !== roomName) {
+        await socket.leave(room);
+        this.logger.log(`🧹 Auto-left stale room ${room} for user ${userId}`);
+      }
+    }
     
     await socket.join(roomName);
-    this.logger.log(`✔ User ${userId} joined room ${roomName}`);
+    this.logger.log(`✔ User ${userId} joined room ${roomName}. Active rooms: ${Array.from(socket.rooms).join(', ')}`);
+
+    // Check if the user is away (manual or autoStatus) before marking messages as read
+    const redisClient = this.redisService.getClient();
+    let isUserAway = false;
+    try {
+      const presenceRaw = await redisClient.hget('presence:status', userId);
+      if (presenceRaw) {
+        const presence = JSON.parse(presenceRaw);
+        isUserAway =
+          presence.status === 'away' ||
+          presence.autoStatus === 'away' ||
+          presence.status === 'offline';
+      }
+    } catch (err) {
+      this.logger.error(`Error checking presence for user ${userId} in join.conversation`, err);
+    }
+
+    if (!isUserAway) {
+      // Mark messages in this conversation as read for this user
+      await this.chatService.markMessagesAsRead(targetConvoId, userId);
+
+      // Notify others in the room that messages are read
+      this.server.to(roomName).emit('messages.read', { conversationId: targetConvoId, readBy: userId });
+    } else {
+      this.logger.log(`Skipping marking messages as read for user ${userId} because user is away (join.conversation)`);
+    }
+  }
+
+  @SubscribeMessage('leave.conversation')
+  async handleLeaveConversation(
+    @MessageBody('conversationId') conversationId: string,
+    @ConnectedSocket() socket: Socket
+  ): Promise<void> {
+    const userId = socket.data.userId as string;
+    this.logger.log(`📥 Received leave.conversation for: ${JSON.stringify(conversationId)} (type: ${typeof conversationId}) from user ${userId}`);
+
+    // If conversationId is passed as an object, extract string
+    const targetConvoId = typeof conversationId === 'object' && conversationId !== null
+      ? (conversationId as any).conversationId
+      : conversationId;
+
+    const roomName = `conv:${targetConvoId}`;
+    
+    await socket.leave(roomName);
+    this.logger.log(`✔ User ${userId} left room ${roomName}. Active rooms: ${Array.from(socket.rooms).join(', ')}`);
   }
 
   @SubscribeMessage('send.message')
+  @UseGuards(RateLimitGuard)
   async handleSendMessage(
     @MessageBody() body: { conversationId: string; content: string },
     @ConnectedSocket() socket: Socket
   ): Promise<void> {
     const userId = socket.data.userId as string;
     const { conversationId, content } = body;
+    this.logger.log(`📥 Received send.message for: ${conversationId} from user ${userId}`);
 
-    // Save message in PostgreSQL system of record
-    const message = await this.chatService.createMessage(conversationId, userId, content);
+    // Check active users in the conversation room to see if the recipient has it open
+    const roomName = `conv:${conversationId}`;
+    const activeRoomSockets = await this.server.in(roomName).fetchSockets();
+    const activeUserIdsInRoom = activeRoomSockets.map((s) => s.data.userId);
+    this.logger.log(`✉ send.message in room ${roomName}. Sockets in room: ${activeUserIdsInRoom.join(', ')}`);
 
     // Fetch all conversation members to broadcast to each participant's private user room
     const members = await this.chatService.getConversationMembers(conversationId);
+    
+    // Mark as read if a recipient is in the room and is NOT away/offline
+    const redisClient = this.redisService.getClient();
+    const activeRecipientsInRoom = members.filter(
+      (m) => m.userId !== userId && activeUserIdsInRoom.includes(m.userId)
+    );
+
+    let isRead = false;
+    if (activeRecipientsInRoom.length > 0) {
+      const presenceChecks = await Promise.all(
+        activeRecipientsInRoom.map(async (m) => {
+          try {
+            const presenceRaw = await redisClient.hget('presence:status', m.userId);
+            if (presenceRaw) {
+              const presence = JSON.parse(presenceRaw);
+              const isAway =
+                presence.status === 'away' ||
+                presence.autoStatus === 'away' ||
+                presence.status === 'offline';
+              return !isAway;
+            }
+            return true; // default to active if no presence info in Redis
+          } catch {
+            return true; // fallback
+          }
+        })
+      );
+      isRead = presenceChecks.some((isActive) => isActive);
+    }
+
+    // Save message in PostgreSQL system of record
+    const message = await this.chatService.createMessage(conversationId, userId, content, isRead);
     for (const member of members) {
       const memberRoom = `user:${member.userId}`;
       this.server.to(memberRoom).emit('message.new', message);
     }
-    this.logger.log(`✔ Broadcasted new message in conversation ${conversationId} to ${members.length} members from ${userId}`);
+    this.logger.log(`✔ Broadcasted new message in conversation ${conversationId} to ${members.length} members from ${userId}. isRead: ${isRead}`);
 
     // Dispatch push notifications to other conversation members based on their preferences
     const otherMemberIds = members
@@ -189,10 +301,10 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       for (const memberId of otherMemberIds) {
         try {
           const targetUser = await this.usersService.findById(memberId);
-          if (targetUser.notificationsEnabled) {
-            if (isDm && targetUser.notificationsDmEnabled) {
+          if (targetUser.notificationsEnabled !== false) {
+            if (isDm && targetUser.notificationsDmEnabled !== false) {
               recipientsToNotify.push(memberId);
-            } else if (!isDm && targetUser.notificationsGroupEnabled) {
+            } else if (!isDm && targetUser.notificationsGroupEnabled !== false) {
               recipientsToNotify.push(memberId);
             }
           }
@@ -247,12 +359,12 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
           channelName,
         };
 
-        this.notificationService.sendPushNotification(
-          pushTitle,
-          content,
-          recipientsToNotify,
-          metadataPayload,
-        ).catch((err) => this.logger.error('Failed to send message notification', err));
+        this.notificationsQueue.add('send-push', {
+          title: pushTitle,
+          body: content,
+          recipients: recipientsToNotify,
+          metadata: metadataPayload,
+        }).catch((err) => this.logger.error('Failed to queue message notification job', err));
       }
     }
   }
@@ -282,6 +394,7 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
    * Allows users to set 'online', 'away', 'dnd', or 'offline'.
    */
   @SubscribeMessage('user.status.update')
+  @UseGuards(RateLimitGuard)
   async handleUserStatusUpdate(
     @MessageBody() payload: { status: string; autoStatus?: string },
     @ConnectedSocket() socket: Socket
@@ -307,6 +420,22 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
 
     // Acknowledge back to the requesting socket
     socket.emit('user.status.ack', { status: safeStatus, autoStatus: safeAutoStatus });
+
+    // If the user returned to online/active, mark current conversation messages as read
+    if (safeStatus === 'online' && safeAutoStatus === 'online') {
+      const currentRooms = Array.from(socket.rooms);
+      const activeConvoRoom = currentRooms.find((r) => r.startsWith('conv:'));
+      if (activeConvoRoom) {
+        const activeConvoId = activeConvoRoom.split(':')[1];
+        this.logger.log(`🔄 User ${userId} returned online/active in room ${activeConvoRoom}. Marking messages as read.`);
+        try {
+          await this.chatService.markMessagesAsRead(activeConvoId, userId);
+          this.server.to(activeConvoRoom).emit('messages.read', { conversationId: activeConvoId, readBy: userId });
+        } catch (err) {
+          this.logger.error(`Failed to mark messages as read on status return for user ${userId}`, err);
+        }
+      }
+    }
   }
 
   @SubscribeMessage('delete.message')

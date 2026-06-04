@@ -14,6 +14,7 @@ import {
   socketDeleteMessage,
   socketRemoveConversation,
   fetchConversations,
+  socketMarkMessagesAsRead,
 } from './slices/chatSlice';
 import type {
   Group} from './slices/groupsSlice';
@@ -112,6 +113,12 @@ class SocketManager {
           store.dispatch(fetchConversations(state.auth.user.id));
         }
       }
+    });
+
+    // Handle messages read notification
+    this.socket.on('messages.read', (data: { conversationId: string; readBy: string }) => {
+      console.log('📖 Socket messages.read event received:', data);
+      store.dispatch(socketMarkMessagesAsRead(data));
     });
 
 
@@ -242,6 +249,13 @@ class SocketManager {
     if (this.socket?.connected) {
       console.log(`📡 Emitting join.conversation for room: ${conversationId}`);
       this.socket.emit('join.conversation', { conversationId });
+    }
+  }
+
+  leaveConversation(conversationId: string) {
+    if (this.socket?.connected) {
+      console.log(`📡 Emitting leave.conversation for room: ${conversationId}`);
+      this.socket.emit('leave.conversation', { conversationId });
     }
   }
 

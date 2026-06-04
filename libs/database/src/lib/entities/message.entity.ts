@@ -14,6 +14,9 @@ export class Message {
   @Column({ type: 'text' })
   content!: string;
 
+  @Column({ name: 'is_read', type: 'boolean', default: false })
+  isRead!: boolean;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 

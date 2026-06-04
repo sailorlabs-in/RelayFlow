@@ -20,6 +20,7 @@ export interface Message {
   conversationId: string;
   senderId: string;
   content: string;
+  isRead?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -291,6 +292,25 @@ const chatSlice = createSlice({
       delete state.hasMoreMessages[deletedId];
       delete state.convoRecipients[deletedId];
     },
+    socketMarkMessagesAsRead: (
+      state,
+      action: PayloadAction<{ conversationId: string; readBy: string }>
+    ) => {
+      const { conversationId, readBy } = action.payload;
+      if (state.messages[conversationId]) {
+        state.messages[conversationId] = state.messages[conversationId].map((m) => {
+          if (m.senderId !== readBy) {
+            return { ...m, isRead: true };
+          }
+          return m;
+        });
+      }
+      // Update lastMessage on the conversation object
+      const convo = state.conversations.find((c) => c.id === conversationId);
+      if (convo && convo.lastMessage && convo.lastMessage.senderId !== readBy) {
+        convo.lastMessage.isRead = true;
+      }
+    },
   },
   extraReducers: (builder) => {
     // Fetch conversations
@@ -414,6 +434,7 @@ export const {
   socketDeleteMessage,
   clearSearchResults,
   socketRemoveConversation,
+  socketMarkMessagesAsRead,
 } = chatSlice.actions;
 
 export default chatSlice.reducer;

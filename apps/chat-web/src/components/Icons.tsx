@@ -187,3 +187,15 @@ export const IconServer = (): React.JSX.Element => (
     <line x1="6" y1="18" x2="6.01" y2="18" />
   </svg>
 );
+
+export const IconCheck = (): React.JSX.Element => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-[12px] h-[12px] inline">
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
+
+export const IconDoubleCheck = (): React.JSX.Element => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-[14px] h-[14px] inline">
+    <path d="M17 6L8.5 14.5L5 11M22 6L13.5 14.5M10 11l-1 1" />
+  </svg>
+);

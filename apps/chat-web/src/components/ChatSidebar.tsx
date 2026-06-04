@@ -160,6 +160,8 @@ export const ChatSidebar = ({
               ? Object.entries(typingUsers[convo.id]).some(([uid, t]) => uid !== user.id && t)
               : false;
 
+            const hasUnread = lastMsg && lastMsg.senderId !== user.id && !lastMsg.isRead;
+
             return (
               <div
                 key={convo.id}
@@ -171,15 +173,20 @@ export const ChatSidebar = ({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline justify-between mb-0.5">
                     <span
-                      className={`font-semibold text-[13px] truncate ${isActive ? 'text-[var(--theme-btn-active-text)]' : 'text-[var(--text-primary)]'}`}
+                      className={`font-semibold text-[13px] truncate ${isActive ? 'text-[var(--theme-btn-active-text)]' : 'text-[var(--text-primary)]'} ${hasUnread ? 'font-bold text-[var(--text-primary)]' : ''}`}
                     >
                       {details.name}
                     </span>
-                    {lastMsg && (
-                      <span className="text-[10px] flex-shrink-0 ml-2 text-[var(--text-muted)]">
-                        {new Date(lastMsg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
+                      {hasUnread && (
+                        <span className="w-2 h-2 rounded-full bg-[var(--accent-primary)] animate-pulse shrink-0" />
+                      )}
+                      {lastMsg && (
+                        <span className="text-[10px] text-[var(--text-muted)]">
+                          {new Date(lastMsg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   {isTyping ? (
                     <div className="flex items-center gap-1 text-[11.5px] font-medium text-[var(--accent-secondary)]">

@@ -1,4 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 @Entity('user')
 export class User {
@@ -20,7 +26,7 @@ export class User {
   @Column({ name: 'theme_mode', default: 'system' })
   themeMode!: string;
 
-  @Column({ name: 'theme_schema', default: 'golden' })
+  @Column({ name: 'theme_schema', default: 'arctic_glass' })
   themeSchema!: string;
 
   @Column({ name: 'status', default: 'online' })

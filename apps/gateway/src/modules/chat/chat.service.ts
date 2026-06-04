@@ -1,7 +1,7 @@
 import { Conversation, ConversationMember, Message, ConversationType } from '@chat-app/database';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { Repository, In, Not } from 'typeorm';
 
 @Injectable()
 export class ChatService {
@@ -31,15 +31,19 @@ export class ChatService {
         });
         
         for (const membership of commonMemberships) {
-          const allMembers = await this.memberRepository.find({
-            where: { conversationId: membership.conversationId },
+          const convo = await this.conversationRepository.findOne({
+            where: { id: membership.conversationId, type: ConversationType.DM },
           });
-          
-          if (allMembers.length === 2) {
-            // Existing DM thread discovered; return it directly instead of duplicating
-            return this.conversationRepository.findOneOrFail({
-              where: { id: membership.conversationId },
+
+          if (convo) {
+            const allMembers = await this.memberRepository.find({
+              where: { conversationId: membership.conversationId },
             });
+
+            if (allMembers.length === 2) {
+              // Existing DM thread discovered; return it directly instead of duplicating
+              return convo;
+            }
           }
         }
       }
@@ -95,6 +99,7 @@ export class ChatService {
             conversationId: lastMessage.conversationId,
             senderId: lastMessage.senderId,
             content: lastMessage.content,
+            isRead: lastMessage.isRead,
             createdAt: lastMessage.createdAt.toISOString(),
             updatedAt: lastMessage.updatedAt.toISOString(),
           } : null,
@@ -120,7 +125,7 @@ export class ChatService {
     await this.conversationRepository.delete({ id: conversationId });
   }
 
-  async createMessage(conversationId: string, senderId: string, content: string): Promise<Message> {
+  async createMessage(conversationId: string, senderId: string, content: string, isRead = false): Promise<Message> {
     const isMember = await this.memberRepository.findOne({ where: { conversationId, userId: senderId } });
     if (!isMember) {
       throw new NotFoundException('❌ Conversation not found or user is not a member');
@@ -130,9 +135,17 @@ export class ChatService {
       conversationId,
       senderId,
       content,
+      isRead,
     });
 
     return this.messageRepository.save(message);
+  }
+
+  async markMessagesAsRead(conversationId: string, userId: string): Promise<void> {
+    await this.messageRepository.update(
+      { conversationId, senderId: Not(userId), isRead: false },
+      { isRead: true }
+    );
   }
 
   async getMessages(conversationId: string, limit = 50, offset = 0): Promise<Message[]> {
