@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 import { useAppDispatch, useAppSelector } from '../store';
 import {
@@ -21,49 +21,300 @@ import {
 } from './Icons';
 import type { Theme } from './ThemeSwitcher';
 import { ThemeSwitcher } from './ThemeSwitcher';
+import { showToast } from './toast';
 
-export const AuthGate = (): React.JSX.Element => {
+// ── LOGIN FORM COMPONENT ──────────────────────────────────────────────────────
+interface LoginFormProps {
+  prefilledEmail: string;
+  onSwitchToSignUp: () => void;
+}
+
+const LoginForm = ({
+  prefilledEmail,
+  onSwitchToSignUp,
+}: LoginFormProps): React.JSX.Element => {
   const dispatch = useAppDispatch();
-  const {
-    status: authStatus,
-    error: authError,
-    themeMode: theme,
-  } = useAppSelector((s) => s.auth);
+  const { status: authStatus, error: authError } = useAppSelector(
+    (s) => s.auth,
+  );
 
-  const [isLoginMode, setIsLoginMode] = useState(true);
+  const [email, setEmail] = useState(prefilledEmail);
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setEmail(prefilledEmail);
+  }, [prefilledEmail]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLocalError(null);
+    dispatch(loginUser({ email, password }));
+  };
+
+  const error = localError || authError;
+
+  return (
+    <div className="animate-fade-in">
+      <div className="mb-8">
+        <h2 className="text-[28px] font-bold tracking-tight mb-2 text-[var(--text-primary)]">
+          Welcome back
+        </h2>
+        <p className="text-[14px] text-[var(--text-secondary)]">
+          Enter your credentials to open your workspace.
+        </p>
+      </div>
+
+      {error && (
+        <div className="flex items-center gap-2 rounded-xl px-4 py-3 mb-5 text-[13.5px] animate-fade-in bg-[var(--danger-bg)] border border-[var(--danger-border)] text-[var(--danger)]">
+          <IconAlertCircle />
+          {error}
+        </div>
+      )}
+
+      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[11.5px] font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+            Email
+          </label>
+          <input
+            id="auth-email"
+            type="email"
+            className="input-base rounded-[10px] px-4 py-3 text-[14.5px] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[3px] focus:ring-[var(--accent-ring)]"
+            placeholder="user@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[11.5px] font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+            Password
+          </label>
+          <div className="relative flex items-center">
+            <input
+              id="auth-password"
+              type={showPassword ? 'text' : 'password'}
+              className="input-base w-full rounded-[10px] pl-4 pr-10 py-3 text-[14.5px] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[3px] focus:ring-[var(--accent-ring)]"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 cursor-pointer transition-colors duration-200 bg-transparent border-none text-[var(--text-muted)]"
+            >
+              {showPassword ? <IconEyeOff /> : <IconEye />}
+            </button>
+          </div>
+        </div>
+
+        <button
+          id="auth-submit-btn"
+          type="submit"
+          disabled={authStatus === 'loading'}
+          className="mt-2 rounded-[10px] py-3.5 text-[15px] font-semibold text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 relative overflow-hidden btn-send hover:-translate-y-0.5 hover:shadow-[var(--btn-shadow)] active-press"
+        >
+          {authStatus === 'loading' ? 'Processing…' : 'Sign In'}
+        </button>
+      </form>
+
+      <div className="text-center mt-6 text-[14px] text-[var(--text-secondary)]">
+        Don't have an account?
+        <button
+          id="auth-toggle-btn"
+          className="ml-1.5 font-semibold cursor-pointer transition-colors duration-200 text-[var(--accent-primary)] bg-transparent border-none active-press"
+          onClick={onSwitchToSignUp}
+        >
+          Create account
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ── SIGN UP FORM COMPONENT ────────────────────────────────────────────────────
+interface SignUpFormProps {
+  onSwitchToSignIn: (prefilledEmail?: string) => void;
+}
+
+const SignUpForm = ({
+  onSwitchToSignIn,
+}: SignUpFormProps): React.JSX.Element => {
+  const dispatch = useAppDispatch();
+  const { status: authStatus, error: authError } = useAppSelector(
+    (s) => s.auth,
+  );
+
+  const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
-
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
-  const handleThemeChange = (t: Theme) => {
-    dispatch(setThemeMode(t));
-  };
-
-  const handleAuthSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setLocalError(null);
 
-    if (!isLoginMode) {
-      if (password.length < 6) {
-        setLocalError('Password must be at least 6 characters long.');
-        return;
-      }
-      if (password !== confirmPassword) {
-        setLocalError('Passwords do not match.');
-        return;
-      }
+    if (password.length < 6) {
+      setLocalError('Password must be at least 6 characters long.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setLocalError('Passwords do not match.');
+      return;
     }
 
-    if (isLoginMode) {
-      dispatch(loginUser({ email, password }));
-    } else {
-      dispatch(registerUser({ email, password, displayName }));
-    }
+    dispatch(registerUser({ email, password, displayName }))
+      .unwrap()
+      .then(() => {
+        showToast.success('Account created successfully! Please sign in.');
+        onSwitchToSignIn(email);
+      })
+      .catch(() => {
+        // Redux stores the error globally as authError
+      });
+  };
+
+  const error = localError || authError;
+
+  return (
+    <div className="animate-fade-in">
+      <div className="mb-8">
+        <h2 className="text-[28px] font-bold tracking-tight mb-2 text-[var(--text-primary)]">
+          Create account
+        </h2>
+        <p className="text-[14px] text-[var(--text-secondary)]">
+          Register a profile to start instant messaging.
+        </p>
+      </div>
+
+      {error && (
+        <div className="flex items-center gap-2 rounded-xl px-4 py-3 mb-5 text-[13.5px] animate-fade-in bg-[var(--danger-bg)] border border-[var(--danger-border)] text-[var(--danger)]">
+          <IconAlertCircle />
+          {error}
+        </div>
+      )}
+
+      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[11.5px] font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+            Display Name
+          </label>
+          <input
+            id="auth-display-name"
+            type="text"
+            className="input-base rounded-[10px] px-4 py-3 text-[14.5px] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[3px] focus:ring-[var(--accent-ring)]"
+            placeholder="e.g. Umang"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            required
+          />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[11.5px] font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+            Email
+          </label>
+          <input
+            id="auth-email"
+            type="email"
+            className="input-base rounded-[10px] px-4 py-3 text-[14.5px] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[3px] focus:ring-[var(--accent-ring)]"
+            placeholder="user@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[11.5px] font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+            Password
+          </label>
+          <div className="relative flex items-center">
+            <input
+              id="auth-password"
+              type={showPassword ? 'text' : 'password'}
+              className="input-base w-full rounded-[10px] pl-4 pr-10 py-3 text-[14.5px] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[3px] focus:ring-[var(--accent-ring)]"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 cursor-pointer transition-colors duration-200 bg-transparent border-none text-[var(--text-muted)]"
+            >
+              {showPassword ? <IconEyeOff /> : <IconEye />}
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[11.5px] font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+            Confirm Password
+          </label>
+          <div className="relative flex items-center">
+            <input
+              id="auth-confirm-password"
+              type={showConfirmPassword ? 'text' : 'password'}
+              className="input-base w-full rounded-[10px] pl-4 pr-10 py-3 text-[14.5px] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[3px] focus:ring-[var(--accent-ring)]"
+              placeholder="••••••••"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute right-3 cursor-pointer transition-colors duration-200 bg-transparent border-none text-[var(--text-muted)]"
+            >
+              {showConfirmPassword ? <IconEyeOff /> : <IconEye />}
+            </button>
+          </div>
+        </div>
+
+        <button
+          id="auth-submit-btn"
+          type="submit"
+          disabled={authStatus === 'loading'}
+          className="mt-2 rounded-[10px] py-3.5 text-[15px] font-semibold text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 relative overflow-hidden btn-send hover:-translate-y-0.5 hover:shadow-[var(--btn-shadow)] active-press"
+        >
+          {authStatus === 'loading' ? 'Processing…' : 'Sign Up'}
+        </button>
+      </form>
+
+      <div className="text-center mt-6 text-[14px] text-[var(--text-secondary)]">
+        Already registered?
+        <button
+          id="auth-toggle-btn"
+          className="ml-1.5 font-semibold cursor-pointer transition-colors duration-200 text-[var(--accent-primary)] bg-transparent border-none active-press"
+          onClick={() => onSwitchToSignIn()}
+        >
+          Sign In
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ── AUTH GATE CONTAINER ───────────────────────────────────────────────────────
+export const AuthGate = (): React.JSX.Element => {
+  const dispatch = useAppDispatch();
+  const { themeMode: theme } = useAppSelector((s) => s.auth);
+
+  const [isLoginMode, setIsLoginMode] = useState(true);
+  const [prefilledEmail, setPrefilledEmail] = useState('');
+
+  const handleThemeChange = (t: Theme) => {
+    dispatch(setThemeMode(t));
   };
 
   return (
@@ -110,139 +361,25 @@ export const AuthGate = (): React.JSX.Element => {
 
         {/* Right Form Panel */}
         <div className="flex-1 flex flex-col justify-center p-12 bg-[var(--bg-chat)]">
-          <div className="mb-8">
-            <h2 className="text-[28px] font-bold tracking-tight mb-2 text-[var(--text-primary)]">
-              {isLoginMode ? 'Welcome back' : 'Create account'}
-            </h2>
-            <p className="text-[14px] text-[var(--text-secondary)]">
-              {isLoginMode
-                ? 'Enter your credentials to open your workspace.'
-                : 'Register a profile to start instant messaging.'}
-            </p>
-          </div>
-
-          {(localError || authError) && (
-            <div className="flex items-center gap-2 rounded-xl px-4 py-3 mb-5 text-[13.5px] animate-fade-in bg-[var(--danger-bg)] border border-[var(--danger-border)] text-[var(--danger)]">
-              <IconAlertCircle />
-              {localError || authError}
-            </div>
-          )}
-
-          <form className="flex flex-col gap-4" onSubmit={handleAuthSubmit}>
-            {!isLoginMode && (
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[11.5px] font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
-                  Display Name
-                </label>
-                <input
-                  id="auth-display-name"
-                  type="text"
-                  className="input-base rounded-[10px] px-4 py-3 text-[14.5px] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[3px] focus:ring-[var(--accent-ring)]"
-                  placeholder="e.g. Umang"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  required={!isLoginMode}
-                />
-              </div>
-            )}
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[11.5px] font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
-                Email
-              </label>
-              <input
-                id="auth-email"
-                type="email"
-                className="input-base rounded-[10px] px-4 py-3 text-[14.5px] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[3px] focus:ring-[var(--accent-ring)]"
-                placeholder="user@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[11.5px] font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
-                Password
-              </label>
-              <div className="relative flex items-center">
-                <input
-                  id="auth-password"
-                  type={showPassword ? 'text' : 'password'}
-                  className="input-base w-full rounded-[10px] pl-4 pr-10 py-3 text-[14.5px] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[3px] focus:ring-[var(--accent-ring)]"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 cursor-pointer transition-colors duration-200 bg-transparent border-none text-[var(--text-muted)]"
-                >
-                  {showPassword ? <IconEyeOff /> : <IconEye />}
-                </button>
-              </div>
-            </div>
-
-            {!isLoginMode && (
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[11.5px] font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
-                  Confirm Password
-                </label>
-                <div className="relative flex items-center">
-                  <input
-                    id="auth-confirm-password"
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    className="input-base w-full rounded-[10px] pl-4 pr-10 py-3 text-[14.5px] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[3px] focus:ring-[var(--accent-ring)]"
-                    placeholder="••••••••"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 cursor-pointer transition-colors duration-200 bg-transparent border-none text-[var(--text-muted)]"
-                  >
-                    {showConfirmPassword ? <IconEyeOff /> : <IconEye />}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <button
-              id="auth-submit-btn"
-              type="submit"
-              disabled={authStatus === 'loading'}
-              className="mt-2 rounded-[10px] py-3.5 text-[15px] font-semibold text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 relative overflow-hidden btn-send hover:-translate-y-0.5 hover:shadow-[var(--btn-shadow)] active-press"
-            >
-              {authStatus === 'loading'
-                ? 'Processing…'
-                : isLoginMode
-                  ? 'Sign In'
-                  : 'Sign Up'}
-            </button>
-          </form>
-
-          <div className="text-center mt-6 text-[14px] text-[var(--text-secondary)]">
-            {isLoginMode ? "Don't have an account?" : 'Already registered?'}
-            <button
-              id="auth-toggle-btn"
-              className="ml-1.5 font-semibold cursor-pointer transition-colors duration-200 text-[var(--accent-primary)] bg-transparent border-none active-press"
-              onClick={() => {
-                setIsLoginMode(!isLoginMode);
+          {isLoginMode ? (
+            <LoginForm
+              prefilledEmail={prefilledEmail}
+              onSwitchToSignUp={() => {
+                setIsLoginMode(false);
                 dispatch(clearAuthError());
-                setLocalError(null);
-                setPassword('');
-                setConfirmPassword('');
-                setShowPassword(false);
-                setShowConfirmPassword(false);
               }}
-            >
-              {isLoginMode ? 'Create account' : 'Sign In'}
-            </button>
-          </div>
+            />
+          ) : (
+            <SignUpForm
+              onSwitchToSignIn={(email) => {
+                if (email) {
+                  setPrefilledEmail(email);
+                }
+                setIsLoginMode(true);
+                dispatch(clearAuthError());
+              }}
+            />
+          )}
         </div>
       </div>
     </div>

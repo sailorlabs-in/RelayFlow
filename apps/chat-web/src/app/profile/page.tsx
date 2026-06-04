@@ -114,9 +114,11 @@ const IconBell = (): React.JSX.Element => (
 export function ProfileSettingsContent({
   isModal = false,
   onClose,
+  onSignOut,
 }: {
   isModal?: boolean;
   onClose?: () => void;
+  onSignOut?: () => void;
 }): React.JSX.Element {
   const router = useRouter();
   const dispatch = useAppDispatch();
@@ -138,6 +140,10 @@ export function ProfileSettingsContent({
   } | null>(null);
 
   const handleSignOut = () => {
+    if (onSignOut) {
+      onSignOut();
+      return;
+    }
     setConfirmModal({
       isOpen: true,
       title: 'Sign Out',
@@ -315,11 +321,11 @@ export function ProfileSettingsContent({
   // Schema choices
   const schemaOptions = [
     {
-      id: 'emerald',
-      name: 'Option 1: Emerald/Forest Green',
-      lightName: 'Light Green',
-      darkName: 'Dark Olive Green / Dark Green',
-      colors: ['#0F9F58', '#10B981', '#0A0F0D', '#ECFDF5'],
+      id: 'arctic_glass',
+      name: 'Option 1: Arctic Glass',
+      lightName: 'Arctic Blue / Ice White',
+      darkName: 'Deep Ocean / Cyan Glow',
+      colors: ['#0099FF', '#00C2FF', '#050A12', '#F8FBFF'],
     },
     {
       id: 'golden',
@@ -364,11 +370,11 @@ export function ProfileSettingsContent({
       colors: ['#E57A00', '#FF9F1A', '#0B0B0B', '#FAFAFA'],
     },
     {
-      id: 'arctic_glass',
-      name: 'Option 8: Arctic Glass',
-      lightName: 'Arctic Blue / Ice White',
-      darkName: 'Deep Ocean / Cyan Glow',
-      colors: ['#0099FF', '#00C2FF', '#050A12', '#F8FBFF'],
+      id: 'emerald',
+      name: 'Option 8: Emerald/Forest Green',
+      lightName: 'Light Green',
+      darkName: 'Dark Olive Green / Dark Green',
+      colors: ['#0F9F58', '#10B981', '#0A0F0D', '#ECFDF5'],
     },
     {
       id: 'carbon_red',

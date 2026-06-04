@@ -352,6 +352,10 @@ function ChatDashboardContent() {
             <ProfileSettingsContent
               isModal
               onClose={() => setIsProfileOpen(false)}
+              onSignOut={() => {
+                setIsProfileOpen(false);
+                handleLogout();
+              }}
             />
           </div>
         </div>
