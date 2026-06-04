@@ -1,8 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
-
-// Backend API URL based on NestJS Gateway
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
+import { API_URL } from '../../constants/config';
 
 export interface User {
   id: string;
@@ -47,7 +45,7 @@ export const registerUser = createAsyncThunk(
   'auth/register',
   async (
     payload: { email: string; password: string; displayName?: string },
-    { rejectWithValue }
+    { rejectWithValue },
   ) => {
     try {
       const response = await axios.post(`${API_URL}/auth/register`, payload);
@@ -60,7 +58,7 @@ export const registerUser = createAsyncThunk(
         'Registration failed. Please try again.';
       return rejectWithValue(errorMsg);
     }
-  }
+  },
 );
 
 // Async Thunk for User Login
@@ -78,7 +76,7 @@ export const loginUser = createAsyncThunk(
         'Login failed. Invalid email or password.';
       return rejectWithValue(errorMsg);
     }
-  }
+  },
 );
 
 // Async Thunk for Updating User Profile / Settings
@@ -93,19 +91,17 @@ export const updateUserProfile = createAsyncThunk(
       status?: string;
       visibility?: string;
     },
-    { getState, rejectWithValue }
+    { getState, rejectWithValue },
   ) => {
     try {
       const state = getState() as { auth: { accessToken: string | null } };
-      const response = await axios.patch(
-        `${API_URL}/users/profile`,
-        payload,
-        {
-          headers: {
-            Authorization: state.auth.accessToken ? `Bearer ${state.auth.accessToken}` : '',
-          },
-        }
-      );
+      const response = await axios.patch(`${API_URL}/users/profile`, payload, {
+        headers: {
+          Authorization: state.auth.accessToken
+            ? `Bearer ${state.auth.accessToken}`
+            : '',
+        },
+      });
       // NestJS wraps response in { success: true, data: user }
       return response.data.data;
     } catch (error: any) {
@@ -115,7 +111,7 @@ export const updateUserProfile = createAsyncThunk(
         'Failed to update profile settings.';
       return rejectWithValue(errorMsg);
     }
-  }
+  },
 );
 
 const authSlice = createSlice({
@@ -127,7 +123,8 @@ const authSlice = createSlice({
         const token = localStorage.getItem('chat_token');
         const userVal = localStorage.getItem('chat_user');
         const theme = localStorage.getItem('rf-theme') || 'system';
-        const schema = localStorage.getItem('rf-theme-schema') || 'arctic_glass';
+        const schema =
+          localStorage.getItem('rf-theme-schema') || 'arctic_glass';
 
         if (token && userVal) {
           try {
@@ -217,7 +214,7 @@ const authSlice = createSlice({
         state.accessToken = action.payload.accessToken;
         state.user = action.payload.user;
         state.error = null;
-        
+
         const userTheme = action.payload.user?.themeMode || 'system';
         const userSchema = action.payload.user?.themeSchema || 'arctic_glass';
         state.themeMode = userTheme;
@@ -225,7 +222,10 @@ const authSlice = createSlice({
 
         if (isBrowser) {
           localStorage.setItem('chat_token', action.payload.accessToken);
-          localStorage.setItem('chat_user', JSON.stringify(action.payload.user));
+          localStorage.setItem(
+            'chat_user',
+            JSON.stringify(action.payload.user),
+          );
           localStorage.setItem('rf-theme', userTheme);
           localStorage.setItem('rf-theme-schema', userSchema);
         }
@@ -264,5 +264,12 @@ const authSlice = createSlice({
   },
 });
 
-export const { logoutUser, clearAuthError, setThemeMode, setThemeSchema, updateUserStatusOptimistic, restoreSession } = authSlice.actions;
+export const {
+  logoutUser,
+  clearAuthError,
+  setThemeMode,
+  setThemeSchema,
+  updateUserStatusOptimistic,
+  restoreSession,
+} = authSlice.actions;
 export default authSlice.reducer;

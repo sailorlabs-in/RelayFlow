@@ -1,8 +1,7 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
+import { API_URL } from '../../constants/config';
 
 const getAuthHeaders = (token: string | null) => ({
   headers: {
@@ -76,8 +75,8 @@ export const fetchGroups = createAsyncThunk(
     } catch (error: any) {
       return rejectWithValue(
         error.response?.data?.error?.message ||
-        error.response?.data?.message ||
-        'Failed to load groups.',
+          error.response?.data?.message ||
+          'Failed to load groups.',
       );
     }
   },
@@ -101,8 +100,8 @@ export const createGroup = createAsyncThunk(
     } catch (error: any) {
       return rejectWithValue(
         error.response?.data?.error?.message ||
-        error.response?.data?.message ||
-        'Failed to create group.',
+          error.response?.data?.message ||
+          'Failed to create group.',
       );
     }
   },
@@ -126,8 +125,8 @@ export const updateGroup = createAsyncThunk(
     } catch (error: any) {
       return rejectWithValue(
         error.response?.data?.error?.message ||
-        error.response?.data?.message ||
-        'Failed to update group settings.',
+          error.response?.data?.message ||
+          'Failed to update group settings.',
       );
     }
   },
@@ -151,8 +150,8 @@ export const addGroupMembers = createAsyncThunk(
     } catch (error: any) {
       return rejectWithValue(
         error.response?.data?.error?.message ||
-        error.response?.data?.message ||
-        'Failed to add members.',
+          error.response?.data?.message ||
+          'Failed to add members.',
       );
     }
   },
@@ -172,12 +171,15 @@ export const createChannel = createAsyncThunk(
         { name: payload.name },
         getAuthHeaders(state.auth.accessToken),
       );
-      return { groupId: payload.groupId, channel: response.data.data as GroupChannel };
+      return {
+        groupId: payload.groupId,
+        channel: response.data.data as GroupChannel,
+      };
     } catch (error: any) {
       return rejectWithValue(
         error.response?.data?.error?.message ||
-        error.response?.data?.message ||
-        'Failed to create channel.',
+          error.response?.data?.message ||
+          'Failed to create channel.',
       );
     }
   },
@@ -197,12 +199,15 @@ export const updateChannel = createAsyncThunk(
         { name: payload.name },
         getAuthHeaders(state.auth.accessToken),
       );
-      return { groupId: payload.groupId, channel: response.data.data as GroupChannel };
+      return {
+        groupId: payload.groupId,
+        channel: response.data.data as GroupChannel,
+      };
     } catch (error: any) {
       return rejectWithValue(
         error.response?.data?.error?.message ||
-        error.response?.data?.message ||
-        'Failed to rename channel.',
+          error.response?.data?.message ||
+          'Failed to rename channel.',
       );
     }
   },
@@ -225,8 +230,8 @@ export const deleteChannel = createAsyncThunk(
     } catch (error: any) {
       return rejectWithValue(
         error.response?.data?.error?.message ||
-        error.response?.data?.message ||
-        'Failed to delete channel.',
+          error.response?.data?.message ||
+          'Failed to delete channel.',
       );
     }
   },
@@ -246,8 +251,8 @@ export const deleteGroup = createAsyncThunk(
     } catch (error: any) {
       return rejectWithValue(
         error.response?.data?.error?.message ||
-        error.response?.data?.message ||
-        'Failed to delete group.',
+          error.response?.data?.message ||
+          'Failed to delete group.',
       );
     }
   },
@@ -299,7 +304,10 @@ const groupsSlice = createSlice({
         state.activeChannelId = null;
       }
     },
-    socketGroupMemberAdded: (state, action: PayloadAction<{ groupId: string; group: Group }>) => {
+    socketGroupMemberAdded: (
+      state,
+      action: PayloadAction<{ groupId: string; group: Group }>,
+    ) => {
       const { group } = action.payload;
       const idx = state.groups.findIndex((g) => g.id === group.id);
       if (idx !== -1) {
@@ -308,14 +316,22 @@ const groupsSlice = createSlice({
         state.groups.push(group);
       }
     },
-    socketGroupMemberRemoved: (state, action: PayloadAction<{ groupId: string }>) => {
-      state.groups = state.groups.filter((g) => g.id !== action.payload.groupId);
+    socketGroupMemberRemoved: (
+      state,
+      action: PayloadAction<{ groupId: string }>,
+    ) => {
+      state.groups = state.groups.filter(
+        (g) => g.id !== action.payload.groupId,
+      );
       if (state.activeGroupId === action.payload.groupId) {
         state.activeGroupId = null;
         state.activeChannelId = null;
       }
     },
-    socketChannelCreated: (state, action: PayloadAction<{ groupId: string; channel: GroupChannel }>) => {
+    socketChannelCreated: (
+      state,
+      action: PayloadAction<{ groupId: string; channel: GroupChannel }>,
+    ) => {
       const { groupId, channel } = action.payload;
       const group = state.groups.find((g) => g.id === groupId);
       if (group) {
@@ -325,7 +341,10 @@ const groupsSlice = createSlice({
         }
       }
     },
-    socketChannelUpdated: (state, action: PayloadAction<{ groupId: string; channel: GroupChannel }>) => {
+    socketChannelUpdated: (
+      state,
+      action: PayloadAction<{ groupId: string; channel: GroupChannel }>,
+    ) => {
       const { groupId, channel } = action.payload;
       const group = state.groups.find((g) => g.id === groupId);
       if (group && Array.isArray(group.channels)) {
@@ -335,13 +354,19 @@ const groupsSlice = createSlice({
         }
       }
     },
-    socketChannelDeleted: (state, action: PayloadAction<{ groupId: string; channelId: string }>) => {
+    socketChannelDeleted: (
+      state,
+      action: PayloadAction<{ groupId: string; channelId: string }>,
+    ) => {
       const { groupId, channelId } = action.payload;
       const group = state.groups.find((g) => g.id === groupId);
       if (group && Array.isArray(group.channels)) {
         group.channels = group.channels.filter((c) => c.id !== channelId);
       }
-      if (state.activeGroupId === groupId && state.activeChannelId === channelId) {
+      if (
+        state.activeGroupId === groupId &&
+        state.activeChannelId === channelId
+      ) {
         state.activeChannelId = group?.channels?.[0]?.id || null;
       }
     },
@@ -366,8 +391,12 @@ const groupsSlice = createSlice({
     // Create group
     builder
       .addCase(createGroup.fulfilled, (state, action) => {
-        if (!action.payload || !action.payload.id) {return;}
-        if (!Array.isArray(state.groups)) {state.groups = [];}
+        if (!action.payload || !action.payload.id) {
+          return;
+        }
+        if (!Array.isArray(state.groups)) {
+          state.groups = [];
+        }
         const exists = state.groups.some((g) => g.id === action.payload.id);
         if (!exists) {
           state.groups.push(action.payload);
@@ -393,7 +422,9 @@ const groupsSlice = createSlice({
       if (group) {
         action.payload.members.forEach((m: any) => {
           const exists = group.members.some((mem) => mem.id === m.id);
-          if (!exists) {group.members.push(m);}
+          if (!exists) {
+            group.members.push(m);
+          }
         });
       }
     });
@@ -430,7 +461,10 @@ const groupsSlice = createSlice({
       if (group && Array.isArray(group.channels)) {
         group.channels = group.channels.filter((c) => c.id !== channelId);
       }
-      if (state.activeGroupId === groupId && state.activeChannelId === channelId) {
+      if (
+        state.activeGroupId === groupId &&
+        state.activeChannelId === channelId
+      ) {
         state.activeChannelId = group?.channels?.[0]?.id || null;
       }
     });
