@@ -1,10 +1,9 @@
 'use client';
-
 import React, { useEffect, useRef, useState } from 'react';
 import { initNotificationClient } from 'vibe-message';
 import { showToast } from '../components/toast';
-import type { User } from '../store/slices/authSlice';
 import { useAppSelector } from '../store';
+import type { User } from '../store/slices/authSlice';
 
 let globalClient: any = null;
 
@@ -12,14 +11,20 @@ let globalClient: any = null;
  * Get or initialize the global vibe-message notification client singleton.
  */
 export function getNotificationClient() {
-  if (globalClient) return globalClient;
-  if (typeof window === 'undefined') return null;
+  if (globalClient) {
+    return globalClient;
+  }
+  if (typeof window === 'undefined') {
+    return null;
+  }
 
   const appId = process.env.NEXT_PUBLIC_VIBE_APP_ID;
   const publicKey = process.env.NEXT_PUBLIC_VIBE_PUBLIC_KEY;
 
   if (!appId || !publicKey) {
-    console.warn('Vibe Message credentials are not set. Web push notifications are disabled.');
+    console.warn(
+      'Vibe Message credentials are not set. Web push notifications are disabled.',
+    );
     return null;
   }
 
@@ -30,7 +35,10 @@ export function getNotificationClient() {
     });
     return globalClient;
   } catch (error) {
-    console.error('Failed to initialize Vibe Message notification client:', error);
+    console.error(
+      'Failed to initialize Vibe Message notification client:',
+      error,
+    );
     return null;
   }
 }
@@ -39,7 +47,9 @@ export function useNotificationClient(user: User | null) {
   const [client, setClient] = useState<any>(null);
   const registeredUserIdRef = useRef<string | null>(null);
 
-  const activeConversationId = useAppSelector((s) => s.chat.activeConversationId);
+  const activeConversationId = useAppSelector(
+    (s) => s.chat.activeConversationId,
+  );
   const activeChannelId = useAppSelector((s) => s.groups.activeChannelId);
   const activeGroupId = useAppSelector((s) => s.groups.activeGroupId);
 
@@ -75,7 +85,9 @@ export function useNotificationClient(user: User | null) {
 
         // Suppress if user turned off in-app notifications in settings
         if (userRef.current?.notificationsInAppEnabled === false) {
-          console.log('Ignored foreground notification: In-app notifications are disabled');
+          console.log(
+            'Ignored foreground notification: In-app notifications are disabled',
+          );
           return;
         }
 
@@ -100,7 +112,10 @@ export function useNotificationClient(user: User | null) {
 
         // Suppress if user is currently viewing this DM conversation
         if (msgConvoId && msgConvoId === activeConversationIdRef.current) {
-          console.log('Suppressed: user is viewing DM conversation', msgConvoId);
+          console.log(
+            'Suppressed: user is viewing DM conversation',
+            msgConvoId,
+          );
           return;
         }
 
@@ -111,8 +126,16 @@ export function useNotificationClient(user: User | null) {
         }
 
         // Suppress if user is in the same group and channel matches
-        if (msgGroupId && msgGroupId === activeGroupIdRef.current && msgConvoId === activeChannelIdRef.current) {
-          console.log('Suppressed: user is viewing this group channel', msgGroupId, msgConvoId);
+        if (
+          msgGroupId &&
+          msgGroupId === activeGroupIdRef.current &&
+          msgConvoId === activeChannelIdRef.current
+        ) {
+          console.log(
+            'Suppressed: user is viewing this group channel',
+            msgGroupId,
+            msgConvoId,
+          );
           return;
         }
 
@@ -140,15 +163,26 @@ export function useNotificationClient(user: User | null) {
               {initial}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-bold text-[14.5px] leading-tight truncate" style={{ color: 'var(--text-primary)' }}>
+              <div
+                className="font-bold text-[14.5px] leading-tight truncate"
+                style={{ color: 'var(--text-primary)' }}
+              >
                 {toastTitle}
               </div>
-              <div className="text-[12.5px] leading-snug mt-0.5 break-words" style={{ color: 'var(--text-muted)' }}>
+              <div
+                className="text-[12.5px] leading-snug mt-0.5 break-words"
+                style={{ color: 'var(--text-muted)' }}
+              >
                 {isDm ? (
                   toastBody
                 ) : (
                   <>
-                    <span className="font-semibold" style={{ color: 'var(--accent-primary)' }}>{senderName}:</span>{' '}
+                    <span
+                      className="font-semibold"
+                      style={{ color: 'var(--accent-primary)' }}
+                    >
+                      {senderName}:
+                    </span>{' '}
                     {toastBody}
                   </>
                 )}
@@ -156,7 +190,10 @@ export function useNotificationClient(user: User | null) {
             </div>
             <div
               className="w-2.5 h-2.5 rounded-full shrink-0 animate-pulse"
-              style={{ background: 'var(--accent-primary)', boxShadow: '0 0 8px var(--accent-primary)' }}
+              style={{
+                background: 'var(--accent-primary)',
+                boxShadow: '0 0 8px var(--accent-primary)',
+              }}
             />
           </div>,
           {
@@ -164,7 +201,7 @@ export function useNotificationClient(user: User | null) {
             closeButton: true,
             className: 'custom-inapp-toast-container',
             autoClose: 4000,
-          }
+          },
         );
       });
 
@@ -180,11 +217,15 @@ export function useNotificationClient(user: User | null) {
 
   // Reactively register or unregister based on user or client changes
   useEffect(() => {
-    if (!client) return;
+    if (!client) {
+      return;
+    }
 
     const register = async () => {
       if (user && user.id && user.notificationsEnabled !== false) {
-        if (registeredUserIdRef.current === user.id) return;
+        if (registeredUserIdRef.current === user.id) {
+          return;
+        }
         try {
           console.log(`Registering device for user: ${user.id}`);
           await client.registerDevice({
@@ -195,7 +236,10 @@ export function useNotificationClient(user: User | null) {
           registeredUserIdRef.current = user.id;
           console.log('Device registered successfully for notifications.');
         } catch (error) {
-          console.error('Failed to register device for push notifications:', error);
+          console.error(
+            'Failed to register device for push notifications:',
+            error,
+          );
         }
       } else {
         const oldUserId = registeredUserIdRef.current;
@@ -206,7 +250,10 @@ export function useNotificationClient(user: User | null) {
             registeredUserIdRef.current = null;
             console.log('Device unregistered successfully.');
           } catch (error) {
-            console.error('Failed to unregister device for push notifications:', error);
+            console.error(
+              'Failed to unregister device for push notifications:',
+              error,
+            );
           }
         }
       }

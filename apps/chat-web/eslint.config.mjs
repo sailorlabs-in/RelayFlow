@@ -9,4 +9,12 @@ export default [
   {
     ignores: ['.next/**/*', '**/out-tsc'],
   },
+  {
+    // Explicitly silence import ordering rules — they may be re-enabled by
+    // nx flat/react-typescript or @next/eslint-plugin-next configs above.
+    rules: {
+      'import/order': 'off',
+      'import/newline-after-import': 'off',
+    },
+  },
 ];
