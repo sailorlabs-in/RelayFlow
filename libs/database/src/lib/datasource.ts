@@ -15,19 +15,19 @@ export const dbOptions: DataSourceOptions = {
         password: process.env.DB_PASSWORD || 'postgres',
         database: process.env.DB_NAME || 'relayflow',
       }),
-  
+
   // Check env variable for synchronization (development/testing)
   synchronize: process.env.DB_SYNCHRONIZE === 'true',
-  
+
   // Custom naming strategy for clean PostgreSQL snake_case naming
   namingStrategy: new SnakeNamingStrategy(),
-  
+
   // Load dynamic compiled TS/JS objects inside the monorepo scope
   entities: [path.join(__dirname, 'entities/**/*.entity.{ts,js}')],
   migrations: [path.join(__dirname, 'migrations/**/*.{ts,js}')],
   subscribers: [path.join(__dirname, 'subscribers/**/*.{ts,js}')],
-  
-  logging: process.env.NODE_ENV === 'development',
+
+  logging: process.env.DB_LOGGING === 'true',
 };
 
 const dataSource = new DataSource(dbOptions);
