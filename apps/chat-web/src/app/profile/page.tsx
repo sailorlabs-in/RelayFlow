@@ -194,6 +194,10 @@ export function ProfileSettingsContent({
   const [userStatus, setUserStatus] = useState('online');
   const [visibility, setVisibility] = useState('everyone');
 
+  // 2FA States
+  const [isTwoFactorEnabled, setIsTwoFactorEnabled] = useState(false);
+  const [twoFactorOnlyNewDevice, setTwoFactorOnlyNewDevice] = useState(false);
+
   // Notification Preferences State
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [notificationsDmEnabled, setNotificationsDmEnabled] = useState(true);
@@ -239,6 +243,8 @@ export function ProfileSettingsContent({
       setNotificationsFriendRequestEnabled(
         user.notificationsFriendRequestEnabled ?? true,
       );
+      setIsTwoFactorEnabled(user.isTwoFactorEnabled ?? false);
+      setTwoFactorOnlyNewDevice(user.twoFactorOnlyNewDevice ?? false);
       hasInitializedRef.current = true;
     }
   }, [user, accessToken, router, isModal]);
@@ -356,6 +362,8 @@ export function ProfileSettingsContent({
         notificationsGroupEnabled,
         notificationsInAppEnabled,
         notificationsFriendRequestEnabled,
+        isTwoFactorEnabled,
+        twoFactorOnlyNewDevice,
       };
 
       if (password) {
@@ -839,6 +847,98 @@ export function ProfileSettingsContent({
                   >
                     Leave blank if you do not wish to change your password.
                   </p>
+                </div>
+
+                <div
+                  className="border-t pt-4 mt-2"
+                  style={{ borderColor: 'var(--border-muted)' }}
+                >
+                  <div
+                    className="flex items-center text-[13px] font-bold mb-4"
+                    style={{ color: 'var(--text-secondary)' }}
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none; stroke: currentColor"
+                      strokeWidth="2"
+                      className="w-4 h-4 mr-2 opacity-60"
+                      style={{
+                        width: 16,
+                        height: 16,
+                        stroke: 'currentColor',
+                        fill: 'none',
+                      }}
+                    >
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                    </svg>
+                    Two-Factor Authentication (2FA)
+                  </div>
+
+                  <div className="flex flex-col gap-4">
+                    {/* Toggle 1: Enable 2FA */}
+                    <div className="flex items-center justify-between p-3.5 rounded-xl border border-[var(--glass-border)] bg-[rgba(0,0,0,0.01)]">
+                      <div className="flex flex-col gap-0.5 pr-4">
+                        <span
+                          className="font-bold text-[13.5px]"
+                          style={{ color: 'var(--text-primary)' }}
+                        >
+                          Enable Two-Factor Authentication
+                        </span>
+                        <span
+                          className="text-[11px]"
+                          style={{ color: 'var(--text-muted)' }}
+                        >
+                          Require a security code sent to your email to log in
+                        </span>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={isTwoFactorEnabled}
+                          onChange={(e) => {
+                            setIsTwoFactorEnabled(e.target.checked);
+                            if (!e.target.checked) {
+                              setTwoFactorOnlyNewDevice(false);
+                            }
+                          }}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent-primary)]"></div>
+                      </label>
+                    </div>
+
+                    {/* Toggle 2: Only ask OTP on new device */}
+                    {isTwoFactorEnabled && (
+                      <div className="flex items-center justify-between p-3.5 rounded-xl border border-[var(--glass-border)] bg-[rgba(0,0,0,0.01)] animate-fade-in">
+                        <div className="flex flex-col gap-0.5 pr-4">
+                          <span
+                            className="font-bold text-[13.5px]"
+                            style={{ color: 'var(--text-primary)' }}
+                          >
+                            Only ask OTP on new device
+                          </span>
+                          <span
+                            className="text-[11px]"
+                            style={{ color: 'var(--text-muted)' }}
+                          >
+                            Bypass OTP prompt if the login device is
+                            recognized/remembered
+                          </span>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={twoFactorOnlyNewDevice}
+                            onChange={(e) =>
+                              setTwoFactorOnlyNewDevice(e.target.checked)
+                            }
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent-primary)]"></div>
+                        </label>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}

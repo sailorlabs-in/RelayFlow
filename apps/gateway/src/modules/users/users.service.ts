@@ -136,6 +136,8 @@ export class UsersService {
       notificationsGroupEnabled?: boolean;
       notificationsInAppEnabled?: boolean;
       notificationsFriendRequestEnabled?: boolean;
+      isTwoFactorEnabled?: boolean;
+      twoFactorOnlyNewDevice?: boolean;
     },
   ): Promise<User> {
     const user = await this.findById(id);
@@ -194,6 +196,14 @@ export class UsersService {
     if (data.notificationsFriendRequestEnabled !== undefined) {
       user.notificationsFriendRequestEnabled =
         data.notificationsFriendRequestEnabled;
+    }
+
+    if (data.isTwoFactorEnabled !== undefined) {
+      user.isTwoFactorEnabled = data.isTwoFactorEnabled;
+    }
+
+    if (data.twoFactorOnlyNewDevice !== undefined) {
+      user.twoFactorOnlyNewDevice = data.twoFactorOnlyNewDevice;
     }
 
     const updatedUser = await this.userRepository.save(user);
@@ -393,5 +403,113 @@ export class UsersService {
       ],
     });
     return !!friendship;
+  }
+
+  async updateVerificationOtp(
+    id: string,
+    otp: string,
+    expiresAt: Date,
+  ): Promise<User> {
+    const user = await this.findById(id);
+    user.verificationOtp = otp;
+    user.verificationOtpExpiresAt = expiresAt;
+    const saved = await this.userRepository.save(user);
+    await this.updateRedisCache(saved);
+    return saved;
+  }
+
+  async updateTwoFactorOtp(
+    id: string,
+    otp: string,
+    expiresAt: Date,
+  ): Promise<User> {
+    const user = await this.findById(id);
+    user.twoFactorOtp = otp;
+    user.twoFactorOtpExpiresAt = expiresAt;
+    const saved = await this.userRepository.save(user);
+    await this.updateRedisCache(saved);
+    return saved;
+  }
+
+  async updateResetPasswordToken(
+    id: string,
+    token: string,
+    expiresAt: Date,
+  ): Promise<User> {
+    const user = await this.findById(id);
+    user.resetPasswordToken = token;
+    user.resetPasswordExpiresAt = expiresAt;
+    const saved = await this.userRepository.save(user);
+    await this.updateRedisCache(saved);
+    return saved;
+  }
+
+  async verifyUserEmail(id: string): Promise<User> {
+    const user = await this.findById(id);
+    user.isVerified = true;
+    user.verificationOtp = undefined;
+    user.verificationOtpExpiresAt = undefined;
+    const saved = await this.userRepository.save(user);
+    await this.updateRedisCache(saved);
+    return saved;
+  }
+
+  async addRememberedDevice(id: string, deviceId: string): Promise<User> {
+    const user = await this.findById(id);
+    let devices: string[] = [];
+    if (user.rememberedDevices) {
+      try {
+        devices = JSON.parse(user.rememberedDevices);
+        if (!Array.isArray(devices)) {
+          devices = [];
+        }
+      } catch {
+        devices = [];
+      }
+    }
+    if (!devices.includes(deviceId)) {
+      devices.push(deviceId);
+      user.rememberedDevices = JSON.stringify(devices);
+    }
+    const saved = await this.userRepository.save(user);
+    await this.updateRedisCache(saved);
+    return saved;
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    await this.userRepository.delete({ id });
+    const redis = this.redisService.getClient();
+    const cacheKey = `user:profile:${id}`;
+    try {
+      await redis.del(cacheKey);
+    } catch {
+      // ignore
+    }
+  }
+
+  async findByResetToken(token: string): Promise<User | null> {
+    return this.userRepository.findOne({
+      where: { resetPasswordToken: token },
+    });
+  }
+
+  async resetUserPassword(id: string, passwordHash: string): Promise<User> {
+    const user = await this.findById(id);
+    user.passwordHash = passwordHash;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpiresAt = undefined;
+    const saved = await this.userRepository.save(user);
+    await this.updateRedisCache(saved);
+    return saved;
+  }
+
+  private async updateRedisCache(user: User): Promise<void> {
+    const redis = this.redisService.getClient();
+    const cacheKey = `user:profile:${user.id}`;
+    try {
+      await redis.setex(cacheKey, 86400, JSON.stringify(user));
+    } catch {
+      // ignore
+    }
   }
 }

@@ -17,6 +17,8 @@ export interface User {
   notificationsGroupEnabled?: boolean;
   notificationsInAppEnabled?: boolean;
   notificationsFriendRequestEnabled?: boolean;
+  isTwoFactorEnabled?: boolean;
+  twoFactorOnlyNewDevice?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -28,6 +30,10 @@ export interface AuthState {
   error: string | null;
   themeMode: 'dark' | 'light' | 'system';
   themeSchema: string;
+  requiresVerification: boolean;
+  requires2FA: boolean;
+  verificationEmail: string | null;
+  temp2FAUserId: string | null;
 }
 
 // Check localStorage for cached credentials safely in Next.js client
@@ -40,6 +46,10 @@ const initialState: AuthState = {
   error: null,
   themeMode: 'system',
   themeSchema: 'arctic_glass',
+  requiresVerification: false,
+  requires2FA: false,
+  verificationEmail: null,
+  temp2FAUserId: null,
 };
 
 // Async Thunk for User Registration
@@ -71,16 +81,84 @@ export const registerUser = createAsyncThunk(
 // Async Thunk for User Login
 export const loginUser = createAsyncThunk(
   'auth/login',
-  async (payload: { email: string; password: string }, { rejectWithValue }) => {
+  async (
+    payload: { email: string; password: string; deviceId?: string },
+    { rejectWithValue },
+  ) => {
     try {
       const response = await axios.post(`${API_URL}/auth/login`, payload);
-      // NestJS wraps response in { success: true, data: { accessToken, user } }
+      // NestJS wraps response in { success: true, data: { accessToken, user, requiresVerification, ... } }
       return response.data.data;
     } catch (error: any) {
       const errorMsg =
         error.response?.data?.error?.message ||
         error.response?.data?.message ||
         'Login failed. Invalid email or password.';
+      return rejectWithValue(errorMsg);
+    }
+  },
+);
+
+// Async Thunk for Verifying Email OTP
+export const verifyEmailOtp = createAsyncThunk(
+  'auth/verifyEmail',
+  async (payload: { email: string; otp: string }, { rejectWithValue }) => {
+    try {
+      const response = await axios.post(
+        `${API_URL}/auth/verify-email`,
+        payload,
+      );
+      return response.data.data;
+    } catch (error: any) {
+      const errorMsg =
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        'Verification failed. Invalid or expired OTP.';
+      return rejectWithValue(errorMsg);
+    }
+  },
+);
+
+// Async Thunk for Verifying 2FA OTP
+export const verify2FaOtp = createAsyncThunk(
+  'auth/verify2Fa',
+  async (
+    payload: {
+      userId: string;
+      otp: string;
+      deviceId?: string;
+      rememberDevice?: boolean;
+    },
+    { rejectWithValue },
+  ) => {
+    try {
+      const response = await axios.post(`${API_URL}/auth/verify-2fa`, payload);
+      return response.data.data;
+    } catch (error: any) {
+      const errorMsg =
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        '2FA verification failed. Invalid or expired OTP.';
+      return rejectWithValue(errorMsg);
+    }
+  },
+);
+
+// Async Thunk for Resending Verification Code
+export const resendVerificationCode = createAsyncThunk(
+  'auth/resendVerification',
+  async (payload: { email: string }, { rejectWithValue }) => {
+    try {
+      const response = await axios.post(
+        `${API_URL}/auth/resend-verification`,
+        payload,
+      );
+      return response.data.data;
+    } catch (error: any) {
+      const errorMsg =
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        'Failed to resend verification code.';
       return rejectWithValue(errorMsg);
     }
   },
@@ -103,6 +181,8 @@ export const updateUserProfile = createAsyncThunk(
       notificationsGroupEnabled?: boolean;
       notificationsInAppEnabled?: boolean;
       notificationsFriendRequestEnabled?: boolean;
+      isTwoFactorEnabled?: boolean;
+      twoFactorOnlyNewDevice?: boolean;
     },
     { getState, rejectWithValue },
   ) => {
@@ -158,17 +238,25 @@ const authSlice = createSlice({
       state.accessToken = null;
       state.status = 'idle';
       state.error = null;
-      // state.themeMode = 'system';
-      // state.themeSchema = 'arctic_glass';
+      state.requiresVerification = false;
+      state.requires2FA = false;
+      state.verificationEmail = null;
+      state.temp2FAUserId = null;
       if (isBrowser) {
         localStorage.removeItem('chat_token');
         localStorage.removeItem('chat_user');
-        // localStorage.setItem('rf-theme', 'system');
-        // localStorage.setItem('rf-theme-schema', 'arctic_glass');
       }
     },
     clearAuthError: (state) => {
       state.error = null;
+    },
+    cancelVerification: (state) => {
+      state.requiresVerification = false;
+      state.requires2FA = false;
+      state.verificationEmail = null;
+      state.temp2FAUserId = null;
+      state.error = null;
+      state.status = 'idle';
     },
     setThemeMode: (state, action) => {
       state.themeMode = action.payload;
@@ -207,9 +295,13 @@ const authSlice = createSlice({
         state.status = 'loading';
         state.error = null;
       })
-      .addCase(registerUser.fulfilled, (state) => {
+      .addCase(registerUser.fulfilled, (state, action) => {
         state.status = 'succeeded';
         state.error = null;
+        if (action.payload && action.payload.email) {
+          state.requiresVerification = true;
+          state.verificationEmail = action.payload.email;
+        }
       })
       .addCase(registerUser.rejected, (state, action) => {
         state.status = 'failed';
@@ -223,9 +315,55 @@ const authSlice = createSlice({
         state.error = null;
       })
       .addCase(loginUser.fulfilled, (state, action) => {
+        state.error = null;
+
+        if (action.payload?.requiresVerification) {
+          state.status = 'succeeded';
+          state.requiresVerification = true;
+          state.verificationEmail = action.payload.email;
+        } else if (action.payload?.requires2FA) {
+          state.status = 'succeeded';
+          state.requires2FA = true;
+          state.temp2FAUserId = action.payload.userId;
+          state.verificationEmail = action.payload.email;
+        } else {
+          state.status = 'succeeded';
+          state.accessToken = action.payload.accessToken;
+          state.user = action.payload.user;
+
+          const userTheme = action.payload.user?.themeMode || 'system';
+          const userSchema = action.payload.user?.themeSchema || 'arctic_glass';
+          state.themeMode = userTheme;
+          state.themeSchema = userSchema;
+
+          if (isBrowser) {
+            localStorage.setItem('chat_token', action.payload.accessToken);
+            localStorage.setItem(
+              'chat_user',
+              JSON.stringify(action.payload.user),
+            );
+            localStorage.setItem('rf-theme', userTheme);
+            localStorage.setItem('rf-theme-schema', userSchema);
+          }
+        }
+      })
+      .addCase(loginUser.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.payload as string;
+      });
+
+    // Verify Email
+    builder
+      .addCase(verifyEmailOtp.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+      })
+      .addCase(verifyEmailOtp.fulfilled, (state, action) => {
         state.status = 'succeeded';
         state.accessToken = action.payload.accessToken;
         state.user = action.payload.user;
+        state.requiresVerification = false;
+        state.verificationEmail = null;
         state.error = null;
 
         const userTheme = action.payload.user?.themeMode || 'system';
@@ -243,7 +381,42 @@ const authSlice = createSlice({
           localStorage.setItem('rf-theme-schema', userSchema);
         }
       })
-      .addCase(loginUser.rejected, (state, action) => {
+      .addCase(verifyEmailOtp.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.payload as string;
+      });
+
+    // Verify 2FA
+    builder
+      .addCase(verify2FaOtp.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+      })
+      .addCase(verify2FaOtp.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+        state.accessToken = action.payload.accessToken;
+        state.user = action.payload.user;
+        state.requires2FA = false;
+        state.temp2FAUserId = null;
+        state.verificationEmail = null;
+        state.error = null;
+
+        const userTheme = action.payload.user?.themeMode || 'system';
+        const userSchema = action.payload.user?.themeSchema || 'arctic_glass';
+        state.themeMode = userTheme;
+        state.themeSchema = userSchema;
+
+        if (isBrowser) {
+          localStorage.setItem('chat_token', action.payload.accessToken);
+          localStorage.setItem(
+            'chat_user',
+            JSON.stringify(action.payload.user),
+          );
+          localStorage.setItem('rf-theme', userTheme);
+          localStorage.setItem('rf-theme-schema', userSchema);
+        }
+      })
+      .addCase(verify2FaOtp.rejected, (state, action) => {
         state.status = 'failed';
         state.error = action.payload as string;
       });
@@ -280,6 +453,7 @@ const authSlice = createSlice({
 export const {
   logoutUser,
   clearAuthError,
+  cancelVerification,
   setThemeMode,
   setThemeSchema,
   updateUserStatusOptimistic,

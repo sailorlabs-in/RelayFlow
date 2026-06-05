@@ -7,6 +7,7 @@ import { RealtimeModule } from '../realtime/realtime.module';
 
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
+import { CleanUpService } from './cleanup.service';
 
 @Module({
   imports: [
@@ -14,7 +15,7 @@ import { UsersService } from './users.service';
     forwardRef(() => AuthModule),
     forwardRef(() => RealtimeModule),
   ],
-  providers: [UsersService],
+  providers: [UsersService, CleanUpService],
   controllers: [UsersController],
   exports: [UsersService],
 })

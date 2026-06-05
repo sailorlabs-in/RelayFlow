@@ -45,7 +45,8 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Authenticate user credentials and issue JWT access token',
+    summary:
+      'Authenticate user credentials and issue JWT access token, or return verification check status',
   })
   @ApiBody({
     schema: {
@@ -54,25 +55,119 @@ export class AuthController {
       properties: {
         email: { type: 'string', example: 'user@example.com' },
         password: { type: 'string', example: 'superpassword123' },
+        deviceId: { type: 'string', example: 'client-device-uuid-1234' },
       },
     },
   })
   @ApiResponse({
     status: 200,
-    description: 'User successfully authenticated.',
-    schema: {
-      type: 'object',
-      properties: {
-        accessToken: { type: 'string', example: 'eyJhbGciOiJIUzI1NiIsIn...' },
-        user: { type: 'object' },
-      },
-    },
+    description:
+      'User successfully authenticated or checkpoint triggers (requiresVerification / requires2FA).',
   })
   @ApiResponse({ status: 401, description: 'Invalid email or password.' })
   async login(
     @Body('email') email: string,
     @Body('password') password: string,
-  ): Promise<{ accessToken: string; user: User }> {
-    return this.authService.login(email, password);
+    @Body('deviceId') deviceId?: string,
+  ): Promise<any> {
+    return this.authService.login(email, password, deviceId);
+  }
+
+  @Post('verify-email')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify account email with OTP code' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['email', 'otp'],
+      properties: {
+        email: { type: 'string', example: 'user@example.com' },
+        otp: { type: 'string', example: '123456' },
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Email verified successfully.' })
+  @ApiResponse({ status: 400, description: 'Invalid or expired OTP.' })
+  async verifyEmail(
+    @Body('email') email: string,
+    @Body('otp') otp: string,
+  ): Promise<any> {
+    return this.authService.verifyEmail(email, otp);
+  }
+
+  @Post('resend-verification')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Resend email verification OTP' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['email'],
+      properties: {
+        email: { type: 'string', example: 'user@example.com' },
+      },
+    },
+  })
+  async resendVerification(@Body('email') email: string): Promise<any> {
+    return this.authService.resendVerification(email);
+  }
+
+  @Post('verify-2fa')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify 2FA login OTP' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['userId', 'otp'],
+      properties: {
+        userId: { type: 'string', example: 'user-uuid-1234' },
+        otp: { type: 'string', example: '123456' },
+        deviceId: { type: 'string', example: 'client-device-uuid-1234' },
+        rememberDevice: { type: 'boolean', example: true },
+      },
+    },
+  })
+  async verify2Fa(
+    @Body('userId') userId: string,
+    @Body('otp') otp: string,
+    @Body('deviceId') deviceId?: string,
+    @Body('rememberDevice') rememberDevice?: boolean,
+  ): Promise<any> {
+    return this.authService.verify2Fa(userId, otp, deviceId, rememberDevice);
+  }
+
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Request password reset link' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['email'],
+      properties: {
+        email: { type: 'string', example: 'user@example.com' },
+      },
+    },
+  })
+  async forgotPassword(@Body('email') email: string): Promise<any> {
+    return this.authService.forgotPassword(email);
+  }
+
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reset account password with token' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['token', 'password'],
+      properties: {
+        token: { type: 'string', example: 'token-string' },
+        password: { type: 'string', example: 'newsecurepassword123' },
+      },
+    },
+  })
+  async resetPassword(
+    @Body('token') token: string,
+    @Body('password') password: string,
+  ): Promise<any> {
+    return this.authService.resetPassword(token, password);
   }
 }

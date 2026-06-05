@@ -138,6 +138,8 @@ export class UsersController {
       notificationsGroupEnabled?: boolean;
       notificationsInAppEnabled?: boolean;
       notificationsFriendRequestEnabled?: boolean;
+      isTwoFactorEnabled?: boolean;
+      twoFactorOnlyNewDevice?: boolean;
     },
   ): Promise<User> {
     return this.usersService.updateProfile(currentUser.userId, body);
