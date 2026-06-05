@@ -3,16 +3,32 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
+    "prepare": "husky",
     "serve-all": "nx run-many -t serve --parallel=10",
     "serve-all:prod": "nx run-many -t serve --configuration=production --parallel=10",
     "build-all": "nx run-many -t build --exclude=@chat-app/chat-web && npm run --prefix apps/chat-web build",
     "build-all:prod": "nx run-many -t build --exclude=@chat-app/chat-web --configuration=production && npm run --prefix apps/chat-web build",
     "preview-gateway": "node apps/gateway/dist/main.js",
     "preview-worker-service": "node apps/worker-service/dist/main.js",
-    "preview-all": "npx --yes concurrently \"npm run preview-gateway\" \"npm run preview-worker-service\""
+    "preview-all": "npx --yes concurrently \"npm run preview-gateway\" \"npm run preview-worker-service\"",
+    "lint:all": "eslint apps/chat-web/src apps/gateway/src apps/worker-service/src libs --ext .ts,.tsx",
+    "lint:chat-web": "eslint apps/chat-web/src --ext .ts,.tsx",
+    "lint:gateway": "eslint apps/gateway/src --ext .ts",
+    "lint:worker-service": "eslint apps/worker-service/src --ext .ts",
+    "lint:common": "eslint libs/common/src --ext .ts",
+    "lint:config": "eslint libs/config/src --ext .ts",
+    "lint:contracts": "eslint libs/contracts/src --ext .ts",
+    "lint:database": "eslint libs/database/src --ext .ts",
+    "lint:logger": "eslint libs/logger/src --ext .ts",
+    "lint:queues": "eslint libs/queues/src --ext .ts",
+    "lint:redis": "eslint libs/redis/src --ext .ts",
+    "lint:shared-constants": "eslint libs/shared-constants/src --ext .ts",
+    "lint:shared-events": "eslint libs/shared-events/src --ext .ts",
+    "lint:validation": "eslint libs/validation/src --ext .ts"
   },
   "private": true,
   "dependencies": {
+    "@nestjs/bullmq": "^11.0.4",
     "@nestjs/common": "^11.0.0",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.0.0",
@@ -24,6 +40,7 @@
     "@nestjs/websockets": "^11.1.24",
     "@reduxjs/toolkit": "^2.12.0",
     "axios": "^1.6.0",
+    "bullmq": "^5.78.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
     "ioredis": "^5.11.0",
@@ -80,10 +97,12 @@
     "eslint-plugin-jsx-a11y": "6.10.1",
     "eslint-plugin-react": "7.35.0",
     "eslint-plugin-react-hooks": "5.0.0",
+    "husky": "^9.1.7",
     "jest": "~30.3.0",
     "jest-environment-node": "~30.3.0",
     "jest-util": "~30.3.0",
     "jsonc-eslint-parser": "^2.1.0",
+    "lint-staged": "^17.0.7",
     "nx": "22.7.5",
     "prettier": "~3.6.2",
     "tailwindcss": "^4.3.0",
@@ -97,5 +116,14 @@
   "workspaces": [
     "apps/*",
     "libs/*"
-  ]
+  ],
+  "lint-staged": {
+    "**/*.{ts,tsx}": [
+      "prettier --write",
+      "eslint --max-warnings=0"
+    ],
+    "**/*.{js,jsx,json,css,md}": [
+      "prettier --write"
+    ]
+  }
 }

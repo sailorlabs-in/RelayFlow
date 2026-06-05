@@ -6,6 +6,7 @@ import { updateChannel, deleteChannel } from '../store/slices/groupsSlice';
 
 import { IconX, IconHash, IconTrash } from './Icons';
 import { showToast } from './toast';
+import { ConfirmationModal } from './ConfirmationModal';
 
 interface ChannelSettingsModalProps {
   groupId: string;
@@ -22,9 +23,21 @@ export const ChannelSettingsModal = ({
   const [name, setName] = useState(channel.name);
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    type?: 'danger' | 'info';
+    onConfirm: () => void;
+  } | null>(null);
 
   const sanitize = (val: string) =>
-    val.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    val
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-]/g, '');
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setName(sanitize(e.target.value));
@@ -43,7 +56,9 @@ export const ChannelSettingsModal = ({
     }
     setIsLoading(true);
     try {
-      await dispatch(updateChannel({ groupId, channelId: channel.id, name: cleanName })).unwrap();
+      await dispatch(
+        updateChannel({ groupId, channelId: channel.id, name: cleanName }),
+      ).unwrap();
       showToast.success(`Channel renamed to #${cleanName}!`);
       onClose();
     } catch (err: any) {
@@ -53,28 +68,37 @@ export const ChannelSettingsModal = ({
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (channel.name === 'general') {
       showToast.error('Cannot delete the general channel.');
       return;
     }
-    if (!window.confirm(`Delete channel #${channel.name}? This will permanently erase all message history in this channel.`)) {
-      return;
-    }
-    setIsDeleting(true);
-    try {
-      await dispatch(deleteChannel({ groupId, channelId: channel.id })).unwrap();
-      showToast.success(`Channel #${channel.name} deleted.`);
-      onClose();
-    } catch (err: any) {
-      showToast.error(err || 'Failed to delete channel.');
-      setIsDeleting(false);
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Channel',
+      message: `Are you sure you want to delete channel #${channel.name}? This will permanently erase all message history in this channel.`,
+      confirmLabel: 'Delete',
+      type: 'danger',
+      onConfirm: async () => {
+        setIsDeleting(true);
+        setConfirmModal(null);
+        try {
+          await dispatch(
+            deleteChannel({ groupId, channelId: channel.id }),
+          ).unwrap();
+          showToast.success(`Channel #${channel.name} deleted.`);
+          onClose();
+        } catch (err: any) {
+          showToast.error(err || 'Failed to delete channel.');
+          setIsDeleting(false);
+        }
+      },
+    });
   };
 
   return (
     <div
-      className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-[rgba(4,6,12,0.65)] backdrop-blur-[14px]"
+      className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-[rgba(4,6,12,0.65)] backdrop-blur-[4px]"
       onClick={onClose}
     >
       <div
@@ -88,13 +112,16 @@ export const ChannelSettingsModal = ({
               Channel Settings
             </h2>
             <p className="m-1 text-[12.5px] text-[var(--text-muted)]">
-              Edit or remove <strong className="text-[var(--text-secondary)]">#{channel.name}</strong>
+              Edit or remove{' '}
+              <strong className="text-[var(--text-secondary)]">
+                #{channel.name}
+              </strong>
             </p>
           </div>
           <button
             id="close-channel-settings-modal"
             onClick={onClose}
-            className="bg-transparent border-none cursor-pointer text-[var(--text-muted)] p-1 rounded-md flex items-center"
+            className="bg-transparent border-none cursor-pointer text-[var(--text-muted)] p-1 rounded-md flex items-center active-press"
           >
             <IconX size={18} />
           </button>
@@ -128,19 +155,21 @@ export const ChannelSettingsModal = ({
           </div>
 
           {/* Delete Area */}
-          <div
-            className="p-3.5 rounded-xl border-[1.5px] border-dashed border-[var(--danger)] bg-[var(--danger-bg)] flex items-center justify-between gap-3"
-          >
+          <div className="p-3.5 rounded-xl border-[1.5px] border-dashed border-[var(--danger)] bg-[var(--danger-bg)] flex items-center justify-between gap-3">
             <div>
-              <div className="text-[13px] font-bold text-[var(--danger)]">Delete Channel</div>
-              <div className="text-[11px] text-[var(--text-muted)] mt-0.5">This action is permanent.</div>
+              <div className="text-[13px] font-bold text-[var(--danger)]">
+                Delete Channel
+              </div>
+              <div className="text-[11px] text-[var(--text-muted)] mt-0.5">
+                This action is permanent.
+              </div>
             </div>
             <button
               id="delete-channel-btn"
               type="button"
               onClick={handleDelete}
               disabled={isDeleting}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border-none bg-[var(--danger)] text-white text-[12.5px] font-semibold cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 shadow-[0_2px_8px_rgba(239, 68, 68, 0.25)]"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border-none bg-[var(--danger)] text-white text-[12.5px] font-semibold cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 shadow-[0_2px_8px_rgba(239, 68, 68, 0.25)] hover:brightness-105 transition-all active-press"
             >
               <IconTrash />
               <span>{isDeleting ? 'Deleting…' : 'Delete'}</span>
@@ -149,13 +178,11 @@ export const ChannelSettingsModal = ({
         </form>
 
         {/* Footer */}
-        <div
-          className="px-5 pb-5 flex justify-end gap-2.5"
-        >
+        <div className="px-5 pb-5 flex justify-end gap-2.5">
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2.5 rounded-[10px] border-[1.5px] border-[var(--glass-border)] bg-transparent text-[var(--text-secondary)] text-sm font-semibold cursor-pointer"
+            className="px-5 py-2.5 rounded-[10px] border-[1.5px] border-[var(--glass-border)] bg-transparent text-[var(--text-secondary)] text-sm font-semibold cursor-pointer active-press"
           >
             Cancel
           </button>
@@ -164,12 +191,23 @@ export const ChannelSettingsModal = ({
             type="button"
             onClick={handleSave}
             disabled={isLoading || !name.trim() || name === channel.name}
-            className="btn-send px-6 py-2.5 rounded-[10px] border-none text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="btn-send px-6 py-2.5 rounded-[10px] border-none text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 active-press"
           >
             {isLoading ? 'Saving…' : 'Save Changes'}
           </button>
         </div>
       </div>
+      {confirmModal && (
+        <ConfirmationModal
+          isOpen={confirmModal.isOpen}
+          title={confirmModal.title}
+          message={confirmModal.message}
+          confirmLabel={confirmModal.confirmLabel}
+          type={confirmModal.type}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={() => setConfirmModal(null)}
+        />
+      )}
     </div>
   );
 };

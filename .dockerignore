@@ -1,0 +1,29 @@
+# Dependencies (each image installs its own via npm ci)
+node_modules
+**/node_modules
+
+# Build outputs
+dist
+**/dist
+apps/chat-web/.next
+apps/chat-web/out
+
+# Git & editor
+.git
+.gitignore
+.vscode
+.editorconfig
+
+# Nx cache
+.nx/cache
+.nx/workspace-data
+
+# Env files (injected at runtime via docker-compose)
+.env
+.env.local
+.env.*.local
+
+# Docs & misc
+README.md
+nginx
+docker-compose.yml

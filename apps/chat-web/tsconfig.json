@@ -19,7 +19,13 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@chat-app/shared-constants": [
+        "../../libs/shared-constants/src/index.ts"
+      ],
+      "@chat-app/shared-events": ["../../libs/shared-events/src/index.ts"],
+      "@chat-app/contracts": ["../../libs/contracts/src/index.ts"],
+      "@chat-app/common": ["../../libs/common/src/index.ts"]
     },
     "outDir": "dist",
     "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo"

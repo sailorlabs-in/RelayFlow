@@ -6,7 +6,14 @@ export default [
   ...nx.configs['flat/typescript'],
   ...nx.configs['flat/javascript'],
   {
-    ignores: ['**/dist', '**/out-tsc'],
+    ignores: [
+      '**/dist',
+      '**/out-tsc',
+      '**/.next',
+      '**/build',
+      '**/coverage',
+      '**/node_modules',
+    ],
   },
   {
     files: ['**/*.ts', '**/*.tsx'],
@@ -54,22 +61,21 @@ export default [
       ],
       // Code Quality rules
       'eqeqeq': ['error', 'always'],
-      'curly': ['error', 'all'],
+      // Downgraded to warn: single-line guard clauses like `if (x) return;`
+      // are perfectly readable. Braces-everywhere is a style preference.
+      'curly': ['warn', 'all'],
       'no-console': 'off',
       'prefer-const': 'error',
       'no-duplicate-imports': ['error', { allowSeparateTypeImports: true }],
 
-      // Import Ordering
-      'import/order': [
-        'error',
-        {
-          groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index'],
-          'alphabetize': { order: 'asc', caseInsensitive: true },
-          'newlines-between': 'always',
-        },
-      ],
+      // Import Ordering — turned off: order, alphabetization & blank-line
+      // enforcement are cosmetic and create noise without value.
+      'import/order': 'off',
+      'import/newline-after-import': 'off',
       'import/no-self-import': 'error',
-      'import/no-cycle': 'error',
+      // Downgraded to warn: real circular deps should still be visible but
+      // shouldn't block builds/commits.
+      'import/no-cycle': 'warn',
     },
   },
   {
@@ -86,8 +92,10 @@ export default [
         },
       ],
       '@typescript-eslint/explicit-function-return-type': 'off',
+      // Downgraded to warn: `import type` is preferred but not enforced as an
+      // error — avoids blocking commits over a style choice.
       '@typescript-eslint/consistent-type-imports': [
-        'error',
+        'warn',
         { prefer: 'type-imports', fixStyle: 'separate-type-imports' },
       ],
       '@typescript-eslint/no-floating-promises': 'off',

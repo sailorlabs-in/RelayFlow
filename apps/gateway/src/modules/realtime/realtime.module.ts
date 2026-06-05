@@ -1,4 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
+import { BullModule } from '@nestjs/bullmq';
+import { QueueNames } from '@chat-app/queues';
 
 import { AuthModule } from '../auth/auth.module';
 import { ChatModule } from '../chat/chat.module';
@@ -12,9 +14,12 @@ import { RealtimeGateway } from './realtime.gateway';
     AuthModule,
     forwardRef(() => ChatModule),
     UsersModule,
-    forwardRef(() => GroupsModule)
+    forwardRef(() => GroupsModule),
+    BullModule.registerQueue({
+      name: QueueNames.NOTIFICATIONS,
+    }),
   ],
   providers: [RealtimeGateway],
-  exports: [RealtimeGateway],
+  exports: [RealtimeGateway, BullModule],
 })
 export class RealtimeModule {}

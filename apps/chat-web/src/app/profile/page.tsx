@@ -4,6 +4,9 @@ import { PRESENCE_STATUS_DETAILS } from '@chat-app/shared-constants';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
+import { PrintLog } from '../../utils/logger';
+import { getNotificationClient } from '../useNotificationClient';
+import { ConfirmationModal } from '../../components/ConfirmationModal';
 
 import { useAppDispatch, useAppSelector } from '../../store';
 import {
@@ -18,18 +21,6 @@ import { socketManager } from '../../store/socketManager';
 import StoreProvider from '../../store/StoreProvider';
 
 /* ── SVGs for icons ────────────────────────────────────────── */
-const IconArrowLeft = (): React.JSX.Element => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2.5"
-    className="w-4 h-4 mr-2"
-  >
-    <line x1="19" y1="12" x2="5" y2="12" />
-    <polyline points="12 19 5 12 12 5" />
-  </svg>
-);
 
 const IconUser = (): React.JSX.Element => (
   <svg
@@ -109,21 +100,79 @@ const IconBell = (): React.JSX.Element => (
   </svg>
 );
 
+const IconLogout = (): React.JSX.Element => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    className="w-[18px] h-[18px]"
+  >
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+    <polyline points="16 17 21 12 16 7" />
+    <line x1="21" y1="12" x2="9" y2="12" />
+  </svg>
+);
+
+const IconX = ({ size = 16 }: { size?: number }): React.JSX.Element => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.5"
+    style={{ width: size, height: size }}
+  >
+    <line x1="18" y1="6" x2="6" y2="18" />
+    <line x1="6" y1="6" x2="18" y2="18" />
+  </svg>
+);
+
 export function ProfileSettingsContent({
   isModal = false,
   onClose,
+  onSignOut,
 }: {
   isModal?: boolean;
   onClose?: () => void;
+  onSignOut?: () => void;
 }): React.JSX.Element {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const { user, accessToken, status } = useAppSelector((s) => s.auth);
 
   // Active Tab: 'account' | 'theme' | 'status' | 'notifications'
-  const [activeTab, setActiveTab] = useState<'account' | 'theme' | 'status' | 'notifications'>(
-    'account',
-  );
+  const [activeTab, setActiveTab] = useState<
+    'account' | 'theme' | 'status' | 'notifications'
+  >('account');
+
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    type?: 'danger' | 'info';
+    onConfirm: () => void;
+  } | null>(null);
+
+  const handleSignOut = () => {
+    if (onSignOut) {
+      onSignOut();
+      return;
+    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Sign Out',
+      message: 'Are you sure you want to sign out of your account?',
+      confirmLabel: 'Sign Out',
+      type: 'info',
+      onConfirm: () => {
+        socketManager.disconnect();
+        dispatch(logoutUser());
+        setConfirmModal(null);
+      },
+    });
+  };
 
   // Account State
   const [displayName, setDisplayName] = useState('');
@@ -141,8 +190,10 @@ export function ProfileSettingsContent({
   // Notification Preferences State
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [notificationsDmEnabled, setNotificationsDmEnabled] = useState(true);
-  const [notificationsGroupEnabled, setNotificationsGroupEnabled] = useState(true);
-  const [notificationsInAppEnabled, setNotificationsInAppEnabled] = useState(true);
+  const [notificationsGroupEnabled, setNotificationsGroupEnabled] =
+    useState(true);
+  const [notificationsInAppEnabled, setNotificationsInAppEnabled] =
+    useState(true);
 
   // Notification State
   const [message, setMessage] = useState<{
@@ -236,19 +287,31 @@ export function ProfileSettingsContent({
 
       // Update HTML Attributes & localStorage instantly
       const root = document.documentElement;
-      root.setAttribute('data-theme-schema', result.themeSchema || 'golden');
+      root.setAttribute(
+        'data-theme-schema',
+        result.themeSchema || 'arctic_glass',
+      );
 
       const finalTheme = result.themeMode || 'system';
       root.setAttribute('data-theme', finalTheme);
 
       localStorage.setItem('rf-theme', finalTheme);
-      localStorage.setItem('rf-theme-schema', result.themeSchema || 'golden');
+      localStorage.setItem(
+        'rf-theme-schema',
+        result.themeSchema || 'arctic_glass',
+      );
 
       // Clear password inputs
       setPassword('');
       setConfirmPassword('');
 
       setMessage({ type: 'success', text: '✔ Settings saved successfully!' });
+
+      if (isModal && onClose) {
+        setTimeout(() => {
+          onClose();
+        }, 0);
+      }
 
       // Clear alert after 3.5 seconds
       setTimeout(() => {
@@ -277,91 +340,91 @@ export function ProfileSettingsContent({
     );
   }
 
-  // Schema choices
+  // Schema choices — ordered by hue (cyan → teal → green → blue → indigo → violet → red → orange → brown → amber → gold)
   const schemaOptions = [
     {
-      id: 'emerald',
-      name: 'Option 1: Emerald/Forest Green',
-      lightName: 'Light Green',
-      darkName: 'Dark Olive Green / Dark Green',
-      colors: ['#0F9F58', '#10B981', '#0A0F0D', '#ECFDF5'],
-    },
-    {
-      id: 'golden',
-      name: 'Option 2: Golden/Amber (Brand Active)',
-      lightName: 'Gold / Cream',
-      darkName: 'Amber / Dark Gray',
-      colors: ['#C67C00', '#E9A319', '#111111', '#F5F5F5'],
-    },
-    {
-      id: 'coffee',
-      name: 'Option 3: Warm Coffee',
-      lightName: 'Beige / Light Brown',
-      darkName: 'Coffee / Dark Cocoa',
-      colors: ['#8B5E3C', '#D9A066', '#1F1815', '#FAF6F1'],
-    },
-    {
-      id: 'violet',
-      name: 'Option 4: Deep Violet',
-      lightName: 'Lavender / White',
-      darkName: 'Royal Violet / Deep Purple',
-      colors: ['#7F56D9', '#9E77ED', '#0E0A16', '#F4F0FF'],
-    },
-    {
-      id: 'linear',
-      name: 'Option 5: Linear Inspired (Elite SaaS)',
-      lightName: 'Light Gray / Indigo',
-      darkName: 'Midnight Dark / Purple Accent',
-      colors: ['#5E6AD2', '#7C3AED', '#08090A', '#FAFAFA'],
-    },
-    {
-      id: 'midnight_emerald',
-      name: 'Option 6: Midnight Emerald',
-      lightName: 'Teal Mint / White',
-      darkName: 'Midnight Emerald / Dark Jade',
-      colors: ['#0E9384', '#15B8A6', '#071412', '#FCFCFB'],
-    },
-    {
-      id: 'graphite_orange',
-      name: 'Option 7: Graphite Orange',
-      lightName: 'Charcoal Orange / Off-White',
-      darkName: 'Graphite Orange / Matte Black',
-      colors: ['#E57A00', '#FF9F1A', '#0B0B0B', '#FAFAFA'],
-    },
-    {
       id: 'arctic_glass',
-      name: 'Option 8: Arctic Glass',
-      lightName: 'Arctic Blue / Ice White',
-      darkName: 'Deep Ocean / Cyan Glow',
-      colors: ['#0099FF', '#00C2FF', '#050A12', '#F8FBFF'],
-    },
-    {
-      id: 'carbon_red',
-      name: 'Option 9: Carbon Red',
-      lightName: 'Crimson / Pure White',
-      darkName: 'Carbon Red / Pitch Black',
-      colors: ['#D32F2F', '#F44336', '#090909', '#FAFAFA'],
-    },
-    {
-      id: 'tokyo_night',
-      name: 'Option 10: Tokyo Night',
-      lightName: 'Day Light Blue / Indigo',
-      darkName: 'Tokyo Storm / Neon Purple',
-      colors: ['#3B82F6', '#7C3AED', '#1A1B26', '#F6F7FB'],
-    },
-    {
-      id: 'matte_gold',
-      name: 'Option 11: Matte Black + Gold 🏆',
-      lightName: 'Luxury Gold / Pearl White',
-      darkName: 'Matte Obsidian / Gold Accent',
-      colors: ['#B8860B', '#D4AF37', '#050505', '#FFFDF8'],
+      name: 'Arctic Blue',
+      lightName: 'Sky Blue / Frost White',
+      darkName: 'Deep Navy / Cyan Glow',
+      colors: ['#38BDF8', '#7DD3FC', '#0D1829', '#F8FBFF'],
     },
     {
       id: 'obsidian_cyan',
-      name: 'Option 12: Obsidian + Cyan',
+      name: 'Neon Cyan',
       lightName: 'Ocean Cyan / Cool Gray',
-      darkName: 'Obsidian Cyberpunk / Neon Cyan',
-      colors: ['#0891B2', '#06B6D4', '#09090B', '#F7FAFC'],
+      darkName: 'Obsidian Dark / Neon Cyan',
+      colors: ['#22D3EE', '#67E8F9', '#131318', '#F7FAFC'],
+    },
+    {
+      id: 'midnight_emerald',
+      name: 'Midnight Teal',
+      lightName: 'Teal Mint / Clean White',
+      darkName: 'Deep Teal / Jade Glow',
+      colors: ['#2DD4BF', '#5EEAD4', '#0F2220', '#FCFCFB'],
+    },
+    {
+      id: 'emerald',
+      name: 'Forest Green',
+      lightName: 'Fresh Green / Pure White',
+      darkName: 'Deep Forest / Emerald Glow',
+      colors: ['#10B981', '#34D399', '#131D18', '#ECFDF5'],
+    },
+    {
+      id: 'tokyo_night',
+      name: 'Tokyo Night',
+      lightName: 'Day Blue / Soft Indigo',
+      darkName: 'Storm Navy / Neon Lilac',
+      colors: ['#7AA2F7', '#BB9AF7', '#1E2030', '#F6F7FB'],
+    },
+    {
+      id: 'linear',
+      name: 'Stellar Indigo',
+      lightName: 'Clean Gray / Indigo',
+      darkName: 'Space Dark / Electric Indigo',
+      colors: ['#7B89FF', '#A78BFA', '#0E1018', '#FAFAFA'],
+    },
+    {
+      id: 'violet',
+      name: 'Deep Violet',
+      lightName: 'Lavender / Pure White',
+      darkName: 'Royal Violet / Deep Indigo',
+      colors: ['#9E77ED', '#B794F4', '#181227', '#F4F0FF'],
+    },
+    {
+      id: 'carbon_red',
+      name: 'Carbon Red',
+      lightName: 'Crimson / Pure White',
+      darkName: 'Carbon Dark / Vivid Red',
+      colors: ['#FF6B6B', '#FF8787', '#131213', '#FAFAFA'],
+    },
+    {
+      id: 'graphite_orange',
+      name: 'Graphite Amber',
+      lightName: 'Warm Orange / Off-White',
+      darkName: 'Graphite Dark / Amber Glow',
+      colors: ['#FFB347', '#FFD08A', '#151413', '#FAFAFA'],
+    },
+    {
+      id: 'coffee',
+      name: 'Warm Coffee',
+      lightName: 'Beige / Cocoa Brown',
+      darkName: 'Dark Cocoa / Caramel Glow',
+      colors: ['#C89F7B', '#E8B980', '#2A221D', '#FAF6F1'],
+    },
+    {
+      id: 'golden',
+      name: 'Golden Amber',
+      lightName: 'Gold / Warm Cream',
+      darkName: 'Dark Slate / Gold Accent',
+      colors: ['#E9A319', '#FBBF24', '#1B1A16', '#F5F5F5'],
+    },
+    {
+      id: 'matte_gold',
+      name: 'Matte Gold',
+      lightName: 'Luxury Gold / Pearl White',
+      darkName: 'Obsidian Dark / Pure Gold',
+      colors: ['#D4AF37', '#F4D03F', '#121110', '#FFFDF8'],
     },
   ];
 
@@ -375,41 +438,33 @@ export function ProfileSettingsContent({
     >
       {/* Header bar */}
       <div className="flex items-center justify-between px-6 py-4.5 border-b border-[var(--border-muted)]">
-        <div className="flex items-center gap-4">
-          {isModal ? (
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex items-center text-[13px] font-semibold rounded-lg px-3 py-2 cursor-pointer transition-all duration-200 border-none bg-[var(--theme-btn)] text-[var(--text-muted)] hover:bg-[var(--theme-btn-hover)] hover:text-[var(--text-primary)]"
-            >
-              <IconArrowLeft />
-              Close Settings
-            </button>
-          ) : (
-            <Link
-              href="/"
-              className="flex items-center text-[13px] font-semibold rounded-lg px-3 py-2 cursor-pointer transition-all duration-200 bg-[var(--theme-btn)] text-[var(--text-muted)] hover:bg-[var(--theme-btn-hover)] hover:text-[var(--text-primary)]"
-            >
-              <IconArrowLeft />
-              Back to Chat
-            </Link>
-          )}
-          <div>
-            <h1 className="text-[20px] font-bold tracking-tight text-[var(--text-primary)]">
-              Profile Settings
-            </h1>
-            <p className="text-[11.5px] mt-0.5 text-[var(--text-muted)]">
-              Configure your display name, theme layouts, and active status.
-            </p>
-          </div>
+        <div>
+          <h1 className="text-[20px] font-bold tracking-tight text-[var(--text-primary)]">
+            Profile Settings
+          </h1>
+          <p className="text-[11.5px] mt-0.5 text-[var(--text-muted)]">
+            Configure your display name, theme layouts, and active status.
+          </p>
         </div>
 
-        <button
-          onClick={() => dispatch(logoutUser())}
-          className="text-[12.5px] font-semibold px-3.5 py-2 rounded-lg cursor-pointer transition-all duration-200 border border-[var(--danger-border)] bg-[var(--danger-bg)] text-[var(--danger)] hover:opacity-85"
-        >
-          Sign Out
-        </button>
+        {isModal ? (
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer transition-all duration-200 border-none bg-[var(--theme-btn)] text-[var(--text-muted)] hover:bg-[var(--theme-btn-hover)] hover:text-[var(--text-primary)] active-press"
+            title="Close Settings"
+          >
+            <IconX size={15} />
+          </button>
+        ) : (
+          <Link
+            href="/"
+            className="flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer transition-all duration-200 bg-[var(--theme-btn)] text-[var(--text-muted)] hover:bg-[var(--theme-btn-hover)] hover:text-[var(--text-primary)] active-press"
+            title="Back to Chat"
+          >
+            <IconX size={15} />
+          </Link>
+        )}
       </div>
 
       {/* Inner split workspace */}
@@ -443,7 +498,9 @@ export function ProfileSettingsContent({
             <button
               key={tab.id}
               onClick={() => {
-                setActiveTab(tab.id as 'account' | 'theme' | 'status' | 'notifications');
+                setActiveTab(
+                  tab.id as 'account' | 'theme' | 'status' | 'notifications',
+                );
               }}
               className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl text-[13.5px] font-semibold cursor-pointer text-left transition-all duration-200 border-none ${
                 activeTab === tab.id ? 'theme-btn-active' : ''
@@ -474,6 +531,16 @@ export function ProfileSettingsContent({
               <span>{tab.label}</span>
             </button>
           ))}
+
+          <div className="flex-grow hidden md:block" />
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-[13.5px] font-semibold cursor-pointer text-left transition-all duration-200 border border-[var(--danger-border)] bg-[var(--danger-bg)] text-[var(--danger)] hover:opacity-85 mt-auto md:mt-0"
+          >
+            <IconLogout />
+            <span>Sign Out</span>
+          </button>
         </div>
 
         {/* Right Main panel content Form */}
@@ -891,13 +958,21 @@ export function ProfileSettingsContent({
                           // Optimistically update status in redux authSlice and chatSlice onlineUsers
                           dispatch(updateUserStatusOptimistic(st.id));
                           if (user?.id) {
-                            dispatch(socketUpdateUserStatus({ userId: user.id, status: st.id, autoStatus: 'online' }));
+                            dispatch(
+                              socketUpdateUserStatus({
+                                userId: user.id,
+                                status: st.id,
+                                autoStatus: 'online',
+                              }),
+                            );
                           }
                           // Immediately push status change via socket for real-time broadcast
                           socketManager.updateStatus(st.id);
                           // Persist change to database
                           try {
-                            await dispatch(updateUserProfile({ status: st.id })).unwrap();
+                            await dispatch(
+                              updateUserProfile({ status: st.id }),
+                            ).unwrap();
                           } catch (err) {
                             console.error('Failed to auto-save status:', err);
                           }
@@ -954,54 +1029,90 @@ export function ProfileSettingsContent({
             {activeTab === 'notifications' && (
               <div className="flex flex-col gap-6 flex-1 animate-fade-in">
                 <div>
-                  <h2
-                    className="text-[17px] font-bold text-[var(--text-primary)]"
-                  >
+                  <h2 className="text-[17px] font-bold text-[var(--text-primary)]">
                     Notification Preferences
                   </h2>
-                  <p
-                    className="text-[12px] mt-0.5 text-[var(--text-muted)]"
-                  >
+                  <p className="text-[12px] mt-0.5 text-[var(--text-muted)]">
                     Control when and how you receive push notifications.
                   </p>
                 </div>
 
                 {/* Enable Notifications Switch */}
                 <div className="flex items-center justify-between p-4 rounded-xl border border-[var(--glass-border)] bg-[var(--theme-btn)] animate-fade-in">
-                   <div className="flex flex-col gap-0.5 pr-4">
-                     <span className="font-bold text-[14px] text-[var(--text-primary)]">
-                       Enable Push Notifications
-                     </span>
-                     <span className="text-[11.5px] text-[var(--text-muted)]">
-                       Request browser notification permissions to receive updates
-                     </span>
-                   </div>
-                   <label className="relative inline-flex items-center cursor-pointer select-none">
-                     <input
-                       type="checkbox"
-                       checked={notificationsEnabled}
-                       onChange={async (e) => {
-                         const checked = e.target.checked;
-                         setNotificationsEnabled(checked);
-                         if (checked) {
-                           try {
-                             const permission = await Notification.requestPermission();
-                             if (permission !== 'granted') {
-                               setMessage({
-                                 type: 'error',
-                                 text: '❌ Notification permission was blocked by the browser. Please check your browser settings.',
-                               });
-                               setNotificationsEnabled(false);
-                             }
-                           } catch (err) {
-                             console.error('Error requesting notification permission', err);
-                           }
-                         }
-                       }}
-                       className="sr-only peer"
-                     />
-                     <div className="w-11 h-6 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent-primary)]"></div>
-                   </label>
+                  <div className="flex flex-col gap-0.5 pr-4">
+                    <span className="font-bold text-[14px] text-[var(--text-primary)]">
+                      Enable Push Notifications
+                    </span>
+                    <span className="text-[11.5px] text-[var(--text-muted)]">
+                      Request browser notification permissions to receive
+                      updates
+                    </span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={notificationsEnabled}
+                      onChange={async (e) => {
+                        const checked = e.target.checked;
+                        setNotificationsEnabled(checked);
+                        if (checked) {
+                          try {
+                            const permission =
+                              await Notification.requestPermission();
+                            if (permission !== 'granted') {
+                              setMessage({
+                                type: 'error',
+                                text: '❌ Notification permission was blocked by the browser. Please check your browser settings.',
+                              });
+                              setNotificationsEnabled(false);
+                            } else {
+                              // Register device immediately to generate VAPID subscription
+                              const client = getNotificationClient();
+                              if (client && user?.id) {
+                                PrintLog(
+                                  'Registering device immediately on toggle ON...',
+                                );
+                                await client.registerDevice({
+                                  externalUserId: user.id,
+                                  serviceWorkerPath: '/push-sw.js',
+                                  serviceWorkerScope: '/',
+                                });
+                                PrintLog(
+                                  'Device registered successfully on toggle ON.',
+                                );
+                              }
+                            }
+                          } catch (err) {
+                            console.error(
+                              'Error requesting notification permission',
+                              err,
+                            );
+                          }
+                        } else {
+                          // Unregister device immediately on toggle OFF
+                          try {
+                            const client = getNotificationClient();
+                            if (client && user?.id) {
+                              PrintLog(
+                                'Unregistering device immediately on toggle OFF...',
+                              );
+                              await client.unregisterDevice(user.id);
+                              PrintLog(
+                                'Device unregistered successfully on toggle OFF.',
+                              );
+                            }
+                          } catch (err) {
+                            console.error(
+                              'Error unregistering device on toggle OFF',
+                              err,
+                            );
+                          }
+                        }
+                      }}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent-primary)]"></div>
+                  </label>
                 </div>
 
                 {/* Other preferences (conditional on notificationsEnabled) */}
@@ -1018,14 +1129,17 @@ export function ProfileSettingsContent({
                           In-App Toast Notifications
                         </span>
                         <span className="text-[11.5px] text-[var(--text-muted)]">
-                          Show alert toasts inside the app when messages arrive in other channels
+                          Show alert toasts inside the app when messages arrive
+                          in other channels
                         </span>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer select-none">
                         <input
                           type="checkbox"
                           checked={notificationsInAppEnabled}
-                          onChange={(e) => setNotificationsInAppEnabled(e.target.checked)}
+                          onChange={(e) =>
+                            setNotificationsInAppEnabled(e.target.checked)
+                          }
                           className="sr-only peer"
                         />
                         <div className="w-11 h-6 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent-primary)]"></div>
@@ -1034,44 +1148,50 @@ export function ProfileSettingsContent({
 
                     {/* DM Notifications */}
                     <div className="flex items-center justify-between p-4 rounded-xl border border-[var(--glass-border)] bg-[var(--theme-btn)]">
-                       <div className="flex flex-col gap-0.5 pr-4">
-                         <span className="font-bold text-[13.5px] text-[var(--text-primary)]">
-                           Direct Messages
-                         </span>
-                         <span className="text-[11.5px] text-[var(--text-muted)]">
-                           Receive push notifications for personal direct messages
-                         </span>
-                       </div>
-                       <label className="relative inline-flex items-center cursor-pointer select-none">
-                         <input
-                           type="checkbox"
-                           checked={notificationsDmEnabled}
-                           onChange={(e) => setNotificationsDmEnabled(e.target.checked)}
-                           className="sr-only peer"
-                         />
-                         <div className="w-11 h-6 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent-primary)]"></div>
-                       </label>
+                      <div className="flex flex-col gap-0.5 pr-4">
+                        <span className="font-bold text-[13.5px] text-[var(--text-primary)]">
+                          Direct Messages
+                        </span>
+                        <span className="text-[11.5px] text-[var(--text-muted)]">
+                          Receive push notifications for personal direct
+                          messages
+                        </span>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={notificationsDmEnabled}
+                          onChange={(e) =>
+                            setNotificationsDmEnabled(e.target.checked)
+                          }
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent-primary)]"></div>
+                      </label>
                     </div>
 
                     {/* Group Notifications */}
                     <div className="flex items-center justify-between p-4 rounded-xl border border-[var(--glass-border)] bg-[var(--theme-btn)]">
-                       <div className="flex flex-col gap-0.5 pr-4">
-                         <span className="font-bold text-[13.5px] text-[var(--text-primary)]">
-                           Groups & Channels
-                         </span>
-                         <span className="text-[11.5px] text-[var(--text-muted)]">
-                           Receive push notifications for messages in group channels
-                         </span>
-                       </div>
-                       <label className="relative inline-flex items-center cursor-pointer select-none">
-                         <input
-                           type="checkbox"
-                           checked={notificationsGroupEnabled}
-                           onChange={(e) => setNotificationsGroupEnabled(e.target.checked)}
-                           className="sr-only peer"
-                         />
-                         <div className="w-11 h-6 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent-primary)]"></div>
-                       </label>
+                      <div className="flex flex-col gap-0.5 pr-4">
+                        <span className="font-bold text-[13.5px] text-[var(--text-primary)]">
+                          Groups & Channels
+                        </span>
+                        <span className="text-[11.5px] text-[var(--text-muted)]">
+                          Receive push notifications for messages in group
+                          channels
+                        </span>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={notificationsGroupEnabled}
+                          onChange={(e) =>
+                            setNotificationsGroupEnabled(e.target.checked)
+                          }
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent-primary)]"></div>
+                      </label>
                     </div>
                   </div>
                 )}
@@ -1117,32 +1237,45 @@ export function ProfileSettingsContent({
     </div>
   );
 
-  if (isModal) {
-    return innerContent;
-  }
-
   return (
-    <div
-      className="flex items-center justify-center min-h-screen w-screen p-4 md:p-6"
-      style={{
-        background: 'var(--bg-primary)',
-        transition: 'background 0.3s ease',
-      }}
-    >
-      {/* Background radial glows mapping the active theme */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          backgroundImage: `
-          radial-gradient(circle at 15% 15%, var(--bg-glow-1) 0%, transparent 40%),
-          radial-gradient(circle at 85% 85%, var(--bg-glow-2) 0%, transparent 40%)
-        `,
-          opacity: 0.8,
-        }}
-      />
+    <>
+      {isModal ? (
+        innerContent
+      ) : (
+        <div
+          className="flex items-center justify-center min-h-screen w-screen p-4 md:p-6"
+          style={{
+            background: 'var(--bg-primary)',
+            transition: 'background 0.3s ease',
+          }}
+        >
+          {/* Background radial glows mapping the active theme */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              backgroundImage: `
+              radial-gradient(circle at 15% 15%, var(--bg-glow-1) 0%, transparent 40%),
+              radial-gradient(circle at 85% 85%, var(--bg-glow-2) 0%, transparent 40%)
+            `,
+              opacity: 0.8,
+            }}
+          />
 
-      {innerContent}
-    </div>
+          {innerContent}
+        </div>
+      )}
+      {confirmModal && (
+        <ConfirmationModal
+          isOpen={confirmModal.isOpen}
+          title={confirmModal.title}
+          message={confirmModal.message}
+          confirmLabel={confirmModal.confirmLabel}
+          type={confirmModal.type}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={() => setConfirmModal(null)}
+        />
+      )}
+    </>
   );
 }
 

@@ -45,7 +45,9 @@ export const InviteMembersModal = ({
 
   const toggleSelectUser = (userId: string) => {
     setSelectedUserIds((prev) =>
-      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId],
+      prev.includes(userId)
+        ? prev.filter((id) => id !== userId)
+        : [...prev, userId],
     );
   };
 
@@ -56,7 +58,9 @@ export const InviteMembersModal = ({
     }
     setIsLoading(true);
     try {
-      await dispatch(addGroupMembers({ groupId: group.id, userIds: selectedUserIds })).unwrap();
+      await dispatch(
+        addGroupMembers({ groupId: group.id, userIds: selectedUserIds }),
+      ).unwrap();
       showToast.success('Invites sent successfully!');
       onClose();
     } catch (err: any) {
@@ -74,7 +78,7 @@ export const InviteMembersModal = ({
 
   return (
     <div
-      className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-[rgba(4,6,12,0.65)] backdrop-blur-[14px]"
+      className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-[rgba(4,6,12,0.65)] backdrop-blur-[4px]"
       onClick={onClose}
     >
       <div
@@ -85,16 +89,19 @@ export const InviteMembersModal = ({
         <div className="px-5 py-4 border-b border-[var(--border-muted)] flex items-center justify-between">
           <div>
             <h2 className="m-0 text-[18px] font-bold text-[var(--text-primary)]">
-              Invite Friends
+              Add Friends
             </h2>
             <p className="m-1 text-[12.5px] text-[var(--text-muted)]">
-              Add new members to <strong className="text-[var(--text-secondary)]">{group.name}</strong>
+              Add new members to{' '}
+              <strong className="text-[var(--text-secondary)]">
+                {group.name}
+              </strong>
             </p>
           </div>
           <button
             id="close-invite-modal"
             onClick={onClose}
-            className="bg-transparent border-none cursor-pointer text-[var(--text-muted)] p-1 rounded-md flex items-center"
+            className="bg-transparent border-none cursor-pointer text-[var(--text-muted)] p-1 rounded-md flex items-center active-press"
           >
             <IconX size={18} />
           </button>
@@ -116,8 +123,8 @@ export const InviteMembersModal = ({
         {/* User list */}
         <div className="flex-1 overflow-y-auto px-5 py-2.5">
           {filteredResults.length === 0 ? (
-            <div className="py-10 px-5 text-center text-[13.5px] text-[var(--text-muted)]">
-              <div className="opacity-30 mb-2">
+            <div className="py-10 px-5 text-center text-[13.5px] text-[var(--text-muted)] flex items-center justify-center gap-2">
+              <div>
                 <IconPeople />
               </div>
               No eligible users found.
@@ -129,15 +136,22 @@ export const InviteMembersModal = ({
                 <div
                   key={u.id}
                   id={`invite-user-${u.id}`}
-                  className={`flex items-center gap-3 px-2.5 py-2 rounded-xl cursor-pointer mb-1 transition-all duration-150 border ${isSelected ? 'bg-[var(--theme-btn-active)] border-[var(--accent-primary)]' : 'bg-transparent border-transparent hover:bg-[var(--bg-input)]'}`}
+                  className={`flex items-center gap-3 px-2.5 py-2 rounded-xl cursor-pointer mb-1 transition-all duration-150 border active-press fade-in-list ${isSelected ? 'bg-[var(--theme-btn-active)] border-[var(--accent-primary)]' : 'bg-transparent border-transparent hover:bg-[var(--bg-input)]'}`}
                   onClick={() => toggleSelectUser(u.id)}
                 >
-                  <Avatar letter={(u.displayName || u.email)[0].toUpperCase()} size="md" />
+                  <Avatar
+                    letter={(u.displayName || u.email)[0].toUpperCase()}
+                    size="md"
+                  />
                   <div className="flex-1 min-w-0">
-                    <div className={`text-[13.5px] font-semibold truncate ${isSelected ? 'text-[var(--theme-btn-active-text)]' : 'text-[var(--text-primary)]'}`}>
+                    <div
+                      className={`text-[13.5px] font-semibold truncate ${isSelected ? 'text-[var(--theme-btn-active-text)]' : 'text-[var(--text-primary)]'}`}
+                    >
                       {u.displayName}
                     </div>
-                    <div className={`text-[11px] truncate mt-0.5 ${isSelected ? 'text-[var(--theme-btn-active-text)] opacity-80' : 'text-[var(--text-muted)]'}`}>
+                    <div
+                      className={`text-[11px] truncate mt-0.5 ${isSelected ? 'text-[var(--theme-btn-active-text)] opacity-80' : 'text-[var(--text-muted)]'}`}
+                    >
                       {u.email}
                     </div>
                   </div>
@@ -154,17 +168,16 @@ export const InviteMembersModal = ({
         </div>
 
         {/* Footer */}
-        <div
-          className="px-5 py-4 border-t border-[var(--border-muted)] flex justify-between items-center"
-        >
+        <div className="px-5 py-4 border-t border-[var(--border-muted)] flex justify-between items-center">
           <div className="text-[13px] text-[var(--text-muted)]">
-            {selectedUserIds.length} user{selectedUserIds.length !== 1 ? 's' : ''} selected
+            {selectedUserIds.length} user
+            {selectedUserIds.length !== 1 ? 's' : ''} selected
           </div>
           <div className="flex gap-2.5">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 rounded-[10px] border-[1.5px] border-[var(--glass-border)] bg-transparent text-[var(--text-secondary)] text-sm font-semibold cursor-pointer"
+              className="px-5 py-2.5 rounded-[10px] border-[1.5px] border-[var(--glass-border)] bg-transparent text-[var(--text-secondary)] text-sm font-semibold cursor-pointer active-press"
             >
               Cancel
             </button>
@@ -173,9 +186,9 @@ export const InviteMembersModal = ({
               type="button"
               onClick={handleInviteSubmit}
               disabled={isLoading || selectedUserIds.length === 0}
-              className="btn-send px-6 py-2.5 rounded-[10px] border-none text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              className="btn-send px-6 py-2.5 rounded-[10px] border-none text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 active-press"
             >
-              {isLoading ? 'Inviting…' : 'Invite'}
+              {isLoading ? 'Adding…' : 'Add'}
             </button>
           </div>
         </div>
