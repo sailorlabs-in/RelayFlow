@@ -24,28 +24,28 @@ export class User {
   avatarUrl?: string;
 
   @Column({ name: 'theme_mode', default: 'system' })
-  themeMode!: string;
+  themeMode = 'system';
 
   @Column({ name: 'theme_schema', default: 'arctic_glass' })
-  themeSchema!: string;
+  themeSchema = 'arctic_glass';
 
   @Column({ name: 'status', default: 'online' })
-  status!: string;
+  status = 'online';
 
   @Column({ name: 'visibility', default: 'everyone' })
-  visibility!: string;
+  visibility = 'everyone';
 
   @Column({ name: 'notifications_enabled', default: true })
-  notificationsEnabled!: boolean;
+  notificationsEnabled = true;
 
   @Column({ name: 'notifications_dm_enabled', default: true })
-  notificationsDmEnabled!: boolean;
+  notificationsDmEnabled = true;
 
   @Column({ name: 'notifications_group_enabled', default: true })
-  notificationsGroupEnabled!: boolean;
+  notificationsGroupEnabled = true;
 
   @Column({ name: 'notifications_in_app_enabled', default: true })
-  notificationsInAppEnabled!: boolean;
+  notificationsInAppEnabled = true;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;

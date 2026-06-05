@@ -27,6 +27,8 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       VIBE_APP_ID: ${VIBE_APP_ID:-}
       VIBE_SECRET_KEY: ${VIBE_SECRET_KEY:-}
+      DB_SYNCHRONIZE: ${DB_SYNCHRONIZE:-false}
+      DB_LOGGING: ${DB_LOGGING:-false}
     networks:
       - relayflow
 
@@ -50,6 +52,8 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       VIBE_APP_ID: ${VIBE_APP_ID:-}
       VIBE_SECRET_KEY: ${VIBE_SECRET_KEY:-}
+      DB_SYNCHRONIZE: ${DB_SYNCHRONIZE:-false}
+      DB_LOGGING: ${DB_LOGGING:-false}
     networks:
       - relayflow
 

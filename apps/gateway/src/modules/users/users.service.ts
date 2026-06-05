@@ -1,6 +1,10 @@
 import { User } from '@chat-app/database';
 import { RedisService } from '@chat-app/redis';
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
@@ -11,10 +15,14 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    private readonly redisService: RedisService
+    private readonly redisService: RedisService,
   ) {}
 
-  async create(email: string, passwordHash: string, displayName?: string): Promise<User> {
+  async create(
+    email: string,
+    passwordHash: string,
+    displayName?: string,
+  ): Promise<User> {
     const existing = await this.userRepository.findOne({ where: { email } });
     if (existing) {
       throw new ConflictException('❌ Email is already registered');
@@ -24,6 +32,8 @@ export class UsersService {
       email,
       passwordHash,
       displayName: displayName || email.split('@')[0],
+      themeSchema: 'arctic_glass',
+      themeMode: 'system',
     });
 
     const saved = await this.userRepository.save(user);
@@ -43,7 +53,7 @@ export class UsersService {
   async findById(id: string): Promise<User> {
     const redis = this.redisService.getClient();
     const cacheKey = `user:profile:${id}`;
-    
+
     try {
       const cached = await redis.get(cacheKey);
       if (cached) {
@@ -74,22 +84,27 @@ export class UsersService {
   async search(query: string): Promise<User[]> {
     return this.userRepository
       .createQueryBuilder('user')
-      .where('user.display_name ILIKE :query OR user.email ILIKE :query', { query: `%${query}%` })
+      .where('user.display_name ILIKE :query OR user.email ILIKE :query', {
+        query: `%${query}%`,
+      })
       .getMany();
   }
 
-  async updateProfile(id: string, data: {
-    displayName?: string;
-    password?: string;
-    themeMode?: string;
-    themeSchema?: string;
-    status?: string;
-    visibility?: string;
-    notificationsEnabled?: boolean;
-    notificationsDmEnabled?: boolean;
-    notificationsGroupEnabled?: boolean;
-    notificationsInAppEnabled?: boolean;
-  }): Promise<User> {
+  async updateProfile(
+    id: string,
+    data: {
+      displayName?: string;
+      password?: string;
+      themeMode?: string;
+      themeSchema?: string;
+      status?: string;
+      visibility?: string;
+      notificationsEnabled?: boolean;
+      notificationsDmEnabled?: boolean;
+      notificationsGroupEnabled?: boolean;
+      notificationsInAppEnabled?: boolean;
+    },
+  ): Promise<User> {
     const user = await this.findById(id);
 
     if (data.displayName !== undefined) {
