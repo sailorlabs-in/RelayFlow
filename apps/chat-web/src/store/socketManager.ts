@@ -15,6 +15,10 @@ import {
   socketRemoveConversation,
   fetchConversations,
   socketMarkMessagesAsRead,
+  socketReceiveFriendRequest,
+  socketFriendRequestAccepted,
+  socketFriendRequestDeclined,
+  socketFriendRemoved,
 } from './slices/chatSlice';
 import type { Group } from './slices/groupsSlice';
 import {
@@ -304,6 +308,41 @@ class SocketManager {
         store.dispatch(socketChannelDeleted(data));
       },
     );
+
+    // Friend / relationship socket events
+    this.socket.on('friend.request.received', (friendship: any) => {
+      PrintLog('👤 Socket friend.request.received:', friendship.id);
+      store.dispatch(socketReceiveFriendRequest(friendship));
+    });
+
+    this.socket.on('friend.request.accepted', (friendship: any) => {
+      PrintLog('👤 Socket friend.request.accepted:', friendship.id);
+      const state = store.getState() as { auth: { user: any } };
+      const currentUserId = state.auth?.user?.id;
+      if (currentUserId) {
+        const isRequester = friendship.requesterId === currentUserId;
+        const friend = isRequester
+          ? friendship.addressee
+          : friendship.requester;
+        const friendName = friend?.username
+          ? `@${friend.username}`
+          : friend?.displayName || friend?.email.split('@')[0] || 'Someone';
+        showToast.success(`You are now friends with ${friendName}!`);
+        store.dispatch(
+          socketFriendRequestAccepted({ friendshipId: friendship.id, friend }),
+        );
+      }
+    });
+
+    this.socket.on('friend.request.declined', (data: { id: string }) => {
+      PrintLog('👤 Socket friend.request.declined:', data.id);
+      store.dispatch(socketFriendRequestDeclined({ requestId: data.id }));
+    });
+
+    this.socket.on('friend.removed', (data: { friendId: string }) => {
+      PrintLog('👤 Socket friend.removed:', data.friendId);
+      store.dispatch(socketFriendRemoved({ friendId: data.friendId }));
+    });
   }
 
   // -------------------------------------------------------------

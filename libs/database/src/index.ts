@@ -8,3 +8,5 @@ export * from './lib/entities/message.entity';
 export * from './lib/entities/read-receipt.entity';
 export * from './lib/entities/group.entity';
 export * from './lib/entities/group-member.entity';
+export * from './lib/entities/friendship.entity';
+export * from './lib/entities/group-invite.entity';

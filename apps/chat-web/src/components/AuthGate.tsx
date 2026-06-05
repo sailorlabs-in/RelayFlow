@@ -151,6 +151,7 @@ const SignUpForm = ({
   );
 
   const [displayName, setDisplayName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -162,6 +163,16 @@ const SignUpForm = ({
     e.preventDefault();
     setLocalError(null);
 
+    if (username.trim().length < 3) {
+      setLocalError('Username must be at least 3 characters long.');
+      return;
+    }
+    if (!/^[a-zA-Z0-9_-]+$/.test(username.trim())) {
+      setLocalError(
+        'Username can only contain alphanumeric characters, underscores, and hyphens.',
+      );
+      return;
+    }
     if (password.length < 6) {
       setLocalError('Password must be at least 6 characters long.');
       return;
@@ -171,7 +182,14 @@ const SignUpForm = ({
       return;
     }
 
-    dispatch(registerUser({ email, password, displayName }))
+    dispatch(
+      registerUser({
+        email,
+        password,
+        username: username.toLowerCase().trim(),
+        displayName,
+      }),
+    )
       .unwrap()
       .then(() => {
         showToast.success('Account created successfully! Please sign in.');
@@ -214,6 +232,21 @@ const SignUpForm = ({
             placeholder="e.g. Umang"
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
+            required
+          />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[11.5px] font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+            Username
+          </label>
+          <input
+            id="auth-username"
+            type="text"
+            className="input-base rounded-[10px] px-4 py-3 text-[14.5px] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[3px] focus:ring-[var(--accent-ring)]"
+            placeholder="e.g. umang"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
             required
           />
         </div>

@@ -3,10 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../store';
 import type { User } from '../store/slices/authSlice';
 import {
-  searchUsers,
-  clearSearchResults,
   createConversation,
   fetchUserProfile,
+  fetchFriends,
 } from '../store/slices/chatSlice';
 
 import { Avatar } from './Avatar';
@@ -21,25 +20,16 @@ export const ComposeModal = ({
 }: ComposeModalProps): React.JSX.Element => {
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((s) => s.auth);
-  const { searchResults } = useAppSelector((s) => s.chat);
+  const { friends } = useAppSelector((s) => s.chat);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Search all users on modal load
+  // Fetch friends list on mount
   useEffect(() => {
-    dispatch(searchUsers(''));
-    return () => {
-      dispatch(clearSearchResults());
-    };
+    dispatch(fetchFriends());
   }, [dispatch]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setSearchQuery(val);
-    if (val.trim()) {
-      dispatch(searchUsers(val.trim()));
-    } else {
-      dispatch(searchUsers(''));
-    }
+    setSearchQuery(e.target.value);
   };
 
   const handleSelectSearchedUser = (selectedUser: User) => {
@@ -53,9 +43,21 @@ export const ComposeModal = ({
       }),
     );
     dispatch(fetchUserProfile(selectedUser.id));
-    dispatch(clearSearchResults());
     onClose();
   };
+
+  // Filter friends list locally
+  const filteredFriends = friends.filter((f) => {
+    if (!searchQuery.trim()) {
+      return true;
+    }
+    const query = searchQuery.toLowerCase().trim();
+    return (
+      (f.displayName && f.displayName.toLowerCase().includes(query)) ||
+      f.email.toLowerCase().includes(query) ||
+      (f.username && f.username.toLowerCase().includes(query))
+    );
+  });
 
   return (
     <div
@@ -86,7 +88,7 @@ export const ComposeModal = ({
             id="compose-search"
             type="text"
             className="input-base w-full rounded-[10px] px-4 py-2.5 text-[14px] bg-[var(--bg-input)] border-[1.5px] border-[var(--glass-border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[3px] focus:ring-[var(--accent-ring)]"
-            placeholder="Search by name or email…"
+            placeholder="Search friends by name, email or username…"
             value={searchQuery}
             onChange={handleSearchChange}
             autoFocus
@@ -95,15 +97,16 @@ export const ComposeModal = ({
 
         {/* Modal user list */}
         <div className="flex-1 overflow-y-auto px-3.5 py-2">
-          {searchResults.length === 0 ? (
+          {filteredFriends.length === 0 ? (
             <div className="py-12 text-center text-[13.5px] leading-relaxed text-[var(--text-muted)]">
               <div className="w-9 h-9 mx-auto mb-3 opacity-30">
                 <IconChat />
               </div>
-              No users found. Try a different search.
+              No friends found. Try a different search, or add friends in the
+              Friends tab.
             </div>
           ) : (
-            searchResults
+            filteredFriends
               .filter((u) => u.id !== user?.id)
               .map((u) => (
                 <div
@@ -113,14 +116,19 @@ export const ComposeModal = ({
                   onClick={() => handleSelectSearchedUser(u)}
                 >
                   <Avatar
-                    letter={(u.displayName || u.email)[0].toUpperCase()}
+                    letter={(u.username ||
+                      u.displayName ||
+                      u.email)[0].toUpperCase()}
                     size="md"
                   />
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-[13.5px] truncate text-[var(--text-primary)]">
-                      {u.displayName}
+                      {u.username
+                        ? `@${u.username}`
+                        : u.displayName || u.email.split('@')[0]}
                     </div>
                     <div className="text-[11.5px] truncate mt-0.5 text-[var(--text-muted)]">
+                      {u.username && u.displayName ? `${u.displayName} • ` : ''}
                       {u.email}
                     </div>
                   </div>

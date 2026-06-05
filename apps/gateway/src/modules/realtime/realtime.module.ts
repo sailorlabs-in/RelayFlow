@@ -11,9 +11,9 @@ import { RealtimeGateway } from './realtime.gateway';
 
 @Module({
   imports: [
-    AuthModule,
+    forwardRef(() => AuthModule),
     forwardRef(() => ChatModule),
-    UsersModule,
+    forwardRef(() => UsersModule),
     forwardRef(() => GroupsModule),
     BullModule.registerQueue({
       name: QueueNames.NOTIFICATIONS,

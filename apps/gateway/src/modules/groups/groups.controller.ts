@@ -12,7 +12,15 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiParam,
+  ApiQuery,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -30,6 +38,99 @@ export class GroupsController {
     @Inject(forwardRef(() => RealtimeGateway))
     private readonly realtimeGateway: RealtimeGateway,
   ) {}
+
+  // ─── Resolve and Accept invite links (must be placed before generic :id routes) ───
+  @Get('invite/resolve/:token')
+  @ApiOperation({ summary: 'Resolve group details from invite token' })
+  @ApiParam({ name: 'token', description: 'Invite token' })
+  async resolveInvite(@Param('token') token: string) {
+    return this.groupsService.resolveInvite(token);
+  }
+
+  @Post('invite/accept/:token')
+  @ApiOperation({ summary: 'Join a group using invite token' })
+  @ApiParam({ name: 'token', description: 'Invite token' })
+  async acceptInvite(
+    @Param('token') token: string,
+    @CurrentUser() currentUser: { userId: string },
+  ) {
+    const group = await this.groupsService.acceptInvite(
+      token,
+      currentUser.userId,
+    );
+
+    // Notify all members of the group about the new member via socket
+    const groupDetails = await this.groupsService.getGroupsForUser(
+      currentUser.userId,
+    );
+    const updatedGroup = groupDetails.find((g) => g.id === group.id);
+
+    this.realtimeGateway.server
+      .to(`user:${currentUser.userId}`)
+      .emit('group.member.added', {
+        groupId: group.id,
+        group: updatedGroup,
+      });
+
+    const members = await this.groupsService.getGroupMembers(group.id);
+    for (const member of members) {
+      if (member.userId !== currentUser.userId) {
+        this.realtimeGateway.server
+          .to(`user:${member.userId}`)
+          .emit('group.member.added', {
+            groupId: group.id,
+            group: updatedGroup,
+          });
+      }
+    }
+
+    return group;
+  }
+
+  // ─── Group Invite Links Management ───
+  @Post(':id/invites')
+  @ApiOperation({ summary: 'Create group invite link' })
+  @ApiParam({ name: 'id', description: 'Group UUID' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { expiresIn: { type: 'string', example: '1h' } },
+    },
+  })
+  async createInvite(
+    @Param('id') groupId: string,
+    @CurrentUser() currentUser: { userId: string },
+    @Body('expiresIn') expiresIn?: string,
+  ) {
+    return this.groupsService.createInvite(
+      groupId,
+      currentUser.userId,
+      expiresIn || 'never',
+    );
+  }
+
+  @Get(':id/invites')
+  @ApiOperation({ summary: 'Get active invite links for a group' })
+  @ApiParam({ name: 'id', description: 'Group UUID' })
+  async getInvites(
+    @Param('id') groupId: string,
+    @CurrentUser() currentUser: { userId: string },
+  ) {
+    return this.groupsService.listInvites(groupId, currentUser.userId);
+  }
+
+  @Delete(':id/invites/:inviteId')
+  @ApiOperation({ summary: 'Revoke group invite link' })
+  @ApiParam({ name: 'id', description: 'Group UUID' })
+  @ApiParam({ name: 'inviteId', description: 'Invite UUID' })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteInvite(
+    @Param('id') groupId: string,
+    @Param('inviteId') inviteId: string,
+    @CurrentUser() currentUser: { userId: string },
+  ) {
+    await this.groupsService.deleteInvite(inviteId, currentUser.userId);
+  }
 
   // ─── Create a new group ───────────────────────────────────────────────────────
   @Post()
@@ -62,7 +163,9 @@ export class GroupsController {
     // Notify all invited members about the new group via socket
     const allMemberIds = group.members.map((m: any) => m.userId);
     for (const userId of allMemberIds) {
-      this.realtimeGateway.server.to(`user:${userId}`).emit('group.created', group);
+      this.realtimeGateway.server
+        .to(`user:${userId}`)
+        .emit('group.created', group);
     }
 
     return group;
@@ -74,7 +177,9 @@ export class GroupsController {
   @ApiQuery({ name: 'userId', required: false })
   @ApiResponse({ status: 200, description: 'List of groups.' })
   async getGroups(@CurrentUser() currentUser: { userId: string }) {
-    const groups = await this.groupsService.getGroupsForUser(currentUser.userId);
+    const groups = await this.groupsService.getGroupsForUser(
+      currentUser.userId,
+    );
     return groups;
   }
 
@@ -98,7 +203,9 @@ export class GroupsController {
     // Notify all group members about the update via socket
     const allMemberIds = updatedGroup.members.map((m: any) => m.userId);
     for (const userId of allMemberIds) {
-      this.realtimeGateway.server.to(`user:${userId}`).emit('group.updated', updatedGroup);
+      this.realtimeGateway.server
+        .to(`user:${userId}`)
+        .emit('group.updated', updatedGroup);
     }
 
     return updatedGroup;
@@ -122,17 +229,25 @@ export class GroupsController {
     @CurrentUser() currentUser: { userId: string },
     @Body('userIds') userIds: string[],
   ) {
-    const newMembers = await this.groupsService.addMembers(groupId, currentUser.userId, userIds);
+    const newMembers = await this.groupsService.addMembers(
+      groupId,
+      currentUser.userId,
+      userIds,
+    );
 
     // Notify newly added members about the group
-    const groups = await this.groupsService.getGroupsForUser(currentUser.userId);
+    const groups = await this.groupsService.getGroupsForUser(
+      currentUser.userId,
+    );
     const updatedGroup = groups.find((g) => g.id === groupId);
 
     for (const member of newMembers) {
-      this.realtimeGateway.server.to(`user:${member.userId}`).emit('group.member.added', {
-        groupId,
-        group: updatedGroup,
-      });
+      this.realtimeGateway.server
+        .to(`user:${member.userId}`)
+        .emit('group.member.added', {
+          groupId,
+          group: updatedGroup,
+        });
     }
 
     return newMembers;
@@ -149,10 +264,16 @@ export class GroupsController {
     @Param('userId') targetUserId: string,
     @CurrentUser() currentUser: { userId: string },
   ) {
-    await this.groupsService.removeMember(groupId, currentUser.userId, targetUserId);
+    await this.groupsService.removeMember(
+      groupId,
+      currentUser.userId,
+      targetUserId,
+    );
 
     // Notify the removed user
-    this.realtimeGateway.server.to(`user:${targetUserId}`).emit('group.member.removed', { groupId });
+    this.realtimeGateway.server
+      .to(`user:${targetUserId}`)
+      .emit('group.member.removed', { groupId });
   }
 
   // ─── Create a channel inside a group ─────────────────────────────────────────
@@ -171,15 +292,21 @@ export class GroupsController {
     @CurrentUser() currentUser: { userId: string },
     @Body('name') name: string,
   ) {
-    const channel = await this.groupsService.createChannel(groupId, currentUser.userId, name);
+    const channel = await this.groupsService.createChannel(
+      groupId,
+      currentUser.userId,
+      name,
+    );
 
     // Notify all group members about the new channel
     const members = await this.groupsService.getGroupMembers(groupId);
     for (const member of members) {
-      this.realtimeGateway.server.to(`user:${member.userId}`).emit('group.channel.created', {
-        groupId,
-        channel,
-      });
+      this.realtimeGateway.server
+        .to(`user:${member.userId}`)
+        .emit('group.channel.created', {
+          groupId,
+          channel,
+        });
     }
 
     return channel;
@@ -196,15 +323,22 @@ export class GroupsController {
     @CurrentUser() currentUser: { userId: string },
     @Body('name') name: string,
   ) {
-    const channel = await this.groupsService.updateChannel(groupId, channelId, currentUser.userId, name);
+    const channel = await this.groupsService.updateChannel(
+      groupId,
+      channelId,
+      currentUser.userId,
+      name,
+    );
 
     // Notify all group members about the channel update
     const members = await this.groupsService.getGroupMembers(groupId);
     for (const member of members) {
-      this.realtimeGateway.server.to(`user:${member.userId}`).emit('group.channel.updated', {
-        groupId,
-        channel,
-      });
+      this.realtimeGateway.server
+        .to(`user:${member.userId}`)
+        .emit('group.channel.updated', {
+          groupId,
+          channel,
+        });
     }
 
     return channel;
@@ -231,14 +365,20 @@ export class GroupsController {
     @CurrentUser() currentUser: { userId: string },
   ) {
     const members = await this.groupsService.getGroupMembers(groupId);
-    await this.groupsService.deleteChannel(groupId, channelId, currentUser.userId);
+    await this.groupsService.deleteChannel(
+      groupId,
+      channelId,
+      currentUser.userId,
+    );
 
     // Notify all group members about the channel deletion
     for (const member of members) {
-      this.realtimeGateway.server.to(`user:${member.userId}`).emit('group.channel.deleted', {
-        groupId,
-        channelId,
-      });
+      this.realtimeGateway.server
+        .to(`user:${member.userId}`)
+        .emit('group.channel.deleted', {
+          groupId,
+          channelId,
+        });
     }
   }
 
@@ -256,7 +396,9 @@ export class GroupsController {
 
     // Notify all members about the group deletion
     for (const member of members) {
-      this.realtimeGateway.server.to(`user:${member.userId}`).emit('group.deleted', { groupId });
+      this.realtimeGateway.server
+        .to(`user:${member.userId}`)
+        .emit('group.deleted', { groupId });
     }
   }
 }

@@ -35,6 +35,28 @@ export const MemberSidebar = ({
     onConfirm: () => void;
   } | null>(null);
 
+  const [hoveredMember, setHoveredMember] = useState<any | null>(null);
+  const [popoverPosition, setPopoverPosition] = useState<{
+    top: number;
+    right: number;
+  } | null>(null);
+
+  const handleMouseEnter = (
+    e: React.MouseEvent<HTMLDivElement>,
+    member: any,
+  ) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setPopoverPosition({
+      top: rect.top + rect.height / 2,
+      right: window.innerWidth - rect.left + 8,
+    });
+    setHoveredMember(member);
+  };
+
+  const handleMouseLeave = () => {
+    setHoveredMember(null);
+  };
+
   // Group members into online, away, dnd, and offline
   const members = Array.isArray(group.members) ? group.members : [];
   const currentUserMember = members.find(
@@ -48,10 +70,11 @@ export const MemberSidebar = ({
     const displayName =
       userDetail?.displayName || userDetail?.email?.split('@')[0] || 'User';
     const email = userDetail?.email || '';
+    const username = userDetail?.username || '';
     const presence =
       m.userId === currentUser?.id
-        ? 'online'
-        : onlineUsers[m.userId] || 'offline';
+        ? (currentUser?.status as PresenceStatus) || 'online'
+        : (onlineUsers[m.userId] as PresenceStatus) || 'offline';
     const isOwner = group.ownerId === m.userId;
     const isTyping = activeConversationId
       ? !!typingUsers[activeConversationId]?.[m.userId]
@@ -66,6 +89,7 @@ export const MemberSidebar = ({
       id: m.userId,
       displayName,
       email,
+      username,
       presence,
       isOwner,
       isTyping,
@@ -124,56 +148,63 @@ export const MemberSidebar = ({
     });
   };
 
-  const renderMemberRow = (m: any) => (
-    <div
-      key={m.id}
-      id={`member-row-${m.id}`}
-      className="group flex items-center justify-between gap-2.5 px-2.5 py-2 rounded-xl transition-all duration-150 mb-1 cursor-default hover:bg-[var(--bg-input)] hover:translate-x-0.5 fade-in-list"
-    >
-      <div className="flex items-center gap-2.5 min-w-0 flex-1">
-        <Avatar
-          letter={m.displayName[0].toUpperCase()}
-          status={m.presence}
-          size="sm"
-        />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1">
-            <span
-              className={`text-[13px] font-medium truncate ${m.presence === 'offline' ? 'text-[var(--text-muted)]' : 'text-[var(--text-primary)]'}`}
-            >
-              {m.displayName}
-            </span>
-            {m.isOwner && (
+  const renderMemberRow = (m: any) => {
+    const primaryName = m.username ? `@${m.username}` : m.displayName;
+
+    return (
+      <div
+        key={m.id}
+        id={`member-row-${m.id}`}
+        className="group flex items-center justify-between gap-2.5 px-2.5 py-2 rounded-xl transition-all duration-150 mb-1 cursor-default hover:bg-[var(--bg-input)] hover:translate-x-0.5 fade-in-list"
+        onMouseEnter={(e) => handleMouseEnter(e, m)}
+        onMouseLeave={handleMouseLeave}
+      >
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+          <Avatar
+            letter={m.displayName[0].toUpperCase()}
+            status={m.presence}
+            size="sm"
+          />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1">
               <span
-                className="text-[#eab308] flex shrink-0"
-                title="Group Owner"
+                className={`text-[13px] font-medium truncate ${m.presence === 'offline' ? 'text-[var(--text-muted)]' : 'text-[var(--text-primary)]'}`}
               >
-                <IconCrown />
+                {primaryName}
               </span>
-            )}
+              {m.isOwner && (
+                <span
+                  className="text-[#eab308] flex shrink-0"
+                  title="Group Owner"
+                >
+                  <IconCrown />
+                </span>
+              )}
+            </div>
+            {m.isTyping ? (
+              <div className="text-[10px] text-[var(--accent-secondary)] font-medium">
+                typing...
+              </div>
+            ) : m.role !== 'member' ? (
+              <div className="text-[10px] text-[var(--text-muted)] capitalize">
+                {m.role}
+              </div>
+            ) : null}
           </div>
-          {m.isTyping ? (
-            <div className="text-[10px] text-[var(--accent-secondary)] font-medium">
-              typing...
-            </div>
-          ) : m.role !== 'member' ? (
-            <div className="text-[10px] text-[var(--text-muted)] capitalize">
-              {m.role}
-            </div>
-          ) : null}
         </div>
+        {m.canKick && (
+          <button
+            onClick={() => handleKickMember(m)}
+            className="member-kick-btn flex items-center justify-center p-1 rounded-lg border-none cursor-pointer bg-transparent text-[var(--danger)] hover:bg-[var(--danger-bg)] opacity-0 group-hover:opacity-100 transition-opacity duration-150 active-press focus:opacity-100 focus:outline-none"
+            title={`Kick ${m.displayName}`}
+            onMouseEnter={(e) => e.stopPropagation()}
+          >
+            <IconTrash />
+          </button>
+        )}
       </div>
-      {m.canKick && (
-        <button
-          onClick={() => handleKickMember(m)}
-          className="member-kick-btn flex items-center justify-center p-1 rounded-lg border-none cursor-pointer bg-transparent text-[var(--danger)] hover:bg-[var(--danger-bg)] opacity-0 group-hover:opacity-100 transition-opacity duration-150 active-press focus:opacity-100 focus:outline-none"
-          title={`Kick ${m.displayName}`}
-        >
-          <IconTrash />
-        </button>
-      )}
-    </div>
-  );
+    );
+  };
 
   const tabOptions: {
     id: PresenceStatus;
@@ -262,6 +293,79 @@ export const MemberSidebar = ({
           onConfirm={confirmModal.onConfirm}
           onCancel={() => setConfirmModal(null)}
         />
+      )}
+
+      {hoveredMember && popoverPosition && (
+        <div
+          className="fixed z-[9999] w-[260px] bg-[var(--glass-bg)] border-[1.5px] border-[var(--glass-border)] backdrop-blur-[20px] rounded-[16px] shadow-[var(--glass-shadow)] p-4 flex flex-col gap-3 animate-fade-in pointer-events-none text-left"
+          style={{
+            top: `${popoverPosition.top}px`,
+            right: `${popoverPosition.right}px`,
+            transform: 'translateY(-50%)',
+          }}
+        >
+          {/* Header with Avatar and Status */}
+          <div className="flex items-center gap-3">
+            <Avatar
+              letter={hoveredMember.displayName[0].toUpperCase()}
+              status={hoveredMember.presence}
+              size="md"
+            />
+            <div className="flex-1 min-w-0">
+              <h3 className="m-0 text-[14px] font-bold text-[var(--text-primary)] truncate">
+                {hoveredMember.displayName}
+              </h3>
+              <div className="text-[10.5px] text-[var(--text-muted)] mt-0.5 capitalize">
+                {hoveredMember.role}
+              </div>
+            </div>
+          </div>
+
+          <hr className="m-0 border-none h-[1px] bg-[var(--border-muted)]" />
+
+          {/* Details */}
+          <div className="flex flex-col gap-2.5 text-[12px]">
+            <div>
+              <span className="text-[var(--text-muted)] font-bold block mb-0.5 uppercase tracking-wide text-[9.5px]">
+                Username
+              </span>
+              <span className="text-[var(--text-secondary)] font-medium font-mono">
+                {hoveredMember.username ? `@${hoveredMember.username}` : '@-'}
+              </span>
+            </div>
+            <div>
+              <span className="text-[var(--text-muted)] font-bold block mb-0.5 uppercase tracking-wide text-[9.5px]">
+                Email Address
+              </span>
+              <span className="text-[var(--text-secondary)] font-medium break-all">
+                {hoveredMember.email || 'No email shared'}
+              </span>
+            </div>
+            <div>
+              <span className="text-[var(--text-muted)] font-bold block mb-0.5 uppercase tracking-wide text-[9.5px]">
+                Presence Status
+              </span>
+              <span className="text-[var(--text-secondary)] font-medium flex items-center gap-1.5 capitalize">
+                <span
+                  className="w-2 h-2 rounded-full inline-block animate-pulse"
+                  style={{
+                    backgroundColor:
+                      hoveredMember.presence === 'online'
+                        ? '#10b981'
+                        : hoveredMember.presence === 'away'
+                          ? '#f59e0b'
+                          : hoveredMember.presence === 'dnd'
+                            ? '#ef4444'
+                            : '#6b7280',
+                  }}
+                />
+                {hoveredMember.presence === 'dnd'
+                  ? 'Do Not Disturb'
+                  : hoveredMember.presence}
+              </span>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

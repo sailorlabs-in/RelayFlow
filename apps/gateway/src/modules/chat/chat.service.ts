@@ -1,7 +1,18 @@
-import { Conversation, ConversationMember, Message, ConversationType } from '@chat-app/database';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Conversation,
+  ConversationMember,
+  Message,
+  ConversationType,
+} from '@chat-app/database';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, Not } from 'typeorm';
+
+import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class ChatService {
@@ -11,17 +22,27 @@ export class ChatService {
     @InjectRepository(ConversationMember)
     private readonly memberRepository: Repository<ConversationMember>,
     @InjectRepository(Message)
-    private readonly messageRepository: Repository<Message>
+    private readonly messageRepository: Repository<Message>,
+    private readonly usersService: UsersService,
   ) {}
 
   async createConversation(userIds: string[]): Promise<Conversation> {
     // If it is a Direct Message (2 members), verify if a DM already exists between them
     if (userIds.length === 2) {
       const [userA, userB] = userIds;
-      
-      const membershipsA = await this.memberRepository.find({ where: { userId: userA } });
+
+      const isFriend = await this.usersService.isFriend(userA, userB);
+      if (!isFriend) {
+        throw new ForbiddenException(
+          '❌ You can only start DM conversations with accepted friends.',
+        );
+      }
+
+      const membershipsA = await this.memberRepository.find({
+        where: { userId: userA },
+      });
       const convoIdsA = membershipsA.map((m) => m.conversationId);
-      
+
       if (convoIdsA.length > 0) {
         const commonMemberships = await this.memberRepository.find({
           where: {
@@ -29,7 +50,7 @@ export class ChatService {
             userId: userB,
           },
         });
-        
+
         for (const membership of commonMemberships) {
           const convo = await this.conversationRepository.findOne({
             where: { id: membership.conversationId, type: ConversationType.DM },
@@ -56,7 +77,7 @@ export class ChatService {
       this.memberRepository.create({
         conversationId: saved.id,
         userId,
-      })
+      }),
     );
     await this.memberRepository.save(members);
 
@@ -77,7 +98,7 @@ export class ChatService {
         type: ConversationType.DM,
       },
     });
-    
+
     // Fetch all memberships for these conversation IDs to resolve participant details instantly
     const allMemberships = await this.memberRepository.find({
       where: { conversationId: In(conversationIds) },
@@ -85,7 +106,9 @@ export class ChatService {
 
     const conversationsWithDetails = await Promise.all(
       conversations.map(async (convo) => {
-        const members = allMemberships.filter((m) => m.conversationId === convo.id);
+        const members = allMemberships.filter(
+          (m) => m.conversationId === convo.id,
+        );
         const lastMessage = await this.messageRepository.findOne({
           where: { conversationId: convo.id },
           order: { createdAt: 'DESC' },
@@ -94,41 +117,54 @@ export class ChatService {
         return {
           ...convo,
           members: members.map((m) => ({ userId: m.userId, role: m.role })),
-          lastMessage: lastMessage ? {
-            id: lastMessage.id,
-            conversationId: lastMessage.conversationId,
-            senderId: lastMessage.senderId,
-            content: lastMessage.content,
-            isRead: lastMessage.isRead,
-            createdAt: lastMessage.createdAt.toISOString(),
-            updatedAt: lastMessage.updatedAt.toISOString(),
-          } : null,
+          lastMessage: lastMessage
+            ? {
+                id: lastMessage.id,
+                conversationId: lastMessage.conversationId,
+                senderId: lastMessage.senderId,
+                content: lastMessage.content,
+                isRead: lastMessage.isRead,
+                createdAt: lastMessage.createdAt.toISOString(),
+                updatedAt: lastMessage.updatedAt.toISOString(),
+              }
+            : null,
         };
-      })
+      }),
     );
 
     return conversationsWithDetails;
   }
 
-  async getConversationMembers(conversationId: string): Promise<ConversationMember[]> {
+  async getConversationMembers(
+    conversationId: string,
+  ): Promise<ConversationMember[]> {
     return this.memberRepository.find({ where: { conversationId } });
   }
 
   async deleteConversation(conversationId: string): Promise<void> {
     // 1. Wipe message archives
     await this.messageRepository.delete({ conversationId });
-    
+
     // 2. Wipe memberships
     await this.memberRepository.delete({ conversationId });
-    
+
     // 3. Wipe conversation record
     await this.conversationRepository.delete({ id: conversationId });
   }
 
-  async createMessage(conversationId: string, senderId: string, content: string, isRead = false): Promise<Message> {
-    const isMember = await this.memberRepository.findOne({ where: { conversationId, userId: senderId } });
+  async createMessage(
+    conversationId: string,
+    senderId: string,
+    content: string,
+    isRead = false,
+  ): Promise<Message> {
+    const isMember = await this.memberRepository.findOne({
+      where: { conversationId, userId: senderId },
+    });
     if (!isMember) {
-      throw new NotFoundException('❌ Conversation not found or user is not a member');
+      throw new NotFoundException(
+        '❌ Conversation not found or user is not a member',
+      );
     }
 
     const message = this.messageRepository.create({
@@ -141,14 +177,21 @@ export class ChatService {
     return this.messageRepository.save(message);
   }
 
-  async markMessagesAsRead(conversationId: string, userId: string): Promise<void> {
+  async markMessagesAsRead(
+    conversationId: string,
+    userId: string,
+  ): Promise<void> {
     await this.messageRepository.update(
       { conversationId, senderId: Not(userId), isRead: false },
-      { isRead: true }
+      { isRead: true },
     );
   }
 
-  async getMessages(conversationId: string, limit = 50, offset = 0): Promise<Message[]> {
+  async getMessages(
+    conversationId: string,
+    limit = 50,
+    offset = 0,
+  ): Promise<Message[]> {
     return this.messageRepository.find({
       where: { conversationId },
       order: { createdAt: 'DESC' },

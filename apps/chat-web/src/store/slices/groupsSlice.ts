@@ -27,6 +27,7 @@ export interface GroupMember {
   user?: {
     id: string;
     email: string;
+    username?: string;
     displayName?: string;
     avatarUrl?: string;
     status?: string;

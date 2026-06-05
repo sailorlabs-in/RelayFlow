@@ -5,6 +5,7 @@ import { API_URL } from '../../constants/config';
 export interface User {
   id: string;
   email: string;
+  username?: string;
   displayName?: string;
   avatarUrl?: string;
   themeMode?: string;
@@ -15,6 +16,7 @@ export interface User {
   notificationsDmEnabled?: boolean;
   notificationsGroupEnabled?: boolean;
   notificationsInAppEnabled?: boolean;
+  notificationsFriendRequestEnabled?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -44,7 +46,12 @@ const initialState: AuthState = {
 export const registerUser = createAsyncThunk(
   'auth/register',
   async (
-    payload: { email: string; password: string; displayName?: string },
+    payload: {
+      email: string;
+      password: string;
+      username: string;
+      displayName?: string;
+    },
     { rejectWithValue },
   ) => {
     try {
@@ -85,11 +92,17 @@ export const updateUserProfile = createAsyncThunk(
   async (
     payload: {
       displayName?: string;
+      username?: string;
       password?: string;
       themeMode?: string;
       themeSchema?: string;
       status?: string;
       visibility?: string;
+      notificationsEnabled?: boolean;
+      notificationsDmEnabled?: boolean;
+      notificationsGroupEnabled?: boolean;
+      notificationsInAppEnabled?: boolean;
+      notificationsFriendRequestEnabled?: boolean;
     },
     { getState, rejectWithValue },
   ) => {

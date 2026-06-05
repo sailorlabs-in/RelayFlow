@@ -108,6 +108,58 @@ export function useNotificationClient(user: User | null) {
           }
         }
 
+        // Handle Friend Request Notifications specifically
+        if (meta.type === 'friend_request') {
+          if (userRef.current?.notificationsFriendRequestEnabled === false) {
+            PrintLog('Suppressed: friend request notifications are disabled');
+            return;
+          }
+          const senderName = meta.senderName || 'Someone';
+          const initial = senderName.charAt(0).toUpperCase();
+
+          showToast.notification(
+            <div className="flex items-center gap-3 p-1 font-sans">
+              <div className="avatar-base w-10 h-10 text-[14px] shrink-0">
+                {initial}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div
+                  className="font-bold text-[14.5px] leading-tight truncate"
+                  style={{ color: 'var(--text-primary)' }}
+                >
+                  Friend Request
+                </div>
+                <div
+                  className="text-[12.5px] leading-snug mt-0.5 break-words"
+                  style={{ color: 'var(--text-muted)' }}
+                >
+                  <span
+                    className="font-semibold"
+                    style={{ color: 'var(--accent-primary)' }}
+                  >
+                    {senderName}
+                  </span>{' '}
+                  sent you a friend request!
+                </div>
+              </div>
+              <div
+                className="w-2.5 h-2.5 rounded-full shrink-0 animate-pulse"
+                style={{
+                  background: 'var(--accent-primary)',
+                  boxShadow: '0 0 8px var(--accent-primary)',
+                }}
+              />
+            </div>,
+            {
+              icon: false,
+              closeButton: true,
+              className: 'custom-inapp-toast-container',
+              autoClose: 4000,
+            },
+          );
+          return;
+        }
+
         const msgConvoId = meta.conversationId || payload.data?.conversationId;
         const msgGroupId = meta.groupId || '';
 

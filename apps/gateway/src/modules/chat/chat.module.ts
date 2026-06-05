@@ -14,8 +14,8 @@ import { NotificationService } from './notification.service';
   imports: [
     TypeOrmModule.forFeature([Conversation, ConversationMember, Message]),
     forwardRef(() => RealtimeModule),
-    UsersModule,
-    AuthModule,
+    forwardRef(() => UsersModule),
+    forwardRef(() => AuthModule),
   ],
   providers: [ChatService, NotificationService],
   controllers: [ChatController],

@@ -36,6 +36,7 @@ export const ChatSidebar = ({
     onlineUsers,
     userProfiles,
     convoRecipients,
+    pendingRequests,
   } = useAppSelector((s) => s.chat);
 
   useEffect(() => {
@@ -68,8 +69,10 @@ export const ChatSidebar = ({
     if (recipientId && userProfiles[recipientId]) {
       const r = userProfiles[recipientId];
       return {
-        name: r.displayName || r.email.split('@')[0],
-        letter: (r.displayName || r.email)[0].toUpperCase(),
+        name: r.username
+          ? `@${r.username}`
+          : r.displayName || r.email.split('@')[0],
+        letter: (r.username || r.displayName || r.email)[0].toUpperCase(),
         email: r.email,
         id: r.id,
       };
@@ -109,13 +112,17 @@ export const ChatSidebar = ({
         </button>
 
         <Avatar
-          letter={(user.displayName || user.email)[0].toUpperCase()}
+          letter={(user.username ||
+            user.displayName ||
+            user.email)[0].toUpperCase()}
           status={ownStatus}
           size="md"
         />
         <div className="flex-1 min-w-0">
           <div className="font-semibold text-[13.5px] truncate text-[var(--text-primary)]">
-            {user.displayName || 'Active User'}
+            {user.username
+              ? `@${user.username}`
+              : user.displayName || 'Active User'}
           </div>
           <div className="text-[11px] truncate mt-0.5 text-[var(--text-muted)]">
             {user.email}
@@ -144,8 +151,57 @@ export const ChatSidebar = ({
         </button>
       </div>
 
+      {/* Permanent Friends Navigation Item */}
+      <div className="px-1.5 pt-2 flex-shrink-0">
+        <div
+          id="sidebar-friends-tab"
+          className={`relative flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl cursor-pointer transition-all duration-200 mb-1 border active-press ${
+            activeConversationId === 'friends'
+              ? 'bg-[var(--theme-btn-active)] border-[var(--accent-primary)] shadow-[var(--btn-shadow)]'
+              : 'bg-transparent border-transparent hover:bg-[var(--bg-input)] hover:border-[var(--glass-border)]'
+          }`}
+          onClick={() => dispatch(setActiveConversation('friends'))}
+        >
+          {/* Left active glow bar */}
+          <span
+            className={`absolute left-0 w-[3.5px] rounded-r bg-[var(--accent-primary)] transition-all duration-200
+            ${activeConversationId === 'friends' ? 'h-7 top-[7.5px]' : 'h-0 top-[21px] opacity-0'}`}
+          />
+          <div className="w-[30px] h-[30px] rounded-lg flex items-center justify-center bg-[var(--theme-btn)] text-[var(--accent-primary)] flex-shrink-0">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              className="w-[15px] h-[15px]"
+            >
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <span
+              className={`font-semibold text-[13px] ${
+                activeConversationId === 'friends'
+                  ? 'text-[var(--theme-btn-active-text)]'
+                  : 'text-[var(--text-primary)]'
+              }`}
+            >
+              Friends
+            </span>
+          </div>
+          {pendingRequests?.incoming?.length > 0 && (
+            <span className="bg-[var(--danger)] text-white text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 animate-pulse">
+              {pendingRequests.incoming.length}
+            </span>
+          )}
+        </div>
+      </div>
+
       {/* Direct Messages Label + New DM button */}
-      <div className="flex items-center justify-between px-3.5 pt-3 pb-1.5">
+      <div className="flex items-center justify-between px-3.5 pt-2 pb-1.5">
         <span className="text-[10.5px] font-bold uppercase tracking-widest text-[var(--text-muted)]">
           Direct Messages
         </span>

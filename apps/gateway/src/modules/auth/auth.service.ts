@@ -10,15 +10,23 @@ import { CryptoUtil } from './crypto.util';
 export class AuthService {
   constructor(
     private readonly usersService: UsersService,
-    private readonly jwtService: JwtService
+    private readonly jwtService: JwtService,
   ) {}
 
-  async register(email: string, password: string, displayName?: string): Promise<User> {
+  async register(
+    email: string,
+    password: string,
+    displayName?: string,
+    username?: string,
+  ): Promise<User> {
     const passwordHash = CryptoUtil.hashPassword(password);
-    return this.usersService.create(email, passwordHash, displayName);
+    return this.usersService.create(email, passwordHash, displayName, username);
   }
 
-  async login(email: string, password: string): Promise<{ accessToken: string; user: User }> {
+  async login(
+    email: string,
+    password: string,
+  ): Promise<{ accessToken: string; user: User }> {
     const user = await this.usersService.findByEmail(email);
     if (!user) {
       throw new UnauthorizedException('❌ Invalid email or password');
@@ -38,7 +46,9 @@ export class AuthService {
     };
   }
 
-  async validateToken(token: string): Promise<{ userId: string; email: string }> {
+  async validateToken(
+    token: string,
+  ): Promise<{ userId: string; email: string }> {
     try {
       const payload = await this.jwtService.verifyAsync(token);
       return { userId: payload.sub, email: payload.email };

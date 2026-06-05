@@ -14,6 +14,9 @@ export class User {
   @Column({ unique: true })
   email!: string;
 
+  @Column({ unique: true, nullable: true })
+  username?: string;
+
   @Column({ name: 'password_hash' })
   passwordHash!: string;
 
@@ -46,6 +49,9 @@ export class User {
 
   @Column({ name: 'notifications_in_app_enabled', default: true })
   notificationsInAppEnabled!: boolean;
+
+  @Column({ name: 'notifications_friend_request_enabled', default: true })
+  notificationsFriendRequestEnabled!: boolean;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;

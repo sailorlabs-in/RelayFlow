@@ -1,5 +1,7 @@
 'use client';
 
+import axios from 'axios';
+import { API_URL } from '../../constants/config';
 import { PRESENCE_STATUS_DETAILS } from '@chat-app/shared-constants';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -176,6 +178,11 @@ export function ProfileSettingsContent({
 
   // Account State
   const [displayName, setDisplayName] = useState('');
+  const [username, setUsername] = useState('');
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(
+    null,
+  );
+  const [checkingUsername, setCheckingUsername] = useState(false);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
@@ -194,6 +201,10 @@ export function ProfileSettingsContent({
     useState(true);
   const [notificationsInAppEnabled, setNotificationsInAppEnabled] =
     useState(true);
+  const [
+    notificationsFriendRequestEnabled,
+    setNotificationsFriendRequestEnabled,
+  ] = useState(true);
 
   // Notification State
   const [message, setMessage] = useState<{
@@ -216,6 +227,7 @@ export function ProfileSettingsContent({
 
     if (!hasInitializedRef.current) {
       setDisplayName(user.displayName || '');
+      setUsername(user.username || '');
       setThemeMode(user.themeMode || 'system');
       setThemeSchema(user.themeSchema || 'arctic_glass');
       setUserStatus(user.status || 'online');
@@ -224,9 +236,54 @@ export function ProfileSettingsContent({
       setNotificationsDmEnabled(user.notificationsDmEnabled ?? true);
       setNotificationsGroupEnabled(user.notificationsGroupEnabled ?? true);
       setNotificationsInAppEnabled(user.notificationsInAppEnabled ?? true);
+      setNotificationsFriendRequestEnabled(
+        user.notificationsFriendRequestEnabled ?? true,
+      );
       hasInitializedRef.current = true;
     }
   }, [user, accessToken, router, isModal]);
+
+  // Debounced real-time username availability check
+  useEffect(() => {
+    if (!hasInitializedRef.current || !username.trim()) {
+      setUsernameAvailable(null);
+      return;
+    }
+
+    const normalized = username.toLowerCase().trim();
+    if (normalized === (user?.username || '').toLowerCase()) {
+      setUsernameAvailable(null);
+      return;
+    }
+
+    if (normalized.length < 3 || !/^[a-zA-Z0-9_-]+$/.test(normalized)) {
+      setUsernameAvailable(false);
+      return;
+    }
+
+    setCheckingUsername(true);
+    setUsernameAvailable(null);
+
+    const delayDebounce = setTimeout(async () => {
+      try {
+        const response = await axios.get(
+          `${API_URL}/users/check-username?username=${normalized}`,
+          {
+            headers: {
+              Authorization: accessToken ? `Bearer ${accessToken}` : '',
+            },
+          },
+        );
+        setUsernameAvailable(response.data.available);
+      } catch (err) {
+        setUsernameAvailable(false);
+      } finally {
+        setCheckingUsername(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(delayDebounce);
+  }, [username, accessToken, user]);
 
   // Revert preview theme on unmount if not saved
   useEffect(() => {
@@ -248,6 +305,29 @@ export function ProfileSettingsContent({
     e.preventDefault();
     setMessage(null);
 
+    if (usernameAvailable === false) {
+      setMessage({
+        type: 'error',
+        text: '❌ Username is already taken.',
+      });
+      return;
+    }
+
+    if (username.trim().length < 3) {
+      setMessage({
+        type: 'error',
+        text: '❌ Username must be at least 3 characters long.',
+      });
+      return;
+    }
+    if (!/^[a-zA-Z0-9_-]+$/.test(username.trim())) {
+      setMessage({
+        type: 'error',
+        text: '❌ Username can only contain alphanumeric characters, underscores, and hyphens.',
+      });
+      return;
+    }
+
     // Password validation if they input something
     if (password) {
       if (password.length < 6) {
@@ -266,6 +346,7 @@ export function ProfileSettingsContent({
     try {
       const payload: Record<string, string | boolean | undefined> = {
         displayName,
+        username: username.toLowerCase().trim(),
         themeMode,
         themeSchema,
         status: userStatus,
@@ -274,6 +355,7 @@ export function ProfileSettingsContent({
         notificationsDmEnabled,
         notificationsGroupEnabled,
         notificationsInAppEnabled,
+        notificationsFriendRequestEnabled,
       };
 
       if (password) {
@@ -606,6 +688,56 @@ export function ProfileSettingsContent({
                   >
                     Registered email cannot be modified.
                   </span>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label
+                    className="text-[11.5px] font-bold uppercase tracking-wider"
+                    style={{ color: 'var(--text-secondary)' }}
+                  >
+                    Username
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    className="input-base rounded-[10px] px-4 py-3 text-[14px]"
+                    placeholder="Enter unique username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor =
+                        'var(--accent-primary)';
+                      e.currentTarget.style.boxShadow =
+                        '0 0 0 3px var(--accent-ring)';
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--glass-border)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                  />
+                  {checkingUsername && (
+                    <span className="text-[11px] text-[var(--text-muted)] mt-1 animate-pulse flex items-center gap-1">
+                      Checking availability...
+                    </span>
+                  )}
+                  {!checkingUsername && usernameAvailable === true && (
+                    <span className="text-[11px] text-emerald-500 font-medium mt-1 flex items-center gap-1">
+                      ✔ Username is available
+                    </span>
+                  )}
+                  {!checkingUsername && usernameAvailable === false && (
+                    <span className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1">
+                      ❌ Username is taken
+                    </span>
+                  )}
+                  {!checkingUsername && usernameAvailable === null && (
+                    <span
+                      className="text-[10.5px]"
+                      style={{ color: 'var(--text-muted)' }}
+                    >
+                      Your unique username for search.
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex flex-col gap-1.5">
@@ -1193,6 +1325,32 @@ export function ProfileSettingsContent({
                         <div className="w-11 h-6 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent-primary)]"></div>
                       </label>
                     </div>
+
+                    {/* Friend Request Notifications */}
+                    <div className="flex items-center justify-between p-4 rounded-xl border border-[var(--glass-border)] bg-[var(--theme-btn)]">
+                      <div className="flex flex-col gap-0.5 pr-4">
+                        <span className="font-bold text-[13.5px] text-[var(--text-primary)]">
+                          Friend req. notification
+                        </span>
+                        <span className="text-[11.5px] text-[var(--text-muted)]">
+                          Receive push notifications when someone sends you a
+                          friend request
+                        </span>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={notificationsFriendRequestEnabled}
+                          onChange={(e) =>
+                            setNotificationsFriendRequestEnabled(
+                              e.target.checked,
+                            )
+                          }
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent-primary)]"></div>
+                      </label>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1225,7 +1383,11 @@ export function ProfileSettingsContent({
               )}
               <button
                 type="submit"
-                disabled={status === 'loading'}
+                disabled={
+                  status === 'loading' ||
+                  checkingUsername ||
+                  usernameAvailable === false
+                }
                 className="btn-send text-[13.5px] font-semibold px-6 py-2.5 rounded-xl cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 relative overflow-hidden"
               >
                 {status === 'loading' ? 'Saving changes…' : 'Save Changes'}

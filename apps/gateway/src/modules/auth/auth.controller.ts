@@ -14,28 +14,39 @@ export class AuthController {
   @ApiBody({
     schema: {
       type: 'object',
-      required: ['email', 'password'],
+      required: ['email', 'password', 'username'],
       properties: {
         email: { type: 'string', example: 'user@example.com' },
         password: { type: 'string', example: 'superpassword123' },
+        username: { type: 'string', example: 'umang' },
         displayName: { type: 'string', example: 'Umang' },
       },
     },
   })
-  @ApiResponse({ status: 201, description: 'User successfully registered.', type: User })
+  @ApiResponse({
+    status: 201,
+    description: 'User successfully registered.',
+    type: User,
+  })
   @ApiResponse({ status: 400, description: 'Invalid input payload.' })
-  @ApiResponse({ status: 409, description: 'Email is already registered.' })
+  @ApiResponse({
+    status: 409,
+    description: 'Email/Username is already registered.',
+  })
   async register(
     @Body('email') email: string,
     @Body('password') password: string,
-    @Body('displayName') displayName?: string
+    @Body('username') username: string,
+    @Body('displayName') displayName?: string,
   ): Promise<User> {
-    return this.authService.register(email, password, displayName);
+    return this.authService.register(email, password, displayName, username);
   }
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Authenticate user credentials and issue JWT access token' })
+  @ApiOperation({
+    summary: 'Authenticate user credentials and issue JWT access token',
+  })
   @ApiBody({
     schema: {
       type: 'object',
@@ -60,7 +71,7 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Invalid email or password.' })
   async login(
     @Body('email') email: string,
-    @Body('password') password: string
+    @Body('password') password: string,
   ): Promise<{ accessToken: string; user: User }> {
     return this.authService.login(email, password);
   }

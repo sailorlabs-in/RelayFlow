@@ -19,7 +19,11 @@ import { InviteMembersModal } from '../components/InviteMembersModal';
 import { MemberSidebar } from '../components/MemberSidebar';
 import { useAppDispatch, useAppSelector } from '../store';
 import { logoutUser, restoreSession } from '../store/slices/authSlice';
-import { fetchConversations } from '../store/slices/chatSlice';
+import {
+  fetchConversations,
+  fetchFriends,
+  fetchPendingRequests,
+} from '../store/slices/chatSlice';
 import { fetchGroups, setActiveGroup } from '../store/slices/groupsSlice';
 import type { GroupChannel } from '../store/slices/groupsSlice';
 import { socketManager } from '../store/socketManager';
@@ -96,6 +100,8 @@ function ChatDashboardContent() {
     if (accessToken && user) {
       dispatch(fetchConversations(user.id));
       dispatch(fetchGroups());
+      dispatch(fetchFriends());
+      dispatch(fetchPendingRequests());
       socketManager.connect(accessToken);
 
       return () => {

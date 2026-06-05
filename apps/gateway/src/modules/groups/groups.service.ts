@@ -6,15 +6,18 @@ import {
   Conversation,
   ConversationMember,
   ConversationType,
+  GroupInvite,
 } from '@chat-app/database';
 import {
   Injectable,
   NotFoundException,
   ForbiddenException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class GroupsService {
@@ -27,6 +30,8 @@ export class GroupsService {
     private readonly conversationRepo: Repository<Conversation>,
     @InjectRepository(ConversationMember)
     private readonly convMemberRepo: Repository<ConversationMember>,
+    @InjectRepository(GroupInvite)
+    private readonly groupInviteRepo: Repository<GroupInvite>,
   ) {}
 
   // Helper to load profiles for group members
@@ -41,6 +46,7 @@ export class GroupsService {
             'id',
             'email',
             'displayName',
+            'username',
             'avatarUrl',
             'status',
             'visibility',
@@ -474,5 +480,162 @@ export class GroupsService {
 
   async getGroup(groupId: string): Promise<Group | null> {
     return this.groupRepo.findOne({ where: { id: groupId } });
+  }
+
+  // ─── Group Invite Links ──────────────────────────────────────────────────────
+  async createInvite(
+    groupId: string,
+    creatorId: string,
+    expiresIn: string,
+  ): Promise<GroupInvite> {
+    const group = await this.getGroup(groupId);
+    if (!group) {
+      throw new NotFoundException('Group not found');
+    }
+
+    const membership = await this.groupMemberRepo.findOne({
+      where: { groupId, userId: creatorId },
+    });
+    if (!membership) {
+      throw new ForbiddenException('You are not a member of this group');
+    }
+
+    let expiresAt: Date | undefined = undefined;
+    if (expiresIn && expiresIn !== 'never') {
+      const val = parseInt(expiresIn, 10);
+      if (!isNaN(val) && val > 0) {
+        const hasUnit = /[a-zA-Z]$/.test(expiresIn);
+        if (hasUnit) {
+          const unit = expiresIn.slice(-1);
+          const num = parseInt(expiresIn.slice(0, -1), 10);
+          const ms =
+            unit === 'h' ? num * 3600000 : unit === 'd' ? num * 86400000 : 0;
+          expiresAt = new Date(Date.now() + ms);
+        } else {
+          expiresAt = new Date(Date.now() + val * 1000);
+        }
+      }
+    }
+
+    const token = crypto.randomBytes(8).toString('hex');
+    const invite = this.groupInviteRepo.create({
+      groupId,
+      createdBy: creatorId,
+      token,
+      expiresAt,
+    });
+
+    return this.groupInviteRepo.save(invite);
+  }
+
+  async listInvites(
+    groupId: string,
+    requesterId: string,
+  ): Promise<GroupInvite[]> {
+    const membership = await this.groupMemberRepo.findOne({
+      where: { groupId, userId: requesterId },
+    });
+    if (!membership) {
+      throw new ForbiddenException('You are not a member of this group');
+    }
+
+    return this.groupInviteRepo.find({
+      where: { groupId },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async deleteInvite(inviteId: string, requesterId: string): Promise<void> {
+    const invite = await this.groupInviteRepo.findOne({
+      where: { id: inviteId },
+    });
+    if (!invite) {
+      throw new NotFoundException('Invite link not found');
+    }
+
+    const group = await this.getGroup(invite.groupId);
+    if (!group) {
+      throw new NotFoundException('Group not found');
+    }
+
+    const membership = await this.groupMemberRepo.findOne({
+      where: { groupId: invite.groupId, userId: requesterId },
+    });
+    if (!membership) {
+      throw new ForbiddenException('You are not a member of this group');
+    }
+
+    // Only allow group owner or creator of the link to delete/revoke it
+    if (group.ownerId !== requesterId && invite.createdBy !== requesterId) {
+      throw new ForbiddenException(
+        'Only the group owner or invite creator can revoke this link',
+      );
+    }
+
+    await this.groupInviteRepo.delete({ id: inviteId });
+  }
+
+  async resolveInvite(token: string): Promise<Group> {
+    const invite = await this.groupInviteRepo.findOne({ where: { token } });
+    if (!invite) {
+      throw new BadRequestException(
+        '❌ This invite link is invalid or has expired',
+      );
+    }
+
+    if (invite.expiresAt && invite.expiresAt < new Date()) {
+      throw new BadRequestException(
+        '❌ This invite link is invalid or has expired',
+      );
+    }
+
+    const group = await this.getGroup(invite.groupId);
+    if (!group) {
+      throw new NotFoundException('Group not found');
+    }
+
+    return group;
+  }
+
+  async acceptInvite(token: string, userId: string): Promise<Group> {
+    const group = await this.resolveInvite(token);
+
+    // Check if already a member
+    const existingMember = await this.groupMemberRepo.findOne({
+      where: { groupId: group.id, userId },
+    });
+    if (existingMember) {
+      return group;
+    }
+
+    // Add member to group
+    const member = this.groupMemberRepo.create({
+      groupId: group.id,
+      userId,
+      role: GroupMemberRole.MEMBER,
+    });
+    await this.groupMemberRepo.save(member);
+
+    // Get group channels
+    const channels = await this.conversationRepo.find({
+      where: { groupId: group.id, type: ConversationType.CHANNEL },
+    });
+
+    // Add to general channel specifically or all channels
+    for (const channel of channels) {
+      const existingChannelMember = await this.convMemberRepo.findOne({
+        where: { conversationId: channel.id, userId },
+      });
+      if (!existingChannelMember) {
+        await this.convMemberRepo.save(
+          this.convMemberRepo.create({
+            conversationId: channel.id,
+            userId,
+          }),
+        );
+      }
+    }
+
+    return group;
   }
 }

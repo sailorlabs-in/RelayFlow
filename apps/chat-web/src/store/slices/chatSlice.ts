@@ -34,6 +34,11 @@ export interface ChatState {
   searchResults: User[];
   userProfiles: Record<string, User>; // userId -> user profile metadata cache
   convoRecipients: Record<string, string>; // conversationId -> recipientUserId mapping
+  friends: User[];
+  pendingRequests: {
+    incoming: any[];
+    outgoing: any[];
+  };
   status: 'idle' | 'loading' | 'succeeded' | 'failed';
   error: string | null;
 }
@@ -48,6 +53,11 @@ const initialState: ChatState = {
   searchResults: [],
   userProfiles: {},
   convoRecipients: {},
+  friends: [],
+  pendingRequests: {
+    incoming: [],
+    outgoing: [],
+  },
   status: 'idle',
   error: null,
 };
@@ -193,6 +203,135 @@ export const deleteConversation = createAsyncThunk(
   },
 );
 
+// Thunk to fetch accepted friends
+export const fetchFriends = createAsyncThunk(
+  'chat/fetchFriends',
+  async (_, { getState, rejectWithValue }) => {
+    try {
+      const state = getState() as { auth: { accessToken: string | null } };
+      const response = await axios.get(
+        `${API_URL}/users/friends`,
+        getAuthHeaders(state.auth.accessToken),
+      );
+      return response.data.data;
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.error?.message ||
+          error.response?.data?.message ||
+          'Failed to load friends.',
+      );
+    }
+  },
+);
+
+// Thunk to fetch pending friend requests
+export const fetchPendingRequests = createAsyncThunk(
+  'chat/fetchPendingRequests',
+  async (_, { getState, rejectWithValue }) => {
+    try {
+      const state = getState() as { auth: { accessToken: string | null } };
+      const response = await axios.get(
+        `${API_URL}/users/friends/requests`,
+        getAuthHeaders(state.auth.accessToken),
+      );
+      return response.data.data; // { incoming, outgoing }
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.error?.message ||
+          error.response?.data?.message ||
+          'Failed to load friend requests.',
+      );
+    }
+  },
+);
+
+// Thunk to send a friend request
+export const sendFriendRequest = createAsyncThunk(
+  'chat/sendFriendRequest',
+  async (emailOrUsername: string, { getState, rejectWithValue }) => {
+    try {
+      const state = getState() as { auth: { accessToken: string | null } };
+      const response = await axios.post(
+        `${API_URL}/users/friends/request`,
+        { emailOrUsername },
+        getAuthHeaders(state.auth.accessToken),
+      );
+      return response.data.data;
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.error?.message ||
+          error.response?.data?.message ||
+          'Failed to send friend request.',
+      );
+    }
+  },
+);
+
+// Thunk to accept a friend request
+export const acceptFriendRequest = createAsyncThunk(
+  'chat/acceptFriendRequest',
+  async (requestId: string, { getState, rejectWithValue }) => {
+    try {
+      const state = getState() as { auth: { accessToken: string | null } };
+      const response = await axios.post(
+        `${API_URL}/users/friends/requests/${requestId}/accept`,
+        {},
+        getAuthHeaders(state.auth.accessToken),
+      );
+      return response.data.data;
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.error?.message ||
+          error.response?.data?.message ||
+          'Failed to accept friend request.',
+      );
+    }
+  },
+);
+
+// Thunk to decline/cancel a friend request
+export const declineFriendRequest = createAsyncThunk(
+  'chat/declineFriendRequest',
+  async (requestId: string, { getState, rejectWithValue }) => {
+    try {
+      const state = getState() as { auth: { accessToken: string | null } };
+      await axios.post(
+        `${API_URL}/users/friends/requests/${requestId}/decline`,
+        {},
+        getAuthHeaders(state.auth.accessToken),
+      );
+      return requestId;
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.error?.message ||
+          error.response?.data?.message ||
+          'Failed to decline friend request.',
+      );
+    }
+  },
+);
+
+// Thunk to remove a friend
+export const removeFriend = createAsyncThunk(
+  'chat/removeFriend',
+  async (friendId: string, { getState, rejectWithValue }) => {
+    try {
+      const state = getState() as { auth: { accessToken: string | null } };
+      await axios.delete(
+        `${API_URL}/users/friends/${friendId}`,
+        getAuthHeaders(state.auth.accessToken),
+      );
+      return friendId;
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.error?.message ||
+          error.response?.data?.message ||
+          'Failed to remove friend.',
+      );
+    }
+  },
+);
+
 const chatSlice = createSlice({
   name: 'chat',
   initialState,
@@ -330,6 +469,62 @@ const chatSlice = createSlice({
         convo.lastMessage.isRead = true;
       }
     },
+    socketReceiveFriendRequest: (state, action: PayloadAction<any>) => {
+      const request = action.payload;
+      if (!state.pendingRequests) {
+        state.pendingRequests = { incoming: [], outgoing: [] };
+      }
+      const exists = state.pendingRequests.incoming.some(
+        (r) => r.id === request.id,
+      );
+      if (!exists) {
+        state.pendingRequests.incoming.push(request);
+      }
+    },
+    socketFriendRequestAccepted: (
+      state,
+      action: PayloadAction<{ friendshipId: string; friend: any }>,
+    ) => {
+      const { friendshipId, friend } = action.payload;
+      if (state.pendingRequests) {
+        state.pendingRequests.incoming = state.pendingRequests.incoming.filter(
+          (r) => r.id !== friendshipId,
+        );
+        state.pendingRequests.outgoing = state.pendingRequests.outgoing.filter(
+          (r) => r.id !== friendshipId,
+        );
+      }
+      if (!state.friends) {
+        state.friends = [];
+      }
+      const exists = state.friends.some((f) => f.id === friend.id);
+      if (!exists) {
+        state.friends.push(friend);
+      }
+    },
+    socketFriendRequestDeclined: (
+      state,
+      action: PayloadAction<{ requestId: string }>,
+    ) => {
+      const { requestId } = action.payload;
+      if (state.pendingRequests) {
+        state.pendingRequests.incoming = state.pendingRequests.incoming.filter(
+          (r) => r.id !== requestId,
+        );
+        state.pendingRequests.outgoing = state.pendingRequests.outgoing.filter(
+          (r) => r.id !== requestId,
+        );
+      }
+    },
+    socketFriendRemoved: (
+      state,
+      action: PayloadAction<{ friendId: string }>,
+    ) => {
+      const { friendId } = action.payload;
+      if (state.friends) {
+        state.friends = state.friends.filter((f) => f.id !== friendId);
+      }
+    },
   },
   extraReducers: (builder) => {
     // Fetch conversations
@@ -454,6 +649,67 @@ const chatSlice = createSlice({
         delete state.convoRecipients[deletedId];
       },
     );
+
+    // Fetch friends
+    builder.addCase(
+      fetchFriends.fulfilled,
+      (state, action: PayloadAction<User[]>) => {
+        state.friends = action.payload;
+      },
+    );
+
+    // Fetch pending requests
+    builder.addCase(
+      fetchPendingRequests.fulfilled,
+      (state, action: PayloadAction<{ incoming: any[]; outgoing: any[] }>) => {
+        state.pendingRequests = action.payload;
+      },
+    );
+
+    // Send friend request
+    builder.addCase(
+      sendFriendRequest.fulfilled,
+      (state, action: PayloadAction<any>) => {
+        state.pendingRequests.outgoing.push(action.payload);
+      },
+    );
+
+    // Accept friend request
+    builder.addCase(
+      acceptFriendRequest.fulfilled,
+      (state, action: PayloadAction<any>) => {
+        const acceptedRequest = action.payload;
+        state.pendingRequests.incoming = state.pendingRequests.incoming.filter(
+          (req) => req.id !== acceptedRequest.id,
+        );
+        if (acceptedRequest.requester) {
+          state.friends.push(acceptedRequest.requester);
+        }
+      },
+    );
+
+    // Decline/Cancel friend request
+    builder.addCase(
+      declineFriendRequest.fulfilled,
+      (state, action: PayloadAction<string>) => {
+        const requestId = action.payload;
+        state.pendingRequests.incoming = state.pendingRequests.incoming.filter(
+          (req) => req.id !== requestId,
+        );
+        state.pendingRequests.outgoing = state.pendingRequests.outgoing.filter(
+          (req) => req.id !== requestId,
+        );
+      },
+    );
+
+    // Remove friend
+    builder.addCase(
+      removeFriend.fulfilled,
+      (state, action: PayloadAction<string>) => {
+        const friendId = action.payload;
+        state.friends = state.friends.filter((f) => f.id !== friendId);
+      },
+    );
   },
 });
 
@@ -468,6 +724,10 @@ export const {
   clearSearchResults,
   socketRemoveConversation,
   socketMarkMessagesAsRead,
+  socketReceiveFriendRequest,
+  socketFriendRequestAccepted,
+  socketFriendRequestDeclined,
+  socketFriendRemoved,
 } = chatSlice.actions;
 
 export default chatSlice.reducer;

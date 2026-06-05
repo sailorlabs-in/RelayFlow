@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 
 import { useAppDispatch, useAppSelector } from '../store';
 import type { User } from '../store/slices/authSlice';
-import { searchUsers, clearSearchResults } from '../store/slices/chatSlice';
 import { createGroup } from '../store/slices/groupsSlice';
 
 import { Avatar } from './Avatar';
@@ -18,22 +17,17 @@ export const CreateGroupModal = ({
 }: CreateGroupModalProps): React.JSX.Element => {
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((s) => s.auth);
-  const { searchResults } = useAppSelector((s) => s.chat);
+  const { friends } = useAppSelector((s) => s.chat);
 
   const [groupName, setGroupName] = useState('');
   const [description, setDescription] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setSearchQuery(val);
-    if (val.trim()) {
-      dispatch(searchUsers(val.trim()));
-    } else {
-      dispatch(clearSearchResults());
-    }
+    setSearchQuery(e.target.value);
   };
 
   const handleAddUser = (u: User) => {
@@ -41,7 +35,6 @@ export const CreateGroupModal = ({
       setSelectedUsers((prev) => [...prev, u]);
     }
     setSearchQuery('');
-    dispatch(clearSearchResults());
   };
 
   const handleRemoveUser = (userId: string) => {
@@ -64,7 +57,6 @@ export const CreateGroupModal = ({
         }),
       ).unwrap();
       showToast.success(`Group "${groupName}" created!`);
-      dispatch(clearSearchResults());
       onClose();
     } catch (err: any) {
       showToast.error(err || 'Failed to create group.');
@@ -73,8 +65,18 @@ export const CreateGroupModal = ({
     }
   };
 
-  const filteredResults = searchResults.filter(
-    (u) => u.id !== user?.id && !selectedUsers.some((s) => s.id === u.id),
+  const filteredResults = friends.filter(
+    (u) =>
+      u.id !== user?.id &&
+      !selectedUsers.some((s) => s.id === u.id) &&
+      (searchQuery.trim() === '' ||
+        (u.displayName || '')
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase().trim()) ||
+        (u.username || '')
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase().trim()) ||
+        u.email.toLowerCase().includes(searchQuery.toLowerCase().trim())),
   );
 
   return (
@@ -170,11 +172,15 @@ export const CreateGroupModal = ({
                     className="flex items-center gap-1.5 py-1 pl-1.5 pr-2 rounded-full bg-[var(--theme-btn-active)] border border-[var(--accent-primary)]"
                   >
                     <Avatar
-                      letter={(u.displayName || u.email)[0].toUpperCase()}
+                      letter={(u.username ||
+                        u.displayName ||
+                        u.email)[0].toUpperCase()}
                       size="sm"
                     />
                     <span className="text-xs font-semibold text-[var(--theme-btn-active-text)]">
-                      {u.displayName || u.email.split('@')[0]}
+                      {u.username
+                        ? `@${u.username}`
+                        : u.displayName || u.email.split('@')[0]}
                     </span>
                     <button
                       type="button"
@@ -198,38 +204,51 @@ export const CreateGroupModal = ({
                 type="text"
                 value={searchQuery}
                 onChange={handleSearchChange}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setIsSearchFocused(false)}
                 placeholder="Search by name or email…"
                 className="input-base w-full py-2.5 pl-9 pr-3.5 rounded-[10px] bg-[var(--bg-input)] border-[1.5px] border-[var(--glass-border)] text-[var(--text-primary)] text-[13.5px] box-border focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[2.5px] focus:ring-[var(--accent-ring)]"
               />
 
               {/* Search Dropdown */}
-              {filteredResults.length > 0 && (
-                <div className="absolute top-[calc(100%+4px)] left-0 right-0 bg-[var(--glass-bg)] border-[1.5px] border-[var(--glass-border)] rounded-[10px] overflow-y-auto max-h-[180px] z-[100] shadow-[var(--glass-shadow)]">
-                  {filteredResults.map((u) => (
-                    <div
-                      key={u.id}
-                      onClick={() => handleAddUser(u)}
-                      className="flex items-center gap-2.5 px-3.5 py-2.5 cursor-pointer border-b border-[var(--border-muted)] hover:bg-[var(--bg-input)] transition-colors duration-150 active-press fade-in-list"
-                    >
-                      <Avatar
-                        letter={(u.displayName || u.email)[0].toUpperCase()}
-                        size="sm"
-                      />
-                      <div>
-                        <div className="text-[13px] font-semibold text-[var(--text-primary)]">
-                          {u.displayName}
+              {(isSearchFocused || searchQuery.trim() !== '') &&
+                filteredResults.length > 0 && (
+                  <div className="absolute top-[calc(100%+4px)] left-0 right-0 bg-[var(--glass-bg)] border-[1.5px] border-[var(--glass-border)] rounded-[10px] overflow-y-auto max-h-[180px] z-[100] shadow-[var(--glass-shadow)]">
+                    {filteredResults.map((u) => (
+                      <div
+                        key={u.id}
+                        onMouseDown={(e) => {
+                          e.preventDefault(); // Prevents blur event
+                          handleAddUser(u);
+                        }}
+                        className="flex items-center gap-2.5 px-3.5 py-2.5 cursor-pointer border-b border-[var(--border-muted)] hover:bg-[var(--bg-input)] transition-colors duration-150 active-press fade-in-list"
+                      >
+                        <Avatar
+                          letter={(u.username ||
+                            u.displayName ||
+                            u.email)[0].toUpperCase()}
+                          size="sm"
+                        />
+                        <div>
+                          <div className="text-[13px] font-semibold text-[var(--text-primary)]">
+                            {u.username
+                              ? `@${u.username}`
+                              : u.displayName || u.email.split('@')[0]}
+                          </div>
+                          <div className="text-[11px] text-[var(--text-muted)]">
+                            {u.username && u.displayName
+                              ? `${u.displayName} • `
+                              : ''}
+                            {u.email}
+                          </div>
                         </div>
-                        <div className="text-[11px] text-[var(--text-muted)]">
-                          {u.email}
+                        <div className="ml-auto text-[var(--accent-primary)] flex">
+                          <IconPlus size={14} />
                         </div>
                       </div>
-                      <div className="ml-auto text-[var(--accent-primary)] flex">
-                        <IconPlus size={14} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
             </div>
           </div>
         </form>

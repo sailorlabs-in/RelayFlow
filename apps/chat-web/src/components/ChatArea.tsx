@@ -18,6 +18,7 @@ import { socketManager } from '../store/socketManager';
 
 import { Avatar } from './Avatar';
 import { ConfirmationModal } from './ConfirmationModal';
+import { FriendsDashboard } from './FriendsDashboard';
 import {
   IconSend,
   IconTrash,
@@ -113,7 +114,7 @@ export const ChatArea = ({
       clearTimeout(typingTimeoutRef.current);
     }
 
-    if (activeConversationId) {
+    if (activeConversationId && activeConversationId !== 'friends') {
       dispatch(
         fetchMessages({
           conversationId: activeConversationId,
@@ -131,7 +132,7 @@ export const ChatArea = ({
   }, [activeConversationId, dispatch]);
 
   useEffect(() => {
-    if (activeConversationId) {
+    if (activeConversationId && activeConversationId !== 'friends') {
       const recipientId = convoRecipients[activeConversationId];
       if (
         recipientId &&
@@ -146,7 +147,12 @@ export const ChatArea = ({
 
   // Fetch profiles for typing users if they are not cached
   useEffect(() => {
-    if (!activeConversationId || !typingUsers[activeConversationId] || !user) {
+    if (
+      !activeConversationId ||
+      activeConversationId === 'friends' ||
+      !typingUsers[activeConversationId] ||
+      !user
+    ) {
       return;
     }
     Object.entries(typingUsers[activeConversationId]).forEach(
@@ -159,9 +165,10 @@ export const ChatArea = ({
   }, [activeConversationId, typingUsers, userProfiles, user, dispatch]);
 
   // ---- Scroll & Anchor Management ----
-  const activeMessages = activeConversationId
-    ? messages[activeConversationId] || []
-    : [];
+  const activeMessages =
+    activeConversationId && activeConversationId !== 'friends'
+      ? messages[activeConversationId] || []
+      : [];
 
   useEffect(() => {
     isFirstRenderForConvoRef.current = true;
@@ -169,7 +176,11 @@ export const ChatArea = ({
 
   useLayoutEffect(() => {
     const container = feedContainerRef.current;
-    if (!container || !activeConversationId) {
+    if (
+      !container ||
+      !activeConversationId ||
+      activeConversationId === 'friends'
+    ) {
       return;
     }
 
@@ -275,7 +286,11 @@ export const ChatArea = ({
 
   // ---- Resolve sender profiles ----
   useEffect(() => {
-    if (activeConversationId && messages[activeConversationId]) {
+    if (
+      activeConversationId &&
+      activeConversationId !== 'friends' &&
+      messages[activeConversationId]
+    ) {
       messages[activeConversationId].forEach((msg) => {
         if (user && msg.senderId !== user.id && !userProfiles[msg.senderId]) {
           dispatch(fetchUserProfile(msg.senderId));
@@ -375,8 +390,10 @@ export const ChatArea = ({
     if (recipientId && userProfiles[recipientId]) {
       const r = userProfiles[recipientId];
       return {
-        name: r.displayName || r.email.split('@')[0],
-        letter: (r.displayName || r.email)[0].toUpperCase(),
+        name: r.username
+          ? `@${r.username}`
+          : r.displayName || r.email.split('@')[0],
+        letter: (r.username || r.displayName || r.email)[0].toUpperCase(),
         email: r.email,
         id: r.id,
       };
@@ -387,6 +404,10 @@ export const ChatArea = ({
 
   if (!user) {
     return <div className="flex-1" />;
+  }
+
+  if (activeConversationId === 'friends') {
+    return <FriendsDashboard />;
   }
 
   const activeConvo = conversations.find((c) => c.id === activeConversationId);
@@ -410,9 +431,11 @@ export const ChatArea = ({
           .filter(([uid, typing]) => uid !== user.id && typing)
           .map(([uid]) => {
             const profile = userProfiles[uid];
-            return (
-              profile?.displayName || profile?.email?.split('@')[0] || 'Someone'
-            );
+            return profile?.username
+              ? `@${profile.username}`
+              : profile?.displayName ||
+                  profile?.email?.split('@')[0] ||
+                  'Someone';
           })
       : [];
 
@@ -554,10 +577,14 @@ export const ChatArea = ({
                 const isOut = msg.senderId === user.id;
                 const senderProfile = userProfiles[msg.senderId];
                 const senderName = isOut
-                  ? user.displayName || user.email.split('@')[0]
-                  : senderProfile?.displayName ||
-                    senderProfile?.email?.split('@')[0] ||
-                    'User';
+                  ? user.username
+                    ? `@${user.username}`
+                    : user.displayName || user.email.split('@')[0]
+                  : senderProfile?.username
+                    ? `@${senderProfile.username}`
+                    : senderProfile?.displayName ||
+                      senderProfile?.email?.split('@')[0] ||
+                      'User';
 
                 if (isChannelMode) {
                   return (
