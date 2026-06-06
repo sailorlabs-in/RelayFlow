@@ -10,7 +10,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, Not } from 'typeorm';
+import { Repository, In, Not, IsNull } from 'typeorm';
 
 import { UsersService } from '../users/users.service';
 
@@ -126,6 +126,10 @@ export class ChatService {
                 isRead: lastMessage.isRead,
                 createdAt: lastMessage.createdAt.toISOString(),
                 updatedAt: lastMessage.updatedAt.toISOString(),
+                mediaUrl: lastMessage.mediaUrl,
+                mediaType: lastMessage.mediaType,
+                mediaName: lastMessage.mediaName,
+                mediaSize: lastMessage.mediaSize,
               }
             : null,
         };
@@ -142,13 +146,70 @@ export class ChatService {
   }
 
   async deleteConversation(conversationId: string): Promise<void> {
-    // 1. Wipe message archives
+    // 1. Fetch messages with media first
+    try {
+      const messagesWithMedia = await this.messageRepository.find({
+        where: {
+          conversationId,
+          mediaUrl: Not(IsNull()),
+        },
+        select: ['mediaUrl'],
+      });
+
+      const bucketUrl = (
+        process.env.BUCKET_URL || 'https://bucket.umangsailor.com'
+      ).replace(/\/+$/, '');
+      const prefix = `${bucketUrl}/storage/`;
+
+      const mediaToClean: { bucket: string; name: string }[] = [];
+      for (const msg of messagesWithMedia) {
+        if (msg.mediaUrl && msg.mediaUrl.startsWith(prefix)) {
+          const path = msg.mediaUrl.slice(prefix.length);
+          const parts = path.split('/');
+          if (parts.length >= 2) {
+            const bucket = parts[0];
+            const name = parts.slice(1).join('/');
+            mediaToClean.push({ bucket, name });
+          }
+        }
+      }
+
+      // Group by bucket
+      const bucketGroups: { [bucket: string]: string[] } = {};
+      for (const item of mediaToClean) {
+        if (!bucketGroups[item.bucket]) {
+          bucketGroups[item.bucket] = [];
+        }
+        bucketGroups[item.bucket].push(item.name);
+      }
+
+      // Call delete in batches of 20
+      for (const [bucket, names] of Object.entries(bucketGroups)) {
+        for (let i = 0; i < names.length; i += 20) {
+          const batch = names.slice(i, i + 20);
+          await fetch(`${bucketUrl}/files`, {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              bucket,
+              names: batch,
+            }),
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to batch clean conversation media:', err);
+    }
+
+    // 2. Wipe message archives
     await this.messageRepository.delete({ conversationId });
 
-    // 2. Wipe memberships
+    // 3. Wipe memberships
     await this.memberRepository.delete({ conversationId });
 
-    // 3. Wipe conversation record
+    // 4. Wipe conversation record
     await this.conversationRepository.delete({ id: conversationId });
   }
 
@@ -157,6 +218,10 @@ export class ChatService {
     senderId: string,
     content: string,
     isRead = false,
+    mediaUrl?: string,
+    mediaType?: string,
+    mediaName?: string,
+    mediaSize?: number,
   ): Promise<Message> {
     const isMember = await this.memberRepository.findOne({
       where: { conversationId, userId: senderId },
@@ -172,6 +237,10 @@ export class ChatService {
       senderId,
       content,
       isRead,
+      mediaUrl,
+      mediaType,
+      mediaName,
+      mediaSize,
     });
 
     return this.messageRepository.save(message);
@@ -205,7 +274,50 @@ export class ChatService {
   }
 
   async deleteMessage(messageId: string): Promise<void> {
+    try {
+      const message = await this.messageRepository.findOne({
+        where: { id: messageId },
+      });
+      if (message && message.mediaUrl) {
+        await this.deleteMediaFile(message.mediaUrl);
+      }
+    } catch (err) {
+      console.error('Failed to clean single message media:', err);
+    }
     await this.messageRepository.delete({ id: messageId });
+  }
+
+  private async deleteMediaFile(url: string): Promise<void> {
+    if (!url) {
+      return;
+    }
+    try {
+      const bucketUrl = (
+        process.env.BUCKET_URL || 'https://bucket.umangsailor.com'
+      ).replace(/\/+$/, '');
+      const prefix = `${bucketUrl}/storage/`;
+      if (url.startsWith(prefix)) {
+        const path = url.slice(prefix.length);
+        const parts = path.split('/');
+        if (parts.length >= 2) {
+          const bucket = parts[0];
+          const name = parts.slice(1).join('/');
+
+          await fetch(`${bucketUrl}/files`, {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              bucket,
+              names: [name],
+            }),
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Failed to delete media from external storage:', error);
+    }
   }
 
   async getConversation(id: string): Promise<Conversation | null> {

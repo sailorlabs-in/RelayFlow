@@ -114,6 +114,10 @@ export class UsersController {
         notificationsGroupEnabled: { type: 'boolean', example: true },
         notificationsInAppEnabled: { type: 'boolean', example: true },
         notificationsFriendRequestEnabled: { type: 'boolean', example: true },
+        avatarUrl: {
+          type: 'string',
+          example: 'https://bucket.umangsailor.com/storage/profiles/avatar.png',
+        },
       },
     },
   })
@@ -140,6 +144,7 @@ export class UsersController {
       notificationsFriendRequestEnabled?: boolean;
       isTwoFactorEnabled?: boolean;
       twoFactorOnlyNewDevice?: boolean;
+      avatarUrl?: string;
     },
   ): Promise<User> {
     return this.usersService.updateProfile(currentUser.userId, body);

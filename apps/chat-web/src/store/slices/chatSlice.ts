@@ -22,6 +22,10 @@ export interface Message {
   isRead?: boolean;
   createdAt: string;
   updatedAt: string;
+  mediaUrl?: string;
+  mediaType?: string;
+  mediaName?: string;
+  mediaSize?: number;
 }
 
 export interface ChatState {

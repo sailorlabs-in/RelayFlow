@@ -363,6 +363,7 @@ export const FriendsDashboard = (): React.JSX.Element => {
                           letter={(requester.username ||
                             requester.displayName ||
                             requester.email)[0].toUpperCase()}
+                          url={requester.avatarUrl}
                           size="md"
                         />
                         <div>
@@ -426,6 +427,7 @@ export const FriendsDashboard = (): React.JSX.Element => {
                           letter={(addressee.username ||
                             addressee.displayName ||
                             addressee.email)[0].toUpperCase()}
+                          url={addressee.avatarUrl}
                           size="md"
                         />
                         <div>
@@ -498,6 +500,7 @@ export const FriendsDashboard = (): React.JSX.Element => {
                     letter={(foundUser.username ||
                       foundUser.displayName ||
                       foundUser.email)[0].toUpperCase()}
+                    url={foundUser.avatarUrl}
                     size="lg"
                   />
                   <div>
@@ -573,6 +576,7 @@ export const FriendsDashboard = (): React.JSX.Element => {
               letter={(hoveredFriend.username ||
                 hoveredFriend.displayName ||
                 hoveredFriend.email)[0].toUpperCase()}
+              url={hoveredFriend.avatarUrl}
               status={hoveredFriend.presence}
               size="md"
             />
@@ -672,6 +676,7 @@ const FriendRow = ({
           letter={(friend.username ||
             friend.displayName ||
             friend.email)[0].toUpperCase()}
+          url={friend.avatarUrl}
           status={status}
           size="md"
         />

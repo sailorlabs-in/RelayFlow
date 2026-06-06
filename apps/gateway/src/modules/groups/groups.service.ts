@@ -63,6 +63,7 @@ export class GroupsService {
     name: string,
     description?: string,
     memberUserIds: string[] = [],
+    avatarUrl?: string,
   ): Promise<any> {
     const iconLetter = name.trim()[0]?.toUpperCase() || 'G';
 
@@ -71,6 +72,7 @@ export class GroupsService {
       description,
       ownerId,
       iconLetter,
+      avatarUrl,
     });
     const savedGroup = await this.groupRepo.save(group);
 
@@ -144,6 +146,7 @@ export class GroupsService {
     requesterId: string,
     name: string,
     description?: string,
+    avatarUrl?: string,
   ): Promise<any> {
     const group = await this.groupRepo.findOne({ where: { id: groupId } });
     if (!group) {
@@ -165,6 +168,9 @@ export class GroupsService {
     group.name = name.trim();
     if (description !== undefined) {
       group.description = description;
+    }
+    if (avatarUrl !== undefined) {
+      group.avatarUrl = avatarUrl;
     }
     group.iconLetter = name.trim()[0]?.toUpperCase() || 'G';
 

@@ -21,6 +21,7 @@ import {
 import { socketUpdateUserStatus } from '../../store/slices/chatSlice';
 import { socketManager } from '../../store/socketManager';
 import StoreProvider from '../../store/StoreProvider';
+import { Avatar } from '../../components/Avatar';
 
 /* ── SVGs for icons ────────────────────────────────────────── */
 
@@ -179,12 +180,107 @@ export function ProfileSettingsContent({
   // Account State
   const [displayName, setDisplayName] = useState('');
   const [username, setUsername] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('');
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(
     null,
   );
   const [checkingUsername, setCheckingUsername] = useState(false);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+
+  const deleteOldMedia = async (url: string) => {
+    if (!url) {
+      return;
+    }
+    try {
+      const bucketUrl = (
+        process.env.NEXT_PUBLIC_BUCKET_URL || 'https://bucket.umangsailor.com'
+      ).replace(/\/+$/, '');
+      const prefix = `${bucketUrl}/storage/`;
+      if (url.startsWith(prefix)) {
+        const path = url.slice(prefix.length);
+        const parts = path.split('/');
+        if (parts.length >= 2) {
+          const bucket = parts[0];
+          const name = parts.slice(1).join('/');
+          await fetch(`${bucketUrl}/files`, {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              bucket,
+              names: [name],
+            }),
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to delete old media:', err);
+    }
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      setMessage({ type: 'error', text: '❌ Only image files are allowed.' });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage({ type: 'error', text: '❌ Image size cannot exceed 5MB.' });
+      return;
+    }
+
+    setUploadingAvatar(true);
+
+    if (avatarUrl) {
+      await deleteOldMedia(avatarUrl);
+    }
+
+    const formData = new FormData();
+    formData.append('bucket', 'relayflow');
+    formData.append('folder', 'profile-media');
+    formData.append('files', file);
+
+    try {
+      const bucketUrl = (
+        process.env.NEXT_PUBLIC_BUCKET_URL || 'https://bucket.umangsailor.com'
+      ).replace(/\/+$/, '');
+      const response = await fetch(`${bucketUrl}/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const data = await response.json();
+      if (data.files && data.files.length > 0) {
+        const uploaded = data.files[0];
+        setAvatarUrl(uploaded.url);
+        setMessage({
+          type: 'success',
+          text: '✔ Avatar uploaded successfully!',
+        });
+      } else {
+        throw new Error('No files returned');
+      }
+    } catch (err) {
+      console.error('Avatar upload error:', err);
+      setMessage({ type: 'error', text: '❌ Failed to upload avatar.' });
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
 
   // Theme State
   const [themeMode, setThemeMode] = useState('system');
@@ -245,6 +341,7 @@ export function ProfileSettingsContent({
       );
       setIsTwoFactorEnabled(user.isTwoFactorEnabled ?? false);
       setTwoFactorOnlyNewDevice(user.twoFactorOnlyNewDevice ?? false);
+      setAvatarUrl(user.avatarUrl || '');
       hasInitializedRef.current = true;
     }
   }, [user, accessToken, router, isModal]);
@@ -364,6 +461,7 @@ export function ProfileSettingsContent({
         notificationsFriendRequestEnabled,
         isTwoFactorEnabled,
         twoFactorOnlyNewDevice,
+        avatarUrl,
       };
 
       if (password) {
@@ -675,6 +773,59 @@ export function ProfileSettingsContent({
                   >
                     Modify your basic account info, username, and password.
                   </p>
+                </div>
+
+                {/* Avatar upload picture container */}
+                <div className="flex items-center gap-4 p-4 rounded-xl border border-[var(--glass-border)] bg-[rgba(0,0,0,0.02)] dark:bg-[rgba(255,255,255,0.015)] shadow-sm animate-fade-in">
+                  <div className="relative shrink-0">
+                    <Avatar
+                      letter={(displayName ||
+                        username ||
+                        user.email)[0].toUpperCase()}
+                      url={avatarUrl}
+                      size="lg"
+                      status={userStatus}
+                    />
+                    {uploadingAvatar && (
+                      <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center">
+                        <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin border-white" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2">
+                      Profile Picture
+                    </label>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        disabled={uploadingAvatar}
+                        onClick={() => avatarInputRef.current?.click()}
+                        className="px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer border-none bg-[var(--theme-btn-active)] text-[var(--theme-btn-active-text)] hover:opacity-95 disabled:opacity-50 active-press"
+                      >
+                        Change Avatar
+                      </button>
+                      {avatarUrl && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            deleteOldMedia(avatarUrl);
+                            setAvatarUrl('');
+                          }}
+                          className="px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer border border-[var(--danger-border)] bg-[var(--danger-bg)] text-[var(--danger)] hover:bg-[var(--danger)] hover:text-white transition-all active-press"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                    <input
+                      type="file"
+                      ref={avatarInputRef}
+                      onChange={handleAvatarUpload}
+                      accept="image/*"
+                      className="hidden"
+                    />
+                  </div>
                 </div>
 
                 <div className="flex flex-col gap-1.5">

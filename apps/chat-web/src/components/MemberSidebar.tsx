@@ -90,6 +90,7 @@ export const MemberSidebar = ({
       displayName,
       email,
       username,
+      avatarUrl: userDetail?.avatarUrl,
       presence,
       isOwner,
       isTyping,
@@ -162,6 +163,7 @@ export const MemberSidebar = ({
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
           <Avatar
             letter={m.displayName[0].toUpperCase()}
+            url={m.avatarUrl}
             status={m.presence}
             size="sm"
           />
@@ -308,6 +310,7 @@ export const MemberSidebar = ({
           <div className="flex items-center gap-3">
             <Avatar
               letter={hoveredMember.displayName[0].toUpperCase()}
+              url={hoveredMember.avatarUrl}
               status={hoveredMember.presence}
               size="md"
             />

@@ -25,8 +25,11 @@ import {
   IconChat,
   IconCheck,
   IconDoubleCheck,
+  IconX,
 } from './Icons';
 import { PresenceDot } from './PresenceDot';
+import { showToast } from './toast';
+import type { Message } from '../store/slices/chatSlice';
 
 interface ChatAreaProps {
   activeConversationId: string | null;
@@ -59,6 +62,76 @@ const isOnlyEmojis = (str: string): boolean => {
   return true;
 };
 
+const renderMessageMedia = (msg: Message) => {
+  if (!msg.mediaUrl) {
+    return null;
+  }
+  const isImage = msg.mediaType?.startsWith('image/');
+  const isVideo = msg.mediaType?.startsWith('video/');
+
+  if (isImage) {
+    return (
+      <div className="mt-1.5 max-w-sm rounded-lg overflow-hidden border border-[var(--border-muted)] bg-[var(--bg-input)]">
+        <img
+          src={msg.mediaUrl}
+          alt={msg.mediaName || 'Image'}
+          className="w-full max-h-60 object-cover cursor-pointer hover:opacity-90"
+          onClick={() => window.open(msg.mediaUrl, '_blank')}
+        />
+      </div>
+    );
+  }
+
+  if (isVideo) {
+    return (
+      <div className="mt-1.5 max-w-sm rounded-lg overflow-hidden border border-[var(--border-muted)] bg-[var(--bg-input)]">
+        <video
+          src={msg.mediaUrl}
+          controls
+          className="w-full max-h-60 object-cover"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-1.5 flex items-center gap-3 p-3 rounded-lg border border-[var(--border-muted)] bg-[var(--bg-input)] max-w-sm text-[13px] text-left">
+      <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-[var(--accent-primary)] text-white text-[16px] shrink-0">
+        📁
+      </div>
+      <div className="flex-1 min-w-0 pr-2">
+        <div className="font-semibold truncate text-[var(--text-primary)] text-[13.5px]">
+          {msg.mediaName || 'Attachment'}
+        </div>
+        <div className="text-[11px] text-[var(--text-muted)] mt-0.5">
+          {msg.mediaSize
+            ? `${(msg.mediaSize / 1024).toFixed(1)} KB`
+            : 'Unknown size'}
+        </div>
+      </div>
+      <a
+        href={msg.mediaUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="p-1.5 rounded-lg bg-[var(--theme-btn)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--theme-btn-hover)] shrink-0 flex items-center justify-center active-press"
+        title="Download file"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          className="w-4 h-4"
+        >
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="7 10 12 15 17 10" />
+          <line x1="12" y1="15" x2="12" y2="3" />
+        </svg>
+      </a>
+    </div>
+  );
+};
+
 export const ChatArea = ({
   activeConversationId,
   setIsComposeOpen,
@@ -85,6 +158,105 @@ export const ChatArea = ({
   const [messageInput, setMessageInput] = useState('');
   const [isTypingState, setIsTypingState] = useState(false);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [attachedFile, setAttachedFile] = useState<{
+    url: string;
+    name: string;
+    type: string;
+    size: number;
+  } | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const deleteUploadedFile = async (url: string) => {
+    if (!url) {
+      return;
+    }
+    try {
+      const bucketUrl = (
+        process.env.NEXT_PUBLIC_BUCKET_URL || 'https://bucket.umangsailor.com'
+      ).replace(/\/+$/, '');
+      const prefix = `${bucketUrl}/storage/`;
+      if (url.startsWith(prefix)) {
+        const path = url.slice(prefix.length);
+        const parts = path.split('/');
+        if (parts.length >= 2) {
+          const bucket = parts[0];
+          const name = parts.slice(1).join('/');
+          await fetch(`${bucketUrl}/files`, {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              bucket,
+              names: [name],
+            }),
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to delete uploaded file:', err);
+    }
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    if (file.size > 20 * 1024 * 1024) {
+      showToast.error('File size cannot exceed 20MB.');
+      return;
+    }
+
+    setUploading(true);
+
+    if (attachedFile) {
+      await deleteUploadedFile(attachedFile.url);
+    }
+
+    const formData = new FormData();
+    formData.append('bucket', 'relayflow');
+    formData.append('folder', 'chat-medis');
+    formData.append('files', file);
+
+    try {
+      const bucketUrl = (
+        process.env.NEXT_PUBLIC_BUCKET_URL || 'https://bucket.umangsailor.com'
+      ).replace(/\/+$/, '');
+      const response = await fetch(`${bucketUrl}/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const data = await response.json();
+      if (data.files && data.files.length > 0) {
+        const uploaded = data.files[0];
+        setAttachedFile({
+          url: uploaded.url,
+          name: uploaded.originalName || file.name,
+          type: file.type || 'application/octet-stream',
+          size: file.size,
+        });
+      } else {
+        throw new Error('No files returned');
+      }
+    } catch (err) {
+      console.error('File upload error:', err);
+      showToast.error('Failed to upload file.');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -302,16 +474,28 @@ export const ChatArea = ({
   // ---- Messages ----
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!messageInput.trim() || !activeConversationId) {
+    if ((!messageInput.trim() && !attachedFile) || !activeConversationId) {
       return;
     }
-    socketManager.sendMessage(activeConversationId, messageInput.trim());
+
+    const media = attachedFile
+      ? {
+          mediaUrl: attachedFile.url,
+          mediaType: attachedFile.type,
+          mediaName: attachedFile.name,
+          mediaSize: attachedFile.size,
+        }
+      : undefined;
+
+    socketManager.sendMessage(activeConversationId, messageInput.trim(), media);
+
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
     }
     socketManager.stopTyping(activeConversationId);
     setIsTypingState(false);
     setMessageInput('');
+    setAttachedFile(null);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -396,6 +580,7 @@ export const ChatArea = ({
         letter: (r.username || r.displayName || r.email)[0].toUpperCase(),
         email: r.email,
         id: r.id,
+        avatarUrl: r.avatarUrl,
       };
     }
 
@@ -488,6 +673,7 @@ export const ChatArea = ({
               <>
                 <Avatar
                   letter={activeDetails?.letter || ''}
+                  url={activeDetails?.avatarUrl}
                   status={activeStatus}
                   size="md"
                 />
@@ -593,11 +779,13 @@ export const ChatArea = ({
                       className="flex items-start gap-3 animate-fade-in group justify-between hover:bg-[rgba(0,0,0,0.015)] dark:hover:bg-[rgba(255,255,255,0.01)] rounded-xl px-2 py-1.5 transition-colors duration-150 -mx-2"
                     >
                       <div className="flex items-start gap-3 flex-1 min-w-0">
-                        <div
-                          className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0 border-2 border-[var(--glass-border)] ${isOut ? 'bg-[var(--accent-primary)] text-white' : 'bg-[var(--bg-input)] text-[var(--text-primary)]'}`}
-                        >
-                          {senderName[0]?.toUpperCase()}
-                        </div>
+                        <Avatar
+                          letter={senderName[0]?.toUpperCase() || 'U'}
+                          url={
+                            isOut ? user.avatarUrl : senderProfile?.avatarUrl
+                          }
+                          size="sm"
+                        />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-baseline gap-2 mb-1">
                             <span
@@ -612,11 +800,14 @@ export const ChatArea = ({
                               })}
                             </span>
                           </div>
-                          <div
-                            className={`text-sm leading-relaxed text-[var(--text-primary)] break-all ${isOnlyEmojis(msg.content) ? 'text-[60px] leading-[60px]' : ''}`}
-                          >
-                            {msg.content}
-                          </div>
+                          {msg.content && (
+                            <div
+                              className={`text-sm leading-relaxed text-[var(--text-primary)] break-all ${isOnlyEmojis(msg.content) ? 'text-[60px] leading-[60px]' : ''}`}
+                            >
+                              {msg.content}
+                            </div>
+                          )}
+                          {renderMessageMedia(msg)}
                         </div>
                       </div>
                       {isOut && (
@@ -649,15 +840,18 @@ export const ChatArea = ({
                     <div
                       className={`flex flex-col ${isOut ? 'items-end' : 'items-start'} min-w-0 flex-1`}
                     >
-                      <div
-                        className={
-                          isOnlyEmojis(msg.content)
-                            ? `text-[60px] leading-[60px] break-words select-all ${isOut ? 'text-right' : 'text-left'}`
-                            : `px-4 py-2.5 rounded-[18px] text-[14px] leading-relaxed break-words ${isOut ? 'msg-bubble-out' : 'msg-bubble-in'}`
-                        }
-                      >
-                        {msg.content}
-                      </div>
+                      {msg.content && (
+                        <div
+                          className={
+                            isOnlyEmojis(msg.content)
+                              ? `text-[60px] leading-[60px] break-words select-all ${isOut ? 'text-right' : 'text-left'}`
+                              : `px-4 py-2.5 rounded-[18px] text-[14px] leading-relaxed break-words ${isOut ? 'msg-bubble-out' : 'msg-bubble-in'}`
+                          }
+                        >
+                          {msg.content}
+                        </div>
+                      )}
+                      {renderMessageMedia(msg)}
                       <div className="flex items-center gap-1 mt-1 px-1 select-none">
                         <span className="text-[10px] text-[var(--text-muted)]">
                           {new Date(msg.createdAt).toLocaleTimeString([], {
@@ -739,10 +933,71 @@ export const ChatArea = ({
 
           {/* Input Area */}
           <div className="px-4 py-3.5 border-t border-[var(--border-muted)] bg-[var(--bg-sidebar)] rounded-b-2xl">
+            {attachedFile && (
+              <div className="flex items-center gap-3 p-2 mb-2 rounded-xl border border-[var(--border-muted)] bg-[var(--bg-input)] animate-fade-in text-[13px] relative max-w-md">
+                {attachedFile.type.startsWith('image/') ? (
+                  <img
+                    src={attachedFile.url}
+                    alt="Preview"
+                    className="w-12 h-12 object-cover rounded-lg shrink-0"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-[var(--accent-primary)] text-white text-[20px] shrink-0">
+                    📄
+                  </div>
+                )}
+                <div className="flex-1 min-w-0 pr-6">
+                  <div className="font-semibold truncate text-[var(--text-primary)] text-[13.5px]">
+                    {attachedFile.name}
+                  </div>
+                  <div className="text-[11px] text-[var(--text-muted)] mt-0.5">
+                    {(attachedFile.size / 1024).toFixed(1)} KB
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    deleteUploadedFile(attachedFile.url);
+                    setAttachedFile(null);
+                  }}
+                  className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center bg-[var(--danger-bg)] text-[var(--danger)] border-none cursor-pointer hover:bg-[var(--danger)] hover:text-white transition-all duration-150 active-press"
+                  title="Remove attachment"
+                >
+                  <IconX size={10} />
+                </button>
+              </div>
+            )}
             <form
               className="flex gap-2.5 items-end"
               onSubmit={handleSendMessage}
             >
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="w-[46px] h-[46px] rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-200 bg-[var(--bg-input)] text-[var(--text-muted)] hover:bg-[var(--theme-btn-hover)] hover:text-[var(--text-primary)] active-press"
+                title="Attach a file"
+              >
+                {uploading ? (
+                  <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin border-[var(--text-primary)]" />
+                ) : (
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    className="w-[18px] h-[18px]"
+                  >
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                  </svg>
+                )}
+              </button>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                className="hidden"
+              />
               <textarea
                 id="message-input"
                 className="input-base flex-1 rounded-xl px-4 py-2.5 text-[14px] resize-none leading-relaxed min-h-7.5 max-h-30 bg-theme-input border-[1.5px] border-glass text-theme-primary focus:outline-none focus:border-(--accent-primary) focus:ring-[3px] focus:ring-[var(--accent-ring)]"
@@ -760,7 +1015,7 @@ export const ChatArea = ({
               <button
                 id="send-message-btn"
                 type="submit"
-                disabled={!messageInput.trim()}
+                disabled={!messageInput.trim() && !attachedFile}
                 className="btn-send w-[46px] h-[46px] rounded-xl flex-shrink-0 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed hover:-translate-y-0.5 hover:shadow-[var(--btn-shadow)] active-press"
               >
                 <IconSend />

@@ -22,6 +22,7 @@ import {
 } from './Icons';
 import { showToast } from './toast';
 import { ConfirmationModal } from './ConfirmationModal';
+import { Avatar } from './Avatar';
 
 interface ChannelSidebarProps {
   group: Group;
@@ -358,21 +359,15 @@ export const ChannelSidebar = ({
 
       {/* Bottom user bar */}
       <div className="p-3 border-t-[1.5px] border-theme flex items-center gap-2 bg-[rgba(0,0,0,0.05)] dark:bg-[rgba(255,255,255,0.015)] shadow-inner">
-        <div className="w-8 h-8 rounded-full bg-[var(--accent-primary)] flex items-center justify-center text-[13px] font-bold text-white flex-shrink-0 relative shadow-sm">
-          {(user?.username ||
+        <Avatar
+          letter={(user?.username ||
             user?.displayName ||
             user?.email ||
             'U')[0].toUpperCase()}
-          <span
-            className={`absolute bottom-0 right-0 w-[9px] h-[9px] rounded-full border-2 border-[var(--bg-sidebar)] ${
-              ownStatus === 'online'
-                ? 'bg-emerald-500'
-                : ownStatus === 'away'
-                  ? 'bg-amber-500'
-                  : 'bg-slate-500'
-            }`}
-          />
-        </div>
+          url={user?.avatarUrl}
+          status={ownStatus}
+          size="sm"
+        />
         <div className="flex-1 min-w-0">
           <div className="text-[12.5px] font-semibold text-[var(--text-primary)] truncate">
             {user?.username

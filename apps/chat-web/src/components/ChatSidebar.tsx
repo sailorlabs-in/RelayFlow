@@ -75,10 +75,17 @@ export const ChatSidebar = ({
         letter: (r.username || r.displayName || r.email)[0].toUpperCase(),
         email: r.email,
         id: r.id,
+        avatarUrl: r.avatarUrl,
       };
     }
 
-    return { name: 'Direct Message', letter: 'D', email: '', id: null };
+    return {
+      name: 'Direct Message',
+      letter: 'D',
+      email: '',
+      id: null,
+      avatarUrl: undefined,
+    };
   };
 
   if (!user) {
@@ -115,6 +122,7 @@ export const ChatSidebar = ({
           letter={(user.username ||
             user.displayName ||
             user.email)[0].toUpperCase()}
+          url={user.avatarUrl}
           status={ownStatus}
           size="md"
         />
@@ -260,6 +268,7 @@ export const ChatSidebar = ({
                 />
                 <Avatar
                   letter={details.letter}
+                  url={details.avatarUrl}
                   status={recipientStatus}
                   size="md"
                 />
@@ -298,7 +307,14 @@ export const ChatSidebar = ({
                     </div>
                   ) : (
                     <div className="text-[11.5px] truncate text-[var(--text-secondary)]">
-                      {lastMsg ? lastMsg.content : 'No messages yet'}
+                      {lastMsg
+                        ? lastMsg.content ||
+                          (lastMsg.mediaType?.startsWith('image/')
+                            ? '📷 Photo'
+                            : lastMsg.mediaType?.startsWith('video/')
+                              ? '🎥 Video'
+                              : '📁 Attachment')
+                        : 'No messages yet'}
                     </div>
                   )}
                 </div>

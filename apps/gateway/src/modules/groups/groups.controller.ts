@@ -143,6 +143,10 @@ export class GroupsController {
         name: { type: 'string', example: 'My Awesome Server' },
         description: { type: 'string', example: 'A cool group for friends' },
         memberUserIds: { type: 'array', items: { type: 'string' } },
+        avatarUrl: {
+          type: 'string',
+          example: 'https://bucket.umangsailor.com/storage/profiles/group.png',
+        },
       },
     },
   })
@@ -152,12 +156,14 @@ export class GroupsController {
     @Body('name') name: string,
     @Body('description') description?: string,
     @Body('memberUserIds') memberUserIds?: string[],
+    @Body('avatarUrl') avatarUrl?: string,
   ) {
     const group = await this.groupsService.createGroup(
       currentUser.userId,
       name,
       description,
       memberUserIds || [],
+      avatarUrl,
     );
 
     // Notify all invited members about the new group via socket
@@ -185,19 +191,34 @@ export class GroupsController {
 
   // ─── Update group name/description ───────────────────────────────────────────
   @Patch(':id')
-  @ApiOperation({ summary: 'Update group name and description' })
+  @ApiOperation({ summary: 'Update group name, description, and avatar' })
   @ApiParam({ name: 'id', description: 'Group UUID' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', example: 'My Awesome Server' },
+        description: { type: 'string', example: 'A cool group for friends' },
+        avatarUrl: {
+          type: 'string',
+          example: 'https://bucket.umangsailor.com/storage/profiles/group.png',
+        },
+      },
+    },
+  })
   async updateGroup(
     @Param('id') groupId: string,
     @CurrentUser() currentUser: { userId: string },
     @Body('name') name: string,
     @Body('description') description?: string,
+    @Body('avatarUrl') avatarUrl?: string,
   ) {
     const updatedGroup = await this.groupsService.updateGroup(
       groupId,
       currentUser.userId,
       name,
       description,
+      avatarUrl,
     );
 
     // Notify all group members about the update via socket

@@ -138,6 +138,7 @@ export class UsersService {
       notificationsFriendRequestEnabled?: boolean;
       isTwoFactorEnabled?: boolean;
       twoFactorOnlyNewDevice?: boolean;
+      avatarUrl?: string;
     },
   ): Promise<User> {
     const user = await this.findById(id);
@@ -204,6 +205,10 @@ export class UsersService {
 
     if (data.twoFactorOnlyNewDevice !== undefined) {
       user.twoFactorOnlyNewDevice = data.twoFactorOnlyNewDevice;
+    }
+
+    if (data.avatarUrl !== undefined) {
+      user.avatarUrl = data.avatarUrl;
     }
 
     const updatedUser = await this.userRepository.save(user);

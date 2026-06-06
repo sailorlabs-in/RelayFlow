@@ -183,6 +183,7 @@ export const updateUserProfile = createAsyncThunk(
       notificationsFriendRequestEnabled?: boolean;
       isTwoFactorEnabled?: boolean;
       twoFactorOnlyNewDevice?: boolean;
+      avatarUrl?: string;
     },
     { getState, rejectWithValue },
   ) => {
