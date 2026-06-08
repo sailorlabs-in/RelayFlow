@@ -81,12 +81,15 @@ services:
         NEXT_PUBLIC_VIBE_APP_ID: ${NEXT_PUBLIC_VIBE_APP_ID:-}
         NEXT_PUBLIC_VIBE_PUBLIC_KEY: ${NEXT_PUBLIC_VIBE_PUBLIC_KEY:-}
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
+        NEXT_PUBLIC_SOCKET_URL: ${NEXT_PUBLIC_SOCKET_URL:-}
         NEXT_PUBLIC_BUCKET_URL: ${NEXT_PUBLIC_BUCKET_URL:-https://bucket.umangsailor.com}
     container_name: relayflow-web
     restart: unless-stopped
     environment:
       NODE_ENV: production
       PORT: 3000
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
+      NEXT_PUBLIC_SOCKET_URL: ${NEXT_PUBLIC_SOCKET_URL:-}
     depends_on:
       - gateway
     networks:
