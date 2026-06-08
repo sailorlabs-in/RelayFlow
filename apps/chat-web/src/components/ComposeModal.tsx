@@ -119,6 +119,7 @@ export const ComposeModal = ({
                     letter={(u.username ||
                       u.displayName ||
                       u.email)[0].toUpperCase()}
+                    url={u.avatarUrl}
                     size="md"
                   />
                   <div className="flex-1 min-w-0">

@@ -69,11 +69,19 @@ export const GroupRail = ({
               tooltip_state={tooltip}
               setTooltip={setTooltip}
             >
-              <span
-                className={`text-[17px] font-bold leading-none tracking-[-0.5px] ${isActive ? 'text-white' : 'text-[var(--text-primary)]'}`}
-              >
-                {group.iconLetter}
-              </span>
+              {group.avatarUrl ? (
+                <img
+                  src={group.avatarUrl}
+                  alt={group.name}
+                  className="w-full h-full object-cover rounded-[inherit]"
+                />
+              ) : (
+                <span
+                  className={`text-[17px] font-bold leading-none tracking-[-0.5px] ${isActive ? 'text-white' : 'text-[var(--text-primary)]'}`}
+                >
+                  {group.iconLetter}
+                </span>
+              )}
             </RailButton>
           );
         })}
@@ -133,7 +141,7 @@ const RailButton = ({
         title={tooltip}
         onMouseEnter={() => setTooltip({ text: tooltip, id })}
         onMouseLeave={() => setTooltip(null)}
-        className={`w-[46px] h-[46px] flex items-center justify-center shrink-0 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] border-0 cursor-pointer active-press
+        className={`w-[46px] h-[46px] flex items-center justify-center shrink-0 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] border-0 cursor-pointer active-press overflow-hidden
           ${isActive ? 'rounded-[14px] shadow-[0_6px_20px_var(--accent-ring)]' : 'rounded-full hover:rounded-[14px] hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)]'} 
           ${
             isCreate

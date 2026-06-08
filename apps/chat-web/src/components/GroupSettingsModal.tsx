@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 
 import { useAppDispatch } from '../store';
 import type { Group } from '../store/slices/groupsSlice';
@@ -6,6 +6,7 @@ import { updateGroup } from '../store/slices/groupsSlice';
 
 import { IconX } from './Icons';
 import { showToast } from './toast';
+import { Avatar } from './Avatar';
 
 interface GroupSettingsModalProps {
   group: Group;
@@ -19,7 +20,97 @@ export const GroupSettingsModal = ({
   const dispatch = useAppDispatch();
   const [name, setName] = useState(group.name);
   const [description, setDescription] = useState(group.description || '');
+  const [avatarUrl, setAvatarUrl] = useState(group.avatarUrl || '');
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  const deleteOldMedia = async (url: string) => {
+    if (!url) {
+      return;
+    }
+    try {
+      const bucketUrl = (
+        process.env.NEXT_PUBLIC_BUCKET_URL || 'https://bucket.umangsailor.com'
+      ).replace(/\/+$/, '');
+      const prefix = `${bucketUrl}/storage/`;
+      if (url.startsWith(prefix)) {
+        const path = url.slice(prefix.length);
+        const parts = path.split('/');
+        if (parts.length >= 2) {
+          const bucket = parts[0];
+          const name = parts.slice(1).join('/');
+          await fetch(`${bucketUrl}/files`, {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              bucket,
+              names: [name],
+            }),
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to delete old media:', err);
+    }
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      showToast.error('Only image files are allowed.');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      showToast.error('Image size cannot exceed 5MB.');
+      return;
+    }
+
+    setUploading(true);
+
+    if (avatarUrl) {
+      await deleteOldMedia(avatarUrl);
+    }
+
+    const formData = new FormData();
+    formData.append('bucket', 'relayflow');
+    formData.append('folder', 'profile-media');
+    formData.append('files', file);
+
+    try {
+      const bucketUrl = (
+        process.env.NEXT_PUBLIC_BUCKET_URL || 'https://bucket.umangsailor.com'
+      ).replace(/\/+$/, '');
+      const response = await fetch(`${bucketUrl}/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const data = await response.json();
+      if (data.files && data.files.length > 0) {
+        setAvatarUrl(data.files[0].url);
+        showToast.success('Group icon uploaded!');
+      } else {
+        throw new Error('No files returned');
+      }
+    } catch (err) {
+      console.error('Group avatar upload error:', err);
+      showToast.error('Failed to upload icon.');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,6 +125,7 @@ export const GroupSettingsModal = ({
           groupId: group.id,
           name: name.trim(),
           description: description.trim(),
+          avatarUrl,
         }),
       ).unwrap();
       showToast.success('Group settings updated!');
@@ -75,6 +167,56 @@ export const GroupSettingsModal = ({
 
         {/* Body */}
         <form onSubmit={handleSubmit} className="px-5 py-5 flex flex-col gap-4">
+          {/* Avatar Upload */}
+          <div className="flex items-center gap-4 p-3.5 rounded-xl border border-[var(--glass-border)] bg-[rgba(0,0,0,0.015)] dark:bg-[rgba(255,255,255,0.01)] shadow-sm mb-1 animate-fade-in">
+            <div className="relative shrink-0">
+              <Avatar
+                letter={name[0]?.toUpperCase() || 'G'}
+                url={avatarUrl}
+                size="lg"
+              />
+              {uploading && (
+                <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center">
+                  <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin border-white" />
+                </div>
+              )}
+            </div>
+            <div className="flex-1">
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2">
+                Group Avatar
+              </label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={uploading}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-3 py-1.5 rounded-[8px] text-[11.5px] font-semibold cursor-pointer border-none bg-[var(--theme-btn-active)] text-[var(--theme-btn-active-text)] hover:opacity-95 disabled:opacity-50 active-press"
+                >
+                  Upload Image
+                </button>
+                {avatarUrl && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      deleteOldMedia(avatarUrl);
+                      setAvatarUrl('');
+                    }}
+                    className="px-3 py-1.5 rounded-[8px] text-[11.5px] font-semibold cursor-pointer border border-[var(--danger-border)] bg-[var(--danger-bg)] text-[var(--danger)] hover:bg-[var(--danger)] hover:text-white transition-all active-press"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleAvatarUpload}
+                accept="image/*"
+                className="hidden"
+              />
+            </div>
+          </div>
+
           <div>
             <label
               htmlFor="group-name-input"

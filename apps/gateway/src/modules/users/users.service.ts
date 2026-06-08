@@ -136,6 +136,9 @@ export class UsersService {
       notificationsGroupEnabled?: boolean;
       notificationsInAppEnabled?: boolean;
       notificationsFriendRequestEnabled?: boolean;
+      isTwoFactorEnabled?: boolean;
+      twoFactorOnlyNewDevice?: boolean;
+      avatarUrl?: string;
     },
   ): Promise<User> {
     const user = await this.findById(id);
@@ -196,6 +199,18 @@ export class UsersService {
         data.notificationsFriendRequestEnabled;
     }
 
+    if (data.isTwoFactorEnabled !== undefined) {
+      user.isTwoFactorEnabled = data.isTwoFactorEnabled;
+    }
+
+    if (data.twoFactorOnlyNewDevice !== undefined) {
+      user.twoFactorOnlyNewDevice = data.twoFactorOnlyNewDevice;
+    }
+
+    if (data.avatarUrl !== undefined) {
+      user.avatarUrl = data.avatarUrl;
+    }
+
     const updatedUser = await this.userRepository.save(user);
 
     // Update Redis cache
@@ -210,17 +225,19 @@ export class UsersService {
     return updatedUser;
   }
 
-  async searchFriend(query: string, excludeUserId: string): Promise<User> {
-    const user = await this.userRepository.findOne({
-      where: [{ email: query }, { username: query }],
-    });
-    if (!user) {
-      throw new NotFoundException('❌ User not found');
+  async searchFriend(query: string, excludeUserId: string): Promise<User[]> {
+    const qb = this.userRepository
+      .createQueryBuilder('user')
+      .where('user.id != :excludeUserId', { excludeUserId });
+
+    if (query.trim()) {
+      qb.andWhere(
+        '(user.email ILIKE :query OR user.username ILIKE :query OR user.display_name ILIKE :query)',
+        { query: `%${query.trim()}%` },
+      );
     }
-    if (user.id === excludeUserId) {
-      throw new ConflictException('❌ You cannot add yourself as a friend');
-    }
-    return user;
+
+    return qb.getMany();
   }
 
   async sendFriendRequest(
@@ -393,5 +410,113 @@ export class UsersService {
       ],
     });
     return !!friendship;
+  }
+
+  async updateVerificationOtp(
+    id: string,
+    otp: string,
+    expiresAt: Date,
+  ): Promise<User> {
+    const user = await this.findById(id);
+    user.verificationOtp = otp;
+    user.verificationOtpExpiresAt = expiresAt;
+    const saved = await this.userRepository.save(user);
+    await this.updateRedisCache(saved);
+    return saved;
+  }
+
+  async updateTwoFactorOtp(
+    id: string,
+    otp: string,
+    expiresAt: Date,
+  ): Promise<User> {
+    const user = await this.findById(id);
+    user.twoFactorOtp = otp;
+    user.twoFactorOtpExpiresAt = expiresAt;
+    const saved = await this.userRepository.save(user);
+    await this.updateRedisCache(saved);
+    return saved;
+  }
+
+  async updateResetPasswordToken(
+    id: string,
+    token: string,
+    expiresAt: Date,
+  ): Promise<User> {
+    const user = await this.findById(id);
+    user.resetPasswordToken = token;
+    user.resetPasswordExpiresAt = expiresAt;
+    const saved = await this.userRepository.save(user);
+    await this.updateRedisCache(saved);
+    return saved;
+  }
+
+  async verifyUserEmail(id: string): Promise<User> {
+    const user = await this.findById(id);
+    user.isVerified = true;
+    user.verificationOtp = undefined;
+    user.verificationOtpExpiresAt = undefined;
+    const saved = await this.userRepository.save(user);
+    await this.updateRedisCache(saved);
+    return saved;
+  }
+
+  async addRememberedDevice(id: string, deviceId: string): Promise<User> {
+    const user = await this.findById(id);
+    let devices: string[] = [];
+    if (user.rememberedDevices) {
+      try {
+        devices = JSON.parse(user.rememberedDevices);
+        if (!Array.isArray(devices)) {
+          devices = [];
+        }
+      } catch {
+        devices = [];
+      }
+    }
+    if (!devices.includes(deviceId)) {
+      devices.push(deviceId);
+      user.rememberedDevices = JSON.stringify(devices);
+    }
+    const saved = await this.userRepository.save(user);
+    await this.updateRedisCache(saved);
+    return saved;
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    await this.userRepository.delete({ id });
+    const redis = this.redisService.getClient();
+    const cacheKey = `user:profile:${id}`;
+    try {
+      await redis.del(cacheKey);
+    } catch {
+      // ignore
+    }
+  }
+
+  async findByResetToken(token: string): Promise<User | null> {
+    return this.userRepository.findOne({
+      where: { resetPasswordToken: token },
+    });
+  }
+
+  async resetUserPassword(id: string, passwordHash: string): Promise<User> {
+    const user = await this.findById(id);
+    user.passwordHash = passwordHash;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpiresAt = undefined;
+    const saved = await this.userRepository.save(user);
+    await this.updateRedisCache(saved);
+    return saved;
+  }
+
+  private async updateRedisCache(user: User): Promise<void> {
+    const redis = this.redisService.getClient();
+    const cacheKey = `user:profile:${user.id}`;
+    try {
+      await redis.setex(cacheKey, 86400, JSON.stringify(user));
+    } catch {
+      // ignore
+    }
   }
 }

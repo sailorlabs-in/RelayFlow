@@ -22,7 +22,7 @@ export const InviteMembersModal = ({
 }: InviteMembersModalProps): React.JSX.Element => {
   const dispatch = useAppDispatch();
   const { user, accessToken } = useAppSelector((s) => s.auth);
-  const { friends } = useAppSelector((s) => s.chat);
+  const { friends, onlineUsers } = useAppSelector((s) => s.chat);
 
   const [activeTab, setActiveTab] = useState<'add' | 'links'>('add');
   const [searchQuery, setSearchQuery] = useState('');
@@ -252,6 +252,8 @@ export const InviteMembersModal = ({
                         letter={(u.username ||
                           u.displayName ||
                           u.email)[0].toUpperCase()}
+                        url={u.avatarUrl}
+                        status={onlineUsers[u.id] || 'offline'}
                         size="md"
                       />
                       <div className="flex-1 min-w-0">
@@ -324,14 +326,44 @@ export const InviteMembersModal = ({
                   <select
                     value={expiresIn}
                     onChange={(e) => setExpiresIn(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-[10px] bg-[var(--bg-input)] border-[1.5px] border-[var(--glass-border)] text-[var(--text-primary)] text-sm box-border focus:outline-none focus:border-[var(--accent-primary)]"
+                    className="w-full px-3 py-2.5 rounded-[10px] bg-[var(--dropdown-bg)] border-[1.5px] border-[var(--glass-border)] text-[var(--text-primary)] text-sm box-border focus:outline-none focus:border-[var(--accent-primary)]"
                   >
-                    <option value="1h">Expires in 1 Hour</option>
-                    <option value="2h">Expires in 2 Hours</option>
-                    <option value="24h">Expires in 24 Hours</option>
-                    <option value="7d">Expires in 7 Days</option>
-                    <option value="30d">Expires in 30 Days</option>
-                    <option value="never">Never Expires</option>
+                    <option
+                      value="1h"
+                      className="bg-[var(--dropdown-bg)] text-[var(--text-primary)]"
+                    >
+                      Expires in 1 Hour
+                    </option>
+                    <option
+                      value="2h"
+                      className="bg-[var(--dropdown-bg)] text-[var(--text-primary)]"
+                    >
+                      Expires in 2 Hours
+                    </option>
+                    <option
+                      value="24h"
+                      className="bg-[var(--dropdown-bg)] text-[var(--text-primary)]"
+                    >
+                      Expires in 24 Hours
+                    </option>
+                    <option
+                      value="7d"
+                      className="bg-[var(--dropdown-bg)] text-[var(--text-primary)]"
+                    >
+                      Expires in 7 Days
+                    </option>
+                    <option
+                      value="30d"
+                      className="bg-[var(--dropdown-bg)] text-[var(--text-primary)]"
+                    >
+                      Expires in 30 Days
+                    </option>
+                    <option
+                      value="never"
+                      className="bg-[var(--dropdown-bg)] text-[var(--text-primary)]"
+                    >
+                      Never Expires
+                    </option>
                   </select>
                 </div>
                 <button
