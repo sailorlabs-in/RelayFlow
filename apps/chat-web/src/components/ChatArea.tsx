@@ -773,6 +773,13 @@ export const ChatArea = ({
                       'User';
 
                 if (isChannelMode) {
+                  const letter =
+                    (senderName.startsWith('@')
+                      ? senderName.slice(1)
+                      : senderName)[0]?.toUpperCase() || 'U';
+                  const presenceStatus = isOut
+                    ? onlineUsers[user.id] || user.status || 'online'
+                    : onlineUsers[msg.senderId] || 'offline';
                   return (
                     <div
                       key={msg.id}
@@ -780,10 +787,11 @@ export const ChatArea = ({
                     >
                       <div className="flex items-start gap-3 flex-1 min-w-0">
                         <Avatar
-                          letter={senderName[0]?.toUpperCase() || 'U'}
+                          letter={letter}
                           url={
                             isOut ? user.avatarUrl : senderProfile?.avatarUrl
                           }
+                          status={presenceStatus}
                           size="sm"
                         />
                         <div className="flex-1 min-w-0">

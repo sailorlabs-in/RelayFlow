@@ -225,17 +225,19 @@ export class UsersService {
     return updatedUser;
   }
 
-  async searchFriend(query: string, excludeUserId: string): Promise<User> {
-    const user = await this.userRepository.findOne({
-      where: [{ email: query }, { username: query }],
-    });
-    if (!user) {
-      throw new NotFoundException('❌ User not found');
+  async searchFriend(query: string, excludeUserId: string): Promise<User[]> {
+    const qb = this.userRepository
+      .createQueryBuilder('user')
+      .where('user.id != :excludeUserId', { excludeUserId });
+
+    if (query.trim()) {
+      qb.andWhere(
+        '(user.email ILIKE :query OR user.username ILIKE :query OR user.display_name ILIKE :query)',
+        { query: `%${query.trim()}%` },
+      );
     }
-    if (user.id === excludeUserId) {
-      throw new ConflictException('❌ You cannot add yourself as a friend');
-    }
-    return user;
+
+    return qb.getMany();
   }
 
   async sendFriendRequest(

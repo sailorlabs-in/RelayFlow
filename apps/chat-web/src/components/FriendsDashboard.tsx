@@ -31,9 +31,9 @@ export const FriendsDashboard = (): React.JSX.Element => {
   // Add Friend state
   const [searchQuery, setSearchQuery] = useState('');
   const [searchLoading, setSearchLoading] = useState(false);
-  const [foundUser, setFoundUser] = useState<User | null>(null);
+  const [foundUsers, setFoundUsers] = useState<User[]>([]);
   const [searchError, setSearchError] = useState<string | null>(null);
-  const [requestSentStatus, setRequestSentStatus] = useState<boolean>(false);
+  const [sentRequests, setSentRequests] = useState<Record<string, boolean>>({});
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     friendId: string;
@@ -71,16 +71,42 @@ export const FriendsDashboard = (): React.JSX.Element => {
     dispatch(fetchPendingRequests());
   }, [dispatch]);
 
+  // Load initial user list when entering Add Friend tab or when access token changes
+  useEffect(() => {
+    if (activeTab === 'add' && accessToken) {
+      const fetchInitialUsers = async () => {
+        setSearchLoading(true);
+        setSearchError(null);
+        try {
+          const response = await axios.get(
+            `${API_URL}/users/search-friend?query=`,
+            {
+              headers: { Authorization: `Bearer ${accessToken}` },
+            },
+          );
+          setFoundUsers(response.data.data || []);
+        } catch (err: any) {
+          setSearchError(
+            err.response?.data?.error?.message ||
+              err.response?.data?.message ||
+              'Failed to load users.',
+          );
+        } finally {
+          setSearchLoading(false);
+        }
+      };
+      fetchInitialUsers();
+    }
+  }, [activeTab, accessToken]);
+
   const handleSearchUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!searchQuery.trim() || !accessToken) {
+    if (!accessToken) {
       return;
     }
 
     setSearchLoading(true);
     setSearchError(null);
-    setFoundUser(null);
-    setRequestSentStatus(false);
 
     try {
       const response = await axios.get(
@@ -89,12 +115,12 @@ export const FriendsDashboard = (): React.JSX.Element => {
           headers: { Authorization: `Bearer ${accessToken}` },
         },
       );
-      setFoundUser(response.data.data);
+      setFoundUsers(response.data.data || []);
     } catch (err: any) {
       setSearchError(
         err.response?.data?.error?.message ||
           err.response?.data?.message ||
-          'No user found matching email or username.',
+          'No users found matching query.',
       );
     } finally {
       setSearchLoading(false);
@@ -106,7 +132,7 @@ export const FriendsDashboard = (): React.JSX.Element => {
       await dispatch(
         sendFriendRequest(targetUser.username || targetUser.email),
       ).unwrap();
-      setRequestSentStatus(true);
+      setSentRequests((prev) => ({ ...prev, [targetUser.id]: true }));
       showToast.success(
         `Friend request sent to ${targetUser.displayName || targetUser.email}`,
       );
@@ -168,6 +194,68 @@ export const FriendsDashboard = (): React.JSX.Element => {
   const outgoingPending = pendingRequests?.outgoing || [];
   const pendingCount = incomingPending.length;
 
+  const getFriendshipAction = (targetUser: User) => {
+    if (targetUser.id === user?.id) {
+      return null;
+    }
+
+    const isAlreadyFriend = friends.some((f) => f.id === targetUser.id);
+    if (isAlreadyFriend) {
+      return (
+        <span className="text-[12.5px] font-bold text-sky-500 bg-[rgba(56,189,248,0.1)] px-3 py-1.5 rounded-lg border border-sky-500/20">
+          Friends
+        </span>
+      );
+    }
+
+    const isOutgoing =
+      outgoingPending.some(
+        (req) =>
+          req.addresseeId === targetUser.id ||
+          req.addressee?.id === targetUser.id,
+      ) || sentRequests[targetUser.id];
+    if (isOutgoing) {
+      return (
+        <span className="text-[12.5px] font-bold text-amber-500 bg-[rgba(245,158,11,0.1)] px-3 py-1.5 rounded-lg border border-amber-500/20">
+          Request Sent
+        </span>
+      );
+    }
+
+    const isIncoming = incomingPending.some(
+      (req) =>
+        req.requesterId === targetUser.id ||
+        req.requester?.id === targetUser.id,
+    );
+    if (isIncoming) {
+      const incomingReq = incomingPending.find(
+        (req) =>
+          req.requesterId === targetUser.id ||
+          req.requester?.id === targetUser.id,
+      );
+      const name = targetUser.username
+        ? `@${targetUser.username}`
+        : targetUser.displayName || targetUser.email.split('@')[0];
+      return (
+        <button
+          onClick={() => incomingReq && handleAccept(incomingReq.id, name)}
+          className="px-4 py-2 rounded-xl border-none cursor-pointer font-semibold text-white bg-emerald-500 hover:bg-emerald-600 transition-all duration-150 active-press"
+        >
+          Accept Request
+        </button>
+      );
+    }
+
+    return (
+      <button
+        onClick={() => handleSendRequest(targetUser)}
+        className="px-4 py-2 rounded-xl border-none cursor-pointer font-semibold text-white bg-[var(--accent-primary)] hover:opacity-95 transition-all duration-150 active-press"
+      >
+        Send Request
+      </button>
+    );
+  };
+
   if (!user) {
     return (
       <div className="flex-1 p-6 text-center text-[var(--text-muted)]">
@@ -216,7 +304,7 @@ export const FriendsDashboard = (): React.JSX.Element => {
                     setActiveTab(tab.id as any);
                     if (tab.id !== 'add') {
                       setSearchQuery('');
-                      setFoundUser(null);
+                      setFoundUsers([]);
                       setSearchError(null);
                     }
                   }}
@@ -480,7 +568,7 @@ export const FriendsDashboard = (): React.JSX.Element => {
               />
               <button
                 type="submit"
-                disabled={searchLoading || !searchQuery.trim()}
+                disabled={searchLoading}
                 className="px-5 py-3 rounded-xl border-none cursor-pointer font-semibold text-white bg-[var(--accent-primary)] hover:opacity-90 disabled:opacity-50 transition-all duration-150 active-press"
               >
                 {searchLoading ? 'Searching...' : 'Search'}
@@ -493,45 +581,47 @@ export const FriendsDashboard = (): React.JSX.Element => {
               </div>
             )}
 
-            {foundUser && (
-              <div className="p-4 rounded-xl border border-[var(--glass-border)] bg-[var(--theme-btn)] flex items-center justify-between animate-fade-in">
-                <div className="flex items-center gap-3">
-                  <Avatar
-                    letter={(foundUser.username ||
-                      foundUser.displayName ||
-                      foundUser.email)[0].toUpperCase()}
-                    url={foundUser.avatarUrl}
-                    size="lg"
-                  />
-                  <div>
-                    <div className="font-bold text-[14.5px] text-[var(--text-primary)]">
-                      {foundUser.username
-                        ? `@${foundUser.username}`
-                        : foundUser.displayName ||
-                          foundUser.email.split('@')[0]}
-                    </div>
-                    <div className="text-[12px] text-[var(--text-muted)] mt-0.5">
-                      {foundUser.username && foundUser.displayName
-                        ? `${foundUser.displayName} • `
-                        : ''}
-                      {foundUser.email}
-                    </div>
-                  </div>
-                </div>
-
-                {requestSentStatus ? (
-                  <span className="text-[12.5px] font-bold text-emerald-500 bg-[rgba(16,185,129,0.1)] px-3 py-1.5 rounded-lg border border-emerald-500/20">
-                    Request Sent
-                  </span>
-                ) : (
-                  <button
-                    onClick={() => handleSendRequest(foundUser)}
-                    className="px-4 py-2 rounded-xl border-none cursor-pointer font-semibold text-white bg-[var(--accent-primary)] hover:opacity-95 transition-all duration-150 active-press"
+            {foundUsers && foundUsers.length > 0 ? (
+              <div className="space-y-2.5 max-h-[400px] overflow-y-auto pr-1">
+                {foundUsers.map((foundUser) => (
+                  <div
+                    key={foundUser.id}
+                    className="p-4 rounded-xl border border-[var(--glass-border)] bg-[var(--theme-btn)] flex items-center justify-between animate-fade-in"
                   >
-                    Send Friend Request
-                  </button>
-                )}
+                    <div className="flex items-center gap-3">
+                      <Avatar
+                        letter={(foundUser.username ||
+                          foundUser.displayName ||
+                          foundUser.email)[0].toUpperCase()}
+                        url={foundUser.avatarUrl}
+                        size="lg"
+                      />
+                      <div>
+                        <div className="font-bold text-[14.5px] text-[var(--text-primary)]">
+                          {foundUser.username
+                            ? `@${foundUser.username}`
+                            : foundUser.displayName ||
+                              foundUser.email.split('@')[0]}
+                        </div>
+                        <div className="text-[12px] text-[var(--text-muted)] mt-0.5">
+                          {foundUser.username && foundUser.displayName
+                            ? `${foundUser.displayName} • `
+                            : ''}
+                          {foundUser.email}
+                        </div>
+                      </div>
+                    </div>
+
+                    {getFriendshipAction(foundUser)}
+                  </div>
+                ))}
               </div>
+            ) : (
+              !searchLoading && (
+                <div className="py-12 text-center text-[13.5px] text-[var(--text-muted)] border border-dashed border-[var(--glass-border)] rounded-xl">
+                  No users found.
+                </div>
+              )
             )}
           </div>
         )}

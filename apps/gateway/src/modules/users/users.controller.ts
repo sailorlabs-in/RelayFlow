@@ -154,18 +154,22 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Search for exact email or username match to add as a friend',
+    summary: 'Search for email or username match to add as a friend',
   })
   @ApiQuery({
     name: 'query',
-    required: true,
+    required: false,
     description: 'Email or username search query',
   })
-  @ApiResponse({ status: 200, description: 'Found user profile.', type: User })
+  @ApiResponse({
+    status: 200,
+    description: 'Found users profile.',
+    type: [User],
+  })
   async searchFriend(
     @Query('query') query: string,
     @CurrentUser() currentUser: { userId: string },
-  ): Promise<User> {
+  ): Promise<User[]> {
     return this.usersService.searchFriend(query || '', currentUser.userId);
   }
 

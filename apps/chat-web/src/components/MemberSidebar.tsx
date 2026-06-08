@@ -71,22 +71,23 @@ export const MemberSidebar = ({
       userDetail?.displayName || userDetail?.email?.split('@')[0] || 'User';
     const email = userDetail?.email || '';
     const username = userDetail?.username || '';
+    const targetUserId = userDetail?.id || m.userId;
     const presence =
-      m.userId === currentUser?.id
+      targetUserId === currentUser?.id
         ? (currentUser?.status as PresenceStatus) || 'online'
-        : (onlineUsers[m.userId] as PresenceStatus) || 'offline';
-    const isOwner = group.ownerId === m.userId;
+        : (onlineUsers[targetUserId] as PresenceStatus) || 'offline';
+    const isOwner = group.ownerId === targetUserId;
     const isTyping = activeConversationId
-      ? !!typingUsers[activeConversationId]?.[m.userId]
+      ? !!typingUsers[activeConversationId]?.[targetUserId]
       : false;
     const canKick =
-      m.userId !== currentUser?.id &&
+      targetUserId !== currentUser?.id &&
       !isOwner &&
       (isCurrentUserOwner ||
         (currentUserRole === 'admin' && m.role === 'member'));
 
     return {
-      id: m.userId,
+      id: targetUserId,
       displayName,
       email,
       username,
