@@ -362,10 +362,30 @@ class SocketManager {
     }
   }
 
-  sendMessage(conversationId: string, content: string) {
+  sendMessage(
+    conversationId: string,
+    content: string,
+    media?: {
+      mediaUrl: string;
+      mediaType: string;
+      mediaName: string;
+      mediaSize: number;
+    },
+  ) {
     if (this.socket?.connected) {
-      PrintLog(`📡 Emitting send.message for room ${conversationId}:`, content);
-      this.socket.emit('send.message', { conversationId, content });
+      PrintLog(
+        `📡 Emitting send.message for room ${conversationId}:`,
+        content,
+        media,
+      );
+      this.socket.emit('send.message', {
+        conversationId,
+        content,
+        mediaUrl: media?.mediaUrl,
+        mediaType: media?.mediaType,
+        mediaName: media?.mediaName,
+        mediaSize: media?.mediaSize,
+      });
     } else {
       console.error('❌ Cannot send message: Socket is not connected');
       showToast.error('Cannot send message: Socket is not connected');

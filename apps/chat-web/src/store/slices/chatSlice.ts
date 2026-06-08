@@ -22,6 +22,10 @@ export interface Message {
   isRead?: boolean;
   createdAt: string;
   updatedAt: string;
+  mediaUrl?: string;
+  mediaType?: string;
+  mediaName?: string;
+  mediaSize?: number;
 }
 
 export interface ChatState {
@@ -376,11 +380,13 @@ const chatSlice = createSlice({
       action: PayloadAction<{ userId: string; isOnline: boolean }>,
     ) => {
       const { userId, isOnline } = action.payload;
-      // Only downgrade to offline; don't overwrite away/dnd/offline with online from a generic event
       if (!isOnline) {
         state.onlineUsers[userId] = 'offline';
-      } else if (!state.onlineUsers[userId]) {
-        state.onlineUsers[userId] = 'online';
+      } else {
+        const current = state.onlineUsers[userId];
+        if (!current || current === 'offline') {
+          state.onlineUsers[userId] = 'online';
+        }
       }
     },
     // Granular status update from presence.changed socket events

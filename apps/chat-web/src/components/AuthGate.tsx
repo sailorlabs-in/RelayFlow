@@ -1,12 +1,17 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-
+import axios from 'axios';
+import { API_URL } from '../constants/config';
 import { useAppDispatch, useAppSelector } from '../store';
 import {
   loginUser,
   registerUser,
+  verifyEmailOtp,
+  verify2FaOtp,
+  resendVerificationCode,
   clearAuthError,
+  cancelVerification,
   setThemeMode,
 } from '../store/slices/authSlice';
 
@@ -27,11 +32,15 @@ import { showToast } from './toast';
 interface LoginFormProps {
   prefilledEmail: string;
   onSwitchToSignUp: () => void;
+  onSwitchToForgotPassword: () => void;
+  deviceId: string;
 }
 
 const LoginForm = ({
   prefilledEmail,
   onSwitchToSignUp,
+  onSwitchToForgotPassword,
+  deviceId,
 }: LoginFormProps): React.JSX.Element => {
   const dispatch = useAppDispatch();
   const { status: authStatus, error: authError } = useAppSelector(
@@ -50,7 +59,7 @@ const LoginForm = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setLocalError(null);
-    dispatch(loginUser({ email, password }));
+    dispatch(loginUser({ email, password, deviceId }));
   };
 
   const error = localError || authError;
@@ -90,9 +99,18 @@ const LoginForm = ({
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-[11.5px] font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
-            Password
-          </label>
+          <div className="flex justify-between items-center">
+            <label className="text-[11.5px] font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+              Password
+            </label>
+            <button
+              type="button"
+              onClick={onSwitchToForgotPassword}
+              className="text-[11.5px] font-semibold cursor-pointer text-[var(--accent-primary)] bg-transparent border-none active-press hover:underline"
+            >
+              Forgot Password?
+            </button>
+          </div>
           <div className="relative flex items-center">
             <input
               id="auth-password"
@@ -192,8 +210,7 @@ const SignUpForm = ({
     )
       .unwrap()
       .then(() => {
-        showToast.success('Account created successfully! Please sign in.');
-        onSwitchToSignIn(email);
+        showToast.success('Account created! Code sent.');
       })
       .catch(() => {
         // Redux stores the error globally as authError
@@ -338,16 +355,565 @@ const SignUpForm = ({
   );
 };
 
+// ── VERIFY EMAIL OTP FORM COMPONENT ──────────────────────────────────────────
+interface VerifyEmailFormProps {
+  email: string;
+  onCancel: () => void;
+}
+
+const VerifyEmailForm = ({
+  email,
+  onCancel,
+}: VerifyEmailFormProps): React.JSX.Element => {
+  const dispatch = useAppDispatch();
+  const { status: authStatus, error: authError } = useAppSelector(
+    (s) => s.auth,
+  );
+  const [otp, setOtp] = useState('');
+  const [localError, setLocalError] = useState<string | null>(null);
+  const [resendStatus, setResendStatus] = useState<'idle' | 'sending' | 'sent'>(
+    'idle',
+  );
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLocalError(null);
+    if (otp.length !== 6 || !/^\d+$/.test(otp)) {
+      setLocalError('Please enter a valid 6-digit code.');
+      return;
+    }
+    dispatch(verifyEmailOtp({ email, otp }));
+  };
+
+  const handleResend = () => {
+    setResendStatus('sending');
+    dispatch(resendVerificationCode({ email }))
+      .unwrap()
+      .then(() => {
+        setResendStatus('sent');
+        showToast.success(
+          'A new verification code has been sent to your email.',
+        );
+        setTimeout(() => setResendStatus('idle'), 5000);
+      })
+      .catch((err) => {
+        setResendStatus('idle');
+        setLocalError(err || 'Failed to resend verification code.');
+      });
+  };
+
+  const error = localError || authError;
+
+  return (
+    <div className="animate-fade-in">
+      <div className="mb-8">
+        <h2 className="text-[28px] font-bold tracking-tight mb-2 text-[var(--text-primary)]">
+          Verify email
+        </h2>
+        <p className="text-[14px] text-[var(--text-secondary)]">
+          We sent a 6-digit OTP to <strong>{email}</strong>. Enter it below
+          within 24 hours or the account will be deleted.
+        </p>
+      </div>
+
+      {error && (
+        <div className="flex items-center gap-2 rounded-xl px-4 py-3 mb-5 text-[13.5px] animate-fade-in bg-[var(--danger-bg)] border border-[var(--danger-border)] text-[var(--danger)]">
+          <IconAlertCircle />
+          {error}
+        </div>
+      )}
+
+      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[11.5px] font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+            Verification OTP
+          </label>
+          <input
+            type="text"
+            maxLength={6}
+            className="input-base rounded-[10px] px-4 py-3 text-[18px] tracking-[4px] text-center font-bold focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[3px] focus:ring-[var(--accent-ring)]"
+            placeholder="123456"
+            value={otp}
+            onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+            required
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={authStatus === 'loading'}
+          className="mt-2 rounded-[10px] py-3.5 text-[15px] font-semibold text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 relative overflow-hidden btn-send hover:-translate-y-0.5 hover:shadow-[var(--btn-shadow)] active-press"
+        >
+          {authStatus === 'loading' ? 'Verifying…' : 'Verify Account'}
+        </button>
+      </form>
+
+      <div className="flex justify-between items-center mt-6 text-[14px]">
+        <button
+          className="font-semibold cursor-pointer transition-colors duration-200 text-[var(--text-muted)] bg-transparent border-none active-press hover:text-[var(--text-primary)]"
+          onClick={onCancel}
+        >
+          Back to Login
+        </button>
+
+        <button
+          className="font-semibold cursor-pointer transition-colors duration-200 text-[var(--accent-primary)] bg-transparent border-none active-press disabled:opacity-50"
+          onClick={handleResend}
+          disabled={resendStatus !== 'idle'}
+        >
+          {resendStatus === 'sending'
+            ? 'Sending...'
+            : resendStatus === 'sent'
+              ? 'Sent!'
+              : 'Resend Code'}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ── VERIFY 2FA OTP FORM COMPONENT ────────────────────────────────────────────
+interface TwoFactorFormProps {
+  userId: string;
+  email: string;
+  deviceId: string;
+  onCancel: () => void;
+}
+
+const TwoFactorForm = ({
+  userId,
+  email,
+  deviceId,
+  onCancel,
+}: TwoFactorFormProps): React.JSX.Element => {
+  const dispatch = useAppDispatch();
+  const { status: authStatus, error: authError } = useAppSelector(
+    (s) => s.auth,
+  );
+  const [otp, setOtp] = useState('');
+  const [rememberDevice, setRememberDevice] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLocalError(null);
+    if (otp.length !== 6 || !/^\d+$/.test(otp)) {
+      setLocalError('Please enter a valid 6-digit code.');
+      return;
+    }
+    dispatch(verify2FaOtp({ userId, otp, deviceId, rememberDevice }));
+  };
+
+  const error = localError || authError;
+
+  return (
+    <div className="animate-fade-in">
+      <div className="mb-8">
+        <h2 className="text-[28px] font-bold tracking-tight mb-2 text-[var(--text-primary)]">
+          2FA Check
+        </h2>
+        <p className="text-[14px] text-[var(--text-secondary)]">
+          Enter the security verification code sent to your email{' '}
+          <strong>{email}</strong>.
+        </p>
+      </div>
+
+      {error && (
+        <div className="flex items-center gap-2 rounded-xl px-4 py-3 mb-5 text-[13.5px] animate-fade-in bg-[var(--danger-bg)] border border-[var(--danger-border)] text-[var(--danger)]">
+          <IconAlertCircle />
+          {error}
+        </div>
+      )}
+
+      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[11.5px] font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+            2FA Security Code
+          </label>
+          <input
+            type="text"
+            maxLength={6}
+            className="input-base rounded-[10px] px-4 py-3 text-[18px] tracking-[4px] text-center font-bold focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[3px] focus:ring-[var(--accent-ring)]"
+            placeholder="123456"
+            value={otp}
+            onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+            required
+          />
+        </div>
+
+        <div className="flex items-center gap-2 my-1.5 select-none cursor-pointer">
+          <input
+            id="remember-device-checkbox"
+            type="checkbox"
+            className="w-4 h-4 rounded border-[var(--glass-border)] text-[var(--accent-primary)] focus:ring-[var(--accent-ring)] cursor-pointer"
+            checked={rememberDevice}
+            onChange={(e) => setRememberDevice(e.target.checked)}
+          />
+          <label
+            htmlFor="remember-device-checkbox"
+            className="text-[13px] text-[var(--text-secondary)] cursor-pointer ml-1"
+          >
+            Remember this device for future logins
+          </label>
+        </div>
+
+        <button
+          type="submit"
+          disabled={authStatus === 'loading'}
+          className="mt-2 rounded-[10px] py-3.5 text-[15px] font-semibold text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 relative overflow-hidden btn-send hover:-translate-y-0.5 hover:shadow-[var(--btn-shadow)] active-press"
+        >
+          {authStatus === 'loading' ? 'Verifying…' : 'Verify Code'}
+        </button>
+      </form>
+
+      <div className="mt-6 text-[14px]">
+        <button
+          className="font-semibold cursor-pointer transition-colors duration-200 text-[var(--text-muted)] bg-transparent border-none active-press hover:text-[var(--text-primary)]"
+          onClick={onCancel}
+        >
+          Cancel Login
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ── FORGOT PASSWORD FORM COMPONENT ───────────────────────────────────────────
+interface ForgotPasswordFormProps {
+  onCancel: () => void;
+}
+
+const ForgotPasswordForm = ({
+  onCancel,
+}: ForgotPasswordFormProps): React.JSX.Element => {
+  const [email, setEmail] = useState('');
+  const [status, setStatus] = useState<
+    'idle' | 'loading' | 'success' | 'failed'
+  >('idle');
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setStatus('loading');
+    setError(null);
+
+    try {
+      await axios.post(`${API_URL}/auth/forgot-password`, { email });
+      setStatus('success');
+      showToast.success('Password reset link sent!');
+    } catch (err: any) {
+      setStatus('failed');
+      const errorMsg =
+        err.response?.data?.error?.message ||
+        err.response?.data?.message ||
+        'Failed to request reset link.';
+      setError(errorMsg);
+    }
+  };
+
+  return (
+    <div className="animate-fade-in">
+      <div className="mb-8">
+        <h2 className="text-[28px] font-bold tracking-tight mb-2 text-[var(--text-primary)]">
+          Reset password
+        </h2>
+        <p className="text-[14px] text-[var(--text-secondary)]">
+          Provide your email and we'll mail you a reset link (expires in 30
+          mins).
+        </p>
+      </div>
+
+      {error && (
+        <div className="flex items-center gap-2 rounded-xl px-4 py-3 mb-5 text-[13.5px] animate-fade-in bg-[var(--danger-bg)] border border-[var(--danger-border)] text-[var(--danger)]">
+          <IconAlertCircle />
+          {error}
+        </div>
+      )}
+
+      {status === 'success' ? (
+        <div className="flex flex-col gap-4 animate-fade-in">
+          <div className="rounded-xl px-4 py-3 bg-[rgba(16,185,129,0.08)] border border-[rgba(16,185,129,0.2)] text-emerald-600 text-[13.5px] leading-relaxed">
+            ✔ If the email is registered in our database, we sent a password
+            reset link to it. Please check your inbox (and spam folder).
+          </div>
+          <button
+            onClick={onCancel}
+            className="mt-2 rounded-[10px] py-3.5 text-[15px] font-semibold text-white cursor-pointer transition-all duration-200 relative overflow-hidden btn-send hover:-translate-y-0.5 hover:shadow-[var(--btn-shadow)] active-press"
+          >
+            Back to Login
+          </button>
+        </div>
+      ) : (
+        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[11.5px] font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+              Email
+            </label>
+            <input
+              type="email"
+              className="input-base rounded-[10px] px-4 py-3 text-[14.5px] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[3px] focus:ring-[var(--accent-ring)]"
+              placeholder="user@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={status === 'loading'}
+            className="mt-2 rounded-[10px] py-3.5 text-[15px] font-semibold text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 relative overflow-hidden btn-send hover:-translate-y-0.5 hover:shadow-[var(--btn-shadow)] active-press"
+          >
+            {status === 'loading' ? 'Sending…' : 'Send Reset Link'}
+          </button>
+
+          <button
+            type="button"
+            className="mt-2 text-[14.5px] font-semibold cursor-pointer transition-colors duration-200 text-[var(--text-muted)] bg-transparent border-none active-press hover:text-[var(--text-primary)]"
+            onClick={onCancel}
+          >
+            Cancel
+          </button>
+        </form>
+      )}
+    </div>
+  );
+};
+
+// ── RESET PASSWORD FORM COMPONENT ───────────────────────────────────────────
+interface ResetPasswordFormProps {
+  token: string;
+  onSuccess: () => void;
+}
+
+const ResetPasswordForm = ({
+  token,
+  onSuccess,
+}: ResetPasswordFormProps): React.JSX.Element => {
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [status, setStatus] = useState<
+    'idle' | 'loading' | 'success' | 'failed'
+  >('idle');
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters long.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+
+    setStatus('loading');
+
+    try {
+      await axios.post(`${API_URL}/auth/reset-password`, { token, password });
+      setStatus('success');
+      showToast.success('Password updated successfully!');
+      setTimeout(() => {
+        onSuccess();
+      }, 3000);
+    } catch (err: any) {
+      setStatus('failed');
+      const errorMsg =
+        err.response?.data?.error?.message ||
+        err.response?.data?.message ||
+        'Reset failed. The token is invalid or has expired.';
+      setError(errorMsg);
+    }
+  };
+
+  return (
+    <div className="animate-fade-in">
+      <div className="mb-8">
+        <h2 className="text-[28px] font-bold tracking-tight mb-2 text-[var(--text-primary)]">
+          Choose a new password
+        </h2>
+        <p className="text-[14px] text-[var(--text-secondary)]">
+          Please enter and confirm your new password below.
+        </p>
+      </div>
+
+      {error && (
+        <div className="flex items-center gap-2 rounded-xl px-4 py-3 mb-5 text-[13.5px] animate-fade-in bg-[var(--danger-bg)] border border-[var(--danger-border)] text-[var(--danger)]">
+          <IconAlertCircle />
+          {error}
+        </div>
+      )}
+
+      {status === 'success' ? (
+        <div className="rounded-xl px-4 py-3 bg-[rgba(16,185,129,0.08)] border border-[rgba(16,185,129,0.2)] text-emerald-600 text-[13.5px] leading-relaxed animate-fade-in">
+          ✔ Password updated! Redirecting to sign in page...
+        </div>
+      ) : (
+        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[11.5px] font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+              New Password
+            </label>
+            <input
+              type="password"
+              className="input-base rounded-[10px] px-4 py-3 text-[14.5px] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[3px] focus:ring-[var(--accent-ring)]"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[11.5px] font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+              Confirm Password
+            </label>
+            <input
+              type="password"
+              className="input-base rounded-[10px] px-4 py-3 text-[14.5px] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[3px] focus:ring-[var(--accent-ring)]"
+              placeholder="••••••••"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={status === 'loading'}
+            className="mt-2 rounded-[10px] py-3.5 text-[15px] font-semibold text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 relative overflow-hidden btn-send hover:-translate-y-0.5 hover:shadow-[var(--btn-shadow)] active-press"
+          >
+            {status === 'loading' ? 'Saving…' : 'Reset Password'}
+          </button>
+        </form>
+      )}
+    </div>
+  );
+};
+
 // ── AUTH GATE CONTAINER ───────────────────────────────────────────────────────
 export const AuthGate = (): React.JSX.Element => {
   const dispatch = useAppDispatch();
-  const { themeMode: theme } = useAppSelector((s) => s.auth);
+
+  const {
+    themeMode: theme,
+    requiresVerification,
+    requires2FA,
+    verificationEmail,
+    temp2FAUserId,
+  } = useAppSelector((s) => s.auth);
 
   const [isLoginMode, setIsLoginMode] = useState(true);
+  const [isForgotPasswordMode, setIsForgotPasswordMode] = useState(false);
   const [prefilledEmail, setPrefilledEmail] = useState('');
+  const [resetToken, setResetToken] = useState<string | null>(null);
+  const [deviceId, setDeviceId] = useState('');
+
+  // 1) Initialize Device ID and search URL reset tokens
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      let dId = localStorage.getItem('rf_device_id');
+      if (!dId) {
+        dId = Math.random().toString(36).substring(2) + Date.now().toString(36);
+        localStorage.setItem('rf_device_id', dId);
+      }
+      setDeviceId(dId);
+
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get('token');
+      if (token) {
+        setResetToken(token);
+      }
+    }
+  }, []);
 
   const handleThemeChange = (t: Theme) => {
     dispatch(setThemeMode(t));
+  };
+
+  const handleCancelVerification = () => {
+    dispatch(cancelVerification());
+    setIsLoginMode(true);
+    setIsForgotPasswordMode(false);
+  };
+
+  const renderActiveForm = () => {
+    if (resetToken) {
+      return (
+        <ResetPasswordForm
+          token={resetToken}
+          onSuccess={() => {
+            setResetToken(null);
+            // Remove token from query parameters without reloading
+            if (typeof window !== 'undefined' && window.history) {
+              const url = new URL(window.location.href);
+              url.searchParams.delete('token');
+              window.history.replaceState({}, '', url.toString());
+            }
+            setIsLoginMode(true);
+            setIsForgotPasswordMode(false);
+          }}
+        />
+      );
+    }
+
+    if (requiresVerification && verificationEmail) {
+      return (
+        <VerifyEmailForm
+          email={verificationEmail}
+          onCancel={handleCancelVerification}
+        />
+      );
+    }
+
+    if (requires2FA && temp2FAUserId && verificationEmail) {
+      return (
+        <TwoFactorForm
+          userId={temp2FAUserId}
+          email={verificationEmail}
+          deviceId={deviceId}
+          onCancel={handleCancelVerification}
+        />
+      );
+    }
+
+    if (isForgotPasswordMode) {
+      return (
+        <ForgotPasswordForm onCancel={() => setIsForgotPasswordMode(false)} />
+      );
+    }
+
+    if (isLoginMode) {
+      return (
+        <LoginForm
+          prefilledEmail={prefilledEmail}
+          deviceId={deviceId}
+          onSwitchToSignUp={() => {
+            setIsLoginMode(false);
+            dispatch(clearAuthError());
+          }}
+          onSwitchToForgotPassword={() => {
+            setIsForgotPasswordMode(true);
+            dispatch(clearAuthError());
+          }}
+        />
+      );
+    }
+
+    return (
+      <SignUpForm
+        onSwitchToSignIn={(email) => {
+          if (email) {
+            setPrefilledEmail(email);
+          }
+          setIsLoginMode(true);
+          dispatch(clearAuthError());
+        }}
+      />
+    );
   };
 
   return (
@@ -394,25 +960,7 @@ export const AuthGate = (): React.JSX.Element => {
 
         {/* Right Form Panel */}
         <div className="flex-1 flex flex-col justify-center p-12 bg-[var(--bg-chat)]">
-          {isLoginMode ? (
-            <LoginForm
-              prefilledEmail={prefilledEmail}
-              onSwitchToSignUp={() => {
-                setIsLoginMode(false);
-                dispatch(clearAuthError());
-              }}
-            />
-          ) : (
-            <SignUpForm
-              onSwitchToSignIn={(email) => {
-                if (email) {
-                  setPrefilledEmail(email);
-                }
-                setIsLoginMode(true);
-                dispatch(clearAuthError());
-              }}
-            />
-          )}
+          {renderActiveForm()}
         </div>
       </div>
     </div>

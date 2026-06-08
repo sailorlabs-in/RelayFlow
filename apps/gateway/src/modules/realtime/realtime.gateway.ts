@@ -262,12 +262,10 @@ export class RealtimeGateway
       await this.chatService.markMessagesAsRead(targetConvoId, userId);
 
       // Notify others in the room that messages are read
-      this.server
-        .to(roomName)
-        .emit('messages.read', {
-          conversationId: targetConvoId,
-          readBy: userId,
-        });
+      this.server.to(roomName).emit('messages.read', {
+        conversationId: targetConvoId,
+        readBy: userId,
+      });
     } else {
       this.logger.log(
         `Skipping marking messages as read for user ${userId} because user is away (join.conversation)`,
@@ -302,11 +300,26 @@ export class RealtimeGateway
   @SubscribeMessage('send.message')
   @UseGuards(RateLimitGuard)
   async handleSendMessage(
-    @MessageBody() body: { conversationId: string; content: string },
+    @MessageBody()
+    body: {
+      conversationId: string;
+      content: string;
+      mediaUrl?: string;
+      mediaType?: string;
+      mediaName?: string;
+      mediaSize?: number;
+    },
     @ConnectedSocket() socket: Socket,
   ): Promise<void> {
     const userId = socket.data.userId as string;
-    const { conversationId, content } = body;
+    const {
+      conversationId,
+      content,
+      mediaUrl,
+      mediaType,
+      mediaName,
+      mediaSize,
+    } = body;
     this.logger.log(
       `📥 Received send.message for: ${conversationId} from user ${userId}`,
     );
@@ -380,6 +393,10 @@ export class RealtimeGateway
       userId,
       content,
       isRead,
+      mediaUrl,
+      mediaType,
+      mediaName,
+      mediaSize,
     );
     for (const member of members) {
       const memberRoom = `user:${member.userId}`;
@@ -477,7 +494,13 @@ export class RealtimeGateway
         this.notificationsQueue
           .add('send-push', {
             title: pushTitle,
-            body: content,
+            body:
+              content ||
+              (mediaType?.startsWith('image/')
+                ? '📷 Photo'
+                : mediaType?.startsWith('video/')
+                  ? '🎥 Video'
+                  : '📁 Attachment'),
             recipients: recipientsToNotify,
             metadata: metadataPayload,
           })
@@ -566,12 +589,10 @@ export class RealtimeGateway
         );
         try {
           await this.chatService.markMessagesAsRead(activeConvoId, userId);
-          this.server
-            .to(activeConvoRoom)
-            .emit('messages.read', {
-              conversationId: activeConvoId,
-              readBy: userId,
-            });
+          this.server.to(activeConvoRoom).emit('messages.read', {
+            conversationId: activeConvoId,
+            readBy: userId,
+          });
         } catch (err) {
           this.logger.error(
             `Failed to mark messages as read on status return for user ${userId}`,

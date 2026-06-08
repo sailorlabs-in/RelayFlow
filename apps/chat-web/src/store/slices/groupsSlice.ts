@@ -40,6 +40,7 @@ export interface Group {
   description?: string;
   ownerId: string;
   iconLetter: string;
+  avatarUrl?: string;
   createdAt: string;
   updatedAt: string;
   members: GroupMember[];
@@ -87,7 +88,12 @@ export const fetchGroups = createAsyncThunk(
 export const createGroup = createAsyncThunk(
   'groups/createGroup',
   async (
-    payload: { name: string; description?: string; memberUserIds?: string[] },
+    payload: {
+      name: string;
+      description?: string;
+      memberUserIds?: string[];
+      avatarUrl?: string;
+    },
     { getState, rejectWithValue },
   ) => {
     try {
@@ -112,14 +118,23 @@ export const createGroup = createAsyncThunk(
 export const updateGroup = createAsyncThunk(
   'groups/updateGroup',
   async (
-    payload: { groupId: string; name: string; description?: string },
+    payload: {
+      groupId: string;
+      name: string;
+      description?: string;
+      avatarUrl?: string;
+    },
     { getState, rejectWithValue },
   ) => {
     try {
       const state = getState() as { auth: { accessToken: string | null } };
       const response = await axios.patch(
         `${API_URL}/groups/${payload.groupId}`,
-        { name: payload.name, description: payload.description },
+        {
+          name: payload.name,
+          description: payload.description,
+          avatarUrl: payload.avatarUrl,
+        },
         getAuthHeaders(state.auth.accessToken),
       );
       return response.data.data as Group;
