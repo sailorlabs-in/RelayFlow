@@ -7,6 +7,49 @@ import React, {
   useCallback,
   useLayoutEffect,
 } from 'react';
+import dynamic from 'next/dynamic';
+
+const EmojiPicker = dynamic(
+  async () => {
+    const [Picker, data] = await Promise.all([
+      import('@emoji-mart/react'),
+      import('@emoji-mart/data'),
+    ]);
+    return function EmojiPickerWrapper(props: any) {
+      return <Picker.default data={data.default} {...props} />;
+    };
+  },
+  {
+    ssr: false,
+    loading: () => (
+      <div className="p-4 text-center text-[13px] text-[var(--text-muted)] w-[352px] h-[435px] flex items-center justify-center">
+        <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin border-[var(--accent-primary)]" />
+      </div>
+    ),
+  },
+);
+
+let isEmojiIndexInit = false;
+const searchEmojis = async (query: string) => {
+  if (!query) {
+    return [];
+  }
+  try {
+    const [data, { init, SearchIndex }] = await Promise.all([
+      import('@emoji-mart/data').then((m) => m.default),
+      import('emoji-mart'),
+    ]);
+    if (!isEmojiIndexInit) {
+      init({ data });
+      isEmojiIndexInit = true;
+    }
+    const results = await SearchIndex.search(query);
+    return results?.slice(0, 10) || [];
+  } catch (err) {
+    console.error(err);
+    return [];
+  }
+};
 
 import { useAppDispatch, useAppSelector } from '../store';
 import {
@@ -26,6 +69,7 @@ import {
   IconCheck,
   IconDoubleCheck,
   IconX,
+  IconEmoji,
 } from './Icons';
 import { PresenceDot } from './PresenceDot';
 import { showToast } from './toast';
@@ -158,6 +202,35 @@ export const ChatArea = ({
   const [messageInput, setMessageInput] = useState('');
   const [isTypingState, setIsTypingState] = useState(false);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
+
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+
+  const [mentionQuery, setMentionQuery] = useState<{
+    text: string;
+    start: number;
+    end: number;
+  } | null>(null);
+  const [emojiResults, setEmojiResults] = useState<any[]>([]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        emojiPickerRef.current &&
+        !emojiPickerRef.current.contains(event.target as Node)
+      ) {
+        setShowEmojiPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const onEmojiSelect = (emoji: any) => {
+    setMessageInput((prev) => prev + emoji.native);
+  };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [attachedFile, setAttachedFile] = useState<{
@@ -496,10 +569,32 @@ export const ChatArea = ({
     setIsTypingState(false);
     setMessageInput('');
     setAttachedFile(null);
+    setShowEmojiPicker(false);
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setMessageInput(e.target.value);
+  const handleInputChange = async (
+    e: React.ChangeEvent<HTMLTextAreaElement>,
+  ) => {
+    const val = e.target.value;
+    setMessageInput(val);
+
+    const cursor = e.target.selectionStart;
+    const textBeforeCursor = val.slice(0, cursor);
+    const match = textBeforeCursor.match(/:([a-zA-Z0-9_-]{2,})$/);
+    if (match) {
+      const query = match[1];
+      setMentionQuery({
+        text: query,
+        start: match.index as number,
+        end: cursor,
+      });
+      const results = await searchEmojis(query);
+      setEmojiResults(results);
+    } else {
+      setMentionQuery(null);
+      setEmojiResults([]);
+    }
+
     if (!activeConversationId) {
       return;
     }
@@ -979,6 +1074,26 @@ export const ChatArea = ({
               className="flex gap-2.5 items-end"
               onSubmit={handleSendMessage}
             >
+              <div className="relative" ref={emojiPickerRef}>
+                <button
+                  type="button"
+                  onClick={() => setShowEmojiPicker((prev) => !prev)}
+                  className="w-[46px] h-[46px] rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-200 bg-[var(--bg-input)] text-[var(--text-muted)] hover:bg-[var(--theme-btn-hover)] hover:text-[var(--text-primary)] active-press"
+                  title="Choose an emoji"
+                >
+                  <IconEmoji size={20} />
+                </button>
+
+                {showEmojiPicker && (
+                  <div className="absolute bottom-[56px] left-0 z-50 shadow-[var(--glass-shadow)] rounded-[14px] overflow-hidden border border-[var(--border-muted)] bg-[var(--bg-sidebar)]">
+                    <EmojiPicker
+                      onEmojiSelect={onEmojiSelect}
+                      theme="auto"
+                      previewPosition="none"
+                    />
+                  </div>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
@@ -1006,20 +1121,51 @@ export const ChatArea = ({
                 onChange={handleFileSelect}
                 className="hidden"
               />
-              <textarea
-                id="message-input"
-                className="input-base flex-1 rounded-xl px-4 py-2.5 text-[14px] resize-none leading-relaxed min-h-7.5 max-h-30 bg-theme-input border-[1.5px] border-glass text-theme-primary focus:outline-none focus:border-(--accent-primary) focus:ring-[3px] focus:ring-[var(--accent-ring)]"
-                placeholder="Type a message… (Enter to send)"
-                rows={1}
-                value={messageInput}
-                onChange={handleInputChange}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendMessage(e);
-                  }
-                }}
-              />
+              <div className="relative flex-1">
+                {mentionQuery && emojiResults.length > 0 && (
+                  <div className="absolute bottom-full left-0 mb-2 w-[300px] max-h-[200px] overflow-y-auto bg-[var(--bg-sidebar)] border border-[var(--border-muted)] rounded-xl shadow-[var(--glass-shadow)] z-50 flex flex-col p-1">
+                    {emojiResults.map((emoji: any) => (
+                      <button
+                        key={emoji.id}
+                        type="button"
+                        className="flex items-center gap-2 px-3 py-2 text-left rounded-lg hover:bg-[var(--bg-input)] active-press cursor-pointer border-none bg-transparent"
+                        onClick={() => {
+                          const val = messageInput;
+                          const newText =
+                            val.slice(0, mentionQuery.start) +
+                            emoji.skins[0].native +
+                            val.slice(mentionQuery.end);
+                          setMessageInput(newText);
+                          setMentionQuery(null);
+                          setEmojiResults([]);
+                          document.getElementById('message-input')?.focus();
+                        }}
+                      >
+                        <span className="text-[20px] leading-none">
+                          {emoji.skins[0].native}
+                        </span>
+                        <span className="text-[13px] text-[var(--text-primary)]">
+                          :{emoji.id}:
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <textarea
+                  id="message-input"
+                  className="input-base w-full rounded-xl px-4 py-2.5 text-[14px] resize-none leading-relaxed min-h-7.5 max-h-30 bg-theme-input border-[1.5px] border-glass text-theme-primary focus:outline-none focus:border-(--accent-primary) focus:ring-[3px] focus:ring-[var(--accent-ring)]"
+                  placeholder="Type a message… (Enter to send)"
+                  rows={1}
+                  value={messageInput}
+                  onChange={handleInputChange}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendMessage(e);
+                    }
+                  }}
+                />
+              </div>
               <button
                 id="send-message-btn"
                 type="submit"
