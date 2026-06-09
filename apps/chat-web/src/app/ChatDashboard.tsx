@@ -213,7 +213,7 @@ function ChatDashboardContent() {
 
   // ── RENDER: Hydration & Auth Gate ──
   if (!isHydrated) {
-    return <div className="bg-[var(--bg-primary)] h-screen w-screen" />;
+    return <div className="bg-theme-primary h-screen w-screen" />;
   }
 
   if (!accessToken || !user) {
@@ -231,7 +231,7 @@ function ChatDashboardContent() {
     : activeChannelId;
 
   return (
-    <div className="flex h-screen w-screen p-3.5 gap-3.5 bg-[var(--bg-primary)]">
+    <div className="flex h-screen w-screen p-3.5 gap-3.5 bg-theme-primary">
       {/* ── Left: Group Rail ─────────────────────────────────────── */}
       <GroupRail
         onCreateGroup={() => setIsCreateGroupOpen(true)}
@@ -268,8 +268,8 @@ function ChatDashboardContent() {
         />
       ) : (
         /* Fallback: no group selected yet */
-        <div className="glass-panel flex flex-col items-center justify-center w-[240px] min-w-[240px] h-full">
-          <p className="text-[var(--text-muted)] text-[13px] text-center p-5">
+        <div className="glass-panel flex flex-col items-center justify-center w-60 min-w-60 h-full">
+          <p className="text-theme-muted text-[13px] text-center p-5">
             Select a group from the rail or create a new one.
           </p>
         </div>
@@ -292,7 +292,10 @@ function ChatDashboardContent() {
 
       {/* ── Collapsible Group Member Sidebar ─────────────────────── */}
       {!isDMMode && activeGroup && isMembersListOpen && (
-        <MemberSidebar group={activeGroup} />
+        <MemberSidebar
+          group={activeGroup}
+          onInviteClick={() => setIsInviteMembersOpen(true)}
+        />
       )}
 
       {/* ── Modals ───────────────────────────────────────────────── */}
