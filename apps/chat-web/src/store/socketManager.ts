@@ -201,19 +201,6 @@ class SocketManager {
       }) => {
         PrintLog('🗑️ Socket conversation.deleted event received:', data);
 
-        const state = store.getState() as { auth: { user: any } };
-        const currentUserId = state.auth?.user?.id;
-
-        if (
-          data.deletedById &&
-          currentUserId &&
-          data.deletedById !== currentUserId
-        ) {
-          showToast.warning(
-            `${data.deletedBy || 'Someone'} removed all messages with you.`,
-          );
-        }
-
         store.dispatch(socketRemoveConversation(data.conversationId));
       },
     );
@@ -273,7 +260,6 @@ class SocketManager {
     this.socket.on('group.deleted', (data: { groupId: string }) => {
       PrintLog('🗑️ Socket group.deleted:', data.groupId);
       store.dispatch(socketGroupDeleted(data.groupId));
-      showToast.warning('A group you were in has been deleted.');
     });
 
     this.socket.on(
@@ -287,7 +273,6 @@ class SocketManager {
     this.socket.on('group.member.removed', (data: { groupId: string }) => {
       PrintLog('👤 Socket group.member.removed:', data.groupId);
       store.dispatch(socketGroupMemberRemoved(data));
-      showToast.warning('You were removed from a group.');
     });
 
     this.socket.on(

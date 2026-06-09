@@ -93,11 +93,10 @@ export const InviteMembersModal = ({
       const result = await dispatch(
         createGroupInvite({ groupId: group.id, expiresIn }),
       ).unwrap();
-      showToast.success('Invite link generated successfully!');
       // Copy to clipboard
       const inviteUrl = `${window.location.origin}/invite/${result.token}`;
       await navigator.clipboard.writeText(inviteUrl);
-      showToast.info('Link copied to clipboard!');
+      showToast.success('Invite link generated and copied to clipboard!');
       // Reload invites list
       loadInvites();
     } catch (err: any) {

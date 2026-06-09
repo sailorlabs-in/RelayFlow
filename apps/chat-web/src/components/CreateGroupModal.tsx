@@ -119,7 +119,6 @@ export const CreateGroupModal = ({
       const data = await response.json();
       if (data.files && data.files.length > 0) {
         setAvatarUrl(data.files[0].url);
-        showToast.success('Group icon uploaded!');
       } else {
         throw new Error('No files returned');
       }
