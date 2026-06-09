@@ -43,8 +43,23 @@ export interface ChatState {
     incoming: any[];
     outgoing: any[];
   };
+  /** Conversation IDs whose in-app notifications are muted by the current user (local-only). */
+  mutedConversationIds: string[];
   status: 'idle' | 'loading' | 'succeeded' | 'failed';
   error: string | null;
+}
+
+/** Load muted conversation IDs from localStorage for a given userId. */
+function loadMutedConvoIds(userId?: string | null): string[] {
+  if (typeof window === 'undefined' || !userId) {
+    return [];
+  }
+  try {
+    const raw = localStorage.getItem(`rf-muted-convos-${userId}`);
+    return raw ? (JSON.parse(raw) as string[]) : [];
+  } catch {
+    return [];
+  }
 }
 
 const initialState: ChatState = {
@@ -63,6 +78,7 @@ const initialState: ChatState = {
     incoming: [],
     outgoing: [],
   },
+  mutedConversationIds: [],
   status: 'idle',
   error: null,
 };
@@ -451,6 +467,40 @@ const chatSlice = createSlice({
       state.searchResults = [];
       state.friendSearchResults = [];
     },
+    /**
+     * Load muted conversation IDs from localStorage for the signed-in user.
+     * Called once after session restore / login.
+     */
+    loadMutedConversations: (state, action: PayloadAction<string>) => {
+      state.mutedConversationIds = loadMutedConvoIds(action.payload);
+    },
+    /**
+     * Toggle the mute state for a specific conversation thread.
+     * Persists to localStorage keyed by userId so state survives refresh.
+     */
+    toggleMuteConversation: (
+      state,
+      action: PayloadAction<{ conversationId: string; userId: string }>,
+    ) => {
+      const { conversationId, userId } = action.payload;
+      const idx = state.mutedConversationIds.indexOf(conversationId);
+      if (idx === -1) {
+        state.mutedConversationIds.push(conversationId);
+      } else {
+        state.mutedConversationIds.splice(idx, 1);
+      }
+      // Persist to localStorage
+      if (typeof window !== 'undefined' && userId) {
+        try {
+          localStorage.setItem(
+            `rf-muted-convos-${userId}`,
+            JSON.stringify(state.mutedConversationIds),
+          );
+        } catch {
+          // Ignore storage errors
+        }
+      }
+    },
     // Handle real-time conversation deletion pushed by the server (when the other participant deletes the thread)
     socketRemoveConversation: (state, action: PayloadAction<string>) => {
       const deletedId = action.payload;
@@ -752,6 +802,8 @@ export const {
   socketFriendRequestAccepted,
   socketFriendRequestDeclined,
   socketFriendRemoved,
+  loadMutedConversations,
+  toggleMuteConversation,
 } = chatSlice.actions;
 
 export default chatSlice.reducer;

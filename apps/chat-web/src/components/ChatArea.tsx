@@ -115,11 +115,11 @@ const renderMessageMedia = (msg: Message) => {
 
   if (isImage) {
     return (
-      <div className="mt-1.5 max-w-sm rounded-lg overflow-hidden border border-[var(--border-muted)] bg-[var(--bg-input)]">
+      <div className="mt-1.5 max-w-sm w-fit rounded-lg overflow-hidden border border-[var(--border-muted)] bg-[var(--bg-input)]">
         <img
           src={msg.mediaUrl}
           alt={msg.mediaName || 'Image'}
-          className="w-full max-h-60 object-cover cursor-pointer hover:opacity-90"
+          className="h-[240px] w-auto max-w-full object-contain cursor-pointer hover:opacity-90"
           onClick={() => window.open(msg.mediaUrl, '_blank')}
         />
       </div>
@@ -128,11 +128,11 @@ const renderMessageMedia = (msg: Message) => {
 
   if (isVideo) {
     return (
-      <div className="mt-1.5 max-w-sm rounded-lg overflow-hidden border border-[var(--border-muted)] bg-[var(--bg-input)]">
+      <div className="mt-1.5 max-w-sm w-fit rounded-lg overflow-hidden border border-[var(--border-muted)] bg-[var(--bg-input)]">
         <video
           src={msg.mediaUrl}
           controls
-          className="w-full max-h-60 object-cover"
+          className="h-[240px] w-auto max-w-full object-contain"
         />
       </div>
     );
@@ -1166,7 +1166,7 @@ export const ChatArea = ({
                 className="hidden"
                 multiple
               />
-              <div className="relative flex-1">
+              <div className="relative flex-1 flex items-end">
                 {mentionQuery && emojiResults.length > 0 && (
                   <div className="absolute bottom-full left-0 mb-2 w-[300px] max-h-[200px] overflow-y-auto bg-[var(--bg-sidebar)] border border-[var(--border-muted)] rounded-xl shadow-[var(--glass-shadow)] z-50 flex flex-col p-1">
                     {emojiResults.map((emoji: any) => (
@@ -1198,7 +1198,12 @@ export const ChatArea = ({
                 )}
                 <textarea
                   id="message-input"
-                  className="input-base w-full rounded-xl px-4 py-2.5 text-[14px] resize-none leading-relaxed min-h-7.5 max-h-30 bg-theme-input border-[1.5px] border-glass text-theme-primary focus:outline-none focus:border-(--accent-primary) focus:ring-[3px] focus:ring-[var(--accent-ring)]"
+                  className="input-base w-full block rounded-xl px-4 text-[14px] resize-none leading-normal max-h-30 bg-theme-input border-[1.5px] border-glass text-theme-primary focus:outline-none focus:border-(--accent-primary) focus:ring-[3px] focus:ring-[var(--accent-ring)] box-border"
+                  style={{
+                    minHeight: '46px',
+                    paddingTop: '11px',
+                    paddingBottom: '11px',
+                  }}
                   placeholder="Type a message… (Enter to send)"
                   rows={1}
                   value={messageInput}
