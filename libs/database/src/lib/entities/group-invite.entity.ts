@@ -3,7 +3,11 @@ import {
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
+import { Group } from './group.entity';
+import { User } from './user.entity';
 
 @Entity('group_invite')
 export class GroupInvite {
@@ -13,8 +17,16 @@ export class GroupInvite {
   @Column({ name: 'group_id', type: 'uuid' })
   groupId!: string;
 
+  @ManyToOne(() => Group, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'group_id' })
+  group?: Group;
+
   @Column({ name: 'created_by', type: 'uuid' })
   createdBy!: string;
+
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'created_by' })
+  creator?: User;
 
   @Column({ unique: true })
   token!: string;

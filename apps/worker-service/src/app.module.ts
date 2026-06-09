@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { QueueNames } from '@chat-app/queues';
 
 import { NotificationProcessor } from './processors/notification.processor';
+import { EmailProcessor } from './processors/email.processor';
 
 @Module({
   imports: [
@@ -29,7 +30,10 @@ import { NotificationProcessor } from './processors/notification.processor';
     BullModule.registerQueue({
       name: QueueNames.NOTIFICATIONS,
     }),
+    BullModule.registerQueue({
+      name: QueueNames.EMAILS,
+    }),
   ],
-  providers: [NotificationProcessor],
+  providers: [NotificationProcessor, EmailProcessor],
 })
 export class AppModule {}

@@ -1,428 +1,120 @@
-# RelayFlow
+# RelayFlow (Real-Time Communication Platform)
 
-## Overview
-
-RelayFlow is a modern realtime communication platform built to learn and demonstrate production-grade system design, backend architecture, realtime communication, and scalable application development.
-
-The project is intentionally designed to evolve from a simple MVP into a distributed platform while maintaining clean architecture and developer experience.
-
-The primary goal is educational:
-
-* Learn system design
-* Learn distributed systems concepts
-* Learn realtime communication
-* Learn scalable backend architecture
-* Learn monorepo development
-* Learn event-driven design
+RelayFlow is a modern, high-performance real-time messaging platform built using a NestJS and Next.js monorepo architecture. The platform demonstrates production-grade system design, asynchronous event processing, presence tracking, and scalable backend services.
 
 ---
 
-# Vision
+## Architecture Overview
 
-RelayFlow starts as a realtime messaging platform and gradually evolves into a communication ecosystem.
+RelayFlow is designed as an **Nx Monorepo** structured around three primary applications and modular shared libraries.
 
-Current Focus:
+```mermaid
+graph TD
+    Client[Next.js Client: chat-web] <-->|HTTP & WebSockets| GW[NestJS Gateway Service]
+    GW -->|SQL Queries| DB[(PostgreSQL Database)]
+    GW <-->|Pub/Sub & Cache| Redis[(Redis Broker)]
+    GW -->|Queue Jobs| BullMQ[BullMQ Job Queue]
 
-* Authentication
-* One-to-One Messaging
-* Realtime Updates
-* Presence Tracking
-* Typing Indicators
-* Read Receipts
-
-Future Expansion:
-
-* Group Chats
-* File Sharing
-* Notifications
-* Voice Calls
-* Video Calls
-* Workspaces
-* Channels
-* Integrations
-* Public APIs
+    subgraph Background Processing
+        BullMQ -->|Asynchronous Worker| Worker[NestJS Worker Service]
+        Worker -->|Nodemailer SMTP| Zoho[Zoho SMTP Server]
+        Worker -->|Push Notifications| Vibe[vibe-message SDK]
+    end
+```
 
 ---
 
-# Tech Stack
+## Application Structure
 
-## Frontend
+All apps reside in the `apps/` folder:
 
-* Next.js
-* TypeScript
-* TailwindCSS
-* Socket.IO Client
+### 1. `apps/chat-web` (Next.js Frontend Client)
 
-## Backend
+- **Stack**: Next.js, React, TailwindCSS, Redux Toolkit, Socket.IO Client.
+- **Purpose**: Responsive chat interface for end users.
+- **Core Flows**:
+  - Real-time text messaging, typing indicators, read receipts, and friends list dashboards.
+  - Registering Service Workers with the `vibe-message` push notification client in the user's browser for foreground/background alerts.
 
-* NestJS
-* TypeScript
-* Socket.IO
+### 2. `apps/gateway` (NestJS Monolith API & WebSocket Server)
 
-## Database
+- **Stack**: NestJS, TypeORM, Socket.IO.
+- **Purpose**: Entrypoint API and WebSockets server.
+- **Modules**:
+  - `AuthModule`: Handles register/login, verification codes, JWTs, and 2FA.
+  - `UsersModule`: Profiles, friend relations, search functionality.
+  - `ChatModule` / `GroupsModule`: Handles messages, conversations, and channel groups.
+  - `RealtimeModule`: Persistent WebSocket connection gateway (`RealtimeGateway`) representing presence tracking, typing states, and message forwarding.
+  - `EmailModule`: Interfaces with BullMQ to push transactional email tasks to the queue.
 
-* PostgreSQL
+### 3. `apps/worker-service` (NestJS Asynchronous Background Processor)
 
-## Realtime Infrastructure
-
-* Redis
-
-## Background Processing
-
-* BullMQ
-
-## Monorepo
-
-* Nx
-
-## Infrastructure
-
-* Docker
-* Docker Compose
-
-Future:
-
-* Kubernetes
+- **Stack**: NestJS, BullMQ, Nodemailer, EJS Templates, vibe-message.
+- **Purpose**: Background execution handler for offloading non-blocking workflows.
+- **Processors**:
+  - `NotificationProcessor`: Deliver web push notifications using the server-side `vibe-message` SDK.
+  - `EmailProcessor`: Render EJS templates (`verification`, `two-factor`, `forgot-password`) and dispatch SMTP transactional emails.
 
 ---
 
-# Architecture Philosophy
+## Database & Broker Ownership
 
-RelayFlow follows these principles:
+### PostgreSQL
 
-## 1. Simplicity First
+Stores structural system data and persistence models:
 
-Avoid unnecessary complexity.
+- **Users & Sessions**: Identifiers, security details (hashes, active OTP states), and notification preferences.
+- **Conversations & Members**: Relationships linking users to direct messages (DMs) or group channels.
+- **Messages**: Chat logs, media metadata, and delivery states.
 
-Every abstraction must solve a real problem.
+### Redis
 
----
+Used as a real-time data broker and cache:
 
-## 2. Domain Driven Structure
-
-Code should be organized by business domain rather than technical layers.
-
-Examples:
-
-* Auth
-* Users
-* Conversations
-* Messages
-* Presence
+- **Presence tracking**: Current status (`online`, `offline`, `away`, `dnd`) and `lastSeen` metadata.
+- **Typing state caching**: Micro-state triggers.
+- **Socket mapping**: Mappings of connected user socket IDs to distribute incoming real-time messages.
+- **BullMQ storage**: Stores job data and state transitions for the queue management system.
 
 ---
 
-## 3. Event Driven Thinking
+## Workflow & Communication Flows
 
-Services communicate through events whenever possible.
+### 1. Asynchronous User Registration / Verification Workflow
 
-Example:
+1. User registers via `POST /auth/register` on the **Gateway**.
+2. **Gateway** saves the unverified user with a 6-digit OTP code to **PostgreSQL**.
+3. **Gateway** dispatches a `send-verification-email` job to the `emails` BullMQ queue.
+4. **Gateway** instantly returns a `201 Created` HTTP response to the client (yielding an extremely fast user experience).
+5. In the background, **Worker Service** picks up the job from the queue, renders the `verification.ejs` template, and sends the email via SMTP.
 
-Message Created
-→ Realtime Delivery
-→ Notifications
-→ Analytics
+### 2. Real-Time Chat Delivery Workflow
 
----
-
-## 4. Scalability Through Separation
-
-The system starts simple but can evolve into multiple services without major rewrites.
-
----
-
-# Repository Structure
-
-apps/
-
-* web
-* gateway
-* auth-service
-* chat-service
-* realtime-service
-* worker-service
-
-libs/
-
-* shared-types
-* shared-events
-* shared-constants
-* database
-* redis
-* socket
-* logger
-* config
-* validation
-
-docs/
-
-* architecture
-* decisions
-* setup
-* roadmap
-
-docker/
-
-* local infrastructure
+1. User sends a message over Socket.IO (`send.message`) to **Gateway**.
+2. **Gateway** records the message to **PostgreSQL**.
+3. **Gateway** emits `message.new` to all active socket connections in the conversation room.
+4. For users who are offline or away, the **Gateway** adds a `send-push` job to the `notifications` BullMQ queue.
+5. In the background, **Worker Service** processes the job and calls the `vibe-message` API to push an alert to the user's client devices.
 
 ---
 
-# Service Responsibilities
-
-## Gateway
-
-Responsibilities:
-
-* Public API entry point
-* Authentication validation
-* Request routing
-* Rate limiting
-
-Should NOT contain business logic.
-
----
-
-## Auth Service
-
-Responsibilities:
-
-* Registration
-* Login
-* JWT Management
-* Session Management
-
-Owns:
-
-* Users
-* Sessions
-
----
-
-## Chat Service
-
-Responsibilities:
-
-* Conversations
-* Messages
-* Read Receipts
-
-Owns:
-
-* Conversations
-* Messages
-
----
-
-## Realtime Service
-
-Responsibilities:
-
-* WebSocket Connections
-* Presence
-* Typing Indicators
-* Message Delivery
-
-Owns:
-
-* Socket State
-* Realtime Communication
-
----
-
-## Worker Service
-
-Responsibilities:
-
-* Notifications
-* Scheduled Jobs
-* Async Processing
-
-Owns:
-
-* BullMQ Workers
-
----
-
-# Database Ownership
-
-PostgreSQL stores:
-
-* Users
-* Sessions
-* Conversations
-* Conversation Members
-* Messages
-* Read Receipts
-
-Redis stores:
-
-* Presence
-* Typing Indicators
-* Socket Mapping
-* Pub/Sub Events
-* Cache
-
----
-
-# Development Workflow
-
-Before implementing features:
-
-1. Design
-2. Architecture Review
-3. Database Design
-4. API Design
-5. Event Design
-6. Implementation
-7. Testing
-
-Avoid implementing features without first documenting their design.
-
----
-
-# Branch Strategy
-
-main
-
-Production-ready code.
-
-develop
-
-Active development.
-
-feature/*
-
-Feature branches.
-
-Examples:
-
-feature/auth
-feature/conversations
-feature/realtime-presence
-
----
-
-# Coding Standards
-
-## General
-
-* TypeScript Strict Mode
-* ESLint
-* Prettier
-* Conventional Commits
-
----
-
-## Naming
-
-Files:
-
-kebab-case
-
-Examples:
-
-message.service.ts
-conversation.controller.ts
-
-Classes:
-
-PascalCase
-
-Variables:
-
-camelCase
-
-Constants:
-
-UPPER_SNAKE_CASE
-
----
-
-# Current MVP Scope
-
-Authentication
-
-* Register
-* Login
-* Refresh Token
-
-Messaging
-
-* Direct Messages
-* Message Persistence
-* Realtime Delivery
-
-Presence
-
-* Online
-* Offline
-
-Typing
-
-* Typing Indicators
-
-Read Receipts
-
-* Message Seen State
-
----
-
-# Out Of Scope (For Now)
-
-* Group Chats
-* Attachments
-* Voice Calls
-* Video Calls
-* Workspaces
-* Channels
-
-These features will be added after the MVP is stable.
-
----
-
-# Documentation Structure
-
-Every major feature must include:
-
-Feature Overview
-
-API Design
-
-Database Changes
-
-Events Produced
-
-Events Consumed
-
-Testing Strategy
-
-No feature should be implemented without corresponding documentation.
-
----
-
-# Success Criteria
-
-A successful RelayFlow MVP should:
-
-* Support realtime messaging
-* Persist messages reliably
-* Handle reconnects gracefully
-* Track presence accurately
-* Demonstrate scalable architecture patterns
-* Be understandable by new contributors
-
----
-
-# Long-Term Goal
-
-RelayFlow should become a reference project demonstrating how modern realtime applications are built using:
-
-* NestJS
-* Next.js
-* PostgreSQL
-* Redis
-* BullMQ
-* Event Driven Architecture
-* Monorepo Development
-
-while remaining approachable for developers learning advanced backend engineering concepts.
+## Quick Reference Scripts
+
+Run these from the root directory:
+
+- **Serving Apps (Development)**:
+  ```bash
+  npm run serve-all
+  ```
+- **Serving Apps (Production)**:
+  ```bash
+  npm run serve-all:prod
+  ```
+- **Building All Apps**:
+  ```bash
+  npm run build-all
+  ```
+- **Linting All Projects**:
+  ```bash
+  npm run lint:all
+  ```

@@ -4,7 +4,10 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
+import { User } from './user.entity';
 
 @Entity('group')
 export class Group {
@@ -19,6 +22,10 @@ export class Group {
 
   @Column({ name: 'owner_id', type: 'uuid' })
   ownerId!: string;
+
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'owner_id' })
+  owner?: User;
 
   @Column({ name: 'icon_letter', length: 2, default: 'G' })
   iconLetter!: string;
