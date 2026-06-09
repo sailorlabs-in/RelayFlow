@@ -1,6 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
-import { API_URL } from '../../constants/config';
+import ApiRequest from '../../utils/ApiRequest';
 
 export interface User {
   id: string;
@@ -65,9 +64,13 @@ export const registerUser = createAsyncThunk(
     { rejectWithValue },
   ) => {
     try {
-      const response = await axios.post(`${API_URL}/auth/register`, payload);
-      // NestJS wraps response in { success: true, data: ... }
-      return response.data.data;
+      const response = await ApiRequest(
+        '/auth/register',
+        'post',
+        payload,
+        false,
+      );
+      return response.data;
     } catch (error: any) {
       const errorMsg =
         error.response?.data?.error?.message ||
@@ -86,9 +89,8 @@ export const loginUser = createAsyncThunk(
     { rejectWithValue },
   ) => {
     try {
-      const response = await axios.post(`${API_URL}/auth/login`, payload);
-      // NestJS wraps response in { success: true, data: { accessToken, user, requiresVerification, ... } }
-      return response.data.data;
+      const response = await ApiRequest('/auth/login', 'post', payload, false);
+      return response.data;
     } catch (error: any) {
       const errorMsg =
         error.response?.data?.error?.message ||
@@ -104,11 +106,13 @@ export const verifyEmailOtp = createAsyncThunk(
   'auth/verifyEmail',
   async (payload: { email: string; otp: string }, { rejectWithValue }) => {
     try {
-      const response = await axios.post(
-        `${API_URL}/auth/verify-email`,
+      const response = await ApiRequest(
+        '/auth/verify-email',
+        'post',
         payload,
+        false,
       );
-      return response.data.data;
+      return response.data;
     } catch (error: any) {
       const errorMsg =
         error.response?.data?.error?.message ||
@@ -132,8 +136,13 @@ export const verify2FaOtp = createAsyncThunk(
     { rejectWithValue },
   ) => {
     try {
-      const response = await axios.post(`${API_URL}/auth/verify-2fa`, payload);
-      return response.data.data;
+      const response = await ApiRequest(
+        '/auth/verify-2fa',
+        'post',
+        payload,
+        false,
+      );
+      return response.data;
     } catch (error: any) {
       const errorMsg =
         error.response?.data?.error?.message ||
@@ -149,16 +158,84 @@ export const resendVerificationCode = createAsyncThunk(
   'auth/resendVerification',
   async (payload: { email: string }, { rejectWithValue }) => {
     try {
-      const response = await axios.post(
-        `${API_URL}/auth/resend-verification`,
+      const response = await ApiRequest(
+        '/auth/resend-verification',
+        'post',
         payload,
+        false,
       );
-      return response.data.data;
+      return response.data;
     } catch (error: any) {
       const errorMsg =
         error.response?.data?.error?.message ||
         error.response?.data?.message ||
         'Failed to resend verification code.';
+      return rejectWithValue(errorMsg);
+    }
+  },
+);
+
+// Async Thunk to request a password reset link
+export const forgotPassword = createAsyncThunk(
+  'auth/forgotPassword',
+  async (email: string, { rejectWithValue }) => {
+    try {
+      const response = await ApiRequest(
+        '/auth/forgot-password',
+        'post',
+        { email },
+        false,
+      );
+      return response.data;
+    } catch (error: any) {
+      const errorMsg =
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        'Failed to request reset link.';
+      return rejectWithValue(errorMsg);
+    }
+  },
+);
+
+// Async Thunk to reset password with token
+export const resetPassword = createAsyncThunk(
+  'auth/resetPassword',
+  async (payload: { token: string; password: string }, { rejectWithValue }) => {
+    try {
+      const response = await ApiRequest(
+        '/auth/reset-password',
+        'post',
+        payload,
+        false,
+      );
+      return response.data;
+    } catch (error: any) {
+      const errorMsg =
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        'Reset failed. The token is invalid or has expired.';
+      return rejectWithValue(errorMsg);
+    }
+  },
+);
+
+// Async Thunk to check username availability
+export const checkUsernameAvailability = createAsyncThunk(
+  'auth/checkUsername',
+  async (username: string, { rejectWithValue }) => {
+    try {
+      const response = await ApiRequest(
+        `/users/check-username?username=${username}`,
+        'get',
+        {},
+        true,
+      );
+      return response; // returns { available: boolean }
+    } catch (error: any) {
+      const errorMsg =
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        'Failed to check username.';
       return rejectWithValue(errorMsg);
     }
   },
@@ -185,19 +262,16 @@ export const updateUserProfile = createAsyncThunk(
       twoFactorOnlyNewDevice?: boolean;
       avatarUrl?: string;
     },
-    { getState, rejectWithValue },
+    { rejectWithValue },
   ) => {
     try {
-      const state = getState() as { auth: { accessToken: string | null } };
-      const response = await axios.patch(`${API_URL}/users/profile`, payload, {
-        headers: {
-          Authorization: state.auth.accessToken
-            ? `Bearer ${state.auth.accessToken}`
-            : '',
-        },
-      });
-      // NestJS wraps response in { success: true, data: user }
-      return response.data.data;
+      const response = await ApiRequest(
+        '/users/profile',
+        'patch',
+        payload,
+        true,
+      );
+      return response.data;
     } catch (error: any) {
       const errorMsg =
         error.response?.data?.error?.message ||

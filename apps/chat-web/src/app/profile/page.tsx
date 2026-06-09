@@ -1,7 +1,5 @@
 'use client';
 
-import axios from 'axios';
-import { API_URL } from '../../constants/config';
 import { PRESENCE_STATUS_DETAILS } from '@chat-app/shared-constants';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -17,6 +15,7 @@ import {
   setThemeMode as setReduxThemeMode,
   setThemeSchema as setReduxThemeSchema,
   updateUserStatusOptimistic,
+  checkUsernameAvailability,
 } from '../../store/slices/authSlice';
 import { socketUpdateUserStatus } from '../../store/slices/chatSlice';
 import { socketManager } from '../../store/socketManager';
@@ -369,15 +368,10 @@ export function ProfileSettingsContent({
 
     const delayDebounce = setTimeout(async () => {
       try {
-        const response = await axios.get(
-          `${API_URL}/users/check-username?username=${normalized}`,
-          {
-            headers: {
-              Authorization: accessToken ? `Bearer ${accessToken}` : '',
-            },
-          },
-        );
-        setUsernameAvailable(response.data.available);
+        const result = await dispatch(
+          checkUsernameAvailability(normalized),
+        ).unwrap();
+        setUsernameAvailable(result.available);
       } catch (err) {
         setUsernameAvailable(false);
       } finally {

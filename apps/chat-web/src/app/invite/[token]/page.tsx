@@ -1,13 +1,16 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
 import { useRouter, useParams } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '../../../store';
 import { restoreSession } from '../../../store/slices/authSlice';
-import { fetchGroups, setActiveGroup } from '../../../store/slices/groupsSlice';
+import {
+  fetchGroups,
+  setActiveGroup,
+  resolveGroupInvite,
+  acceptGroupInvite,
+} from '../../../store/slices/groupsSlice';
 import { AuthGate } from '../../../components/AuthGate';
-import { API_URL } from '../../../constants/config';
 import StoreProvider from '../../../store/StoreProvider';
 import { showToast } from '../../../components/toast';
 
@@ -44,18 +47,10 @@ function InvitePageContent() {
       setIsLoading(true);
       setError(null);
       try {
-        const response = await axios.get(
-          `${API_URL}/groups/invite/resolve/${token}`,
-          {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          },
-        );
-        setGroupDetails(response.data.data);
+        const result = await dispatch(resolveGroupInvite(token)).unwrap();
+        setGroupDetails(result);
       } catch (err: any) {
-        setError(
-          err.response?.data?.message ||
-            '❌ This invite link is invalid or has expired.',
-        );
+        setError(err || '❌ This invite link is invalid or has expired.');
       } finally {
         setIsLoading(false);
       }
@@ -70,14 +65,7 @@ function InvitePageContent() {
     }
     setIsJoining(true);
     try {
-      const response = await axios.post(
-        `${API_URL}/groups/invite/accept/${token}`,
-        {},
-        {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        },
-      );
-      const joinedGroup = response.data.data;
+      const joinedGroup = await dispatch(acceptGroupInvite(token)).unwrap();
       showToast.success(`Successfully joined group ${groupDetails.name}!`);
       // Update groups in Redux store
       await dispatch(fetchGroups()).unwrap();
@@ -86,7 +74,7 @@ function InvitePageContent() {
       // Redirect to dashboard
       router.push('/');
     } catch (err: any) {
-      showToast.error(err.response?.data?.message || 'Failed to join group.');
+      showToast.error(err || 'Failed to join group.');
     } finally {
       setIsJoining(false);
     }

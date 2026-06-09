@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { API_URL } from '../constants/config';
 import { useAppDispatch, useAppSelector } from '../store';
 import type { User } from '../store/slices/authSlice';
 import {
@@ -12,6 +10,8 @@ import {
   removeFriend,
   createConversation,
   fetchUserProfile,
+  searchFriendUsers,
+  clearSearchResults,
 } from '../store/slices/chatSlice';
 import { Avatar } from './Avatar';
 import { showToast } from './toast';
@@ -20,9 +20,12 @@ import { ConfirmationModal } from './ConfirmationModal';
 export const FriendsDashboard = (): React.JSX.Element => {
   const dispatch = useAppDispatch();
   const { user, accessToken } = useAppSelector((s) => s.auth);
-  const { friends, pendingRequests, onlineUsers } = useAppSelector(
-    (s) => s.chat,
-  );
+  const {
+    friends,
+    pendingRequests,
+    onlineUsers,
+    friendSearchResults: foundUsers,
+  } = useAppSelector((s) => s.chat);
 
   const [activeTab, setActiveTab] = useState<
     'online' | 'all' | 'pending' | 'add'
@@ -31,7 +34,6 @@ export const FriendsDashboard = (): React.JSX.Element => {
   // Add Friend state
   const [searchQuery, setSearchQuery] = useState('');
   const [searchLoading, setSearchLoading] = useState(false);
-  const [foundUsers, setFoundUsers] = useState<User[]>([]);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [sentRequests, setSentRequests] = useState<Record<string, boolean>>({});
   const [confirmModal, setConfirmModal] = useState<{
@@ -78,50 +80,27 @@ export const FriendsDashboard = (): React.JSX.Element => {
         setSearchLoading(true);
         setSearchError(null);
         try {
-          const response = await axios.get(
-            `${API_URL}/users/search-friend?query=`,
-            {
-              headers: { Authorization: `Bearer ${accessToken}` },
-            },
-          );
-          setFoundUsers(response.data.data || []);
+          await dispatch(searchFriendUsers('')).unwrap();
         } catch (err: any) {
-          setSearchError(
-            err.response?.data?.error?.message ||
-              err.response?.data?.message ||
-              'Failed to load users.',
-          );
+          setSearchError(err || 'Failed to load users.');
         } finally {
           setSearchLoading(false);
         }
       };
       fetchInitialUsers();
     }
-  }, [activeTab, accessToken]);
+  }, [activeTab, accessToken, dispatch]);
 
   const handleSearchUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!accessToken) {
-      return;
-    }
 
     setSearchLoading(true);
     setSearchError(null);
 
     try {
-      const response = await axios.get(
-        `${API_URL}/users/search-friend?query=${searchQuery.trim()}`,
-        {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        },
-      );
-      setFoundUsers(response.data.data || []);
+      await dispatch(searchFriendUsers(searchQuery.trim())).unwrap();
     } catch (err: any) {
-      setSearchError(
-        err.response?.data?.error?.message ||
-          err.response?.data?.message ||
-          'No users found matching query.',
-      );
+      setSearchError(err || 'No users found matching query.');
     } finally {
       setSearchLoading(false);
     }
@@ -304,7 +283,7 @@ export const FriendsDashboard = (): React.JSX.Element => {
                     setActiveTab(tab.id as any);
                     if (tab.id !== 'add') {
                       setSearchQuery('');
-                      setFoundUsers([]);
+                      dispatch(clearSearchResults());
                       setSearchError(null);
                     }
                   }}
