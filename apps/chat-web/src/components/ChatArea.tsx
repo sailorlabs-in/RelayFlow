@@ -233,12 +233,14 @@ export const ChatArea = ({
   };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [attachedFile, setAttachedFile] = useState<{
-    url: string;
-    name: string;
-    type: string;
-    size: number;
-  } | null>(null);
+  const [attachedFiles, setAttachedFiles] = useState<
+    {
+      url: string;
+      name: string;
+      type: string;
+      size: number;
+    }[]
+  >([]);
   const [uploading, setUploading] = useState(false);
 
   const deleteUploadedFile = async (url: string) => {
@@ -273,62 +275,84 @@ export const ChatArea = ({
     }
   };
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) {
+  const processFiles = async (files: File[]) => {
+    const availableSlots = 10 - attachedFiles.length;
+    if (availableSlots <= 0) {
+      showToast.error('You can only attach up to 10 files.');
       return;
     }
 
-    if (file.size > 20 * 1024 * 1024) {
-      showToast.error('File size cannot exceed 20MB.');
+    const filesToUpload = files.slice(0, availableSlots);
+    if (files.length > availableSlots) {
+      showToast.error(`Only ${availableSlots} more file(s) can be attached.`);
+    }
+
+    const validFiles = filesToUpload.filter((f) => {
+      if (f.size > 20 * 1024 * 1024) {
+        showToast.error(`File ${f.name} exceeds 20MB limit.`);
+        return false;
+      }
+      return true;
+    });
+
+    if (validFiles.length === 0) {
       return;
     }
 
     setUploading(true);
 
-    if (attachedFile) {
-      await deleteUploadedFile(attachedFile.url);
-    }
-
-    const formData = new FormData();
-    formData.append('bucket', 'relayflow');
-    formData.append('folder', 'chat-medis');
-    formData.append('files', file);
-
     try {
       const bucketUrl = (
         process.env.NEXT_PUBLIC_BUCKET_URL || 'https://bucket.umangsailor.com'
       ).replace(/\/+$/, '');
-      const response = await fetch(`${bucketUrl}/upload`, {
-        method: 'POST',
-        body: formData,
+
+      const uploadPromises = validFiles.map(async (file) => {
+        const formData = new FormData();
+        formData.append('bucket', 'relayflow');
+        formData.append('folder', 'chat-medis');
+        formData.append('files', file);
+
+        const response = await fetch(`${bucketUrl}/upload`, {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error('Upload failed');
+        }
+
+        const data = await response.json();
+        if (data.files && data.files.length > 0) {
+          const uploaded = data.files[0];
+          return {
+            url: uploaded.url,
+            name: uploaded.originalName || file.name,
+            type: file.type || 'application/octet-stream',
+            size: file.size,
+          };
+        }
+        throw new Error('No files returned');
       });
 
-      if (!response.ok) {
-        throw new Error('Upload failed');
-      }
-
-      const data = await response.json();
-      if (data.files && data.files.length > 0) {
-        const uploaded = data.files[0];
-        setAttachedFile({
-          url: uploaded.url,
-          name: uploaded.originalName || file.name,
-          type: file.type || 'application/octet-stream',
-          size: file.size,
-        });
-      } else {
-        throw new Error('No files returned');
-      }
+      const uploadedFiles = await Promise.all(uploadPromises);
+      setAttachedFiles((prev) => [...prev, ...uploadedFiles]);
     } catch (err) {
       console.error('File upload error:', err);
-      showToast.error('Failed to upload file.');
+      showToast.error('Failed to upload some files.');
     } finally {
       setUploading(false);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
     }
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) {
+      return;
+    }
+    await processFiles(files);
   };
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -547,20 +571,31 @@ export const ChatArea = ({
   // ---- Messages ----
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if ((!messageInput.trim() && !attachedFile) || !activeConversationId) {
+    if (
+      (!messageInput.trim() && attachedFiles.length === 0) ||
+      !activeConversationId
+    ) {
       return;
     }
 
-    const media = attachedFile
-      ? {
-          mediaUrl: attachedFile.url,
-          mediaType: attachedFile.type,
-          mediaName: attachedFile.name,
-          mediaSize: attachedFile.size,
-        }
-      : undefined;
-
-    socketManager.sendMessage(activeConversationId, messageInput.trim(), media);
+    if (attachedFiles.length > 0) {
+      attachedFiles.forEach((file, index) => {
+        const text = index === 0 ? messageInput.trim() : '';
+        const media = {
+          mediaUrl: file.url,
+          mediaType: file.type,
+          mediaName: file.name,
+          mediaSize: file.size,
+        };
+        socketManager.sendMessage(activeConversationId, text, media);
+      });
+    } else {
+      socketManager.sendMessage(
+        activeConversationId,
+        messageInput.trim(),
+        undefined,
+      );
+    }
 
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
@@ -568,7 +603,7 @@ export const ChatArea = ({
     socketManager.stopTyping(activeConversationId);
     setIsTypingState(false);
     setMessageInput('');
-    setAttachedFile(null);
+    setAttachedFiles([]);
     setShowEmojiPicker(false);
   };
 
@@ -1036,38 +1071,47 @@ export const ChatArea = ({
 
           {/* Input Area */}
           <div className="px-4 py-3.5 border-t border-[var(--border-muted)] bg-[var(--bg-sidebar)] rounded-b-2xl">
-            {attachedFile && (
-              <div className="flex items-center gap-3 p-2 mb-2 rounded-xl border border-[var(--border-muted)] bg-[var(--bg-input)] animate-fade-in text-[13px] relative max-w-md">
-                {attachedFile.type.startsWith('image/') ? (
-                  <img
-                    src={attachedFile.url}
-                    alt="Preview"
-                    className="w-12 h-12 object-cover rounded-lg shrink-0"
-                  />
-                ) : (
-                  <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-[var(--accent-primary)] text-white text-[20px] shrink-0">
-                    📄
+            {attachedFiles.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-2 max-w-full">
+                {attachedFiles.map((file, idx) => (
+                  <div
+                    key={file.url + idx}
+                    className="flex items-center gap-3 p-2 rounded-xl border border-[var(--border-muted)] bg-[var(--bg-input)] animate-fade-in text-[13px] relative max-w-[200px]"
+                  >
+                    {file.type.startsWith('image/') ? (
+                      <img
+                        src={file.url}
+                        alt="Preview"
+                        className="w-10 h-10 object-cover rounded-lg shrink-0"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-[var(--accent-primary)] text-white text-[16px] shrink-0">
+                        📄
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0 pr-6">
+                      <div className="font-semibold truncate text-[var(--text-primary)] text-[12px]">
+                        {file.name}
+                      </div>
+                      <div className="text-[10px] text-[var(--text-muted)] mt-0.5">
+                        {(file.size / 1024).toFixed(1)} KB
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        deleteUploadedFile(file.url);
+                        setAttachedFiles((prev) =>
+                          prev.filter((f) => f.url !== file.url),
+                        );
+                      }}
+                      className="absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center bg-[var(--danger-bg)] text-[var(--danger)] border-none cursor-pointer hover:bg-[var(--danger)] hover:text-white transition-all duration-150 active-press shadow-sm"
+                      title="Remove attachment"
+                    >
+                      <IconX size={10} />
+                    </button>
                   </div>
-                )}
-                <div className="flex-1 min-w-0 pr-6">
-                  <div className="font-semibold truncate text-[var(--text-primary)] text-[13.5px]">
-                    {attachedFile.name}
-                  </div>
-                  <div className="text-[11px] text-[var(--text-muted)] mt-0.5">
-                    {(attachedFile.size / 1024).toFixed(1)} KB
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    deleteUploadedFile(attachedFile.url);
-                    setAttachedFile(null);
-                  }}
-                  className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center bg-[var(--danger-bg)] text-[var(--danger)] border-none cursor-pointer hover:bg-[var(--danger)] hover:text-white transition-all duration-150 active-press"
-                  title="Remove attachment"
-                >
-                  <IconX size={10} />
-                </button>
+                ))}
               </div>
             )}
             <form
@@ -1120,6 +1164,7 @@ export const ChatArea = ({
                 ref={fileInputRef}
                 onChange={handleFileSelect}
                 className="hidden"
+                multiple
               />
               <div className="relative flex-1">
                 {mentionQuery && emojiResults.length > 0 && (
@@ -1164,12 +1209,30 @@ export const ChatArea = ({
                       handleSendMessage(e);
                     }
                   }}
+                  onPaste={(e) => {
+                    const items = e.clipboardData?.items;
+                    if (items) {
+                      const filesToPaste: File[] = [];
+                      for (let i = 0; i < items.length; i++) {
+                        if (items[i].kind === 'file') {
+                          const file = items[i].getAsFile();
+                          if (file) {
+                            filesToPaste.push(file);
+                          }
+                        }
+                      }
+                      if (filesToPaste.length > 0) {
+                        e.preventDefault();
+                        processFiles(filesToPaste);
+                      }
+                    }
+                  }}
                 />
               </div>
               <button
                 id="send-message-btn"
                 type="submit"
-                disabled={!messageInput.trim() && !attachedFile}
+                disabled={!messageInput.trim() && attachedFiles.length === 0}
                 className="btn-send w-[46px] h-[46px] rounded-xl flex-shrink-0 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed hover:-translate-y-0.5 hover:shadow-[var(--btn-shadow)] active-press"
               >
                 <IconSend />
