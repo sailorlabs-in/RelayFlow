@@ -42,6 +42,9 @@ export const environmentSchema = z.object({
 
   // Frontend Configurations
   FRONTEND_URL: z.string().default('http://localhost:4000'),
+
+  // Storage Bucket Configurations
+  BUCKET_URL: z.string().default('https://bucket.umangsailor.com'),
 });
 
 export type Environment = z.infer<typeof environmentSchema>;

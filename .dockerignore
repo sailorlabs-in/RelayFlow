@@ -25,5 +25,4 @@ apps/chat-web/out
 
 # Docs & misc
 README.md
-nginx
 docker-compose.yml
