@@ -7,7 +7,7 @@ import { createGroup } from '../store/slices/groupsSlice';
 import { Avatar } from './Avatar';
 import { IconX, IconSearch, IconPlus } from './Icons';
 import { showToast } from './toast';
-import { generateImageThumbnail } from '../utils/media';
+import { generateImageThumbnail, compressImage } from '../utils/media';
 
 interface CreateGroupModalProps {
   onClose: () => void;
@@ -104,6 +104,12 @@ export const CreateGroupModal = ({
         await deleteOldMedia(avatarThumbnailUrl);
       }
 
+      // Compress main avatar image (max 400px, 0.85 quality)
+      const compressedBlob = await compressImage(file, 400, 0.85);
+      const compressedFile = new File([compressedBlob], file.name, {
+        type: 'image/jpeg',
+      });
+
       // Generate 20% thumbnail
       const thumbBlob = await generateImageThumbnail(file);
       const thumbFile = new File([thumbBlob], `thumb_${file.name}`, {
@@ -113,7 +119,7 @@ export const CreateGroupModal = ({
       const formData = new FormData();
       formData.append('bucket', 'relayflow');
       formData.append('folder', 'profile-media');
-      formData.append('files', file);
+      formData.append('files', compressedFile);
       formData.append('files', thumbFile);
 
       const bucketUrl = (

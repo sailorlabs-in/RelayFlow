@@ -21,7 +21,7 @@ import { socketUpdateUserStatus } from '../../store/slices/chatSlice';
 import { socketManager } from '../../store/socketManager';
 import StoreProvider from '../../store/StoreProvider';
 import { Avatar } from '../../components/Avatar';
-import { generateImageThumbnail } from '../../utils/media';
+import { generateImageThumbnail, compressImage } from '../../utils/media';
 
 /* ── SVGs for icons ────────────────────────────────────────── */
 
@@ -250,6 +250,12 @@ export function ProfileSettingsContent({
         await deleteOldMedia(avatarThumbnailUrl);
       }
 
+      // Compress main avatar image (max 400px, 0.85 quality)
+      const compressedBlob = await compressImage(file, 400, 0.85);
+      const compressedFile = new File([compressedBlob], file.name, {
+        type: 'image/jpeg',
+      });
+
       // Generate 20% thumbnail
       const thumbBlob = await generateImageThumbnail(file);
       const thumbFile = new File([thumbBlob], `thumb_${file.name}`, {
@@ -259,7 +265,7 @@ export function ProfileSettingsContent({
       const formData = new FormData();
       formData.append('bucket', 'relayflow');
       formData.append('folder', 'profile-media');
-      formData.append('files', file);
+      formData.append('files', compressedFile);
       formData.append('files', thumbFile);
 
       const bucketUrl = (
