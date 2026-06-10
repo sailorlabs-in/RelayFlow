@@ -1,0 +1,2 @@
+# Exclude non-javascript/typescript assets from Nx project graph scanning
+nginx
