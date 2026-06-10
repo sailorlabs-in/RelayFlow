@@ -7,6 +7,7 @@ import { createGroup } from '../store/slices/groupsSlice';
 import { Avatar } from './Avatar';
 import { IconX, IconSearch, IconPlus } from './Icons';
 import { showToast } from './toast';
+import { generateImageThumbnail, compressImage } from '../utils/media';
 
 interface CreateGroupModalProps {
   onClose: () => void;
@@ -22,6 +23,7 @@ export const CreateGroupModal = ({
   const [groupName, setGroupName] = useState('');
   const [description, setDescription] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
+  const [avatarThumbnailUrl, setAvatarThumbnailUrl] = useState('');
   const [uploading, setUploading] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -94,16 +96,32 @@ export const CreateGroupModal = ({
 
     setUploading(true);
 
-    if (avatarUrl) {
-      await deleteOldMedia(avatarUrl);
-    }
-
-    const formData = new FormData();
-    formData.append('bucket', 'relayflow');
-    formData.append('folder', 'profile-media');
-    formData.append('files', file);
-
     try {
+      if (avatarUrl) {
+        await deleteOldMedia(avatarUrl);
+      }
+      if (avatarThumbnailUrl && avatarThumbnailUrl !== avatarUrl) {
+        await deleteOldMedia(avatarThumbnailUrl);
+      }
+
+      // Compress main avatar image (max 400px, 0.85 quality)
+      const compressedBlob = await compressImage(file, 400, 0.85);
+      const compressedFile = new File([compressedBlob], file.name, {
+        type: 'image/jpeg',
+      });
+
+      // Generate 20% thumbnail
+      const thumbBlob = await generateImageThumbnail(file);
+      const thumbFile = new File([thumbBlob], `thumb_${file.name}`, {
+        type: 'image/jpeg',
+      });
+
+      const formData = new FormData();
+      formData.append('bucket', 'relayflow');
+      formData.append('folder', 'profile-media');
+      formData.append('files', compressedFile);
+      formData.append('files', thumbFile);
+
       const bucketUrl = (
         process.env.NEXT_PUBLIC_BUCKET_URL || 'https://bucket.umangsailor.com'
       ).replace(/\/+$/, '');
@@ -118,8 +136,10 @@ export const CreateGroupModal = ({
 
       const data = await response.json();
       if (data.files && data.files.length > 0) {
-        setAvatarUrl(data.files[0].url);
-        showToast.success('Group icon uploaded!');
+        const mainUrl = data.files[0].url;
+        const thumbUrl = data.files[1]?.url || mainUrl;
+        setAvatarUrl(mainUrl);
+        setAvatarThumbnailUrl(thumbUrl);
       } else {
         throw new Error('No files returned');
       }
@@ -145,6 +165,7 @@ export const CreateGroupModal = ({
           description: description.trim() || undefined,
           memberUserIds: selectedUsers.map((u) => u.id),
           avatarUrl: avatarUrl || undefined,
+          avatarThumbnailUrl: avatarThumbnailUrl || undefined,
         }),
       ).unwrap();
       showToast.success(`Group "${groupName}" created!`);
@@ -235,7 +256,14 @@ export const CreateGroupModal = ({
                     type="button"
                     onClick={() => {
                       deleteOldMedia(avatarUrl);
+                      if (
+                        avatarThumbnailUrl &&
+                        avatarThumbnailUrl !== avatarUrl
+                      ) {
+                        deleteOldMedia(avatarThumbnailUrl);
+                      }
                       setAvatarUrl('');
+                      setAvatarThumbnailUrl('');
                     }}
                     className="px-3 py-1.5 rounded-[8px] text-[11.5px] font-semibold cursor-pointer border border-[var(--danger-border)] bg-[var(--danger-bg)] text-[var(--danger)] hover:bg-[var(--danger)] hover:text-white transition-all active-press"
                   >
@@ -315,7 +343,7 @@ export const CreateGroupModal = ({
                       letter={(u.username ||
                         u.displayName ||
                         u.email)[0].toUpperCase()}
-                      url={u.avatarUrl}
+                      url={u.avatarThumbnailUrl || u.avatarUrl}
                       size="sm"
                     />
                     <span className="text-xs font-semibold text-[var(--theme-btn-active-text)]">
@@ -368,7 +396,7 @@ export const CreateGroupModal = ({
                           letter={(u.username ||
                             u.displayName ||
                             u.email)[0].toUpperCase()}
-                          url={u.avatarUrl}
+                          url={u.avatarThumbnailUrl || u.avatarUrl}
                           size="sm"
                         />
                         <div>

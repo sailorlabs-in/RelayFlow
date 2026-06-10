@@ -26,6 +26,9 @@ export class User {
   @Column({ name: 'avatar_url', nullable: true })
   avatarUrl?: string;
 
+  @Column({ name: 'avatar_thumbnail_url', nullable: true })
+  avatarThumbnailUrl?: string;
+
   @Column({ name: 'theme_mode', default: 'system' })
   themeMode!: string;
 

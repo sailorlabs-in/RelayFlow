@@ -118,6 +118,11 @@ export class UsersController {
           type: 'string',
           example: 'https://bucket.umangsailor.com/storage/profiles/avatar.png',
         },
+        avatarThumbnailUrl: {
+          type: 'string',
+          example:
+            'https://bucket.umangsailor.com/storage/profiles/avatar_thumb.png',
+        },
       },
     },
   })
@@ -145,6 +150,7 @@ export class UsersController {
       isTwoFactorEnabled?: boolean;
       twoFactorOnlyNewDevice?: boolean;
       avatarUrl?: string;
+      avatarThumbnailUrl?: string;
     },
   ): Promise<User> {
     return this.usersService.updateProfile(currentUser.userId, body);

@@ -7,6 +7,49 @@ import React, {
   useCallback,
   useLayoutEffect,
 } from 'react';
+import dynamic from 'next/dynamic';
+
+const EmojiPicker = dynamic(
+  async () => {
+    const [Picker, data] = await Promise.all([
+      import('@emoji-mart/react'),
+      import('@emoji-mart/data'),
+    ]);
+    return function EmojiPickerWrapper(props: any) {
+      return <Picker.default data={data.default} {...props} />;
+    };
+  },
+  {
+    ssr: false,
+    loading: () => (
+      <div className="p-4 text-center text-[13px] text-[var(--text-muted)] w-[352px] h-[435px] flex items-center justify-center">
+        <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin border-[var(--accent-primary)]" />
+      </div>
+    ),
+  },
+);
+
+let isEmojiIndexInit = false;
+const searchEmojis = async (query: string) => {
+  if (!query) {
+    return [];
+  }
+  try {
+    const [data, { init, SearchIndex }] = await Promise.all([
+      import('@emoji-mart/data').then((m) => m.default),
+      import('emoji-mart'),
+    ]);
+    if (!isEmojiIndexInit) {
+      init({ data });
+      isEmojiIndexInit = true;
+    }
+    const results = await SearchIndex.search(query);
+    return results?.slice(0, 10) || [];
+  } catch (err) {
+    console.error(err);
+    return [];
+  }
+};
 
 import { useAppDispatch, useAppSelector } from '../store';
 import {
@@ -15,6 +58,7 @@ import {
   fetchUserProfile,
 } from '../store/slices/chatSlice';
 import { socketManager } from '../store/socketManager';
+import { generateImageThumbnail, generateVideoThumbnail } from '../utils/media';
 
 import { Avatar } from './Avatar';
 import { ConfirmationModal } from './ConfirmationModal';
@@ -26,10 +70,11 @@ import {
   IconCheck,
   IconDoubleCheck,
   IconX,
+  IconEmoji,
 } from './Icons';
 import { PresenceDot } from './PresenceDot';
 import { showToast } from './toast';
-import type { Message } from '../store/slices/chatSlice';
+import type { Message, MessageMediaItem } from '../store/slices/chatSlice';
 
 interface ChatAreaProps {
   activeConversationId: string | null;
@@ -62,72 +107,118 @@ const isOnlyEmojis = (str: string): boolean => {
   return true;
 };
 
-const renderMessageMedia = (msg: Message) => {
-  if (!msg.mediaUrl) {
+const renderMessageMedia = (
+  msg: Message,
+  onMediaClick: (item: MessageMediaItem) => void,
+) => {
+  const mediaItems: MessageMediaItem[] = msg.media || [];
+
+  if (mediaItems.length === 0) {
     return null;
-  }
-  const isImage = msg.mediaType?.startsWith('image/');
-  const isVideo = msg.mediaType?.startsWith('video/');
-
-  if (isImage) {
-    return (
-      <div className="mt-1.5 max-w-sm rounded-lg overflow-hidden border border-[var(--border-muted)] bg-[var(--bg-input)]">
-        <img
-          src={msg.mediaUrl}
-          alt={msg.mediaName || 'Image'}
-          className="w-full max-h-60 object-cover cursor-pointer hover:opacity-90"
-          onClick={() => window.open(msg.mediaUrl, '_blank')}
-        />
-      </div>
-    );
-  }
-
-  if (isVideo) {
-    return (
-      <div className="mt-1.5 max-w-sm rounded-lg overflow-hidden border border-[var(--border-muted)] bg-[var(--bg-input)]">
-        <video
-          src={msg.mediaUrl}
-          controls
-          className="w-full max-h-60 object-cover"
-        />
-      </div>
-    );
   }
 
   return (
-    <div className="mt-1.5 flex items-center gap-3 p-3 rounded-lg border border-[var(--border-muted)] bg-[var(--bg-input)] max-w-sm text-[13px] text-left">
-      <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-[var(--accent-primary)] text-white text-[16px] shrink-0">
-        📁
-      </div>
-      <div className="flex-1 min-w-0 pr-2">
-        <div className="font-semibold truncate text-[var(--text-primary)] text-[13.5px]">
-          {msg.mediaName || 'Attachment'}
-        </div>
-        <div className="text-[11px] text-[var(--text-muted)] mt-0.5">
-          {msg.mediaSize
-            ? `${(msg.mediaSize / 1024).toFixed(1)} KB`
-            : 'Unknown size'}
-        </div>
-      </div>
-      <a
-        href={msg.mediaUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="p-1.5 rounded-lg bg-[var(--theme-btn)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--theme-btn-hover)] shrink-0 flex items-center justify-center active-press"
-        title="Download file"
-      >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          className="w-4 h-4"
-        >
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-          <polyline points="7 10 12 15 17 10" />
-          <line x1="12" y1="15" x2="12" y2="3" />
-        </svg>
-      </a>
+    <div className="mt-1.5 flex flex-col gap-2 max-w-full">
+      {mediaItems.map((item, idx) => {
+        const isImage = item.type?.startsWith('image/');
+        const isVideo = item.type?.startsWith('video/');
+
+        if (isImage) {
+          const displayUrl = item.thumbnailUrl || item.url;
+          return (
+            <div
+              key={idx}
+              className="mt-1 max-w-sm w-fit rounded-lg overflow-hidden border border-[var(--border-muted)] bg-[var(--bg-input)] hover:scale-[1.01] transition-all duration-200"
+            >
+              <img
+                src={displayUrl}
+                alt={item.name || 'Image'}
+                className="h-[240px] w-auto max-w-full object-contain cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={() => onMediaClick(item)}
+              />
+            </div>
+          );
+        }
+
+        if (isVideo) {
+          const displayUrl = item.thumbnailUrl || item.url;
+          return (
+            <div
+              key={idx}
+              className="mt-1 max-w-sm w-fit rounded-lg overflow-hidden border border-[var(--border-muted)] bg-[var(--bg-input)] relative cursor-pointer hover:scale-[1.01] transition-all duration-200 group"
+              onClick={() => onMediaClick(item)}
+            >
+              {item.thumbnailUrl ? (
+                <div className="relative">
+                  <img
+                    src={displayUrl}
+                    alt={item.name || 'Video'}
+                    className="h-[240px] w-auto max-w-full object-contain transition-opacity"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-black/25 transition-colors duration-150">
+                    <div className="w-12 h-12 rounded-full bg-white/95 flex items-center justify-center text-black shadow-lg hover:scale-105 active:scale-95 transition-all duration-150">
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        className="w-5 h-5 ml-0.5 text-[var(--accent-primary)]"
+                      >
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <video
+                  src={item.url}
+                  className="h-[240px] w-auto max-w-full object-contain"
+                  preload="metadata"
+                />
+              )}
+            </div>
+          );
+        }
+
+        return (
+          <div
+            key={idx}
+            className="mt-1 flex items-center gap-3 p-3 rounded-lg border border-[var(--border-muted)] bg-[var(--bg-input)] max-w-sm text-[13px] text-left"
+          >
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-[var(--accent-primary)] text-white text-[16px] shrink-0">
+              📁
+            </div>
+            <div className="flex-1 min-w-0 pr-2">
+              <div className="font-semibold truncate text-[var(--text-primary)] text-[13.5px]">
+                {item.name || 'Attachment'}
+              </div>
+              <div className="text-[11px] text-[var(--text-muted)] mt-0.5">
+                {item.size
+                  ? `${(item.size / 1024).toFixed(1)} KB`
+                  : 'Unknown size'}
+              </div>
+            </div>
+            <a
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-1.5 rounded-lg bg-[var(--theme-btn)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--theme-btn-hover)] shrink-0 flex items-center justify-center active-press"
+              title="Download file"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                className="w-4 h-4"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+            </a>
+          </div>
+        );
+      })}
     </div>
   );
 };
@@ -159,13 +250,48 @@ export const ChatArea = ({
   const [isTypingState, setIsTypingState] = useState(false);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [attachedFile, setAttachedFile] = useState<{
-    url: string;
-    name: string;
-    type: string;
-    size: number;
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+
+  const [mentionQuery, setMentionQuery] = useState<{
+    text: string;
+    start: number;
+    end: number;
   } | null>(null);
+  const [emojiResults, setEmojiResults] = useState<any[]>([]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        emojiPickerRef.current &&
+        !emojiPickerRef.current.contains(event.target as Node)
+      ) {
+        setShowEmojiPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const onEmojiSelect = (emoji: any) => {
+    setMessageInput((prev) => prev + emoji.native);
+  };
+
+  const [activeMediaItem, setActiveMediaItem] =
+    useState<MessageMediaItem | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [attachedFiles, setAttachedFiles] = useState<
+    {
+      url: string;
+      name: string;
+      type: string;
+      size: number;
+      thumbnailUrl?: string;
+      thumbnailName?: string;
+    }[]
+  >([]);
   const [uploading, setUploading] = useState(false);
 
   const deleteUploadedFile = async (url: string) => {
@@ -200,62 +326,132 @@ export const ChatArea = ({
     }
   };
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) {
+  const processFiles = async (files: File[]) => {
+    const availableSlots = 10 - attachedFiles.length;
+    if (availableSlots <= 0) {
+      showToast.error('You can only attach up to 10 files.');
       return;
     }
 
-    if (file.size > 20 * 1024 * 1024) {
-      showToast.error('File size cannot exceed 20MB.');
+    const filesToUpload = files.slice(0, availableSlots);
+    if (files.length > availableSlots) {
+      showToast.error(`Only ${availableSlots} more file(s) can be attached.`);
+    }
+
+    const validFiles = filesToUpload.filter((f) => {
+      if (f.size > 20 * 1024 * 1024) {
+        showToast.error(`File ${f.name} exceeds 20MB limit.`);
+        return false;
+      }
+      return true;
+    });
+
+    if (validFiles.length === 0) {
       return;
     }
 
     setUploading(true);
 
-    if (attachedFile) {
-      await deleteUploadedFile(attachedFile.url);
-    }
-
-    const formData = new FormData();
-    formData.append('bucket', 'relayflow');
-    formData.append('folder', 'chat-medis');
-    formData.append('files', file);
-
     try {
       const bucketUrl = (
         process.env.NEXT_PUBLIC_BUCKET_URL || 'https://bucket.umangsailor.com'
       ).replace(/\/+$/, '');
-      const response = await fetch(`${bucketUrl}/upload`, {
-        method: 'POST',
-        body: formData,
-      });
 
-      if (!response.ok) {
-        throw new Error('Upload failed');
-      }
+      const uploadPromises = validFiles.map(async (file) => {
+        // 1. Upload main media file
+        const formData = new FormData();
+        formData.append('bucket', 'relayflow');
+        formData.append('folder', 'chat-medis');
+        formData.append('files', file);
 
-      const data = await response.json();
-      if (data.files && data.files.length > 0) {
+        const response = await fetch(`${bucketUrl}/upload`, {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error('Upload failed');
+        }
+
+        const data = await response.json();
+        if (!data.files || data.files.length === 0) {
+          throw new Error('No files returned');
+        }
         const uploaded = data.files[0];
-        setAttachedFile({
+
+        // 2. Generate and upload thumbnail if it's image or video (excluding GIFs)
+        let thumbnailUrl: string | undefined;
+        let thumbnailName: string | undefined;
+        const isGif =
+          file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif');
+        const isImage = file.type.startsWith('image/') && !isGif;
+        const isVideo = file.type.startsWith('video/');
+
+        try {
+          let thumbBlob: Blob | null = null;
+          if (isImage) {
+            thumbBlob = await generateImageThumbnail(file);
+          } else if (isVideo) {
+            thumbBlob = await generateVideoThumbnail(file);
+          }
+
+          if (thumbBlob) {
+            const generatedThumbName = `thumb_${file.name.replace(/\.[^/.]+$/, '')}.jpg`;
+            const thumbFile = new File([thumbBlob], generatedThumbName, {
+              type: 'image/jpeg',
+            });
+            const thumbFormData = new FormData();
+            thumbFormData.append('bucket', 'relayflow');
+            thumbFormData.append('folder', 'chat-medis');
+            thumbFormData.append('files', thumbFile);
+
+            const thumbResponse = await fetch(`${bucketUrl}/upload`, {
+              method: 'POST',
+              body: thumbFormData,
+            });
+
+            if (thumbResponse.ok) {
+              const thumbData = await thumbResponse.json();
+              if (thumbData.files && thumbData.files.length > 0) {
+                thumbnailUrl = thumbData.files[0].url;
+                thumbnailName =
+                  thumbData.files[0].originalName || generatedThumbName;
+              }
+            }
+          }
+        } catch (thumbErr) {
+          console.warn('Failed to generate or upload thumbnail:', thumbErr);
+        }
+
+        return {
           url: uploaded.url,
           name: uploaded.originalName || file.name,
           type: file.type || 'application/octet-stream',
           size: file.size,
-        });
-      } else {
-        throw new Error('No files returned');
-      }
+          thumbnailUrl,
+          thumbnailName,
+        };
+      });
+
+      const uploadedFiles = await Promise.all(uploadPromises);
+      setAttachedFiles((prev) => [...prev, ...uploadedFiles]);
     } catch (err) {
       console.error('File upload error:', err);
-      showToast.error('Failed to upload file.');
+      showToast.error('Failed to upload some files.');
     } finally {
       setUploading(false);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
     }
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) {
+      return;
+    }
+    await processFiles(files);
   };
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -474,20 +670,34 @@ export const ChatArea = ({
   // ---- Messages ----
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if ((!messageInput.trim() && !attachedFile) || !activeConversationId) {
+    if (
+      (!messageInput.trim() && attachedFiles.length === 0) ||
+      !activeConversationId
+    ) {
       return;
     }
 
-    const media = attachedFile
-      ? {
-          mediaUrl: attachedFile.url,
-          mediaType: attachedFile.type,
-          mediaName: attachedFile.name,
-          mediaSize: attachedFile.size,
-        }
-      : undefined;
-
-    socketManager.sendMessage(activeConversationId, messageInput.trim(), media);
+    if (attachedFiles.length > 0) {
+      const media = attachedFiles.map((file) => ({
+        name: file.name,
+        thumbnailName: file.thumbnailName,
+        url: file.url,
+        thumbnailUrl: file.thumbnailUrl,
+        type: file.type,
+        size: file.size,
+      }));
+      socketManager.sendMessage(
+        activeConversationId,
+        messageInput.trim(),
+        media,
+      );
+    } else {
+      socketManager.sendMessage(
+        activeConversationId,
+        messageInput.trim(),
+        undefined,
+      );
+    }
 
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
@@ -495,11 +705,33 @@ export const ChatArea = ({
     socketManager.stopTyping(activeConversationId);
     setIsTypingState(false);
     setMessageInput('');
-    setAttachedFile(null);
+    setAttachedFiles([]);
+    setShowEmojiPicker(false);
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setMessageInput(e.target.value);
+  const handleInputChange = async (
+    e: React.ChangeEvent<HTMLTextAreaElement>,
+  ) => {
+    const val = e.target.value;
+    setMessageInput(val);
+
+    const cursor = e.target.selectionStart;
+    const textBeforeCursor = val.slice(0, cursor);
+    const match = textBeforeCursor.match(/:([a-zA-Z0-9_-]{2,})$/);
+    if (match) {
+      const query = match[1];
+      setMentionQuery({
+        text: query,
+        start: match.index as number,
+        end: cursor,
+      });
+      const results = await searchEmojis(query);
+      setEmojiResults(results);
+    } else {
+      setMentionQuery(null);
+      setEmojiResults([]);
+    }
+
     if (!activeConversationId) {
       return;
     }
@@ -581,6 +813,7 @@ export const ChatArea = ({
         email: r.email,
         id: r.id,
         avatarUrl: r.avatarUrl,
+        avatarThumbnailUrl: r.avatarThumbnailUrl,
       };
     }
 
@@ -673,7 +906,10 @@ export const ChatArea = ({
               <>
                 <Avatar
                   letter={activeDetails?.letter || ''}
-                  url={activeDetails?.avatarUrl}
+                  url={
+                    activeDetails?.avatarThumbnailUrl ||
+                    activeDetails?.avatarUrl
+                  }
                   status={activeStatus}
                   size="md"
                 />
@@ -789,7 +1025,10 @@ export const ChatArea = ({
                         <Avatar
                           letter={letter}
                           url={
-                            isOut ? user.avatarUrl : senderProfile?.avatarUrl
+                            isOut
+                              ? user.avatarThumbnailUrl || user.avatarUrl
+                              : senderProfile?.avatarThumbnailUrl ||
+                                senderProfile?.avatarUrl
                           }
                           status={presenceStatus}
                           size="sm"
@@ -815,7 +1054,7 @@ export const ChatArea = ({
                               {msg.content}
                             </div>
                           )}
-                          {renderMessageMedia(msg)}
+                          {renderMessageMedia(msg, setActiveMediaItem)}
                         </div>
                       </div>
                       {isOut && (
@@ -859,7 +1098,7 @@ export const ChatArea = ({
                           {msg.content}
                         </div>
                       )}
-                      {renderMessageMedia(msg)}
+                      {renderMessageMedia(msg, setActiveMediaItem)}
                       <div className="flex items-center gap-1 mt-1 px-1 select-none">
                         <span className="text-[10px] text-[var(--text-muted)]">
                           {new Date(msg.createdAt).toLocaleTimeString([], {
@@ -941,44 +1180,76 @@ export const ChatArea = ({
 
           {/* Input Area */}
           <div className="px-4 py-3.5 border-t border-[var(--border-muted)] bg-[var(--bg-sidebar)] rounded-b-2xl">
-            {attachedFile && (
-              <div className="flex items-center gap-3 p-2 mb-2 rounded-xl border border-[var(--border-muted)] bg-[var(--bg-input)] animate-fade-in text-[13px] relative max-w-md">
-                {attachedFile.type.startsWith('image/') ? (
-                  <img
-                    src={attachedFile.url}
-                    alt="Preview"
-                    className="w-12 h-12 object-cover rounded-lg shrink-0"
-                  />
-                ) : (
-                  <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-[var(--accent-primary)] text-white text-[20px] shrink-0">
-                    📄
+            {attachedFiles.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-2 max-w-full">
+                {attachedFiles.map((file, idx) => (
+                  <div
+                    key={file.url + idx}
+                    className="flex items-center gap-3 p-2 rounded-xl border border-[var(--border-muted)] bg-[var(--bg-input)] animate-fade-in text-[13px] relative max-w-[200px]"
+                  >
+                    {file.type.startsWith('image/') ? (
+                      <img
+                        src={file.url}
+                        alt="Preview"
+                        className="w-10 h-10 object-cover rounded-lg shrink-0"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-[var(--accent-primary)] text-white text-[16px] shrink-0">
+                        📄
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0 pr-6">
+                      <div className="font-semibold truncate text-[var(--text-primary)] text-[12px]">
+                        {file.name}
+                      </div>
+                      <div className="text-[10px] text-[var(--text-muted)] mt-0.5">
+                        {(file.size / 1024).toFixed(1)} KB
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        deleteUploadedFile(file.url);
+                        if (file.thumbnailUrl) {
+                          deleteUploadedFile(file.thumbnailUrl);
+                        }
+                        setAttachedFiles((prev) =>
+                          prev.filter((f) => f.url !== file.url),
+                        );
+                      }}
+                      className="absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center bg-[var(--danger-bg)] text-[var(--danger)] border-none cursor-pointer hover:bg-[var(--danger)] hover:text-white transition-all duration-150 active-press shadow-sm"
+                      title="Remove attachment"
+                    >
+                      <IconX size={10} />
+                    </button>
                   </div>
-                )}
-                <div className="flex-1 min-w-0 pr-6">
-                  <div className="font-semibold truncate text-[var(--text-primary)] text-[13.5px]">
-                    {attachedFile.name}
-                  </div>
-                  <div className="text-[11px] text-[var(--text-muted)] mt-0.5">
-                    {(attachedFile.size / 1024).toFixed(1)} KB
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    deleteUploadedFile(attachedFile.url);
-                    setAttachedFile(null);
-                  }}
-                  className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center bg-[var(--danger-bg)] text-[var(--danger)] border-none cursor-pointer hover:bg-[var(--danger)] hover:text-white transition-all duration-150 active-press"
-                  title="Remove attachment"
-                >
-                  <IconX size={10} />
-                </button>
+                ))}
               </div>
             )}
             <form
               className="flex gap-2.5 items-end"
               onSubmit={handleSendMessage}
             >
+              <div className="relative" ref={emojiPickerRef}>
+                <button
+                  type="button"
+                  onClick={() => setShowEmojiPicker((prev) => !prev)}
+                  className="w-[46px] h-[46px] rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-200 bg-[var(--bg-input)] text-[var(--text-muted)] hover:bg-[var(--theme-btn-hover)] hover:text-[var(--text-primary)] active-press"
+                  title="Choose an emoji"
+                >
+                  <IconEmoji size={20} />
+                </button>
+
+                {showEmojiPicker && (
+                  <div className="absolute bottom-[56px] left-0 z-50 shadow-[var(--glass-shadow)] rounded-[14px] overflow-hidden border border-[var(--border-muted)] bg-[var(--bg-sidebar)]">
+                    <EmojiPicker
+                      onEmojiSelect={onEmojiSelect}
+                      theme="auto"
+                      previewPosition="none"
+                    />
+                  </div>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
@@ -1005,25 +1276,80 @@ export const ChatArea = ({
                 ref={fileInputRef}
                 onChange={handleFileSelect}
                 className="hidden"
+                multiple
               />
-              <textarea
-                id="message-input"
-                className="input-base flex-1 rounded-xl px-4 py-2.5 text-[14px] resize-none leading-relaxed min-h-7.5 max-h-30 bg-theme-input border-[1.5px] border-glass text-theme-primary focus:outline-none focus:border-(--accent-primary) focus:ring-[3px] focus:ring-[var(--accent-ring)]"
-                placeholder="Type a message… (Enter to send)"
-                rows={1}
-                value={messageInput}
-                onChange={handleInputChange}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendMessage(e);
-                  }
-                }}
-              />
+              <div className="relative flex-1 flex items-end">
+                {mentionQuery && emojiResults.length > 0 && (
+                  <div className="absolute bottom-full left-0 mb-2 w-[300px] max-h-[200px] overflow-y-auto bg-[var(--bg-sidebar)] border border-[var(--border-muted)] rounded-xl shadow-[var(--glass-shadow)] z-50 flex flex-col p-1">
+                    {emojiResults.map((emoji: any) => (
+                      <button
+                        key={emoji.id}
+                        type="button"
+                        className="flex items-center gap-2 px-3 py-2 text-left rounded-lg hover:bg-[var(--bg-input)] active-press cursor-pointer border-none bg-transparent"
+                        onClick={() => {
+                          const val = messageInput;
+                          const newText =
+                            val.slice(0, mentionQuery.start) +
+                            emoji.skins[0].native +
+                            val.slice(mentionQuery.end);
+                          setMessageInput(newText);
+                          setMentionQuery(null);
+                          setEmojiResults([]);
+                          document.getElementById('message-input')?.focus();
+                        }}
+                      >
+                        <span className="text-[20px] leading-none">
+                          {emoji.skins[0].native}
+                        </span>
+                        <span className="text-[13px] text-[var(--text-primary)]">
+                          :{emoji.id}:
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <textarea
+                  id="message-input"
+                  className="input-base w-full block rounded-xl px-4 text-[14px] resize-none leading-normal max-h-30 bg-theme-input border-[1.5px] border-glass text-theme-primary focus:outline-none focus:border-(--accent-primary) focus:ring-[3px] focus:ring-[var(--accent-ring)] box-border"
+                  style={{
+                    minHeight: '46px',
+                    paddingTop: '11px',
+                    paddingBottom: '11px',
+                  }}
+                  placeholder="Type a message… (Enter to send)"
+                  rows={1}
+                  value={messageInput}
+                  onChange={handleInputChange}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendMessage(e);
+                    }
+                  }}
+                  onPaste={(e) => {
+                    const items = e.clipboardData?.items;
+                    if (items) {
+                      const filesToPaste: File[] = [];
+                      for (let i = 0; i < items.length; i++) {
+                        if (items[i].kind === 'file') {
+                          const file = items[i].getAsFile();
+                          if (file) {
+                            filesToPaste.push(file);
+                          }
+                        }
+                      }
+                      if (filesToPaste.length > 0) {
+                        e.preventDefault();
+                        processFiles(filesToPaste);
+                      }
+                    }
+                  }}
+                />
+              </div>
               <button
                 id="send-message-btn"
                 type="submit"
-                disabled={!messageInput.trim() && !attachedFile}
+                disabled={!messageInput.trim() && attachedFiles.length === 0}
                 className="btn-send w-[46px] h-[46px] rounded-xl flex-shrink-0 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed hover:-translate-y-0.5 hover:shadow-[var(--btn-shadow)] active-press"
               >
                 <IconSend />
@@ -1063,6 +1389,52 @@ export const ChatArea = ({
           onConfirm={confirmModal.onConfirm}
           onCancel={() => setConfirmModal(null)}
         />
+      )}
+      {activeMediaItem && (
+        <div
+          className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/75 backdrop-blur-md transition-all duration-300 animate-fade-in animate-duration-150"
+          onClick={() => setActiveMediaItem(null)}
+        >
+          <div
+            className="relative max-w-[90vw] max-h-[80vh] flex flex-col items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close button */}
+            <button
+              className="absolute -top-12 right-0 bg-white/10 hover:bg-white/25 text-white rounded-full p-2 hover:scale-105 active:scale-95 transition-all border-none cursor-pointer flex items-center justify-center shadow-lg"
+              onClick={() => setActiveMediaItem(null)}
+              title="Close viewer"
+            >
+              <IconX size={20} />
+            </button>
+
+            {/* Media rendering */}
+            {activeMediaItem.type.startsWith('image/') ? (
+              <img
+                src={activeMediaItem.url}
+                alt={activeMediaItem.name}
+                className="max-w-full max-h-[75vh] object-contain rounded-xl shadow-2xl border border-white/10"
+              />
+            ) : activeMediaItem.type.startsWith('video/') ? (
+              <video
+                src={activeMediaItem.url}
+                controls
+                autoPlay
+                className="max-w-full max-h-[75vh] object-contain rounded-xl shadow-2xl border border-white/10"
+              />
+            ) : null}
+
+            {/* Title / details */}
+            <div className="mt-4 text-center text-white px-4 max-w-lg">
+              <h4 className="text-[15px] font-bold truncate">
+                {activeMediaItem.name}
+              </h4>
+              <p className="text-[12px] text-white/60 mt-1">
+                {(activeMediaItem.size / (1024 * 1024)).toFixed(2)} MB
+              </p>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

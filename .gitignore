@@ -53,3 +53,6 @@ out
 .env
 .env.local
 .env.*.local
+
+# Agent configurations and context
+.agent/

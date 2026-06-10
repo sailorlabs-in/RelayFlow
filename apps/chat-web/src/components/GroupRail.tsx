@@ -69,9 +69,9 @@ export const GroupRail = ({
               tooltip_state={tooltip}
               setTooltip={setTooltip}
             >
-              {group.avatarUrl ? (
+              {group.avatarThumbnailUrl || group.avatarUrl ? (
                 <img
-                  src={group.avatarUrl}
+                  src={group.avatarThumbnailUrl || group.avatarUrl}
                   alt={group.name}
                   className="w-full h-full object-cover rounded-[inherit]"
                 />

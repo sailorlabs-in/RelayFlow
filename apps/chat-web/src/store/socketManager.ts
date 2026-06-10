@@ -37,7 +37,9 @@ import { store } from './index';
 
 class SocketManager {
   private socket: Socket | null = null;
-  private connectErrorCount = 0;
+  private token: string | null = null;
+  private isReconnecting = false;
+  private listenersRegistered = false;
 
   connect(token: string) {
     if (this.socket) {
@@ -46,7 +48,9 @@ class SocketManager {
     }
 
     PrintLog('🔌 Connecting to WebSocket server:', SOCKET_URL);
-    this.connectErrorCount = 0;
+
+    this.token = token;
+    this.registerFocusListeners();
 
     // Secure custom handshake options for multi-transport (polling and websockets) browser compatibility
     const bearerToken = `Bearer ${token}`;
@@ -61,8 +65,7 @@ class SocketManager {
         token: bearerToken,
       },
       transports: ['polling', 'websocket'],
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
+      reconnection: false, // Control reconnection manually
     });
 
     // -------------------------------------------------------------
@@ -70,7 +73,6 @@ class SocketManager {
     // -------------------------------------------------------------
     this.socket.on('connect', () => {
       PrintLog('✔ Socket successfully connected with ID:', this.socket?.id);
-      this.connectErrorCount = 0;
 
       // Auto-broadcast manual status upon connection/reconnection to sync with server presence
       const state = store.getState() as { auth: { user: any } };
@@ -81,18 +83,21 @@ class SocketManager {
     });
 
     this.socket.on('connect_error', (error) => {
-      console.error('❌ Socket connection error:', error);
-      this.connectErrorCount++;
-      if (this.connectErrorCount >= 3) {
-        showToast.error('unable to connects the server');
-        this.disconnect();
-        store.dispatch(logoutUser());
-        this.connectErrorCount = 0;
-      }
+      PrintLog('❌ Socket connection error:', error);
     });
 
     this.socket.on('disconnect', (reason) => {
-      console.warn('❌ Socket disconnected. Reason:', reason);
+      PrintLog('❌ Socket disconnected. Reason:', reason);
+      // If disconnected due to network/server issue (not user manual logout)
+      if (reason !== 'io client disconnect') {
+        if (typeof document !== 'undefined' && document.hasFocus()) {
+          this.reconnectWithRetry();
+        } else {
+          PrintLog(
+            '❌ Disconnected, but site not in focus. Reconnection will trigger on focus.',
+          );
+        }
+      }
     });
 
     // Handle new message arrival
@@ -196,19 +201,6 @@ class SocketManager {
       }) => {
         PrintLog('🗑️ Socket conversation.deleted event received:', data);
 
-        const state = store.getState() as { auth: { user: any } };
-        const currentUserId = state.auth?.user?.id;
-
-        if (
-          data.deletedById &&
-          currentUserId &&
-          data.deletedById !== currentUserId
-        ) {
-          showToast.warning(
-            `${data.deletedBy || 'Someone'} removed all messages with you.`,
-          );
-        }
-
         store.dispatch(socketRemoveConversation(data.conversationId));
       },
     );
@@ -268,7 +260,6 @@ class SocketManager {
     this.socket.on('group.deleted', (data: { groupId: string }) => {
       PrintLog('🗑️ Socket group.deleted:', data.groupId);
       store.dispatch(socketGroupDeleted(data.groupId));
-      showToast.warning('A group you were in has been deleted.');
     });
 
     this.socket.on(
@@ -282,7 +273,6 @@ class SocketManager {
     this.socket.on('group.member.removed', (data: { groupId: string }) => {
       PrintLog('👤 Socket group.member.removed:', data.groupId);
       store.dispatch(socketGroupMemberRemoved(data));
-      showToast.warning('You were removed from a group.');
     });
 
     this.socket.on(
@@ -343,6 +333,128 @@ class SocketManager {
       PrintLog('👤 Socket friend.removed:', data.friendId);
       store.dispatch(socketFriendRemoved({ friendId: data.friendId }));
     });
+
+    // Start connection attempt sequence
+    this.reconnectWithRetry();
+  }
+
+  private registerFocusListeners() {
+    if (this.listenersRegistered || typeof window === 'undefined') {
+      return;
+    }
+    this.listenersRegistered = true;
+
+    const handleFocusOrVisible = () => {
+      PrintLog('👁️ Window focused or became visible. Checking socket state...');
+      if (
+        this.token &&
+        this.socket &&
+        !this.socket.connected &&
+        !this.isReconnecting
+      ) {
+        PrintLog(
+          '🔌 Socket is disconnected. Triggering reconnection retry sequence.',
+        );
+        this.reconnectWithRetry();
+      }
+    };
+
+    window.addEventListener('focus', handleFocusOrVisible);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        handleFocusOrVisible();
+      }
+    });
+  }
+
+  private singleConnectAttempt(): Promise<boolean> {
+    return new Promise((resolve) => {
+      if (!this.socket) {
+        resolve(false);
+        return;
+      }
+
+      if (this.socket.connected) {
+        resolve(true);
+        return;
+      }
+
+      const onConnect = () => {
+        cleanup();
+        resolve(true);
+      };
+
+      const onConnectError = (err: any) => {
+        PrintLog('🔌 Single attempt connection error:', err?.message || err);
+        cleanup();
+        resolve(false);
+      };
+
+      const timeoutId = setTimeout(() => {
+        PrintLog('🔌 Single attempt connection timeout');
+        cleanup();
+        resolve(false);
+      }, 5000);
+
+      const cleanup = () => {
+        clearTimeout(timeoutId);
+        this.socket?.off('connect', onConnect);
+        this.socket?.off('connect_error', onConnectError);
+      };
+
+      this.socket.on('connect', onConnect);
+      this.socket.on('connect_error', onConnectError);
+
+      this.socket.connect();
+    });
+  }
+
+  private async reconnectWithRetry() {
+    if (this.isReconnecting) {
+      return;
+    }
+    this.isReconnecting = true;
+    PrintLog('🔄 Starting reconnection retry sequence...');
+
+    const maxAttempts = 3;
+    const delayMs = 2000;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      if (this.socket?.connected) {
+        PrintLog('🔌 Already connected, aborting retry sequence.');
+        this.isReconnecting = false;
+        return;
+      }
+
+      PrintLog(`🔌 Reconnection attempt ${attempt}/${maxAttempts}...`);
+
+      const success = await this.singleConnectAttempt();
+      if (success) {
+        PrintLog(`✔ Reconnected successfully on attempt ${attempt}`);
+        this.isReconnecting = false;
+        return;
+      }
+
+      if (attempt < maxAttempts) {
+        PrintLog(`😴 Waiting ${delayMs}ms before next attempt...`);
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+
+    this.isReconnecting = false;
+
+    if (typeof document !== 'undefined' && document.hasFocus()) {
+      PrintLog(
+        '❌ All 3 reconnection attempts failed while site is in focus. Logging out...',
+      );
+      showToast.error('Unable to connect to the server. Logging out...');
+      this.disconnect();
+      store.dispatch(logoutUser());
+    } else {
+      PrintLog(
+        '❌ Reconnection failed, but site is not in focus. Postponing logout until focus.',
+      );
+    }
   }
 
   // -------------------------------------------------------------
@@ -366,11 +478,12 @@ class SocketManager {
     conversationId: string,
     content: string,
     media?: {
-      mediaUrl: string;
-      mediaType: string;
-      mediaName: string;
-      mediaSize: number;
-    },
+      url: string;
+      thumbnailUrl?: string;
+      type: string;
+      name: string;
+      size: number;
+    }[],
   ) {
     if (this.socket?.connected) {
       PrintLog(
@@ -381,18 +494,14 @@ class SocketManager {
       this.socket.emit('send.message', {
         conversationId,
         content,
-        mediaUrl: media?.mediaUrl,
-        mediaType: media?.mediaType,
-        mediaName: media?.mediaName,
-        mediaSize: media?.mediaSize,
+        media,
       });
     } else {
       console.error('❌ Cannot send message: Socket is not connected');
       showToast.error('Cannot send message: Socket is not connected');
-      this.disconnect();
-      setTimeout(() => {
-        store.dispatch(logoutUser());
-      }, 3000);
+      if (typeof document !== 'undefined' && document.hasFocus()) {
+        this.reconnectWithRetry();
+      }
     }
   }
 
@@ -440,7 +549,8 @@ class SocketManager {
       this.socket.disconnect();
       this.socket = null;
     }
-    this.connectErrorCount = 0;
+    this.token = null;
+    this.isReconnecting = false;
   }
 }
 

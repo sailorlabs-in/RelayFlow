@@ -1,13 +1,6 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
-import { API_URL } from '../../constants/config';
-
-const getAuthHeaders = (token: string | null) => ({
-  headers: {
-    Authorization: token ? `Bearer ${token}` : '',
-  },
-});
+import ApiRequest from '../../utils/ApiRequest';
 
 export interface GroupChannel {
   id: string;
@@ -30,6 +23,7 @@ export interface GroupMember {
     username?: string;
     displayName?: string;
     avatarUrl?: string;
+    avatarThumbnailUrl?: string;
     status?: string;
   };
 }
@@ -41,6 +35,7 @@ export interface Group {
   ownerId: string;
   iconLetter: string;
   avatarUrl?: string;
+  avatarThumbnailUrl?: string;
   createdAt: string;
   updatedAt: string;
   members: GroupMember[];
@@ -51,6 +46,9 @@ export interface GroupsState {
   groups: Group[];
   activeGroupId: string | null;
   activeChannelId: string | null;
+  invites: any[];
+  isInvitesLoading: boolean;
+  isGeneratingInvite: boolean;
   status: 'idle' | 'loading' | 'succeeded' | 'failed';
   error: string | null;
 }
@@ -59,6 +57,9 @@ const initialState: GroupsState = {
   groups: [] as Group[],
   activeGroupId: null,
   activeChannelId: null,
+  invites: [],
+  isInvitesLoading: false,
+  isGeneratingInvite: false,
   status: 'idle',
   error: null,
 };
@@ -66,14 +67,10 @@ const initialState: GroupsState = {
 // ── Fetch all groups for the current user ─────────────────────────────────────
 export const fetchGroups = createAsyncThunk(
   'groups/fetchGroups',
-  async (_, { getState, rejectWithValue }) => {
+  async (_, { rejectWithValue }) => {
     try {
-      const state = getState() as { auth: { accessToken: string | null } };
-      const response = await axios.get(
-        `${API_URL}/groups`,
-        getAuthHeaders(state.auth.accessToken),
-      );
-      return response.data.data as Group[];
+      const response = await ApiRequest('/groups', 'get', {}, true);
+      return response.data as Group[];
     } catch (error: any) {
       return rejectWithValue(
         error.response?.data?.error?.message ||
@@ -93,17 +90,13 @@ export const createGroup = createAsyncThunk(
       description?: string;
       memberUserIds?: string[];
       avatarUrl?: string;
+      avatarThumbnailUrl?: string;
     },
-    { getState, rejectWithValue },
+    { rejectWithValue },
   ) => {
     try {
-      const state = getState() as { auth: { accessToken: string | null } };
-      const response = await axios.post(
-        `${API_URL}/groups`,
-        payload,
-        getAuthHeaders(state.auth.accessToken),
-      );
-      return response.data.data as Group;
+      const response = await ApiRequest('/groups', 'post', payload, true);
+      return response.data as Group;
     } catch (error: any) {
       return rejectWithValue(
         error.response?.data?.error?.message ||
@@ -123,21 +116,23 @@ export const updateGroup = createAsyncThunk(
       name: string;
       description?: string;
       avatarUrl?: string;
+      avatarThumbnailUrl?: string;
     },
-    { getState, rejectWithValue },
+    { rejectWithValue },
   ) => {
     try {
-      const state = getState() as { auth: { accessToken: string | null } };
-      const response = await axios.patch(
-        `${API_URL}/groups/${payload.groupId}`,
+      const response = await ApiRequest(
+        `/groups/${payload.groupId}`,
+        'patch',
         {
           name: payload.name,
           description: payload.description,
           avatarUrl: payload.avatarUrl,
+          avatarThumbnailUrl: payload.avatarThumbnailUrl,
         },
-        getAuthHeaders(state.auth.accessToken),
+        true,
       );
-      return response.data.data as Group;
+      return response.data as Group;
     } catch (error: any) {
       return rejectWithValue(
         error.response?.data?.error?.message ||
@@ -153,16 +148,16 @@ export const addGroupMembers = createAsyncThunk(
   'groups/addGroupMembers',
   async (
     payload: { groupId: string; userIds: string[] },
-    { getState, rejectWithValue },
+    { rejectWithValue },
   ) => {
     try {
-      const state = getState() as { auth: { accessToken: string | null } };
-      const response = await axios.post(
-        `${API_URL}/groups/${payload.groupId}/members`,
+      const response = await ApiRequest(
+        `/groups/${payload.groupId}/members`,
+        'post',
         { userIds: payload.userIds },
-        getAuthHeaders(state.auth.accessToken),
+        true,
       );
-      return { groupId: payload.groupId, members: response.data.data };
+      return { groupId: payload.groupId, members: response.data };
     } catch (error: any) {
       return rejectWithValue(
         error.response?.data?.error?.message ||
@@ -176,20 +171,17 @@ export const addGroupMembers = createAsyncThunk(
 // ── Create a channel inside a group ──────────────────────────────────────────
 export const createChannel = createAsyncThunk(
   'groups/createChannel',
-  async (
-    payload: { groupId: string; name: string },
-    { getState, rejectWithValue },
-  ) => {
+  async (payload: { groupId: string; name: string }, { rejectWithValue }) => {
     try {
-      const state = getState() as { auth: { accessToken: string | null } };
-      const response = await axios.post(
-        `${API_URL}/groups/${payload.groupId}/channels`,
+      const response = await ApiRequest(
+        `/groups/${payload.groupId}/channels`,
+        'post',
         { name: payload.name },
-        getAuthHeaders(state.auth.accessToken),
+        true,
       );
       return {
         groupId: payload.groupId,
-        channel: response.data.data as GroupChannel,
+        channel: response.data as GroupChannel,
       };
     } catch (error: any) {
       return rejectWithValue(
@@ -206,18 +198,18 @@ export const updateChannel = createAsyncThunk(
   'groups/updateChannel',
   async (
     payload: { groupId: string; channelId: string; name: string },
-    { getState, rejectWithValue },
+    { rejectWithValue },
   ) => {
     try {
-      const state = getState() as { auth: { accessToken: string | null } };
-      const response = await axios.patch(
-        `${API_URL}/groups/${payload.groupId}/channels/${payload.channelId}`,
+      const response = await ApiRequest(
+        `/groups/${payload.groupId}/channels/${payload.channelId}`,
+        'patch',
         { name: payload.name },
-        getAuthHeaders(state.auth.accessToken),
+        true,
       );
       return {
         groupId: payload.groupId,
-        channel: response.data.data as GroupChannel,
+        channel: response.data as GroupChannel,
       };
     } catch (error: any) {
       return rejectWithValue(
@@ -234,13 +226,14 @@ export const deleteChannel = createAsyncThunk(
   'groups/deleteChannel',
   async (
     payload: { groupId: string; channelId: string },
-    { getState, rejectWithValue },
+    { rejectWithValue },
   ) => {
     try {
-      const state = getState() as { auth: { accessToken: string | null } };
-      await axios.delete(
-        `${API_URL}/groups/${payload.groupId}/channels/${payload.channelId}`,
-        getAuthHeaders(state.auth.accessToken),
+      await ApiRequest(
+        `/groups/${payload.groupId}/channels/${payload.channelId}`,
+        'delete',
+        {},
+        true,
       );
       return { groupId: payload.groupId, channelId: payload.channelId };
     } catch (error: any) {
@@ -262,11 +255,13 @@ export const removeGroupMember = createAsyncThunk(
   ) => {
     try {
       const state = getState() as {
-        auth: { accessToken: string | null; user: { id: string } | null };
+        auth: { user: { id: string } | null };
       };
-      await axios.delete(
-        `${API_URL}/groups/${payload.groupId}/members/${payload.userId}`,
-        getAuthHeaders(state.auth.accessToken),
+      await ApiRequest(
+        `/groups/${payload.groupId}/members/${payload.userId}`,
+        'delete',
+        {},
+        true,
       );
       const isCurrentUser = state.auth.user?.id === payload.userId;
       return {
@@ -287,19 +282,131 @@ export const removeGroupMember = createAsyncThunk(
 // ── Delete a group ────────────────────────────────────────────────────────────
 export const deleteGroup = createAsyncThunk(
   'groups/deleteGroup',
-  async (groupId: string, { getState, rejectWithValue }) => {
+  async (groupId: string, { rejectWithValue }) => {
     try {
-      const state = getState() as { auth: { accessToken: string | null } };
-      await axios.delete(
-        `${API_URL}/groups/${groupId}`,
-        getAuthHeaders(state.auth.accessToken),
-      );
+      await ApiRequest(`/groups/${groupId}`, 'delete', {}, true);
       return groupId;
     } catch (error: any) {
       return rejectWithValue(
         error.response?.data?.error?.message ||
           error.response?.data?.message ||
           'Failed to delete group.',
+      );
+    }
+  },
+);
+
+// ── Fetch active invite links for a group ─────────────────────────────────────
+export const fetchGroupInvites = createAsyncThunk(
+  'groups/fetchGroupInvites',
+  async (groupId: string, { rejectWithValue }) => {
+    try {
+      const response = await ApiRequest(
+        `/groups/${groupId}/invites`,
+        'get',
+        {},
+        true,
+      );
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.error?.message ||
+          error.response?.data?.message ||
+          'Failed to load invites.',
+      );
+    }
+  },
+);
+
+// ── Create a new group invite link ────────────────────────────────────────────
+export const createGroupInvite = createAsyncThunk(
+  'groups/createGroupInvite',
+  async (
+    payload: { groupId: string; expiresIn: string },
+    { rejectWithValue },
+  ) => {
+    try {
+      const response = await ApiRequest(
+        `/groups/${payload.groupId}/invites`,
+        'post',
+        { expiresIn: payload.expiresIn },
+        true,
+      );
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.error?.message ||
+          error.response?.data?.message ||
+          'Failed to generate invite link.',
+      );
+    }
+  },
+);
+
+// ── Revoke an invite link ─────────────────────────────────────────────────────
+export const revokeGroupInvite = createAsyncThunk(
+  'groups/revokeGroupInvite',
+  async (
+    payload: { groupId: string; inviteId: string },
+    { rejectWithValue },
+  ) => {
+    try {
+      await ApiRequest(
+        `/groups/${payload.groupId}/invites/${payload.inviteId}`,
+        'delete',
+        {},
+        true,
+      );
+      return payload.inviteId;
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.error?.message ||
+          error.response?.data?.message ||
+          'Failed to revoke invite link.',
+      );
+    }
+  },
+);
+
+// ── Resolve an invite token to get group details ──────────────────────────────
+export const resolveGroupInvite = createAsyncThunk(
+  'groups/resolveGroupInvite',
+  async (token: string, { rejectWithValue }) => {
+    try {
+      const response = await ApiRequest(
+        `/groups/invite/resolve/${token}`,
+        'get',
+        {},
+        true,
+      );
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.error?.message ||
+          error.response?.data?.message ||
+          'This invite link is invalid or has expired.',
+      );
+    }
+  },
+);
+
+// ── Accept group invite (join the group) ──────────────────────────────────────
+export const acceptGroupInvite = createAsyncThunk(
+  'groups/acceptGroupInvite',
+  async (token: string, { rejectWithValue }) => {
+    try {
+      const response = await ApiRequest(
+        `/groups/invite/accept/${token}`,
+        'post',
+        {},
+        true,
+      );
+      return response.data; // joined group info
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.error?.message ||
+          error.response?.data?.message ||
+          'Failed to join group.',
       );
     }
   },
@@ -540,6 +647,36 @@ const groupsSlice = createSlice({
         state.activeGroupId = null;
         state.activeChannelId = null;
       }
+    });
+
+    // Fetch group invites
+    builder
+      .addCase(fetchGroupInvites.pending, (state) => {
+        state.isInvitesLoading = true;
+      })
+      .addCase(fetchGroupInvites.fulfilled, (state, action) => {
+        state.invites = action.payload || [];
+        state.isInvitesLoading = false;
+      })
+      .addCase(fetchGroupInvites.rejected, (state) => {
+        state.isInvitesLoading = false;
+      });
+
+    // Create group invite
+    builder
+      .addCase(createGroupInvite.pending, (state) => {
+        state.isGeneratingInvite = true;
+      })
+      .addCase(createGroupInvite.fulfilled, (state) => {
+        state.isGeneratingInvite = false;
+      })
+      .addCase(createGroupInvite.rejected, (state) => {
+        state.isGeneratingInvite = false;
+      });
+
+    // Revoke group invite
+    builder.addCase(revokeGroupInvite.fulfilled, (state, action) => {
+      state.invites = state.invites.filter((inv) => inv.id !== action.payload);
     });
   },
 });

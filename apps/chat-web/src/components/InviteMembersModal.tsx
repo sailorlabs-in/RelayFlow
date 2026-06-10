@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 
 import { useAppDispatch, useAppSelector } from '../store';
 import { fetchFriends } from '../store/slices/chatSlice';
 import type { Group } from '../store/slices/groupsSlice';
-import { addGroupMembers } from '../store/slices/groupsSlice';
+import {
+  addGroupMembers,
+  fetchGroupInvites,
+  createGroupInvite,
+  revokeGroupInvite,
+} from '../store/slices/groupsSlice';
 
 import { Avatar } from './Avatar';
 import { IconX, IconPeople } from './Icons';
 import { showToast } from './toast';
-import { API_URL } from '../constants/config';
 
 interface InviteMembersModalProps {
   group: Group;
@@ -21,8 +24,13 @@ export const InviteMembersModal = ({
   onClose,
 }: InviteMembersModalProps): React.JSX.Element => {
   const dispatch = useAppDispatch();
-  const { user, accessToken } = useAppSelector((s) => s.auth);
+  const { user } = useAppSelector((s) => s.auth);
   const { friends, onlineUsers } = useAppSelector((s) => s.chat);
+  const {
+    invites,
+    isInvitesLoading,
+    isGeneratingInvite: isGenerating,
+  } = useAppSelector((s) => s.groups);
 
   const [activeTab, setActiveTab] = useState<'add' | 'links'>('add');
   const [searchQuery, setSearchQuery] = useState('');
@@ -31,9 +39,6 @@ export const InviteMembersModal = ({
 
   // Invite Link States
   const [expiresIn, setExpiresIn] = useState('24h');
-  const [invites, setInvites] = useState<any[]>([]);
-  const [isInvitesLoading, setIsInvitesLoading] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
 
   // Fetch friends and invites on mount
   useEffect(() => {
@@ -41,31 +46,15 @@ export const InviteMembersModal = ({
   }, [dispatch]);
 
   // Load invites when link tab is selected or on mount
-  const loadInvites = async () => {
-    if (!accessToken) {
-      return;
-    }
-    setIsInvitesLoading(true);
-    try {
-      const response = await axios.get(
-        `${API_URL}/groups/${group.id}/invites`,
-        {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        },
-      );
-      setInvites(response.data.data || []);
-    } catch (err: any) {
-      console.error('Failed to load invites:', err);
-    } finally {
-      setIsInvitesLoading(false);
-    }
+  const loadInvites = () => {
+    dispatch(fetchGroupInvites(group.id));
   };
 
   useEffect(() => {
     if (activeTab === 'links') {
       loadInvites();
     }
-  }, [activeTab]);
+  }, [activeTab, dispatch, group.id]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
@@ -100,47 +89,30 @@ export const InviteMembersModal = ({
 
   // Generate a new invite link
   const handleGenerateLink = async () => {
-    if (!accessToken) {
-      return;
-    }
-    setIsGenerating(true);
     try {
-      const response = await axios.post(
-        `${API_URL}/groups/${group.id}/invites`,
-        { expiresIn },
-        { headers: { Authorization: `Bearer ${accessToken}` } },
-      );
-      showToast.success('Invite link generated successfully!');
+      const result = await dispatch(
+        createGroupInvite({ groupId: group.id, expiresIn }),
+      ).unwrap();
       // Copy to clipboard
-      const inviteUrl = `${window.location.origin}/invite/${response.data.data.token}`;
+      const inviteUrl = `${window.location.origin}/invite/${result.token}`;
       await navigator.clipboard.writeText(inviteUrl);
-      showToast.info('Link copied to clipboard!');
+      showToast.success('Invite link generated and copied to clipboard!');
       // Reload invites list
       loadInvites();
     } catch (err: any) {
-      showToast.error(
-        err.response?.data?.message || 'Failed to generate invite link.',
-      );
-    } finally {
-      setIsGenerating(false);
+      showToast.error(err || 'Failed to generate invite link.');
     }
   };
 
   // Revoke an active invite link
   const handleRevokeLink = async (inviteId: string) => {
-    if (!accessToken) {
-      return;
-    }
     try {
-      await axios.delete(`${API_URL}/groups/${group.id}/invites/${inviteId}`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
+      await dispatch(
+        revokeGroupInvite({ groupId: group.id, inviteId }),
+      ).unwrap();
       showToast.success('Invite link revoked.');
-      loadInvites();
     } catch (err: any) {
-      showToast.error(
-        err.response?.data?.message || 'Failed to revoke invite link.',
-      );
+      showToast.error(err || 'Failed to revoke invite link.');
     }
   };
 
@@ -252,7 +224,7 @@ export const InviteMembersModal = ({
                         letter={(u.username ||
                           u.displayName ||
                           u.email)[0].toUpperCase()}
-                        url={u.avatarUrl}
+                        url={u.avatarThumbnailUrl || u.avatarUrl}
                         status={onlineUsers[u.id] || 'offline'}
                         size="md"
                       />

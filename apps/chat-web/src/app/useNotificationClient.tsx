@@ -1,10 +1,231 @@
 'use client';
 import React, { useEffect, useRef, useState } from 'react';
+import { toast } from 'react-toastify';
 import { initNotificationClient } from 'vibe-message';
 import { PrintLog } from '../utils/logger';
 import { showToast } from '../components/toast';
-import { useAppSelector } from '../store';
+import { useAppDispatch, useAppSelector } from '../store';
 import type { User } from '../store/slices/authSlice';
+import {
+  loadMutedConversations,
+  setActiveConversation,
+} from '../store/slices/chatSlice';
+import { setActiveGroup, setActiveChannel } from '../store/slices/groupsSlice';
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   NotifCard — inline-styles only so Toastify's internal CSS cannot break layout
+   ───────────────────────────────────────────────────────────────────────────── */
+interface NotifCardProps {
+  initial: string;
+  badgeIcon: React.ReactNode;
+  badgeLabel: string;
+  title: string;
+  body: React.ReactNode;
+  /** Called when the user clicks the × button */
+  onDismiss: () => void;
+  /** Called when the user clicks the card body — navigates to the thread */
+  onNavigate?: () => void;
+}
+
+function NotifCard({
+  initial,
+  badgeIcon,
+  badgeLabel,
+  title,
+  body,
+  onDismiss,
+  onNavigate,
+}: NotifCardProps) {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <div
+      role={onNavigate ? 'button' : undefined}
+      tabIndex={onNavigate ? 0 : undefined}
+      onClick={onNavigate}
+      onKeyDown={
+        onNavigate ? (e) => e.key === 'Enter' && onNavigate() : undefined
+      }
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display: 'flex',
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: '12px',
+        padding: '12px 14px 16px',
+        background:
+          hovered && onNavigate
+            ? 'color-mix(in srgb, var(--glass-bg) 90%, var(--accent-primary) 10%)'
+            : 'var(--glass-bg)',
+        backdropFilter: 'blur(20px) saturate(160%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(160%)',
+        border: '1px solid var(--glass-border)',
+        borderRadius: '14px',
+        boxShadow:
+          hovered && onNavigate
+            ? '0 12px 40px rgba(0,0,0,0.35), 0 0 0 1px var(--accent-primary)'
+            : '0 8px 32px rgba(0,0,0,0.28), 0 0 0 1px var(--glass-border)',
+        animation: 'notifSlideIn 0.3s cubic-bezier(0.16,1,0.3,1) forwards',
+        minWidth: '272px',
+        maxWidth: '320px',
+        boxSizing: 'border-box',
+        fontFamily: 'var(--font-sans, Outfit, system-ui, sans-serif)',
+        cursor: onNavigate ? 'pointer' : 'default',
+        transition: 'background 0.15s ease, box-shadow 0.15s ease',
+        position: 'relative',
+        outline: 'none',
+      }}
+    >
+      {/* Avatar */}
+      <div
+        style={{
+          width: '40px',
+          height: '40px',
+          borderRadius: '50%',
+          background:
+            'linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontWeight: 700,
+          fontSize: '15px',
+          color: '#ffffff',
+          flexShrink: 0,
+          boxShadow: '0 0 0 2px var(--avatar-ring), var(--btn-shadow)',
+        }}
+      >
+        {initial}
+      </div>
+
+      {/* Body */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {/* Type badge */}
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: '4px',
+            fontSize: '10px',
+            fontWeight: 600,
+            letterSpacing: '0.05em',
+            textTransform: 'uppercase',
+            color: 'var(--accent-primary)',
+            marginBottom: '4px',
+            opacity: 0.9,
+          }}
+        >
+          {badgeIcon}
+          {badgeLabel}
+        </div>
+
+        {/* Title */}
+        <div
+          style={{
+            fontWeight: 700,
+            fontSize: '13.5px',
+            lineHeight: 1.25,
+            color: 'var(--text-primary)',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            marginBottom: '3px',
+          }}
+        >
+          {title}
+        </div>
+
+        {/* Message preview */}
+        <div
+          style={
+            {
+              fontSize: '12px',
+              lineHeight: 1.45,
+              color: 'var(--text-muted)',
+              overflow: 'hidden',
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+            } as React.CSSProperties
+          }
+        >
+          {body}
+        </div>
+      </div>
+
+      {/* Dismiss (×) button */}
+      <button
+        type="button"
+        aria-label="Dismiss notification"
+        onClick={(e) => {
+          e.stopPropagation();
+          onDismiss();
+        }}
+        style={{
+          position: 'absolute',
+          top: '8px',
+          right: '8px',
+          width: '20px',
+          height: '20px',
+          borderRadius: '50%',
+          border: 'none',
+          background: 'transparent',
+          color: 'var(--text-muted)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          padding: 0,
+          lineHeight: 1,
+          fontSize: '14px',
+          opacity: 0.7,
+          transition: 'opacity 0.15s ease, background 0.15s ease',
+        }}
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.opacity = '1';
+          (e.currentTarget as HTMLButtonElement).style.background =
+            'var(--danger-bg)';
+          (e.currentTarget as HTMLButtonElement).style.color = 'var(--danger)';
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.opacity = '0.7';
+          (e.currentTarget as HTMLButtonElement).style.background =
+            'transparent';
+          (e.currentTarget as HTMLButtonElement).style.color =
+            'var(--text-muted)';
+        }}
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          width="12"
+          height="12"
+        >
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </button>
+
+      {/* Live dot — top right, below dismiss button */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '34px',
+          right: '10px',
+          width: '7px',
+          height: '7px',
+          borderRadius: '50%',
+          background: 'var(--accent-primary)',
+          boxShadow: '0 0 6px var(--accent-primary)',
+          animation: 'notifPulse 1.6s ease-in-out infinite',
+        }}
+      />
+    </div>
+  );
+}
 
 let globalClient: any = null;
 
@@ -47,17 +268,28 @@ export function getNotificationClient() {
 export function useNotificationClient(user: User | null) {
   const [client, setClient] = useState<any>(null);
   const registeredUserIdRef = useRef<string | null>(null);
+  const dispatch = useAppDispatch();
 
   const activeConversationId = useAppSelector(
     (s) => s.chat.activeConversationId,
   );
   const activeChannelId = useAppSelector((s) => s.groups.activeChannelId);
   const activeGroupId = useAppSelector((s) => s.groups.activeGroupId);
+  const mutedConversationIds = useAppSelector(
+    (s) => s.chat.mutedConversationIds,
+  );
 
   const activeConversationIdRef = useRef(activeConversationId);
   const activeChannelIdRef = useRef(activeChannelId);
   const activeGroupIdRef = useRef(activeGroupId);
+  const mutedConversationIdsRef = useRef(mutedConversationIds);
   const userRef = useRef(user);
+  // Stable ref so navigation callbacks inside the onMessage closure always
+  // use the latest dispatch without needing it in the effect dependency array.
+  const dispatchRef = useRef(dispatch);
+  useEffect(() => {
+    dispatchRef.current = dispatch;
+  }, [dispatch]);
 
   useEffect(() => {
     activeConversationIdRef.current = activeConversationId;
@@ -72,8 +304,19 @@ export function useNotificationClient(user: User | null) {
   }, [activeGroupId]);
 
   useEffect(() => {
+    mutedConversationIdsRef.current = mutedConversationIds;
+  }, [mutedConversationIds]);
+
+  useEffect(() => {
     userRef.current = user;
   }, [user]);
+
+  // Load persisted muted conversation IDs from localStorage when user is known
+  useEffect(() => {
+    if (user?.id) {
+      dispatch(loadMutedConversations(user.id));
+    }
+  }, [user?.id, dispatch]);
 
   // Initialize client on mount
   useEffect(() => {
@@ -108,7 +351,7 @@ export function useNotificationClient(user: User | null) {
           }
         }
 
-        // Handle Friend Request Notifications specifically
+        // ── Friend Request Notifications ───────────────────────────────────
         if (meta.type === 'friend_request') {
           if (userRef.current?.notificationsFriendRequestEnabled === false) {
             PrintLog('Suppressed: friend request notifications are disabled');
@@ -117,44 +360,47 @@ export function useNotificationClient(user: User | null) {
           const senderName = meta.senderName || 'Someone';
           const initial = senderName.charAt(0).toUpperCase();
 
+          const toastId = `friend-req-${Date.now()}`;
+
           showToast.notification(
-            <div className="flex items-center gap-3 p-1 font-sans">
-              <div className="avatar-base w-10 h-10 text-[14px] shrink-0">
-                {initial}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div
-                  className="font-bold text-[14.5px] leading-tight truncate"
-                  style={{ color: 'var(--text-primary)' }}
+            <NotifCard
+              initial={initial}
+              badgeLabel="Friend Request"
+              badgeIcon={
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  width="10"
+                  height="10"
                 >
-                  Friend Request
-                </div>
-                <div
-                  className="text-[12.5px] leading-snug mt-0.5 break-words"
-                  style={{ color: 'var(--text-muted)' }}
-                >
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <line x1="19" y1="8" x2="19" y2="14" />
+                  <line x1="22" y1="11" x2="16" y2="11" />
+                </svg>
+              }
+              title="New Friend Request"
+              body={
+                <>
                   <span
-                    className="font-semibold"
-                    style={{ color: 'var(--accent-primary)' }}
+                    style={{ fontWeight: 600, color: 'var(--accent-primary)' }}
                   >
                     {senderName}
                   </span>{' '}
                   sent you a friend request!
-                </div>
-              </div>
-              <div
-                className="w-2.5 h-2.5 rounded-full shrink-0 animate-pulse"
-                style={{
-                  background: 'var(--accent-primary)',
-                  boxShadow: '0 0 8px var(--accent-primary)',
-                }}
-              />
-            </div>,
+                </>
+              }
+              onDismiss={() => toast.dismiss(toastId)}
+            />,
             {
+              toastId,
               icon: false,
-              closeButton: true,
+              closeButton: false,
               className: 'custom-inapp-toast-container',
-              autoClose: 4000,
+              autoClose: 5000,
+              hideProgressBar: true,
             },
           );
           return;
@@ -162,6 +408,15 @@ export function useNotificationClient(user: User | null) {
 
         const msgConvoId = meta.conversationId || payload.data?.conversationId;
         const msgGroupId = meta.groupId || '';
+
+        // ── Mute Check — suppress if this thread is muted by the local user ──
+        if (
+          msgConvoId &&
+          mutedConversationIdsRef.current.includes(msgConvoId)
+        ) {
+          PrintLog('Suppressed: conversation is muted by user', msgConvoId);
+          return;
+        }
 
         // Suppress if user is currently viewing this DM conversation
         if (msgConvoId && msgConvoId === activeConversationIdRef.current) {
@@ -193,64 +448,88 @@ export function useNotificationClient(user: User | null) {
         const senderName = meta.senderName || 'Someone';
 
         let toastTitle = '';
-        let toastBody = '';
+        const toastBody = messageText;
 
         if (isDm) {
           toastTitle = senderName;
-          toastBody = messageText;
         } else {
           const groupName = meta.groupName || 'Group';
           const channelName = meta.channelName || 'general';
-          toastTitle = `${groupName}(${channelName})`;
-          toastBody = messageText;
+          toastTitle = `${groupName} › #${channelName}`;
         }
 
         const initial = senderName.charAt(0).toUpperCase();
 
+        const dmIcon = (
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            width="10"
+            height="10"
+          >
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+        );
+        const groupIcon = (
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            width="10"
+            height="10"
+          >
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+          </svg>
+        );
+
+        const toastId = `msg-${msgConvoId ?? ''}-${Date.now()}`;
+
+        // Build the navigation callback
+        const handleNavigate = msgConvoId
+          ? () => {
+              if (isDm) {
+                dispatchRef.current(setActiveConversation(msgConvoId));
+              } else {
+                dispatchRef.current(setActiveGroup(msgGroupId));
+                dispatchRef.current(setActiveChannel(msgConvoId));
+              }
+              toast.dismiss(toastId);
+            }
+          : undefined;
+
         showToast.notification(
-          <div className="flex items-center gap-3 p-1 font-sans">
-            <div className="avatar-base w-10 h-10 text-[14px] shrink-0">
-              {initial}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div
-                className="font-bold text-[14.5px] leading-tight truncate"
-                style={{ color: 'var(--text-primary)' }}
-              >
-                {toastTitle}
-              </div>
-              <div
-                className="text-[12.5px] leading-snug mt-0.5 break-words"
-                style={{ color: 'var(--text-muted)' }}
-              >
-                {isDm ? (
-                  toastBody
-                ) : (
-                  <>
-                    <span
-                      className="font-semibold"
-                      style={{ color: 'var(--accent-primary)' }}
-                    >
-                      {senderName}:
-                    </span>{' '}
-                    {toastBody}
-                  </>
-                )}
-              </div>
-            </div>
-            <div
-              className="w-2.5 h-2.5 rounded-full shrink-0 animate-pulse"
-              style={{
-                background: 'var(--accent-primary)',
-                boxShadow: '0 0 8px var(--accent-primary)',
-              }}
-            />
-          </div>,
+          <NotifCard
+            initial={initial}
+            badgeLabel={isDm ? 'Direct Message' : 'Group Message'}
+            badgeIcon={isDm ? dmIcon : groupIcon}
+            title={toastTitle}
+            body={
+              isDm ? (
+                toastBody
+              ) : (
+                <>
+                  <span
+                    style={{ fontWeight: 600, color: 'var(--accent-primary)' }}
+                  >
+                    {senderName}:{' '}
+                  </span>
+                  {toastBody}
+                </>
+              )
+            }
+            onDismiss={() => toast.dismiss(toastId)}
+            onNavigate={handleNavigate}
+          />,
           {
+            toastId,
             icon: false,
-            closeButton: true,
+            closeButton: false,
             className: 'custom-inapp-toast-container',
-            autoClose: 4000,
+            autoClose: 5000,
+            hideProgressBar: true,
           },
         );
       });
