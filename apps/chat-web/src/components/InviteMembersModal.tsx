@@ -224,7 +224,7 @@ export const InviteMembersModal = ({
                         letter={(u.username ||
                           u.displayName ||
                           u.email)[0].toUpperCase()}
-                        url={u.avatarUrl}
+                        url={u.avatarThumbnailUrl || u.avatarUrl}
                         status={onlineUsers[u.id] || 'offline'}
                         size="md"
                       />

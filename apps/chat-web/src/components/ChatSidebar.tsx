@@ -182,6 +182,7 @@ export const ChatSidebar = ({
         email: r.email,
         id: r.id,
         avatarUrl: r.avatarUrl,
+        avatarThumbnailUrl: r.avatarThumbnailUrl,
       };
     }
 
@@ -191,6 +192,7 @@ export const ChatSidebar = ({
       email: '',
       id: null,
       avatarUrl: undefined,
+      avatarThumbnailUrl: undefined,
     };
   };
 
@@ -292,7 +294,7 @@ export const ChatSidebar = ({
             letter={(user.username ||
               user.displayName ||
               user.email)[0].toUpperCase()}
-            url={user.avatarUrl}
+            url={user.avatarThumbnailUrl || user.avatarUrl}
             status={ownStatus}
             size="md"
           />
@@ -403,6 +405,7 @@ export const ChatSidebar = ({
                 No conversations yet.
                 <br />
                 Click &quot;New DM&quot; to start one.
+                <br />
               </p>
             </div>
           ) : (
@@ -440,7 +443,7 @@ export const ChatSidebar = ({
                   />
                   <Avatar
                     letter={details.letter}
-                    url={details.avatarUrl}
+                    url={details.avatarThumbnailUrl || details.avatarUrl}
                     status={recipientStatus}
                     size="md"
                   />
@@ -493,11 +496,13 @@ export const ChatSidebar = ({
                       <div className="text-[11.5px] truncate text-[var(--text-secondary)]">
                         {lastMsg
                           ? lastMsg.content ||
-                            (lastMsg.mediaType?.startsWith('image/')
-                              ? '📷 Photo'
-                              : lastMsg.mediaType?.startsWith('video/')
-                                ? '🎥 Video'
-                                : '📁 Attachment')
+                            (lastMsg.media && lastMsg.media.length > 0
+                              ? lastMsg.media[0].type?.startsWith('image/')
+                                ? '📷 Photo'
+                                : lastMsg.media[0].type?.startsWith('video/')
+                                  ? '🎥 Video'
+                                  : '📁 Attachment'
+                              : '📁 Attachment')
                           : 'No messages yet'}
                       </div>
                     )}

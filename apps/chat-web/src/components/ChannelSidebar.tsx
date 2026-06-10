@@ -364,7 +364,7 @@ export const ChannelSidebar = ({
             user?.displayName ||
             user?.email ||
             'U')[0].toUpperCase()}
-          url={user?.avatarUrl}
+          url={user?.avatarThumbnailUrl || user?.avatarUrl}
           status={ownStatus}
           size="sm"
         />

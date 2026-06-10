@@ -478,11 +478,12 @@ class SocketManager {
     conversationId: string,
     content: string,
     media?: {
-      mediaUrl: string;
-      mediaType: string;
-      mediaName: string;
-      mediaSize: number;
-    },
+      url: string;
+      thumbnailUrl?: string;
+      type: string;
+      name: string;
+      size: number;
+    }[],
   ) {
     if (this.socket?.connected) {
       PrintLog(
@@ -493,10 +494,7 @@ class SocketManager {
       this.socket.emit('send.message', {
         conversationId,
         content,
-        mediaUrl: media?.mediaUrl,
-        mediaType: media?.mediaType,
-        mediaName: media?.mediaName,
-        mediaSize: media?.mediaSize,
+        media,
       });
     } else {
       console.error('❌ Cannot send message: Socket is not connected');

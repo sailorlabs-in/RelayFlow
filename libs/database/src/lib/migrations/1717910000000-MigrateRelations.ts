@@ -94,7 +94,6 @@ export class MigrateRelations1717910000000 implements MigrationInterface {
       SELECT 
           id,
           COALESCE(
-              (SELECT conversation_id FROM read_receipt WHERE message_id = missing_messages.id LIMIT 1),
               (SELECT id FROM conversation LIMIT 1)
           ),
           COALESCE(
@@ -109,10 +108,32 @@ export class MigrateRelations1717910000000 implements MigrationInterface {
       ) AS missing_messages
       ON CONFLICT (id) DO NOTHING;
     `);
+
+    // 5. Add media column (jsonb) if it doesn't exist
+    await queryRunner.query(`
+      ALTER TABLE "message" ADD COLUMN IF NOT EXISTS "media" jsonb DEFAULT NULL;
+    `);
+
+    // 6. Drop legacy media columns if they exist
+    await queryRunner.query(`
+      ALTER TABLE "message" 
+      DROP COLUMN IF EXISTS "media_url",
+      DROP COLUMN IF EXISTS "media_type",
+      DROP COLUMN IF EXISTS "media_name",
+      DROP COLUMN IF EXISTS "media_size";
+    `);
   }
 
-  public async down(_queryRunner: QueryRunner): Promise<void> {
-    // This is a data-only transition migration to resolve foreign key constraints
-    // on legacy orphaned entries. A down migration is not strictly needed.
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`
+      ALTER TABLE "message" 
+      ADD COLUMN IF NOT EXISTS "media_url" text DEFAULT NULL,
+      ADD COLUMN IF NOT EXISTS "media_type" varchar(100) DEFAULT NULL,
+      ADD COLUMN IF NOT EXISTS "media_name" varchar(255) DEFAULT NULL,
+      ADD COLUMN IF NOT EXISTS "media_size" integer DEFAULT NULL;
+    `);
+    await queryRunner.query(`
+      ALTER TABLE "message" DROP COLUMN IF EXISTS "media";
+    `);
   }
 }

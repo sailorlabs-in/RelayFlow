@@ -33,6 +33,9 @@ export class Group {
   @Column({ name: 'avatar_url', type: 'text', nullable: true })
   avatarUrl?: string;
 
+  @Column({ name: 'avatar_thumbnail_url', type: 'text', nullable: true })
+  avatarThumbnailUrl?: string;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 

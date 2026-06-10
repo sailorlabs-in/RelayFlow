@@ -139,6 +139,7 @@ export class UsersService {
       isTwoFactorEnabled?: boolean;
       twoFactorOnlyNewDevice?: boolean;
       avatarUrl?: string;
+      avatarThumbnailUrl?: string;
     },
   ): Promise<User> {
     const user = await this.findById(id);
@@ -209,6 +210,10 @@ export class UsersService {
 
     if (data.avatarUrl !== undefined) {
       user.avatarUrl = data.avatarUrl;
+    }
+
+    if (data.avatarThumbnailUrl !== undefined) {
+      user.avatarThumbnailUrl = data.avatarThumbnailUrl;
     }
 
     const updatedUser = await this.userRepository.save(user);

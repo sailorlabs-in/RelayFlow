@@ -23,6 +23,7 @@ export interface GroupMember {
     username?: string;
     displayName?: string;
     avatarUrl?: string;
+    avatarThumbnailUrl?: string;
     status?: string;
   };
 }
@@ -34,6 +35,7 @@ export interface Group {
   ownerId: string;
   iconLetter: string;
   avatarUrl?: string;
+  avatarThumbnailUrl?: string;
   createdAt: string;
   updatedAt: string;
   members: GroupMember[];
@@ -88,6 +90,7 @@ export const createGroup = createAsyncThunk(
       description?: string;
       memberUserIds?: string[];
       avatarUrl?: string;
+      avatarThumbnailUrl?: string;
     },
     { rejectWithValue },
   ) => {
@@ -113,6 +116,7 @@ export const updateGroup = createAsyncThunk(
       name: string;
       description?: string;
       avatarUrl?: string;
+      avatarThumbnailUrl?: string;
     },
     { rejectWithValue },
   ) => {
@@ -124,6 +128,7 @@ export const updateGroup = createAsyncThunk(
           name: payload.name,
           description: payload.description,
           avatarUrl: payload.avatarUrl,
+          avatarThumbnailUrl: payload.avatarThumbnailUrl,
         },
         true,
       );

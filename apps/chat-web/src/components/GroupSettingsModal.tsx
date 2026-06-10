@@ -7,6 +7,7 @@ import { updateGroup } from '../store/slices/groupsSlice';
 import { IconX } from './Icons';
 import { showToast } from './toast';
 import { Avatar } from './Avatar';
+import { generateImageThumbnail } from '../utils/media';
 
 interface GroupSettingsModalProps {
   group: Group;
@@ -21,6 +22,9 @@ export const GroupSettingsModal = ({
   const [name, setName] = useState(group.name);
   const [description, setDescription] = useState(group.description || '');
   const [avatarUrl, setAvatarUrl] = useState(group.avatarUrl || '');
+  const [avatarThumbnailUrl, setAvatarThumbnailUrl] = useState(
+    group.avatarThumbnailUrl || '',
+  );
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -75,16 +79,26 @@ export const GroupSettingsModal = ({
 
     setUploading(true);
 
-    if (avatarUrl) {
-      await deleteOldMedia(avatarUrl);
-    }
-
-    const formData = new FormData();
-    formData.append('bucket', 'relayflow');
-    formData.append('folder', 'profile-media');
-    formData.append('files', file);
-
     try {
+      if (avatarUrl) {
+        await deleteOldMedia(avatarUrl);
+      }
+      if (avatarThumbnailUrl && avatarThumbnailUrl !== avatarUrl) {
+        await deleteOldMedia(avatarThumbnailUrl);
+      }
+
+      // Generate 20% thumbnail
+      const thumbBlob = await generateImageThumbnail(file);
+      const thumbFile = new File([thumbBlob], `thumb_${file.name}`, {
+        type: 'image/jpeg',
+      });
+
+      const formData = new FormData();
+      formData.append('bucket', 'relayflow');
+      formData.append('folder', 'profile-media');
+      formData.append('files', file);
+      formData.append('files', thumbFile);
+
       const bucketUrl = (
         process.env.NEXT_PUBLIC_BUCKET_URL || 'https://bucket.umangsailor.com'
       ).replace(/\/+$/, '');
@@ -99,7 +113,10 @@ export const GroupSettingsModal = ({
 
       const data = await response.json();
       if (data.files && data.files.length > 0) {
-        setAvatarUrl(data.files[0].url);
+        const mainUrl = data.files[0].url;
+        const thumbUrl = data.files[1]?.url || mainUrl;
+        setAvatarUrl(mainUrl);
+        setAvatarThumbnailUrl(thumbUrl);
       } else {
         throw new Error('No files returned');
       }
@@ -125,6 +142,7 @@ export const GroupSettingsModal = ({
           name: name.trim(),
           description: description.trim(),
           avatarUrl,
+          avatarThumbnailUrl,
         }),
       ).unwrap();
       showToast.success('Group settings updated!');
@@ -198,7 +216,14 @@ export const GroupSettingsModal = ({
                     type="button"
                     onClick={() => {
                       deleteOldMedia(avatarUrl);
+                      if (
+                        avatarThumbnailUrl &&
+                        avatarThumbnailUrl !== avatarUrl
+                      ) {
+                        deleteOldMedia(avatarThumbnailUrl);
+                      }
                       setAvatarUrl('');
+                      setAvatarThumbnailUrl('');
                     }}
                     className="px-3 py-1.5 rounded-[8px] text-[11.5px] font-semibold cursor-pointer border border-[var(--danger-border)] bg-[var(--danger-bg)] text-[var(--danger)] hover:bg-[var(--danger)] hover:text-white transition-all active-press"
                   >

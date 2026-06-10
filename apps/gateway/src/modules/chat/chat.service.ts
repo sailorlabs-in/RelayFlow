@@ -126,10 +126,7 @@ export class ChatService {
                 isRead: lastMessage.isRead,
                 createdAt: lastMessage.createdAt.toISOString(),
                 updatedAt: lastMessage.updatedAt.toISOString(),
-                mediaUrl: lastMessage.mediaUrl,
-                mediaType: lastMessage.mediaType,
-                mediaName: lastMessage.mediaName,
-                mediaSize: lastMessage.mediaSize,
+                media: lastMessage.media,
               }
             : null,
         };
@@ -149,11 +146,8 @@ export class ChatService {
     // 1. Fetch messages with media first
     try {
       const messagesWithMedia = await this.messageRepository.find({
-        where: {
-          conversationId,
-          mediaUrl: Not(IsNull()),
-        },
-        select: ['mediaUrl'],
+        where: [{ conversationId, media: Not(IsNull()) }],
+        select: ['media'],
       });
 
       const bucketUrl = (
@@ -162,14 +156,27 @@ export class ChatService {
       const prefix = `${bucketUrl}/storage/`;
 
       const mediaToClean: { bucket: string; name: string }[] = [];
-      for (const msg of messagesWithMedia) {
-        if (msg.mediaUrl && msg.mediaUrl.startsWith(prefix)) {
-          const path = msg.mediaUrl.slice(prefix.length);
+      const addUrlToClean = (url: string) => {
+        if (url && url.startsWith(prefix)) {
+          const path = url.slice(prefix.length);
           const parts = path.split('/');
           if (parts.length >= 2) {
             const bucket = parts[0];
             const name = parts.slice(1).join('/');
             mediaToClean.push({ bucket, name });
+          }
+        }
+      };
+
+      for (const msg of messagesWithMedia) {
+        if (msg.media && Array.isArray(msg.media)) {
+          for (const item of msg.media) {
+            if (item.url) {
+              addUrlToClean(item.url);
+            }
+            if (item.thumbnailUrl) {
+              addUrlToClean(item.thumbnailUrl);
+            }
           }
         }
       }
@@ -218,10 +225,7 @@ export class ChatService {
     senderId: string,
     content: string,
     isRead = false,
-    mediaUrl?: string,
-    mediaType?: string,
-    mediaName?: string,
-    mediaSize?: number,
+    media?: any[],
   ): Promise<Message> {
     const isMember = await this.memberRepository.findOne({
       where: { conversationId, userId: senderId },
@@ -237,10 +241,7 @@ export class ChatService {
       senderId,
       content,
       isRead,
-      mediaUrl,
-      mediaType,
-      mediaName,
-      mediaSize,
+      media,
     });
 
     return this.messageRepository.save(message);
@@ -278,8 +279,17 @@ export class ChatService {
       const message = await this.messageRepository.findOne({
         where: { id: messageId },
       });
-      if (message && message.mediaUrl) {
-        await this.deleteMediaFile(message.mediaUrl);
+      if (message) {
+        if (message.media && Array.isArray(message.media)) {
+          for (const item of message.media) {
+            if (item.url) {
+              await this.deleteMediaFile(item.url);
+            }
+            if (item.thumbnailUrl) {
+              await this.deleteMediaFile(item.thumbnailUrl);
+            }
+          }
+        }
       }
     } catch (err) {
       console.error('Failed to clean single message media:', err);

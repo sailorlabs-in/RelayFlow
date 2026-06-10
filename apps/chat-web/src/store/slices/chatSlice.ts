@@ -13,6 +13,15 @@ export interface Conversation {
   updatedAt: string;
 }
 
+export interface MessageMediaItem {
+  name: string;
+  thumbnailName?: string;
+  url: string;
+  thumbnailUrl?: string;
+  type: string;
+  size: number;
+}
+
 export interface Message {
   id: string;
   conversationId: string;
@@ -21,10 +30,7 @@ export interface Message {
   isRead?: boolean;
   createdAt: string;
   updatedAt: string;
-  mediaUrl?: string;
-  mediaType?: string;
-  mediaName?: string;
-  mediaSize?: number;
+  media?: MessageMediaItem[];
 }
 
 export interface ChatState {

@@ -21,6 +21,7 @@ import { socketUpdateUserStatus } from '../../store/slices/chatSlice';
 import { socketManager } from '../../store/socketManager';
 import StoreProvider from '../../store/StoreProvider';
 import { Avatar } from '../../components/Avatar';
+import { generateImageThumbnail } from '../../utils/media';
 
 /* ── SVGs for icons ────────────────────────────────────────── */
 
@@ -180,6 +181,7 @@ export function ProfileSettingsContent({
   const [displayName, setDisplayName] = useState('');
   const [username, setUsername] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
+  const [avatarThumbnailUrl, setAvatarThumbnailUrl] = useState('');
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
@@ -240,16 +242,26 @@ export function ProfileSettingsContent({
 
     setUploadingAvatar(true);
 
-    if (avatarUrl) {
-      await deleteOldMedia(avatarUrl);
-    }
-
-    const formData = new FormData();
-    formData.append('bucket', 'relayflow');
-    formData.append('folder', 'profile-media');
-    formData.append('files', file);
-
     try {
+      if (avatarUrl) {
+        await deleteOldMedia(avatarUrl);
+      }
+      if (avatarThumbnailUrl && avatarThumbnailUrl !== avatarUrl) {
+        await deleteOldMedia(avatarThumbnailUrl);
+      }
+
+      // Generate 20% thumbnail
+      const thumbBlob = await generateImageThumbnail(file);
+      const thumbFile = new File([thumbBlob], `thumb_${file.name}`, {
+        type: 'image/jpeg',
+      });
+
+      const formData = new FormData();
+      formData.append('bucket', 'relayflow');
+      formData.append('folder', 'profile-media');
+      formData.append('files', file);
+      formData.append('files', thumbFile);
+
       const bucketUrl = (
         process.env.NEXT_PUBLIC_BUCKET_URL || 'https://bucket.umangsailor.com'
       ).replace(/\/+$/, '');
@@ -264,8 +276,10 @@ export function ProfileSettingsContent({
 
       const data = await response.json();
       if (data.files && data.files.length > 0) {
-        const uploaded = data.files[0];
-        setAvatarUrl(uploaded.url);
+        const mainUrl = data.files[0].url;
+        const thumbUrl = data.files[1]?.url || mainUrl;
+        setAvatarUrl(mainUrl);
+        setAvatarThumbnailUrl(thumbUrl);
         setMessage({
           type: 'success',
           text: '✔ Avatar uploaded successfully!',
@@ -341,6 +355,7 @@ export function ProfileSettingsContent({
       setIsTwoFactorEnabled(user.isTwoFactorEnabled ?? false);
       setTwoFactorOnlyNewDevice(user.twoFactorOnlyNewDevice ?? false);
       setAvatarUrl(user.avatarUrl || '');
+      setAvatarThumbnailUrl(user.avatarThumbnailUrl || '');
       hasInitializedRef.current = true;
     }
   }, [user, accessToken, router, isModal]);
@@ -456,6 +471,7 @@ export function ProfileSettingsContent({
         isTwoFactorEnabled,
         twoFactorOnlyNewDevice,
         avatarUrl,
+        avatarThumbnailUrl,
       };
 
       if (password) {
@@ -804,7 +820,14 @@ export function ProfileSettingsContent({
                           type="button"
                           onClick={() => {
                             deleteOldMedia(avatarUrl);
+                            if (
+                              avatarThumbnailUrl &&
+                              avatarThumbnailUrl !== avatarUrl
+                            ) {
+                              deleteOldMedia(avatarThumbnailUrl);
+                            }
                             setAvatarUrl('');
+                            setAvatarThumbnailUrl('');
                           }}
                           className="px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer border border-[var(--danger-border)] bg-[var(--danger-bg)] text-[var(--danger)] hover:bg-[var(--danger)] hover:text-white transition-all active-press"
                         >

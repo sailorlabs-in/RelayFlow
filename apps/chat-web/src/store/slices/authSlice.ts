@@ -7,6 +7,7 @@ export interface User {
   username?: string;
   displayName?: string;
   avatarUrl?: string;
+  avatarThumbnailUrl?: string;
   themeMode?: string;
   themeSchema?: string;
   status?: string;
@@ -261,6 +262,7 @@ export const updateUserProfile = createAsyncThunk(
       isTwoFactorEnabled?: boolean;
       twoFactorOnlyNewDevice?: boolean;
       avatarUrl?: string;
+      avatarThumbnailUrl?: string;
     },
     { rejectWithValue },
   ) => {

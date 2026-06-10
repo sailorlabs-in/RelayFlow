@@ -304,25 +304,24 @@ export class RealtimeGateway
     body: {
       conversationId: string;
       content: string;
-      mediaUrl?: string;
-      mediaType?: string;
-      mediaName?: string;
-      mediaSize?: number;
+      media?: {
+        name: string;
+        thumbnailName?: string;
+        url: string;
+        thumbnailUrl?: string;
+        type: string;
+        size: number;
+      }[];
     },
     @ConnectedSocket() socket: Socket,
   ): Promise<void> {
     const userId = socket.data.userId as string;
-    const {
-      conversationId,
-      content,
-      mediaUrl,
-      mediaType,
-      mediaName,
-      mediaSize,
-    } = body;
+    const { conversationId, content, media } = body;
     this.logger.log(
       `📥 Received send.message for: ${conversationId} from user ${userId}`,
     );
+
+    const mediaItems = media || null;
 
     const conversation = await this.chatService.getConversation(conversationId);
     if (!conversation) {
@@ -393,10 +392,7 @@ export class RealtimeGateway
       userId,
       content,
       isRead,
-      mediaUrl,
-      mediaType,
-      mediaName,
-      mediaSize,
+      mediaItems,
     );
     for (const member of members) {
       const memberRoom = `user:${member.userId}`;
@@ -496,11 +492,13 @@ export class RealtimeGateway
             title: pushTitle,
             body:
               content ||
-              (mediaType?.startsWith('image/')
-                ? '📷 Photo'
-                : mediaType?.startsWith('video/')
-                  ? '🎥 Video'
-                  : '📁 Attachment'),
+              (mediaItems && mediaItems.length > 0
+                ? mediaItems[0].type?.startsWith('image/')
+                  ? '📷 Photo'
+                  : mediaItems[0].type?.startsWith('video/')
+                    ? '🎥 Video'
+                    : '📁 Attachment'
+                : '📁 Attachment'),
             recipients: recipientsToNotify,
             metadata: metadataPayload,
           })

@@ -58,6 +58,7 @@ import {
   fetchUserProfile,
 } from '../store/slices/chatSlice';
 import { socketManager } from '../store/socketManager';
+import { generateImageThumbnail, generateVideoThumbnail } from '../utils/media';
 
 import { Avatar } from './Avatar';
 import { ConfirmationModal } from './ConfirmationModal';
@@ -73,7 +74,7 @@ import {
 } from './Icons';
 import { PresenceDot } from './PresenceDot';
 import { showToast } from './toast';
-import type { Message } from '../store/slices/chatSlice';
+import type { Message, MessageMediaItem } from '../store/slices/chatSlice';
 
 interface ChatAreaProps {
   activeConversationId: string | null;
@@ -106,72 +107,118 @@ const isOnlyEmojis = (str: string): boolean => {
   return true;
 };
 
-const renderMessageMedia = (msg: Message) => {
-  if (!msg.mediaUrl) {
+const renderMessageMedia = (
+  msg: Message,
+  onMediaClick: (item: MessageMediaItem) => void,
+) => {
+  const mediaItems: MessageMediaItem[] = msg.media || [];
+
+  if (mediaItems.length === 0) {
     return null;
-  }
-  const isImage = msg.mediaType?.startsWith('image/');
-  const isVideo = msg.mediaType?.startsWith('video/');
-
-  if (isImage) {
-    return (
-      <div className="mt-1.5 max-w-sm w-fit rounded-lg overflow-hidden border border-[var(--border-muted)] bg-[var(--bg-input)]">
-        <img
-          src={msg.mediaUrl}
-          alt={msg.mediaName || 'Image'}
-          className="h-[240px] w-auto max-w-full object-contain cursor-pointer hover:opacity-90"
-          onClick={() => window.open(msg.mediaUrl, '_blank')}
-        />
-      </div>
-    );
-  }
-
-  if (isVideo) {
-    return (
-      <div className="mt-1.5 max-w-sm w-fit rounded-lg overflow-hidden border border-[var(--border-muted)] bg-[var(--bg-input)]">
-        <video
-          src={msg.mediaUrl}
-          controls
-          className="h-[240px] w-auto max-w-full object-contain"
-        />
-      </div>
-    );
   }
 
   return (
-    <div className="mt-1.5 flex items-center gap-3 p-3 rounded-lg border border-[var(--border-muted)] bg-[var(--bg-input)] max-w-sm text-[13px] text-left">
-      <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-[var(--accent-primary)] text-white text-[16px] shrink-0">
-        📁
-      </div>
-      <div className="flex-1 min-w-0 pr-2">
-        <div className="font-semibold truncate text-[var(--text-primary)] text-[13.5px]">
-          {msg.mediaName || 'Attachment'}
-        </div>
-        <div className="text-[11px] text-[var(--text-muted)] mt-0.5">
-          {msg.mediaSize
-            ? `${(msg.mediaSize / 1024).toFixed(1)} KB`
-            : 'Unknown size'}
-        </div>
-      </div>
-      <a
-        href={msg.mediaUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="p-1.5 rounded-lg bg-[var(--theme-btn)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--theme-btn-hover)] shrink-0 flex items-center justify-center active-press"
-        title="Download file"
-      >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          className="w-4 h-4"
-        >
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-          <polyline points="7 10 12 15 17 10" />
-          <line x1="12" y1="15" x2="12" y2="3" />
-        </svg>
-      </a>
+    <div className="mt-1.5 flex flex-col gap-2 max-w-full">
+      {mediaItems.map((item, idx) => {
+        const isImage = item.type?.startsWith('image/');
+        const isVideo = item.type?.startsWith('video/');
+
+        if (isImage) {
+          const displayUrl = item.thumbnailUrl || item.url;
+          return (
+            <div
+              key={idx}
+              className="mt-1 max-w-sm w-fit rounded-lg overflow-hidden border border-[var(--border-muted)] bg-[var(--bg-input)] hover:scale-[1.01] transition-all duration-200"
+            >
+              <img
+                src={displayUrl}
+                alt={item.name || 'Image'}
+                className="h-[240px] w-auto max-w-full object-contain cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={() => onMediaClick(item)}
+              />
+            </div>
+          );
+        }
+
+        if (isVideo) {
+          const displayUrl = item.thumbnailUrl || item.url;
+          return (
+            <div
+              key={idx}
+              className="mt-1 max-w-sm w-fit rounded-lg overflow-hidden border border-[var(--border-muted)] bg-[var(--bg-input)] relative cursor-pointer hover:scale-[1.01] transition-all duration-200 group"
+              onClick={() => onMediaClick(item)}
+            >
+              {item.thumbnailUrl ? (
+                <div className="relative">
+                  <img
+                    src={displayUrl}
+                    alt={item.name || 'Video'}
+                    className="h-[240px] w-auto max-w-full object-contain transition-opacity"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-black/25 transition-colors duration-150">
+                    <div className="w-12 h-12 rounded-full bg-white/95 flex items-center justify-center text-black shadow-lg hover:scale-105 active:scale-95 transition-all duration-150">
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        className="w-5 h-5 ml-0.5 text-[var(--accent-primary)]"
+                      >
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <video
+                  src={item.url}
+                  className="h-[240px] w-auto max-w-full object-contain"
+                  preload="metadata"
+                />
+              )}
+            </div>
+          );
+        }
+
+        return (
+          <div
+            key={idx}
+            className="mt-1 flex items-center gap-3 p-3 rounded-lg border border-[var(--border-muted)] bg-[var(--bg-input)] max-w-sm text-[13px] text-left"
+          >
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-[var(--accent-primary)] text-white text-[16px] shrink-0">
+              📁
+            </div>
+            <div className="flex-1 min-w-0 pr-2">
+              <div className="font-semibold truncate text-[var(--text-primary)] text-[13.5px]">
+                {item.name || 'Attachment'}
+              </div>
+              <div className="text-[11px] text-[var(--text-muted)] mt-0.5">
+                {item.size
+                  ? `${(item.size / 1024).toFixed(1)} KB`
+                  : 'Unknown size'}
+              </div>
+            </div>
+            <a
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-1.5 rounded-lg bg-[var(--theme-btn)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--theme-btn-hover)] shrink-0 flex items-center justify-center active-press"
+              title="Download file"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                className="w-4 h-4"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+            </a>
+          </div>
+        );
+      })}
     </div>
   );
 };
@@ -232,6 +279,8 @@ export const ChatArea = ({
     setMessageInput((prev) => prev + emoji.native);
   };
 
+  const [activeMediaItem, setActiveMediaItem] =
+    useState<MessageMediaItem | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [attachedFiles, setAttachedFiles] = useState<
     {
@@ -239,6 +288,8 @@ export const ChatArea = ({
       name: string;
       type: string;
       size: number;
+      thumbnailUrl?: string;
+      thumbnailName?: string;
     }[]
   >([]);
   const [uploading, setUploading] = useState(false);
@@ -307,6 +358,7 @@ export const ChatArea = ({
       ).replace(/\/+$/, '');
 
       const uploadPromises = validFiles.map(async (file) => {
+        // 1. Upload main media file
         const formData = new FormData();
         formData.append('bucket', 'relayflow');
         formData.append('folder', 'chat-medis');
@@ -322,16 +374,63 @@ export const ChatArea = ({
         }
 
         const data = await response.json();
-        if (data.files && data.files.length > 0) {
-          const uploaded = data.files[0];
-          return {
-            url: uploaded.url,
-            name: uploaded.originalName || file.name,
-            type: file.type || 'application/octet-stream',
-            size: file.size,
-          };
+        if (!data.files || data.files.length === 0) {
+          throw new Error('No files returned');
         }
-        throw new Error('No files returned');
+        const uploaded = data.files[0];
+
+        // 2. Generate and upload thumbnail if it's image or video (excluding GIFs)
+        let thumbnailUrl: string | undefined;
+        let thumbnailName: string | undefined;
+        const isGif =
+          file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif');
+        const isImage = file.type.startsWith('image/') && !isGif;
+        const isVideo = file.type.startsWith('video/');
+
+        try {
+          let thumbBlob: Blob | null = null;
+          if (isImage) {
+            thumbBlob = await generateImageThumbnail(file);
+          } else if (isVideo) {
+            thumbBlob = await generateVideoThumbnail(file);
+          }
+
+          if (thumbBlob) {
+            const generatedThumbName = `thumb_${file.name.replace(/\.[^/.]+$/, '')}.jpg`;
+            const thumbFile = new File([thumbBlob], generatedThumbName, {
+              type: 'image/jpeg',
+            });
+            const thumbFormData = new FormData();
+            thumbFormData.append('bucket', 'relayflow');
+            thumbFormData.append('folder', 'chat-medis');
+            thumbFormData.append('files', thumbFile);
+
+            const thumbResponse = await fetch(`${bucketUrl}/upload`, {
+              method: 'POST',
+              body: thumbFormData,
+            });
+
+            if (thumbResponse.ok) {
+              const thumbData = await thumbResponse.json();
+              if (thumbData.files && thumbData.files.length > 0) {
+                thumbnailUrl = thumbData.files[0].url;
+                thumbnailName =
+                  thumbData.files[0].originalName || generatedThumbName;
+              }
+            }
+          }
+        } catch (thumbErr) {
+          console.warn('Failed to generate or upload thumbnail:', thumbErr);
+        }
+
+        return {
+          url: uploaded.url,
+          name: uploaded.originalName || file.name,
+          type: file.type || 'application/octet-stream',
+          size: file.size,
+          thumbnailUrl,
+          thumbnailName,
+        };
       });
 
       const uploadedFiles = await Promise.all(uploadPromises);
@@ -579,16 +678,19 @@ export const ChatArea = ({
     }
 
     if (attachedFiles.length > 0) {
-      attachedFiles.forEach((file, index) => {
-        const text = index === 0 ? messageInput.trim() : '';
-        const media = {
-          mediaUrl: file.url,
-          mediaType: file.type,
-          mediaName: file.name,
-          mediaSize: file.size,
-        };
-        socketManager.sendMessage(activeConversationId, text, media);
-      });
+      const media = attachedFiles.map((file) => ({
+        name: file.name,
+        thumbnailName: file.thumbnailName,
+        url: file.url,
+        thumbnailUrl: file.thumbnailUrl,
+        type: file.type,
+        size: file.size,
+      }));
+      socketManager.sendMessage(
+        activeConversationId,
+        messageInput.trim(),
+        media,
+      );
     } else {
       socketManager.sendMessage(
         activeConversationId,
@@ -711,6 +813,7 @@ export const ChatArea = ({
         email: r.email,
         id: r.id,
         avatarUrl: r.avatarUrl,
+        avatarThumbnailUrl: r.avatarThumbnailUrl,
       };
     }
 
@@ -803,7 +906,10 @@ export const ChatArea = ({
               <>
                 <Avatar
                   letter={activeDetails?.letter || ''}
-                  url={activeDetails?.avatarUrl}
+                  url={
+                    activeDetails?.avatarThumbnailUrl ||
+                    activeDetails?.avatarUrl
+                  }
                   status={activeStatus}
                   size="md"
                 />
@@ -919,7 +1025,10 @@ export const ChatArea = ({
                         <Avatar
                           letter={letter}
                           url={
-                            isOut ? user.avatarUrl : senderProfile?.avatarUrl
+                            isOut
+                              ? user.avatarThumbnailUrl || user.avatarUrl
+                              : senderProfile?.avatarThumbnailUrl ||
+                                senderProfile?.avatarUrl
                           }
                           status={presenceStatus}
                           size="sm"
@@ -945,7 +1054,7 @@ export const ChatArea = ({
                               {msg.content}
                             </div>
                           )}
-                          {renderMessageMedia(msg)}
+                          {renderMessageMedia(msg, setActiveMediaItem)}
                         </div>
                       </div>
                       {isOut && (
@@ -989,7 +1098,7 @@ export const ChatArea = ({
                           {msg.content}
                         </div>
                       )}
-                      {renderMessageMedia(msg)}
+                      {renderMessageMedia(msg, setActiveMediaItem)}
                       <div className="flex items-center gap-1 mt-1 px-1 select-none">
                         <span className="text-[10px] text-[var(--text-muted)]">
                           {new Date(msg.createdAt).toLocaleTimeString([], {
@@ -1101,6 +1210,9 @@ export const ChatArea = ({
                       type="button"
                       onClick={() => {
                         deleteUploadedFile(file.url);
+                        if (file.thumbnailUrl) {
+                          deleteUploadedFile(file.thumbnailUrl);
+                        }
                         setAttachedFiles((prev) =>
                           prev.filter((f) => f.url !== file.url),
                         );
@@ -1277,6 +1389,52 @@ export const ChatArea = ({
           onConfirm={confirmModal.onConfirm}
           onCancel={() => setConfirmModal(null)}
         />
+      )}
+      {activeMediaItem && (
+        <div
+          className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/75 backdrop-blur-md transition-all duration-300 animate-fade-in animate-duration-150"
+          onClick={() => setActiveMediaItem(null)}
+        >
+          <div
+            className="relative max-w-[90vw] max-h-[80vh] flex flex-col items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close button */}
+            <button
+              className="absolute -top-12 right-0 bg-white/10 hover:bg-white/25 text-white rounded-full p-2 hover:scale-105 active:scale-95 transition-all border-none cursor-pointer flex items-center justify-center shadow-lg"
+              onClick={() => setActiveMediaItem(null)}
+              title="Close viewer"
+            >
+              <IconX size={20} />
+            </button>
+
+            {/* Media rendering */}
+            {activeMediaItem.type.startsWith('image/') ? (
+              <img
+                src={activeMediaItem.url}
+                alt={activeMediaItem.name}
+                className="max-w-full max-h-[75vh] object-contain rounded-xl shadow-2xl border border-white/10"
+              />
+            ) : activeMediaItem.type.startsWith('video/') ? (
+              <video
+                src={activeMediaItem.url}
+                controls
+                autoPlay
+                className="max-w-full max-h-[75vh] object-contain rounded-xl shadow-2xl border border-white/10"
+              />
+            ) : null}
+
+            {/* Title / details */}
+            <div className="mt-4 text-center text-white px-4 max-w-lg">
+              <h4 className="text-[15px] font-bold truncate">
+                {activeMediaItem.name}
+              </h4>
+              <p className="text-[12px] text-white/60 mt-1">
+                {(activeMediaItem.size / (1024 * 1024)).toFixed(2)} MB
+              </p>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

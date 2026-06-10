@@ -157,6 +157,7 @@ export class GroupsController {
     @Body('description') description?: string,
     @Body('memberUserIds') memberUserIds?: string[],
     @Body('avatarUrl') avatarUrl?: string,
+    @Body('avatarThumbnailUrl') avatarThumbnailUrl?: string,
   ) {
     const group = await this.groupsService.createGroup(
       currentUser.userId,
@@ -164,6 +165,7 @@ export class GroupsController {
       description,
       memberUserIds || [],
       avatarUrl,
+      avatarThumbnailUrl,
     );
 
     // Notify all invited members about the new group via socket
@@ -212,6 +214,7 @@ export class GroupsController {
     @Body('name') name: string,
     @Body('description') description?: string,
     @Body('avatarUrl') avatarUrl?: string,
+    @Body('avatarThumbnailUrl') avatarThumbnailUrl?: string,
   ) {
     const updatedGroup = await this.groupsService.updateGroup(
       groupId,
@@ -219,6 +222,7 @@ export class GroupsController {
       name,
       description,
       avatarUrl,
+      avatarThumbnailUrl,
     );
 
     // Notify all group members about the update via socket
