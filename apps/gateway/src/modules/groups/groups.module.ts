@@ -4,6 +4,7 @@ import {
   Conversation,
   ConversationMember,
   GroupInvite,
+  GroupRole,
 } from '@chat-app/database';
 import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -21,6 +22,7 @@ import { GroupsService } from './groups.service';
       Conversation,
       ConversationMember,
       GroupInvite,
+      GroupRole,
     ]),
     forwardRef(() => RealtimeModule),
     forwardRef(() => AuthModule),

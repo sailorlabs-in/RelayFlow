@@ -35,6 +35,12 @@ export class Message {
   @Column({ name: 'is_read', type: 'boolean', default: false })
   isRead!: boolean;
 
+  @Column({ name: 'is_edited', type: 'boolean', default: false })
+  isEdited!: boolean;
+
+  @Column({ name: 'edited_at', type: 'timestamptz', nullable: true })
+  editedAt?: Date;
+
   @Column({ name: 'media', type: 'jsonb', nullable: true })
   media?: {
     name: string;

@@ -28,6 +28,8 @@ export interface Message {
   senderId: string;
   content: string;
   isRead?: boolean;
+  isEdited?: boolean;
+  editedAt?: string;
   createdAt: string;
   updatedAt: string;
   media?: MessageMediaItem[];
@@ -469,6 +471,22 @@ const chatSlice = createSlice({
         }
       }
     },
+    socketUpdateMessage: (state, action: PayloadAction<Message>) => {
+      const updatedMsg = action.payload;
+      const { id, conversationId } = updatedMsg;
+
+      if (state.messages[conversationId]) {
+        state.messages[conversationId] = state.messages[conversationId].map((m) =>
+          m.id === id ? updatedMsg : m
+        );
+      }
+
+      // Update lastMessage in the conversation list if it matches this message
+      const convo = state.conversations.find((c) => c.id === conversationId);
+      if (convo && convo.lastMessage?.id === id) {
+        convo.lastMessage = updatedMsg;
+      }
+    },
     clearSearchResults: (state) => {
       state.searchResults = [];
       state.friendSearchResults = [];
@@ -801,6 +819,7 @@ export const {
   socketUpdateUserStatus,
   socketUpdateTyping,
   socketDeleteMessage,
+  socketUpdateMessage,
   clearSearchResults,
   socketRemoveConversation,
   socketMarkMessagesAsRead,

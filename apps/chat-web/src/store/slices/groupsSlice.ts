@@ -2,11 +2,21 @@ import type { PayloadAction } from '@reduxjs/toolkit';
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import ApiRequest from '../../utils/ApiRequest';
 
+export interface GroupRole {
+  id: string;
+  groupId: string;
+  name: string;
+  color: string;
+  createdAt: string;
+}
+
 export interface GroupChannel {
   id: string;
   name: string;
   groupId: string;
   type: 'channel';
+  layout: 'text' | 'bubble';
+  allowedRoleIds?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -16,6 +26,7 @@ export interface GroupMember {
   groupId: string;
   userId: string;
   role: 'owner' | 'admin' | 'member';
+  roleIds?: string[];
   createdAt: string;
   user?: {
     id: string;
@@ -40,6 +51,7 @@ export interface Group {
   updatedAt: string;
   members: GroupMember[];
   channels: GroupChannel[];
+  roles: GroupRole[];
 }
 
 export interface GroupsState {
@@ -171,12 +183,24 @@ export const addGroupMembers = createAsyncThunk(
 // ── Create a channel inside a group ──────────────────────────────────────────
 export const createChannel = createAsyncThunk(
   'groups/createChannel',
-  async (payload: { groupId: string; name: string }, { rejectWithValue }) => {
+  async (
+    payload: {
+      groupId: string;
+      name: string;
+      layout?: 'text' | 'bubble';
+      allowedRoleIds?: string[];
+    },
+    { rejectWithValue },
+  ) => {
     try {
       const response = await ApiRequest(
         `/groups/${payload.groupId}/channels`,
         'post',
-        { name: payload.name },
+        {
+          name: payload.name,
+          layout: payload.layout || 'text',
+          allowedRoleIds: payload.allowedRoleIds || [],
+        },
         true,
       );
       return {
@@ -197,14 +221,22 @@ export const createChannel = createAsyncThunk(
 export const updateChannel = createAsyncThunk(
   'groups/updateChannel',
   async (
-    payload: { groupId: string; channelId: string; name: string },
+    payload: {
+      groupId: string;
+      channelId: string;
+      name: string;
+      allowedRoleIds?: string[];
+    },
     { rejectWithValue },
   ) => {
     try {
       const response = await ApiRequest(
         `/groups/${payload.groupId}/channels/${payload.channelId}`,
         'patch',
-        { name: payload.name },
+        {
+          name: payload.name,
+          allowedRoleIds: payload.allowedRoleIds,
+        },
         true,
       );
       return {
@@ -215,7 +247,7 @@ export const updateChannel = createAsyncThunk(
       return rejectWithValue(
         error.response?.data?.error?.message ||
           error.response?.data?.message ||
-          'Failed to rename channel.',
+          'Failed to update channel.',
       );
     }
   },
@@ -412,6 +444,133 @@ export const acceptGroupInvite = createAsyncThunk(
   },
 );
 
+// ── Fetch roles for a group ───────────────────────────────────────────────────
+export const fetchGroupRoles = createAsyncThunk(
+  'groups/fetchGroupRoles',
+  async (groupId: string, { rejectWithValue }) => {
+    try {
+      const response = await ApiRequest(
+        `/groups/${groupId}/roles`,
+        'get',
+        {},
+        true,
+      );
+      return { groupId, roles: response.data as GroupRole[] };
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.error?.message ||
+          error.response?.data?.message ||
+          'Failed to load roles.',
+      );
+    }
+  },
+);
+
+// ── Create a group role ───────────────────────────────────────────────────────
+export const createGroupRole = createAsyncThunk(
+  'groups/createGroupRole',
+  async (
+    payload: { groupId: string; name: string; color?: string },
+    { rejectWithValue },
+  ) => {
+    try {
+      const response = await ApiRequest(
+        `/groups/${payload.groupId}/roles`,
+        'post',
+        { name: payload.name, color: payload.color },
+        true,
+      );
+      return { groupId: payload.groupId, role: response.data as GroupRole };
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.error?.message ||
+          error.response?.data?.message ||
+          'Failed to create role.',
+      );
+    }
+  },
+);
+
+// ── Update a group role ───────────────────────────────────────────────────────
+export const updateGroupRole = createAsyncThunk(
+  'groups/updateGroupRole',
+  async (
+    payload: { groupId: string; roleId: string; name: string; color?: string },
+    { rejectWithValue },
+  ) => {
+    try {
+      const response = await ApiRequest(
+        `/groups/${payload.groupId}/roles/${payload.roleId}`,
+        'patch',
+        { name: payload.name, color: payload.color },
+        true,
+      );
+      return { groupId: payload.groupId, role: response.data as GroupRole };
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.error?.message ||
+          error.response?.data?.message ||
+          'Failed to update role.',
+      );
+    }
+  },
+);
+
+// ── Delete a group role ───────────────────────────────────────────────────────
+export const deleteGroupRole = createAsyncThunk(
+  'groups/deleteGroupRole',
+  async (
+    payload: { groupId: string; roleId: string },
+    { rejectWithValue },
+  ) => {
+    try {
+      await ApiRequest(
+        `/groups/${payload.groupId}/roles/${payload.roleId}`,
+        'delete',
+        {},
+        true,
+      );
+      return { groupId: payload.groupId, roleId: payload.roleId };
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.error?.message ||
+          error.response?.data?.message ||
+          'Failed to delete role.',
+      );
+    }
+  },
+);
+
+// ── Assign roles to member ─────────────────────────────────────────────────────
+export const assignMemberRoles = createAsyncThunk(
+  'groups/assignMemberRoles',
+  async (
+    payload: { groupId: string; userId: string; roleIds: string[] },
+    { rejectWithValue },
+  ) => {
+    try {
+      const response = await ApiRequest(
+        `/groups/${payload.groupId}/members/${payload.userId}/roles`,
+        'post',
+        { roleIds: payload.roleIds },
+        true,
+      );
+      return {
+        groupId: payload.groupId,
+        userId: payload.userId,
+        roleIds: payload.roleIds,
+        member: response.data as GroupMember,
+      };
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.error?.message ||
+          error.response?.data?.message ||
+          'Failed to assign roles to member.',
+      );
+    }
+  },
+);
+
 const groupsSlice = createSlice({
   name: 'groups',
   initialState,
@@ -522,6 +681,87 @@ const groupsSlice = createSlice({
         state.activeChannelId === channelId
       ) {
         state.activeChannelId = group?.channels?.[0]?.id || null;
+      }
+    },
+    socketRoleCreated: (
+      state,
+      action: PayloadAction<{ groupId: string; role: GroupRole }>,
+    ) => {
+      const { groupId, role } = action.payload;
+      const group = state.groups.find((g) => g.id === groupId);
+      if (group) {
+        if (!group.roles) {
+          group.roles = [];
+        }
+        const exists = group.roles.some((r) => r.id === role.id);
+        if (!exists) {
+          group.roles.push(role);
+        }
+      }
+    },
+    socketRoleUpdated: (
+      state,
+      action: PayloadAction<{ groupId: string; role: GroupRole }>,
+    ) => {
+      const { groupId, role } = action.payload;
+      const group = state.groups.find((g) => g.id === groupId);
+      if (group && Array.isArray(group.roles)) {
+        const rIdx = group.roles.findIndex((r) => r.id === role.id);
+        if (rIdx !== -1) {
+          group.roles[rIdx] = role;
+        }
+      }
+    },
+    socketRoleDeleted: (
+      state,
+      action: PayloadAction<{ groupId: string; roleId: string }>,
+    ) => {
+      const { groupId, roleId } = action.payload;
+      const group = state.groups.find((g) => g.id === groupId);
+      if (group) {
+        if (Array.isArray(group.roles)) {
+          group.roles = group.roles.filter((r) => r.id !== roleId);
+        }
+        // Clean up role references in members
+        if (Array.isArray(group.members)) {
+          group.members = group.members.map((m) => {
+            if (m.roleIds && m.roleIds.includes(roleId)) {
+              return { ...m, roleIds: m.roleIds.filter((id) => id !== roleId) };
+            }
+            return m;
+          });
+        }
+        // Clean up role references in channels
+        if (Array.isArray(group.channels)) {
+          group.channels = group.channels.map((c) => {
+            if (c.allowedRoleIds && c.allowedRoleIds.includes(roleId)) {
+              return { ...c, allowedRoleIds: c.allowedRoleIds.filter((id) => id !== roleId) };
+            }
+            return c;
+          });
+        }
+      }
+    },
+    socketMemberRolesUpdated: (
+      state,
+      action: PayloadAction<{
+        groupId: string;
+        userId: string;
+        roleIds: string[];
+        member?: GroupMember;
+      }>,
+    ) => {
+      const { groupId, userId, roleIds, member } = action.payload;
+      const group = state.groups.find((g) => g.id === groupId);
+      if (group && Array.isArray(group.members)) {
+        const mIdx = group.members.findIndex((m) => m.userId === userId);
+        if (mIdx !== -1) {
+          group.members[mIdx] = {
+            ...group.members[mIdx],
+            roleIds,
+            ...(member || {}),
+          };
+        }
       }
     },
   },
@@ -678,6 +918,85 @@ const groupsSlice = createSlice({
     builder.addCase(revokeGroupInvite.fulfilled, (state, action) => {
       state.invites = state.invites.filter((inv) => inv.id !== action.payload);
     });
+
+    // Fetch group roles
+    builder.addCase(fetchGroupRoles.fulfilled, (state, action) => {
+      const { groupId, roles } = action.payload;
+      const group = state.groups.find((g) => g.id === groupId);
+      if (group) {
+        group.roles = roles;
+      }
+    });
+
+    // Create group role
+    builder.addCase(createGroupRole.fulfilled, (state, action) => {
+      const { groupId, role } = action.payload;
+      const group = state.groups.find((g) => g.id === groupId);
+      if (group) {
+        if (!group.roles) {
+          group.roles = [];
+        }
+        const exists = group.roles.some((r) => r.id === role.id);
+        if (!exists) {
+          group.roles.push(role);
+        }
+      }
+    });
+
+    // Update group role
+    builder.addCase(updateGroupRole.fulfilled, (state, action) => {
+      const { groupId, role } = action.payload;
+      const group = state.groups.find((g) => g.id === groupId);
+      if (group && Array.isArray(group.roles)) {
+        const rIdx = group.roles.findIndex((r) => r.id === role.id);
+        if (rIdx !== -1) {
+          group.roles[rIdx] = role;
+        }
+      }
+    });
+
+    // Delete group role
+    builder.addCase(deleteGroupRole.fulfilled, (state, action) => {
+      const { groupId, roleId } = action.payload;
+      const group = state.groups.find((g) => g.id === groupId);
+      if (group) {
+        if (Array.isArray(group.roles)) {
+          group.roles = group.roles.filter((r) => r.id !== roleId);
+        }
+        if (Array.isArray(group.members)) {
+          group.members = group.members.map((m) => {
+            if (m.roleIds && m.roleIds.includes(roleId)) {
+              return { ...m, roleIds: m.roleIds.filter((id) => id !== roleId) };
+            }
+            return m;
+          });
+        }
+        if (Array.isArray(group.channels)) {
+          group.channels = group.channels.map((c) => {
+            if (c.allowedRoleIds && c.allowedRoleIds.includes(roleId)) {
+              return { ...c, allowedRoleIds: c.allowedRoleIds.filter((id) => id !== roleId) };
+            }
+            return c;
+          });
+        }
+      }
+    });
+
+    // Assign member roles
+    builder.addCase(assignMemberRoles.fulfilled, (state, action) => {
+      const { groupId, userId, roleIds, member } = action.payload;
+      const group = state.groups.find((g) => g.id === groupId);
+      if (group && Array.isArray(group.members)) {
+        const mIdx = group.members.findIndex((m) => m.userId === userId);
+        if (mIdx !== -1) {
+          group.members[mIdx] = {
+            ...group.members[mIdx],
+            roleIds,
+            ...(member || {}),
+          };
+        }
+      }
+    });
   },
 });
 
@@ -693,6 +1012,10 @@ export const {
   socketChannelCreated,
   socketChannelUpdated,
   socketChannelDeleted,
+  socketRoleCreated,
+  socketRoleUpdated,
+  socketRoleDeleted,
+  socketMemberRolesUpdated,
 } = groupsSlice.actions;
 
 export default groupsSlice.reducer;

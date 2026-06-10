@@ -7,6 +7,7 @@ import {
   ConversationMember,
   ConversationType,
   GroupInvite,
+  GroupRole,
 } from '@chat-app/database';
 import {
   Injectable,
@@ -32,6 +33,8 @@ export class GroupsService {
     private readonly convMemberRepo: Repository<ConversationMember>,
     @InjectRepository(GroupInvite)
     private readonly groupInviteRepo: Repository<GroupInvite>,
+    @InjectRepository(GroupRole)
+    private readonly groupRoleRepo: Repository<GroupRole>,
   ) {}
 
   // Helper to load profiles for group members
@@ -114,6 +117,7 @@ export class GroupsService {
       ...savedGroup,
       members: membersWithProfiles,
       channels: [savedChannel],
+      roles: [],
     };
   }
 
@@ -134,11 +138,13 @@ export class GroupsService {
           where: { groupId: group.id },
         });
         const membersWithProfiles = await this.attachProfilesToMembers(members);
-        const channels = await this.conversationRepo.find({
+        const allChannels = await this.conversationRepo.find({
           where: { groupId: group.id, type: ConversationType.CHANNEL },
           order: { createdAt: 'ASC' },
         });
-        return { ...group, members: membersWithProfiles, channels };
+        const channels = await this.filterChannelsForUser(group.id, userId, allChannels);
+        const roles = await this.getGroupRoles(group.id);
+        return { ...group, members: membersWithProfiles, channels, roles };
       }),
     );
   }
@@ -185,12 +191,14 @@ export class GroupsService {
 
     const members = await this.groupMemberRepo.find({ where: { groupId } });
     const membersWithProfiles = await this.attachProfilesToMembers(members);
-    const channels = await this.conversationRepo.find({
+    const allChannels = await this.conversationRepo.find({
       where: { groupId, type: ConversationType.CHANNEL },
       order: { createdAt: 'ASC' },
     });
+    const channels = await this.filterChannelsForUser(groupId, requesterId, allChannels);
+    const roles = await this.getGroupRoles(groupId);
 
-    return { ...savedGroup, members: membersWithProfiles, channels };
+    return { ...savedGroup, members: membersWithProfiles, channels, roles };
   }
 
   // ─── Add members to an existing group ────────────────────────────────────────
@@ -323,6 +331,8 @@ export class GroupsService {
     groupId: string,
     requesterId: string,
     name: string,
+    layout?: 'text' | 'bubble',
+    allowedRoleIds?: string[],
   ): Promise<Conversation> {
     const membership = await this.groupMemberRepo.findOne({
       where: { groupId, userId: requesterId },
@@ -345,6 +355,8 @@ export class GroupsService {
       name: name.trim().toLowerCase().replace(/\s+/g, '-'),
       type: ConversationType.CHANNEL,
       groupId,
+      layout: layout || 'text',
+      allowedRoleIds: allowedRoleIds || [],
     });
     const savedChannel = await this.conversationRepo.save(channel);
 
@@ -369,6 +381,7 @@ export class GroupsService {
     channelId: string,
     requesterId: string,
     name: string,
+    allowedRoleIds?: string[],
   ): Promise<Conversation> {
     const group = await this.groupRepo.findOne({ where: { id: groupId } });
     if (!group) {
@@ -387,7 +400,7 @@ export class GroupsService {
       requesterMembership.role !== GroupMemberRole.ADMIN
     ) {
       throw new ForbiddenException(
-        'Only group owners or admins can rename channels',
+        'Only group owners or admins can edit channels',
       );
     }
 
@@ -398,11 +411,14 @@ export class GroupsService {
       throw new NotFoundException('Channel not found in this group');
     }
 
-    if (channel.name === 'general') {
+    if (channel.name === 'general' && channel.name !== name.trim().toLowerCase()) {
       throw new ForbiddenException('Cannot rename the general channel');
     }
 
     channel.name = name.trim().toLowerCase().replace(/\s+/g, '-');
+    if (allowedRoleIds !== undefined) {
+      channel.allowedRoleIds = allowedRoleIds;
+    }
     return this.conversationRepo.save(channel);
   }
 
@@ -489,6 +505,204 @@ export class GroupsService {
       where: { groupId, type: ConversationType.CHANNEL },
       order: { createdAt: 'ASC' },
     });
+  }
+
+  async getGroupChannelsForUser(
+    groupId: string,
+    userId: string,
+  ): Promise<Conversation[]> {
+    const channels = await this.conversationRepo.find({
+      where: { groupId, type: ConversationType.CHANNEL },
+      order: { createdAt: 'ASC' },
+    });
+    return this.filterChannelsForUser(groupId, userId, channels);
+  }
+
+  // Helper to filter channels based on user custom roles
+  private async filterChannelsForUser(
+    groupId: string,
+    userId: string,
+    channels: Conversation[],
+  ): Promise<Conversation[]> {
+    const member = await this.groupMemberRepo.findOne({
+      where: { groupId, userId },
+    });
+    if (!member) {
+      return [];
+    }
+
+    if (member.role === GroupMemberRole.OWNER || member.role === GroupMemberRole.ADMIN) {
+      return channels;
+    }
+
+    const memberRoleIds = member.roleIds || [];
+
+    return channels.filter((channel) => {
+      const allowed = channel.allowedRoleIds || [];
+      if (allowed.length === 0) {
+        return true;
+      }
+      return allowed.some((roleId) => memberRoleIds.includes(roleId));
+    });
+  }
+
+  async canUserAccessChannel(
+    groupId: string,
+    channelId: string,
+    userId: string,
+  ): Promise<boolean> {
+    const member = await this.groupMemberRepo.findOne({
+      where: { groupId, userId },
+    });
+    if (!member) {
+      return false;
+    }
+
+    if (member.role === GroupMemberRole.OWNER || member.role === GroupMemberRole.ADMIN) {
+      return true;
+    }
+
+    const channel = await this.conversationRepo.findOne({
+      where: { id: channelId },
+    });
+    if (!channel) {
+      return false;
+    }
+
+    const allowed = channel.allowedRoleIds || [];
+    if (allowed.length === 0) {
+      return true;
+    }
+
+    const memberRoleIds = member.roleIds || [];
+    return allowed.some((roleId) => memberRoleIds.includes(roleId));
+  }
+
+  // ─── Custom Role Management ─────────────────────────────────────────────────
+  async createRole(
+    groupId: string,
+    requesterId: string,
+    name: string,
+    color?: string,
+  ): Promise<GroupRole> {
+    const member = await this.groupMemberRepo.findOne({
+      where: { groupId, userId: requesterId },
+    });
+    if (!member || (member.role !== GroupMemberRole.OWNER && member.role !== GroupMemberRole.ADMIN)) {
+      throw new ForbiddenException('Only group owners or admins can manage roles');
+    }
+
+    const role = this.groupRoleRepo.create({
+      groupId,
+      name: name.trim(),
+      color: color || '#7289da',
+    });
+    return this.groupRoleRepo.save(role);
+  }
+
+  async updateRole(
+    groupId: string,
+    roleId: string,
+    requesterId: string,
+    name: string,
+    color?: string,
+  ): Promise<GroupRole> {
+    const member = await this.groupMemberRepo.findOne({
+      where: { groupId, userId: requesterId },
+    });
+    if (!member || (member.role !== GroupMemberRole.OWNER && member.role !== GroupMemberRole.ADMIN)) {
+      throw new ForbiddenException('Only group owners or admins can manage roles');
+    }
+
+    const role = await this.groupRoleRepo.findOne({
+      where: { id: roleId, groupId },
+    });
+    if (!role) {
+      throw new NotFoundException('Role not found');
+    }
+
+    role.name = name.trim();
+    if (color) {
+      role.color = color;
+    }
+    return this.groupRoleRepo.save(role);
+  }
+
+  async deleteRole(
+    groupId: string,
+    roleId: string,
+    requesterId: string,
+  ): Promise<void> {
+    const member = await this.groupMemberRepo.findOne({
+      where: { groupId, userId: requesterId },
+    });
+    if (!member || (member.role !== GroupMemberRole.OWNER && member.role !== GroupMemberRole.ADMIN)) {
+      throw new ForbiddenException('Only group owners or admins can manage roles');
+    }
+
+    const role = await this.groupRoleRepo.findOne({
+      where: { id: roleId, groupId },
+    });
+    if (!role) {
+      throw new NotFoundException('Role not found');
+    }
+
+    await this.groupRoleRepo.delete({ id: roleId });
+
+    // Clean up role references in members
+    const members = await this.groupMemberRepo.find({ where: { groupId } });
+    for (const mem of members) {
+      if (mem.roleIds && mem.roleIds.includes(roleId)) {
+        mem.roleIds = mem.roleIds.filter((id) => id !== roleId);
+        await this.groupMemberRepo.save(mem);
+      }
+    }
+
+    // Clean up role references in channels
+    const channels = await this.conversationRepo.find({ where: { groupId } });
+    for (const channel of channels) {
+      if (channel.allowedRoleIds && channel.allowedRoleIds.includes(roleId)) {
+        channel.allowedRoleIds = channel.allowedRoleIds.filter((id) => id !== roleId);
+        await this.conversationRepo.save(channel);
+      }
+    }
+  }
+
+  async getGroupRoles(groupId: string): Promise<GroupRole[]> {
+    return this.groupRoleRepo.find({
+      where: { groupId },
+      order: { createdAt: 'ASC' },
+    });
+  }
+
+  async assignRolesToMember(
+    groupId: string,
+    targetUserId: string,
+    requesterId: string,
+    roleIds: string[],
+  ): Promise<any> {
+    const requester = await this.groupMemberRepo.findOne({
+      where: { groupId, userId: requesterId },
+    });
+    if (!requester || (requester.role !== GroupMemberRole.OWNER && requester.role !== GroupMemberRole.ADMIN)) {
+      throw new ForbiddenException('Only group owners or admins can assign roles');
+    }
+
+    const target = await this.groupMemberRepo.findOne({
+      where: { groupId, userId: targetUserId },
+    });
+    if (!target) {
+      throw new NotFoundException('Group member not found');
+    }
+
+    // Verify all roleIds belong to the group
+    const roles = await this.groupRoleRepo.find({ where: { groupId } });
+    const groupRoleIds = roles.map((r) => r.id);
+    const validRoleIds = roleIds.filter((id) => groupRoleIds.includes(id));
+
+    target.roleIds = validRoleIds;
+    const savedTarget = await this.groupMemberRepo.save(target);
+    return (await this.attachProfilesToMembers([savedTarget]))[0];
   }
 
   async getGroup(groupId: string): Promise<Group | null> {

@@ -24,6 +24,12 @@ export class Conversation {
   @Column({ name: 'group_id', type: 'uuid', nullable: true })
   groupId?: string;
 
+  @Column({ name: 'layout', type: 'varchar', length: 20, default: 'text' })
+  layout!: 'text' | 'bubble';
+
+  @Column({ name: 'allowed_role_ids', type: 'jsonb', nullable: true, default: [] })
+  allowedRoleIds?: string[];
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 

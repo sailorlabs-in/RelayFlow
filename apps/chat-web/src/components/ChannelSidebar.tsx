@@ -19,6 +19,7 @@ import {
   IconChevronDown,
   IconSettings,
   IconLogout,
+  IconMessageDm,
 } from './Icons';
 import { showToast } from './toast';
 import { ConfirmationModal } from './ConfirmationModal';
@@ -51,7 +52,8 @@ export const ChannelSidebar = ({
   const { activeChannelId } = useAppSelector((s) => s.groups);
   const { user } = useAppSelector((s) => s.auth);
   const { messages } = useAppSelector((s) => s.chat);
-  const [showChannels, setShowChannels] = useState(true);
+  const [showTextChannels, setShowTextChannels] = useState(true);
+  const [showBubbleChannels, setShowBubbleChannels] = useState(true);
   const isOwner = group.ownerId === user?.id;
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -236,125 +238,248 @@ export const ChannelSidebar = ({
       </div>
 
       {/* Channel List */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-1.5 custom-scrollbar">
-        {/* Section Header */}
-        <div
-          onClick={() => setShowChannels((v) => !v)}
-          className="flex items-center justify-between py-1 px-2 cursor-pointer rounded-md select-none transition-all duration-150 hover:bg-[var(--bg-input)]"
-        >
-          <div className="flex items-center gap-1">
-            <span
-              className={`flex transition-transform duration-200 text-[var(--text-muted)] ${
-                showChannels ? 'rotate-0' : '-rotate-90'
-              }`}
-            >
-              <IconChevronDown />
-            </span>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-              Text Channels
-            </span>
+      <div className="flex-1 overflow-y-auto p-2 space-y-3.5 custom-scrollbar">
+        {/* Text Channels Accordion */}
+        <div className="flex flex-col gap-1">
+          <div
+            onClick={() => setShowTextChannels((v) => !v)}
+            className="flex items-center justify-between py-1 px-2 cursor-pointer rounded-md select-none transition-all duration-150 hover:bg-[var(--bg-input)]"
+          >
+            <div className="flex items-center gap-1">
+              <span
+                className={`flex transition-transform duration-200 text-[var(--text-muted)] ${
+                  showTextChannels ? 'rotate-0' : '-rotate-90'
+                }`}
+              >
+                <IconChevronDown />
+              </span>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                Text Channels
+              </span>
+            </div>
+            {isOwner && (
+              <button
+                id="create-channel-btn"
+                title="Create channel"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCreateChannel();
+                }}
+                className="bg-transparent border-none cursor-pointer p-0.5 rounded flex items-center text-[var(--text-muted)] transition-colors duration-150 hover:text-[var(--text-primary)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-primary)] active-press"
+              >
+                <IconPlus size={14} />
+              </button>
+            )}
           </div>
-          {isOwner && (
-            <button
-              id="create-channel-btn"
-              title="Create channel"
-              onClick={(e) => {
-                e.stopPropagation();
-                onCreateChannel();
-              }}
-              className="bg-transparent border-none cursor-pointer p-0.5 rounded flex items-center text-[var(--text-muted)] transition-colors duration-150 hover:text-[var(--text-primary)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-primary)] active-press"
-            >
-              <IconPlus size={14} />
-            </button>
+
+          {showTextChannels && (
+            <div className="flex flex-col gap-[2px] mt-0.5">
+              {group.channels.filter((c) => c.layout !== 'bubble').length === 0 ? (
+                <div className="py-2.5 px-2 text-xs text-[var(--text-muted)] text-center">
+                  No text channels.
+                </div>
+              ) : (
+                group.channels
+                  .filter((c) => c.layout !== 'bubble')
+                  .map((channel) => {
+                    const isActive = channel.id === activeChannelId;
+                    const channelMsgs = messages[channel.id] || [];
+                    const lastMsg = channelMsgs[channelMsgs.length - 1];
+                    const hasUnread =
+                      lastMsg && lastMsg.senderId !== user?.id && !lastMsg.isRead;
+                    return (
+                      <div
+                        key={channel.id}
+                        className={`group/channel relative flex items-center justify-between w-full rounded-lg transition-all duration-150 pr-1.5 fade-in-list ${
+                          isActive
+                            ? 'bg-[var(--theme-btn-active)]'
+                            : 'bg-transparent hover:bg-[var(--bg-input)]'
+                        }`}
+                      >
+                        <span
+                          className={`absolute left-0 w-[3px] rounded-r bg-[var(--accent-primary)] transition-all duration-200
+                          ${isActive ? 'h-5 top-[7.5px]' : 'h-0 top-[17.5px] opacity-0'}`}
+                        />
+                        <button
+                          id={`channel-${channel.id}`}
+                          onClick={() => handleSelectChannel(channel)}
+                          className={`flex-1 flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg border-none cursor-pointer text-left transition-all duration-150 bg-transparent text-sm min-w-0 outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-primary)] active-press ${
+                            isActive
+                              ? 'text-[var(--theme-btn-active-text)] font-semibold'
+                              : 'text-[var(--text-secondary)] font-normal'
+                          }`}
+                        >
+                          <span
+                            className={`flex-shrink-0 transition-opacity duration-150 ${
+                              isActive
+                                ? 'opacity-100'
+                                : 'opacity-60 group-hover/channel:opacity-80'
+                            }`}
+                          >
+                            <IconHash />
+                          </span>
+                          <span
+                            className={`truncate ${hasUnread ? 'font-bold text-[var(--text-primary)]' : ''}`}
+                          >
+                            {channel.name}
+                          </span>
+                          {hasUnread && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-primary)] animate-pulse shrink-0 ml-1.5" />
+                          )}
+                        </button>
+
+                        {isOwner && channel.name !== 'general' && (
+                          <div className="flex gap-1 items-center">
+                            <button
+                              title="Channel Settings"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onEditChannel(channel);
+                              }}
+                              className="bg-transparent border-none cursor-pointer text-[var(--text-muted)] p-1 rounded hover:text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center transition-all duration-150 opacity-0 group-hover/channel:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-primary)] spin-hover active-press"
+                            >
+                              <IconSettings />
+                            </button>
+                            <button
+                              title="Delete Channel"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteChannel(channel);
+                              }}
+                              className="bg-transparent border-none cursor-pointer text-[var(--danger)] p-1 rounded hover:bg-[var(--danger-bg)] flex items-center transition-all duration-150 opacity-0 group-hover/channel:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-primary)] active-press"
+                            >
+                              <IconTrash />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+              )}
+            </div>
           )}
         </div>
 
-        {/* Channels */}
-        {showChannels && (
-          <div className="flex flex-col gap-[2px] mt-1">
-            {group.channels.length === 0 ? (
-              <div className="py-3 px-2 text-xs text-[var(--text-muted)] text-center">
-                No channels yet. Create one!
-              </div>
-            ) : (
-              group.channels.map((channel) => {
-                const isActive = channel.id === activeChannelId;
-                const channelMsgs = messages[channel.id] || [];
-                const lastMsg = channelMsgs[channelMsgs.length - 1];
-                const hasUnread =
-                  lastMsg && lastMsg.senderId !== user?.id && !lastMsg.isRead;
-                return (
-                  <div
-                    key={channel.id}
-                    className={`group/channel relative flex items-center justify-between w-full rounded-lg transition-all duration-150 pr-1.5 fade-in-list ${
-                      isActive
-                        ? 'bg-[var(--theme-btn-active)]'
-                        : 'bg-transparent hover:bg-[var(--bg-input)]'
-                    }`}
-                  >
-                    {/* Left active glow bar */}
-                    <span
-                      className={`absolute left-0 w-[3px] rounded-r bg-[var(--accent-primary)] transition-all duration-200
-                      ${isActive ? 'h-5 top-[7.5px]' : 'h-0 top-[17.5px] opacity-0'}`}
-                    />
-                    <button
-                      id={`channel-${channel.id}`}
-                      onClick={() => handleSelectChannel(channel)}
-                      className={`flex-1 flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg border-none cursor-pointer text-left transition-all duration-150 bg-transparent text-sm min-w-0 outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-primary)] active-press ${
-                        isActive
-                          ? 'text-[var(--theme-btn-active-text)] font-semibold'
-                          : 'text-[var(--text-secondary)] font-normal'
-                      }`}
-                    >
-                      <span
-                        className={`flex-shrink-0 transition-opacity duration-150 ${
-                          isActive
-                            ? 'opacity-100'
-                            : 'opacity-60 group-hover/channel:opacity-80'
-                        }`}
-                      >
-                        <IconHash />
-                      </span>
-                      <span
-                        className={`truncate ${hasUnread ? 'font-bold text-[var(--text-primary)]' : ''}`}
-                      >
-                        {channel.name}
-                      </span>
-                      {hasUnread && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-primary)] animate-pulse shrink-0 ml-1.5" />
-                      )}
-                    </button>
-
-                    {isOwner && channel.name !== 'general' && (
-                      <div className="flex gap-1 items-center">
-                        <button
-                          title="Channel Settings"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onEditChannel(channel);
-                          }}
-                          className="bg-transparent border-none cursor-pointer text-[var(--text-muted)] p-1 rounded hover:text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center transition-all duration-150 opacity-0 group-hover/channel:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-primary)] spin-hover active-press"
-                        >
-                          <IconSettings />
-                        </button>
-                        <button
-                          title="Delete Channel"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteChannel(channel);
-                          }}
-                          className="bg-transparent border-none cursor-pointer text-[var(--danger)] p-1 rounded hover:bg-[var(--danger-bg)] flex items-center transition-all duration-150 opacity-0 group-hover/channel:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-primary)] active-press"
-                        >
-                          <IconTrash />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                );
-              })
+        {/* Conversation Channels Accordion */}
+        <div className="flex flex-col gap-1">
+          <div
+            onClick={() => setShowBubbleChannels((v) => !v)}
+            className="flex items-center justify-between py-1 px-2 cursor-pointer rounded-md select-none transition-all duration-150 hover:bg-[var(--bg-input)]"
+          >
+            <div className="flex items-center gap-1">
+              <span
+                className={`flex transition-transform duration-200 text-[var(--text-muted)] ${
+                  showBubbleChannels ? 'rotate-0' : '-rotate-90'
+                }`}
+              >
+                <IconChevronDown />
+              </span>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                Conversation Channels
+              </span>
+            </div>
+            {isOwner && (
+              <button
+                id="create-bubble-channel-btn"
+                title="Create channel"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCreateChannel();
+                }}
+                className="bg-transparent border-none cursor-pointer p-0.5 rounded flex items-center text-[var(--text-muted)] transition-colors duration-150 hover:text-[var(--text-primary)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-primary)] active-press"
+              >
+                <IconPlus size={14} />
+              </button>
             )}
           </div>
-        )}
+
+          {showBubbleChannels && (
+            <div className="flex flex-col gap-[2px] mt-0.5">
+              {group.channels.filter((c) => c.layout === 'bubble').length === 0 ? (
+                <div className="py-2.5 px-2 text-xs text-[var(--text-muted)] text-center">
+                  No conversation channels.
+                </div>
+              ) : (
+                group.channels
+                  .filter((c) => c.layout === 'bubble')
+                  .map((channel) => {
+                    const isActive = channel.id === activeChannelId;
+                    const channelMsgs = messages[channel.id] || [];
+                    const lastMsg = channelMsgs[channelMsgs.length - 1];
+                    const hasUnread =
+                      lastMsg && lastMsg.senderId !== user?.id && !lastMsg.isRead;
+                    return (
+                      <div
+                        key={channel.id}
+                        className={`group/channel relative flex items-center justify-between w-full rounded-lg transition-all duration-150 pr-1.5 fade-in-list ${
+                          isActive
+                            ? 'bg-[var(--theme-btn-active)]'
+                            : 'bg-transparent hover:bg-[var(--bg-input)]'
+                        }`}
+                      >
+                        <span
+                          className={`absolute left-0 w-[3px] rounded-r bg-[var(--accent-primary)] transition-all duration-200
+                          ${isActive ? 'h-5 top-[7.5px]' : 'h-0 top-[17.5px] opacity-0'}`}
+                        />
+                        <button
+                          id={`channel-${channel.id}`}
+                          onClick={() => handleSelectChannel(channel)}
+                          className={`flex-1 flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg border-none cursor-pointer text-left transition-all duration-150 bg-transparent text-sm min-w-0 outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-primary)] active-press ${
+                            isActive
+                              ? 'text-[var(--theme-btn-active-text)] font-semibold'
+                              : 'text-[var(--text-secondary)] font-normal'
+                          }`}
+                        >
+                          <span
+                            className={`flex-shrink-0 transition-opacity duration-150 w-[15px] h-[15px] flex items-center justify-center ${
+                              isActive
+                                ? 'opacity-100 text-[var(--theme-btn-active-text)]'
+                                : 'opacity-60 text-[var(--text-secondary)] group-hover/channel:opacity-80'
+                            }`}
+                          >
+                            <IconMessageDm />
+                          </span>
+                          <span
+                            className={`truncate ${hasUnread ? 'font-bold text-[var(--text-primary)]' : ''}`}
+                          >
+                            {channel.name}
+                          </span>
+                          {hasUnread && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-primary)] animate-pulse shrink-0 ml-1.5" />
+                          )}
+                        </button>
+
+                        {isOwner && channel.name !== 'general' && (
+                          <div className="flex gap-1 items-center">
+                            <button
+                              title="Channel Settings"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onEditChannel(channel);
+                              }}
+                              className="bg-transparent border-none cursor-pointer text-[var(--text-muted)] p-1 rounded hover:text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center transition-all duration-150 opacity-0 group-hover/channel:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-primary)] spin-hover active-press"
+                            >
+                              <IconSettings />
+                            </button>
+                            <button
+                              title="Delete Channel"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteChannel(channel);
+                              }}
+                              className="bg-transparent border-none cursor-pointer text-[var(--danger)] p-1 rounded hover:bg-[var(--danger-bg)] flex items-center transition-all duration-150 opacity-0 group-hover/channel:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-primary)] active-press"
+                            >
+                              <IconTrash />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Bottom user bar */}

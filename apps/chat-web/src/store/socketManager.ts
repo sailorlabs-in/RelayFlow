@@ -12,6 +12,7 @@ import {
   socketUpdateUserStatus,
   socketUpdateTyping,
   socketDeleteMessage,
+  socketUpdateMessage,
   socketRemoveConversation,
   fetchConversations,
   socketMarkMessagesAsRead,
@@ -30,6 +31,10 @@ import {
   socketChannelCreated,
   socketChannelUpdated,
   socketChannelDeleted,
+  socketRoleCreated,
+  socketRoleUpdated,
+  socketRoleDeleted,
+  socketMemberRolesUpdated,
 } from './slices/groupsSlice';
 
 import { SOCKET_URL } from '../constants/config';
@@ -214,6 +219,12 @@ class SocketManager {
       },
     );
 
+    // Handle real-time message editing
+    this.socket.on('message.updated', (message: Message) => {
+      PrintLog('📝 Socket message.updated event received:', message);
+      store.dispatch(socketUpdateMessage(message));
+    });
+
     // Handle granular presence/status changes broadcast by the server
     this.socket.on(
       'user.status.changed',
@@ -296,6 +307,29 @@ class SocketManager {
       (data: { groupId: string; channelId: string }) => {
         PrintLog('📢 Socket group.channel.deleted:', data.channelId);
         store.dispatch(socketChannelDeleted(data));
+      },
+    );
+
+    this.socket.on('group.role.created', (data: { groupId: string; role: any }) => {
+      PrintLog('🏷️ Socket group.role.created:', data.role.id);
+      store.dispatch(socketRoleCreated(data));
+    });
+
+    this.socket.on('group.role.updated', (data: { groupId: string; role: any }) => {
+      PrintLog('🏷️ Socket group.role.updated:', data.role.id);
+      store.dispatch(socketRoleUpdated(data));
+    });
+
+    this.socket.on('group.role.deleted', (data: { groupId: string; roleId: string }) => {
+      PrintLog('🗑️ Socket group.role.deleted:', data.roleId);
+      store.dispatch(socketRoleDeleted(data));
+    });
+
+    this.socket.on(
+      'group.member.roles.updated',
+      (data: { groupId: string; userId: string; roleIds: string[]; member?: any }) => {
+        PrintLog('👤 Socket group.member.roles.updated:', data.userId, data.roleIds);
+        store.dispatch(socketMemberRolesUpdated(data));
       },
     );
 
@@ -523,6 +557,15 @@ class SocketManager {
         `📡 Emitting delete.message for messageId=${messageId} in conversationId=${conversationId}`,
       );
       this.socket.emit('delete.message', { messageId, conversationId });
+    }
+  }
+
+  editMessage(messageId: string, conversationId: string, content: string) {
+    if (this.socket?.connected) {
+      PrintLog(
+        `📡 Emitting edit.message for messageId=${messageId} in conversationId=${conversationId}`,
+      );
+      this.socket.emit('edit.message', { messageId, conversationId, content });
     }
   }
 

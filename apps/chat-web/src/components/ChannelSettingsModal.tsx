@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-import { useAppDispatch } from '../store';
+import { useAppDispatch, useAppSelector } from '../store';
 import type { GroupChannel } from '../store/slices/groupsSlice';
 import { updateChannel, deleteChannel } from '../store/slices/groupsSlice';
 
@@ -20,7 +20,16 @@ export const ChannelSettingsModal = ({
   onClose,
 }: ChannelSettingsModalProps): React.JSX.Element => {
   const dispatch = useAppDispatch();
+
+  // Select group & roles
+  const group = useAppSelector((state) =>
+    state.groups.groups.find((g) => g.id === groupId),
+  );
+  const roles = group?.roles || [];
+
   const [name, setName] = useState(channel.name);
+  const [isPrivate, setIsPrivate] = useState(!!channel.allowedRoleIds?.length);
+  const [allowedRoleIds, setAllowedRoleIds] = useState<string[]>(channel.allowedRoleIds || []);
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{
@@ -57,12 +66,17 @@ export const ChannelSettingsModal = ({
     setIsLoading(true);
     try {
       await dispatch(
-        updateChannel({ groupId, channelId: channel.id, name: cleanName }),
+        updateChannel({
+          groupId,
+          channelId: channel.id,
+          name: cleanName,
+          allowedRoleIds: isPrivate ? allowedRoleIds : [],
+        }),
       ).unwrap();
-      showToast.success(`Channel renamed to #${cleanName}!`);
+      showToast.success('Channel configurations updated!');
       onClose();
     } catch (err: any) {
-      showToast.error(err || 'Failed to rename channel.');
+      showToast.error(err || 'Failed to update channel.');
     } finally {
       setIsLoading(false);
     }
@@ -102,7 +116,7 @@ export const ChannelSettingsModal = ({
       onClick={onClose}
     >
       <div
-        className="w-[420px] max-w-full bg-[var(--glass-bg)] border-[1.5px] border-[var(--glass-border)] backdrop-blur-[20px] rounded-[18px] shadow-[var(--glass-shadow)] overflow-hidden animate-slide-up"
+        className="w-[440px] max-w-full bg-[var(--glass-bg)] border-[1.5px] border-[var(--glass-border)] backdrop-blur-[20px] rounded-[18px] shadow-[var(--glass-shadow)] overflow-hidden animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -128,7 +142,7 @@ export const ChannelSettingsModal = ({
         </div>
 
         {/* Body */}
-        <form onSubmit={handleSave} className="px-5 py-5 flex flex-col gap-4">
+        <form onSubmit={handleSave} className="px-5 py-5 flex flex-col gap-4 max-h-[70vh] overflow-y-auto">
           <div>
             <label
               htmlFor="channel-name-input"
@@ -149,32 +163,93 @@ export const ChannelSettingsModal = ({
                 placeholder="channel-name"
                 maxLength={80}
                 required
-                className="input-base w-full py-2.5 pl-9 pr-3.5 rounded-[10px] bg-[var(--bg-input)] border-[1.5px] border-[var(--glass-border)] text-[var(--text-primary)] text-sm box-border font-mono focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[2.5px] focus:ring-[var(--accent-ring)]"
+                disabled={channel.name === 'general'}
+                className="input-base w-full py-2.5 pl-9 pr-3.5 rounded-[10px] bg-[var(--bg-input)] border-[1.5px] border-[var(--glass-border)] text-[var(--text-primary)] text-sm box-border font-mono focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[2.5px] focus:ring-[var(--accent-ring)] disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
           </div>
 
-          {/* Delete Area */}
-          <div className="p-3.5 rounded-xl border-[1.5px] border-dashed border-[var(--danger)] bg-[var(--danger-bg)] flex items-center justify-between gap-3">
-            <div>
-              <div className="text-[13px] font-bold text-[var(--danger)]">
-                Delete Channel
+          {/* Private Channel Toggle */}
+          {channel.name !== 'general' && (
+            <div className="p-3.5 rounded-xl border-[1.5px] border-[var(--glass-border)] bg-[rgba(255,255,255,0.02)] flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-[13px] font-bold text-[var(--text-primary)]">Private Channel</span>
+                  <p className="m-0 mt-0.5 text-[11px] text-[var(--text-muted)]">
+                    Only selected roles will be able to view this channel
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isPrivate}
+                    onChange={(e) => setIsPrivate(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-[var(--bg-input)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--accent-primary)]"></div>
+                </label>
               </div>
-              <div className="text-[11px] text-[var(--text-muted)] mt-0.5">
-                This action is permanent.
-              </div>
+
+              {isPrivate && (
+                <div className="mt-2 border-t border-[var(--border-muted)] pt-3">
+                  <span className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2">
+                    Select Roles
+                  </span>
+                  {roles.length === 0 ? (
+                    <p className="m-0 text-xs text-[var(--text-muted)] italic">
+                      No custom roles exist. Create roles in Server Settings first.
+                    </p>
+                  ) : (
+                    <div className="flex flex-col gap-2 max-h-[120px] overflow-y-auto pr-1">
+                      {roles.map((role) => (
+                        <label key={role.id} className="flex items-center gap-2.5 text-sm cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={allowedRoleIds.includes(role.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setAllowedRoleIds([...allowedRoleIds, role.id]);
+                              } else {
+                                setAllowedRoleIds(allowedRoleIds.filter((id) => id !== role.id));
+                              }
+                            }}
+                            className="rounded border-[var(--glass-border)] text-[var(--accent-primary)] focus:ring-[var(--accent-primary)]"
+                          />
+                          <span style={{ color: role.color }} className="font-semibold text-[var(--text-primary)]">
+                            {role.name}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-            <button
-              id="delete-channel-btn"
-              type="button"
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border-none bg-[var(--danger)] text-white text-[12.5px] font-semibold cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 shadow-[0_2px_8px_rgba(239, 68, 68, 0.25)] hover:brightness-105 transition-all active-press"
-            >
-              <IconTrash />
-              <span>{isDeleting ? 'Deleting…' : 'Delete'}</span>
-            </button>
-          </div>
+          )}
+
+          {/* Delete Area */}
+          {channel.name !== 'general' && (
+            <div className="p-3.5 rounded-xl border-[1.5px] border-dashed border-[var(--danger)] bg-[var(--danger-bg)] flex items-center justify-between gap-3">
+              <div>
+                <div className="text-[13px] font-bold text-[var(--danger)]">
+                  Delete Channel
+                </div>
+                <div className="text-[11px] text-[var(--text-muted)] mt-0.5">
+                  This action is permanent.
+                </div>
+              </div>
+              <button
+                id="delete-channel-btn"
+                type="button"
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border-none bg-[var(--danger)] text-white text-[12.5px] font-semibold cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 shadow-[0_2px_8px_rgba(239, 68, 68, 0.25)] hover:brightness-105 transition-all active-press"
+              >
+                <IconTrash />
+                <span>{isDeleting ? 'Deleting…' : 'Delete'}</span>
+              </button>
+            </div>
+          )}
         </form>
 
         {/* Footer */}
@@ -190,7 +265,15 @@ export const ChannelSettingsModal = ({
             id="channel-settings-save-btn"
             type="button"
             onClick={handleSave}
-            disabled={isLoading || !name.trim() || name === channel.name}
+            disabled={
+              isLoading ||
+              !name.trim() ||
+              !(
+                name !== channel.name ||
+                isPrivate !== (!!channel.allowedRoleIds?.length) ||
+                (isPrivate && JSON.stringify(allowedRoleIds.sort()) !== JSON.stringify([...(channel.allowedRoleIds || [])].sort()))
+              )
+            }
             className="btn-send px-6 py-2.5 rounded-[10px] border-none text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 active-press"
           >
             {isLoading ? 'Saving…' : 'Save Changes'}

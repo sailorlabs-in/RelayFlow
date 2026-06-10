@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 
 import { useAppDispatch, useAppSelector } from '../store';
 import type { Group, GroupMember } from '../store/slices/groupsSlice';
-import { removeGroupMember } from '../store/slices/groupsSlice';
+import { removeGroupMember, assignMemberRoles } from '../store/slices/groupsSlice';
 import {
   sendFriendRequest,
   acceptFriendRequest,
@@ -50,6 +50,11 @@ export const MemberSidebar = ({
     pendingRequests,
   } = useAppSelector((s) => s.chat);
   const { user: currentUser } = useAppSelector((s) => s.auth);
+
+  // Get active group from redux to keep state in sync
+  const activeGroup = useAppSelector((s) =>
+    s.groups.groups.find((g) => g.id === group.id),
+  ) || group;
 
   const [activeTab, setActiveTab] = useState<PresenceStatus>('online');
   const [confirmModal, setConfirmModal] = useState<{
@@ -130,12 +135,12 @@ export const MemberSidebar = ({
   };
 
   // Group members into online, away, dnd, and offline
-  const members = Array.isArray(group.members) ? group.members : [];
+  const members = Array.isArray(activeGroup.members) ? activeGroup.members : [];
   const currentUserMember = members.find(
     (mem) => mem.userId === currentUser?.id,
   );
   const currentUserRole = currentUserMember?.role || 'member';
-  const isCurrentUserOwner = group.ownerId === currentUser?.id;
+  const isCurrentUserOwner = activeGroup.ownerId === currentUser?.id;
 
   const getMemberDetails = (m: GroupMember) => {
     const userDetail = m.user;
@@ -148,7 +153,7 @@ export const MemberSidebar = ({
       targetUserId === currentUser?.id
         ? (currentUser?.status as PresenceStatus) || 'online'
         : (onlineUsers[targetUserId] as PresenceStatus) || 'offline';
-    const isOwner = group.ownerId === targetUserId;
+    const isOwner = activeGroup.ownerId === targetUserId;
     const isTyping = activeConversationId
       ? !!typingUsers[activeConversationId]?.[targetUserId]
       : false;
@@ -157,6 +162,11 @@ export const MemberSidebar = ({
       !isOwner &&
       (isCurrentUserOwner ||
         (currentUserRole === 'admin' && m.role === 'member'));
+
+    const memberRoleIds = m.roleIds || [];
+    const groupRoles = activeGroup.roles || [];
+    const matchingRoles = groupRoles.filter((r) => memberRoleIds.includes(r.id));
+    const color = matchingRoles[0]?.color || (isOwner ? '#eab308' : 'inherit');
 
     return {
       id: targetUserId,
@@ -169,6 +179,9 @@ export const MemberSidebar = ({
       isOwner,
       isTyping,
       role: m.role,
+      roleIds: memberRoleIds,
+      matchingRoles,
+      color,
       canKick,
     };
   };
@@ -211,7 +224,7 @@ export const MemberSidebar = ({
       onConfirm: async () => {
         try {
           await dispatch(
-            removeGroupMember({ groupId: group.id, userId: m.id }),
+            removeGroupMember({ groupId: activeGroup.id, userId: m.id }),
           ).unwrap();
           showToast.success(`Kicked "${m.displayName}" from the group.`);
         } catch (err: any) {
@@ -244,7 +257,10 @@ export const MemberSidebar = ({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1">
               <span
-                className={`text-[13px] font-medium truncate ${m.presence === 'offline' ? 'text-theme-muted' : 'text-theme-primary'}`}
+                style={{ color: m.color !== 'inherit' ? m.color : undefined }}
+                className={`text-[13px] font-semibold truncate ${
+                  m.presence === 'offline' && m.color === 'inherit' ? 'text-theme-muted' : ''
+                } ${m.color === 'inherit' && m.presence !== 'offline' ? 'text-theme-primary' : ''}`}
               >
                 {primaryName}
               </span>
@@ -258,22 +274,42 @@ export const MemberSidebar = ({
               )}
             </div>
             {m.isTyping ? (
-              <div className="text-[10px] text-(--accent-secondary) font-medium">
+              <div className="text-[10px] text-(--accent-secondary) font-medium animate-pulse">
                 typing...
               </div>
-            ) : m.role !== 'member' ? (
-              <div className="text-[10px] text-theme-muted capitalize">
-                {m.role}
+            ) : (
+              <div className="flex flex-wrap gap-1 mt-0.5">
+                {m.role !== 'member' && (
+                  <span className="text-[9px] px-1 py-0.2 rounded bg-black/10 dark:bg-white/10 text-theme-muted capitalize font-bold">
+                    {m.role}
+                  </span>
+                )}
+                {m.matchingRoles &&
+                  m.matchingRoles.map((role: any) => (
+                    <span
+                      key={role.id}
+                      style={{
+                        backgroundColor: `${role.color}15`,
+                        color: role.color,
+                        borderColor: `${role.color}35`,
+                      }}
+                      className="text-[9px] px-1 py-0.2 rounded border font-bold"
+                    >
+                      {role.name}
+                    </span>
+                  ))}
               </div>
-            ) : null}
+            )}
           </div>
         </div>
         {m.canKick && (
           <button
-            onClick={() => handleKickMember(m)}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleKickMember(m);
+            }}
             className="member-kick-btn flex items-center justify-center p-1 rounded-lg border-none cursor-pointer bg-transparent text-(--danger) hover:bg-(--danger-bg) opacity-0 group-hover:opacity-100 transition-opacity duration-150 active-press focus:opacity-100 focus:outline-none"
             title={`Kick ${m.displayName}`}
-            onMouseEnter={(e) => e.stopPropagation()}
           >
             <IconTrash />
           </button>
@@ -417,7 +453,7 @@ export const MemberSidebar = ({
               size="md"
             />
             <div className="flex-1 min-w-0">
-              <h3 className="m-0 text-[14px] font-bold text-theme-primary truncate">
+              <h3 className="m-0 text-[14px] font-bold text-theme-primary truncate" style={{ color: selectedMember.color !== 'inherit' ? selectedMember.color : undefined }}>
                 {selectedMember.displayName}
               </h3>
               <div className="text-[10.5px] text-theme-muted mt-0.5 capitalize">
@@ -469,11 +505,89 @@ export const MemberSidebar = ({
                   : selectedMember.presence}
               </span>
             </div>
+            
+            {/* Display Member matching roles */}
+            {selectedMember.matchingRoles && selectedMember.matchingRoles.length > 0 && (
+              <div>
+                <span className="text-theme-muted font-bold block mb-1 uppercase tracking-wide text-[9.5px]">
+                  Roles
+                </span>
+                <div className="flex flex-wrap gap-1">
+                  {selectedMember.matchingRoles.map((role: any) => (
+                    <span
+                      key={role.id}
+                      style={{
+                        backgroundColor: `${role.color}15`,
+                        color: role.color,
+                        borderColor: `${role.color}30`,
+                      }}
+                      className="text-[10px] px-2 py-0.5 rounded-[4px] border font-bold"
+                    >
+                      {role.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
+
+          {/* Roles Assignment (For Owner/Admin) */}
+          {(currentUserRole === 'owner' || currentUserRole === 'admin') && activeGroup.roles && activeGroup.roles.length > 0 && (
+            <div className="flex flex-col gap-1.5 text-[12px] mt-1 border-t border-[var(--border-muted)] pt-2.5">
+              <span className="text-theme-muted font-bold block mb-1 uppercase tracking-wide text-[9.5px]">
+                Assign Roles
+              </span>
+              <div className="flex flex-wrap gap-1.5 max-h-[100px] overflow-y-auto pr-1">
+                {activeGroup.roles.map((role) => {
+                  const isAssigned = selectedMember.roleIds?.includes(role.id);
+                  return (
+                    <button
+                      key={role.id}
+                      type="button"
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        const newRoleIds = isAssigned
+                          ? selectedMember.roleIds.filter((id: string) => id !== role.id)
+                          : [...(selectedMember.roleIds || []), role.id];
+                        try {
+                          await dispatch(
+                            assignMemberRoles({
+                              groupId: activeGroup.id,
+                              userId: selectedMember.id,
+                              roleIds: newRoleIds,
+                            }),
+                          ).unwrap();
+                          
+                          // Update the selected member state
+                          setSelectedMember({
+                            ...selectedMember,
+                            roleIds: newRoleIds,
+                            matchingRoles: activeGroup.roles.filter((r) => newRoleIds.includes(r.id)),
+                            color: activeGroup.roles.filter((r) => newRoleIds.includes(r.id))[0]?.color || 'inherit'
+                          });
+                          showToast.success('Member roles updated!');
+                        } catch (err: any) {
+                          showToast.error(err || 'Failed to assign role.');
+                        }
+                      }}
+                      style={{
+                        borderColor: role.color,
+                        backgroundColor: isAssigned ? `${role.color}15` : 'transparent',
+                        color: role.color,
+                      }}
+                      className="px-2 py-1 rounded-[6px] border text-[10.5px] font-bold cursor-pointer hover:bg-black/10 transition-all select-none active-press"
+                    >
+                      {isAssigned ? '✓ ' : ''}{role.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Friendship Actions */}
           {selectedMember.id !== currentUser?.id && (
-            <div className="mt-1 flex flex-col gap-2">
+            <div className="mt-1 flex flex-col gap-2 border-t border-[var(--border-muted)] pt-2.5">
               {friends?.some((f) => f.id === selectedMember.id) ? (
                 <div className="flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-bold text-emerald-500 bg-[rgba(16,185,129,0.08)] border border-emerald-500/20">
                   <span>✓ Friends</span>

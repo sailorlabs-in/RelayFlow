@@ -71,6 +71,7 @@ import {
   IconDoubleCheck,
   IconX,
   IconEmoji,
+  IconCompose,
 } from './Icons';
 import { PresenceDot } from './PresenceDot';
 import { showToast } from './toast';
@@ -245,10 +246,18 @@ export const ChatArea = ({
     hasMoreMessages,
   } = useAppSelector((s) => s.chat);
 
+  const { groups, activeGroupId } = useAppSelector((s) => s.groups);
+
+  const activeGroup = groups.find((g) => g.id === activeGroupId);
+  const activeChannel = activeGroup?.channels?.find((c) => c.id === activeConversationId);
+  const isBubbleLayout = !isChannelMode || activeChannel?.layout === 'bubble';
+
   // --- Local state ---
   const [messageInput, setMessageInput] = useState('');
   const [isTypingState, setIsTypingState] = useState(false);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editingContent, setEditingContent] = useState('');
 
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
@@ -261,7 +270,7 @@ export const ChatArea = ({
   const [emojiResults, setEmojiResults] = useState<any[]>([]);
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = (event: Event) => {
       if (
         emojiPickerRef.current &&
         !emojiPickerRef.current.contains(event.target as Node)
@@ -274,6 +283,20 @@ export const ChatArea = ({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  // Global keydown listener to cancel editing on Escape
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && editingMessageId) {
+        setEditingMessageId(null);
+        setEditingContent('');
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleGlobalKeyDown);
+    };
+  }, [editingMessageId]);
 
   const onEmojiSelect = (emoji: any) => {
     setMessageInput((prev) => prev + emoji.native);
@@ -785,6 +808,20 @@ export const ChatArea = ({
     });
   };
 
+  const handleStartEdit = (msg: Message) => {
+    setEditingMessageId(msg.id);
+    setEditingContent(msg.content);
+  };
+
+  const handleSaveEdit = (messageId: string) => {
+    if (!editingContent.trim() || !activeConversationId) {
+      return;
+    }
+    socketManager.editMessage(messageId, activeConversationId, editingContent.trim());
+    setEditingMessageId(null);
+    setEditingContent('');
+  };
+
   // ---- Conversation display name helper ----
   const getConversationDetails = (convo: any) => {
     if (!user) {
@@ -1008,7 +1045,18 @@ export const ChatArea = ({
                       senderProfile?.email?.split('@')[0] ||
                       'User';
 
-                if (isChannelMode) {
+                // Determine sender color if it's channel mode
+                let senderColor = 'inherit';
+                if (isChannelMode && activeGroup) {
+                  const member = activeGroup.members?.find((mem) => mem.userId === msg.senderId);
+                  if (member) {
+                    const memberRoleIds = member.roleIds || [];
+                    const matchingRole = activeGroup.roles?.find((r) => memberRoleIds.includes(r.id));
+                    senderColor = matchingRole?.color || (msg.senderId === activeGroup.ownerId ? '#eab308' : 'inherit');
+                  }
+                }
+
+                if (!isBubbleLayout) {
                   const letter =
                     (senderName.startsWith('@')
                       ? senderName.slice(1)
@@ -1036,7 +1084,8 @@ export const ChatArea = ({
                         <div className="flex-1 min-w-0">
                           <div className="flex items-baseline gap-2 mb-1">
                             <span
-                              className={`text-[13.5px] font-bold ${isOut ? 'text-[var(--accent-primary)]' : 'text-[var(--text-primary)]'}`}
+                              style={{ color: senderColor !== 'inherit' ? senderColor : undefined }}
+                              className={`text-[13.5px] font-bold ${isOut ? 'text-[var(--accent-primary)]' : ''} ${!isOut && senderColor === 'inherit' ? 'text-[var(--text-primary)]' : ''}`}
                             >
                               {senderName}
                             </span>
@@ -1046,66 +1095,180 @@ export const ChatArea = ({
                                 minute: '2-digit',
                               })}
                             </span>
+                            {msg.isEdited && (
+                              <span className="text-[9.5px] text-[var(--text-muted)] opacity-85 select-none">
+                                (edited)
+                              </span>
+                            )}
                           </div>
-                          {msg.content && (
-                            <div
-                              className={`text-sm leading-relaxed text-[var(--text-primary)] break-all ${isOnlyEmojis(msg.content) ? 'text-[60px] leading-[60px]' : ''}`}
-                            >
-                              {msg.content}
+                          {editingMessageId === msg.id ? (
+                            <div className="flex flex-col gap-2 mt-1 max-w-full">
+                              <textarea
+                                autoFocus
+                                value={editingContent}
+                                onChange={(e) => setEditingContent(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    handleSaveEdit(msg.id);
+                                  } else if (e.key === 'Escape') {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setEditingMessageId(null);
+                                    setEditingContent('');
+                                  }
+                                }}
+                                className="w-full bg-[var(--bg-input)] text-[var(--text-primary)] border border-[var(--border-muted)] rounded-lg p-2 text-sm focus:outline-none focus:border-[var(--accent-primary)] resize-none"
+                                rows={2}
+                              />
+                              <div className="flex gap-2 justify-start text-[11px] text-[var(--text-muted)]">
+                                <span>escape to <button onClick={() => { setEditingMessageId(null); setEditingContent(''); }} className="text-[var(--accent-primary)] hover:underline cursor-pointer bg-transparent border-none p-0">cancel</button></span>
+                                <span>•</span>
+                                <span>enter to <button onClick={() => handleSaveEdit(msg.id)} className="text-[var(--accent-primary)] hover:underline cursor-pointer bg-transparent border-none p-0">save</button></span>
+                              </div>
                             </div>
+                          ) : (
+                            <>
+                              {msg.content && (
+                                <div
+                                  className={`text-sm leading-relaxed text-[var(--text-primary)] break-all ${isOnlyEmojis(msg.content) ? 'text-[60px] leading-[60px]' : ''}`}
+                                >
+                                  {msg.content}
+                                </div>
+                              )}
+                            </>
                           )}
                           {renderMessageMedia(msg, setActiveMediaItem)}
                         </div>
                       </div>
-                      {isOut && (
-                        <button
-                          onClick={() => handleDeleteMessage(msg.id)}
-                          className="msg-delete-btn flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-[var(--danger-bg)] text-[var(--danger)] mt-0.5 active-press"
-                          title="Delete message"
-                        >
-                          <IconTrash />
-                        </button>
+                      {isOut && editingMessageId !== msg.id && (
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 shrink-0">
+                          <button
+                            onClick={() => handleStartEdit(msg)}
+                            className="flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-[var(--bg-input)] text-[var(--text-secondary)] hover:text-[var(--accent-primary)] active-press"
+                            title="Edit message"
+                          >
+                            <IconCompose />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteMessage(msg.id)}
+                            className="msg-delete-btn flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-[var(--danger-bg)] text-[var(--danger)] active-press"
+                            title="Delete message"
+                          >
+                            <IconTrash />
+                          </button>
+                        </div>
                       )}
                     </div>
                   );
                 }
 
+                const letter =
+                  (senderName.startsWith('@')
+                    ? senderName.slice(1)
+                    : senderName)[0]?.toUpperCase() || 'U';
+                const presenceStatus = isOut
+                  ? onlineUsers[user.id] || user.status || 'online'
+                  : onlineUsers[msg.senderId] || 'offline';
+
                 return (
                   <div
                     key={msg.id}
-                    className={`flex items-center gap-2 group max-w-[68%] animate-fade-in ${isOut ? 'self-end' : 'self-start'}`}
+                    className={`flex items-start gap-2.5 group max-w-[72%] animate-fade-in ${isOut ? 'self-end' : 'self-start'}`}
                   >
-                    {isOut && (
-                      <button
-                        onClick={() => handleDeleteMessage(msg.id)}
-                        className="msg-delete-btn flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-[var(--danger-bg)] text-[var(--danger)] shrink-0 active-press"
-                        title="Delete message"
-                      >
-                        <IconTrash />
-                      </button>
+                    {isOut && editingMessageId !== msg.id && (
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 shrink-0 self-center">
+                        <button
+                          onClick={() => handleStartEdit(msg)}
+                          className="flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-[var(--bg-input)] text-[var(--text-secondary)] hover:text-[var(--accent-primary)] active-press"
+                          title="Edit message"
+                        >
+                          <IconCompose />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteMessage(msg.id)}
+                          className="msg-delete-btn flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-[var(--danger-bg)] text-[var(--danger)] active-press"
+                          title="Delete message"
+                        >
+                          <IconTrash />
+                        </button>
+                      </div>
+                    )}
+                    {!isOut && isChannelMode && (
+                      <div className="shrink-0 mt-0.5">
+                        <Avatar
+                          letter={letter}
+                          url={senderProfile?.avatarThumbnailUrl || senderProfile?.avatarUrl}
+                          status={presenceStatus}
+                          size="sm"
+                        />
+                      </div>
                     )}
                     <div
-                      className={`flex flex-col ${isOut ? 'items-end' : 'items-start'} min-w-0 flex-1`}
+                      className={`flex flex-col ${isOut ? 'items-end' : 'items-start'} min-w-0`}
                     >
-                      {msg.content && (
-                        <div
-                          className={
-                            isOnlyEmojis(msg.content)
-                              ? `text-[60px] leading-[60px] break-words select-all ${isOut ? 'text-right' : 'text-left'}`
-                              : `px-4 py-2.5 rounded-[18px] text-[14px] leading-relaxed break-words ${isOut ? 'msg-bubble-out' : 'msg-bubble-in'}`
-                          }
+                      {!isOut && isChannelMode && (
+                        <span
+                          style={{ color: senderColor !== 'inherit' ? senderColor : undefined }}
+                          className="text-[11.5px] font-bold mb-1 ml-1.5 text-[var(--text-secondary)]"
                         >
-                          {msg.content}
+                          {senderName}
+                        </span>
+                      )}
+                      {editingMessageId === msg.id ? (
+                        <div className="flex flex-col gap-2 mt-1 w-[260px] sm:w-[350px]">
+                          <textarea
+                            autoFocus
+                            value={editingContent}
+                            onChange={(e) => setEditingContent(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                handleSaveEdit(msg.id);
+                              } else if (e.key === 'Escape') {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setEditingMessageId(null);
+                                setEditingContent('');
+                              }
+                            }}
+                            className="w-full bg-[var(--bg-input)] text-[var(--text-primary)] border border-[var(--border-muted)] rounded-lg p-2 text-sm focus:outline-none focus:border-[var(--accent-primary)] resize-none"
+                            rows={2}
+                          />
+                          <div className="flex gap-2 justify-end text-[11px] text-[var(--text-muted)]">
+                            <span>escape to <button onClick={() => { setEditingMessageId(null); setEditingContent(''); }} className="text-[var(--accent-primary)] hover:underline cursor-pointer bg-transparent border-none p-0">cancel</button></span>
+                            <span>•</span>
+                            <span>enter to <button onClick={() => handleSaveEdit(msg.id)} className="text-[var(--accent-primary)] hover:underline cursor-pointer bg-transparent border-none p-0">save</button></span>
+                          </div>
                         </div>
+                      ) : (
+                        <>
+                          {msg.content && (
+                            <div
+                              className={
+                                isOnlyEmojis(msg.content)
+                                  ? `text-[60px] leading-[60px] break-words select-all ${isOut ? 'text-right' : 'text-left'}`
+                                  : `px-4 py-2.5 rounded-[18px] text-[14px] leading-relaxed break-words ${isOut ? 'msg-bubble-out' : 'msg-bubble-in'}`
+                              }
+                            >
+                              {msg.content}
+                            </div>
+                          )}
+                        </>
                       )}
                       {renderMessageMedia(msg, setActiveMediaItem)}
-                      <div className="flex items-center gap-1 mt-1 px-1 select-none">
+                      <div className="flex items-center gap-1.5 mt-1 px-1 select-none">
                         <span className="text-[10px] text-[var(--text-muted)]">
                           {new Date(msg.createdAt).toLocaleTimeString([], {
                             hour: '2-digit',
                             minute: '2-digit',
                           })}
                         </span>
+                        {msg.isEdited && (
+                          <span className="text-[9.5px] text-[var(--text-muted)] opacity-85 select-none">
+                            (edited)
+                          </span>
+                        )}
                         {isOut && (
                           <span
                             className={`inline-flex items-center ${msg.isRead ? 'text-[var(--accent-primary)]' : 'text-[var(--text-muted)]'}`}
