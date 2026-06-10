@@ -19,6 +19,9 @@ export const dbOptions: DataSourceOptions = {
   // Check env variable for synchronization (development/testing)
   synchronize: process.env.DB_SYNCHRONIZE === 'true',
 
+  // Run migrations automatically on startup
+  migrationsRun: true,
+
   // Custom naming strategy for clean PostgreSQL snake_case naming
   namingStrategy: new SnakeNamingStrategy(),
 

@@ -2715,3 +2715,232 @@ body {
     transform: translateY(0);
   }
 }
+
+/* ============================================================
+   In-App Notification Toast — Premium Glassmorphism Card
+   ============================================================ */
+
+@keyframes notifSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(28px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes notifPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Strip Toastify's default decoration so our card takes full control */
+.custom-inapp-toast-container,
+.custom-inapp-toast-container.Toastify__toast {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  width: fit-content !important;
+  min-width: 0 !important;
+  max-width: none !important;
+}
+
+.custom-inapp-toast-container .Toastify__toast-body {
+  padding: 0 !important;
+  margin: 0 !important;
+  display: block !important;
+  width: auto !important;
+}
+
+.custom-inapp-toast-container .Toastify__close-button {
+  display: none !important;
+}
+
+.custom-inapp-toast-container .Toastify__progress-bar {
+  display: none !important;
+}
+
+.custom-inapp-toast-container .Toastify__progress-bar--wrp {
+  display: none !important;
+}
+
+/* The actual notification card */
+.notif-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid var(--glass-border);
+  border-left: 3px solid var(--accent-primary);
+  border-radius: 14px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.28),
+    0 0 0 1px var(--glass-border);
+  animation: notifSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  min-width: 280px;
+  max-width: 340px;
+  position: relative;
+}
+
+.notif-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(
+    135deg,
+    var(--accent-primary) 0%,
+    var(--accent-secondary) 100%
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 15px;
+  color: white;
+  flex-shrink: 0;
+  box-shadow:
+    0 0 0 2px var(--avatar-ring),
+    var(--btn-shadow);
+}
+
+.notif-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.notif-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--accent-primary);
+  margin-bottom: 3px;
+  opacity: 0.85;
+}
+
+.notif-title {
+  font-weight: 700;
+  font-size: 13.5px;
+  line-height: 1.25;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 3px;
+}
+
+.notif-message {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.notif-message .notif-sender-prefix {
+  font-weight: 600;
+  color: var(--accent-primary);
+}
+
+.notif-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  box-shadow: 0 0 6px var(--accent-primary);
+  flex-shrink: 0;
+  margin-top: 4px;
+  animation: notifPulse 1.6s ease-in-out infinite;
+}
+
+/* ============================================================
+   Conversation Right-Click Context Menu
+   ============================================================ */
+
+.convo-context-menu {
+  position: fixed;
+  z-index: 9999;
+  min-width: 180px;
+  background: var(--dropdown-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 4px;
+  box-shadow:
+    0 16px 40px rgba(0, 0, 0, 0.35),
+    0 0 0 1px var(--glass-border);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  animation: slideUp 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.convo-context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--text-primary);
+  transition:
+    background 0.14s ease,
+    color 0.14s ease;
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  font-family: var(--font-sans);
+}
+
+.convo-context-menu-item:hover {
+  background: var(--bg-input);
+}
+
+.convo-context-menu-item.danger {
+  color: var(--danger);
+}
+
+.convo-context-menu-item.danger:hover {
+  background: var(--danger-bg);
+}
+
+.convo-context-menu-item svg {
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.convo-context-menu-separator {
+  height: 1px;
+  background: var(--glass-border);
+  margin: 4px 6px;
+}
+
+/* Mute badge indicator on sidebar conversation rows */
+.convo-mute-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  opacity: 0.7;
+  flex-shrink: 0;
+}

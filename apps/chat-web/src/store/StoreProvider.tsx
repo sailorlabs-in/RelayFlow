@@ -4,7 +4,6 @@ import React, { useEffect } from 'react';
 import { Provider } from 'react-redux';
 
 import { store, useAppSelector } from './index';
-import './axiosSetup';
 
 interface StoreProviderProps {
   children: React.ReactNode;

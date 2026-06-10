@@ -1,4 +1,14 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, Unique } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  Unique,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
+import { Group } from './group.entity';
+import { User } from './user.entity';
 
 export enum GroupMemberRole {
   OWNER = 'owner',
@@ -15,8 +25,16 @@ export class GroupMember {
   @Column({ name: 'group_id', type: 'uuid' })
   groupId!: string;
 
+  @ManyToOne(() => Group, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'group_id' })
+  group?: Group;
+
   @Column({ name: 'user_id', type: 'uuid' })
   userId!: string;
+
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'user_id' })
+  user?: User;
 
   @Column({
     type: 'enum',

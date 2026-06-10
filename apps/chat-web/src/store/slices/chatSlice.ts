@@ -1,7 +1,6 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
-import { API_URL } from '../../constants/config';
+import ApiRequest from '../../utils/ApiRequest';
 
 import type { User } from './authSlice';
 
@@ -14,6 +13,15 @@ export interface Conversation {
   updatedAt: string;
 }
 
+export interface MessageMediaItem {
+  name: string;
+  thumbnailName?: string;
+  url: string;
+  thumbnailUrl?: string;
+  type: string;
+  size: number;
+}
+
 export interface Message {
   id: string;
   conversationId: string;
@@ -22,10 +30,7 @@ export interface Message {
   isRead?: boolean;
   createdAt: string;
   updatedAt: string;
-  mediaUrl?: string;
-  mediaType?: string;
-  mediaName?: string;
-  mediaSize?: number;
+  media?: MessageMediaItem[];
 }
 
 export interface ChatState {
@@ -36,6 +41,7 @@ export interface ChatState {
   typingUsers: Record<string, Record<string, boolean>>; // conversationId -> { userId -> isTyping }
   onlineUsers: Record<string, string>; // userId -> presence status: 'online' | 'away' | 'dnd' | 'offline'
   searchResults: User[];
+  friendSearchResults: User[];
   userProfiles: Record<string, User>; // userId -> user profile metadata cache
   convoRecipients: Record<string, string>; // conversationId -> recipientUserId mapping
   friends: User[];
@@ -43,8 +49,23 @@ export interface ChatState {
     incoming: any[];
     outgoing: any[];
   };
+  /** Conversation IDs whose in-app notifications are muted by the current user (local-only). */
+  mutedConversationIds: string[];
   status: 'idle' | 'loading' | 'succeeded' | 'failed';
   error: string | null;
+}
+
+/** Load muted conversation IDs from localStorage for a given userId. */
+function loadMutedConvoIds(userId?: string | null): string[] {
+  if (typeof window === 'undefined' || !userId) {
+    return [];
+  }
+  try {
+    const raw = localStorage.getItem(`rf-muted-convos-${userId}`);
+    return raw ? (JSON.parse(raw) as string[]) : [];
+  } catch {
+    return [];
+  }
 }
 
 const initialState: ChatState = {
@@ -55,6 +76,7 @@ const initialState: ChatState = {
   typingUsers: {},
   onlineUsers: {},
   searchResults: [],
+  friendSearchResults: [],
   userProfiles: {},
   convoRecipients: {},
   friends: [],
@@ -62,28 +84,23 @@ const initialState: ChatState = {
     incoming: [],
     outgoing: [],
   },
+  mutedConversationIds: [],
   status: 'idle',
   error: null,
 };
 
-// Axios configuration utility to append bearer token dynamically
-const getAuthHeaders = (token: string | null) => ({
-  headers: {
-    Authorization: token ? `Bearer ${token}` : '',
-  },
-});
-
 // Thunk to fetch conversations a user participates in
 export const fetchConversations = createAsyncThunk(
   'chat/fetchConversations',
-  async (userId: string, { getState, rejectWithValue }) => {
+  async (userId: string, { rejectWithValue }) => {
     try {
-      const state = getState() as { auth: { accessToken: string | null } };
-      const response = await axios.get(
-        `${API_URL}/chat/conversations?userId=${userId}`,
-        getAuthHeaders(state.auth.accessToken),
+      const response = await ApiRequest(
+        `/chat/conversations?userId=${userId}`,
+        'get',
+        {},
+        true,
       );
-      return response.data.data;
+      return response.data;
     } catch (error: any) {
       return rejectWithValue(
         error.response?.data?.error?.message ||
@@ -99,16 +116,17 @@ export const fetchMessages = createAsyncThunk(
   'chat/fetchMessages',
   async (
     payload: { conversationId: string; limit?: number; offset?: number },
-    { getState, rejectWithValue },
+    { rejectWithValue },
   ) => {
     try {
-      const state = getState() as { auth: { accessToken: string | null } };
       const { conversationId, limit = 50, offset = 0 } = payload;
-      const response = await axios.get(
-        `${API_URL}/chat/conversations/${conversationId}/messages?limit=${limit}&offset=${offset}`,
-        getAuthHeaders(state.auth.accessToken),
+      const response = await ApiRequest(
+        `/chat/conversations/${conversationId}/messages?limit=${limit}&offset=${offset}`,
+        'get',
+        {},
+        true,
       );
-      return { conversationId, messages: response.data.data };
+      return { conversationId, messages: response.data };
     } catch (error: any) {
       return rejectWithValue(
         error.response?.data?.error?.message ||
@@ -124,16 +142,16 @@ export const createConversation = createAsyncThunk(
   'chat/createConversation',
   async (
     payload: { userIds: string[]; recipient: User },
-    { getState, rejectWithValue },
+    { rejectWithValue },
   ) => {
     try {
-      const state = getState() as { auth: { accessToken: string | null } };
-      const response = await axios.post(
-        `${API_URL}/chat/conversations`,
+      const response = await ApiRequest(
+        '/chat/conversations',
+        'post',
         { userIds: payload.userIds },
-        getAuthHeaders(state.auth.accessToken),
+        true,
       );
-      return { conversation: response.data.data, recipient: payload.recipient };
+      return { conversation: response.data, recipient: payload.recipient };
     } catch (error: any) {
       return rejectWithValue(
         error.response?.data?.error?.message ||
@@ -147,14 +165,15 @@ export const createConversation = createAsyncThunk(
 // Thunk to search for active users
 export const searchUsers = createAsyncThunk(
   'chat/searchUsers',
-  async (query: string, { getState, rejectWithValue }) => {
+  async (query: string, { rejectWithValue }) => {
     try {
-      const state = getState() as { auth: { accessToken: string | null } };
-      const response = await axios.get(
-        `${API_URL}/users/search?query=${query}`,
-        getAuthHeaders(state.auth.accessToken),
+      const response = await ApiRequest(
+        `/users/search?query=${query}`,
+        'get',
+        {},
+        true,
       );
-      return response.data.data;
+      return response.data;
     } catch (error: any) {
       return rejectWithValue(
         error.response?.data?.error?.message ||
@@ -165,17 +184,35 @@ export const searchUsers = createAsyncThunk(
   },
 );
 
+// Thunk to search for user profiles to add as friends
+export const searchFriendUsers = createAsyncThunk(
+  'chat/searchFriendUsers',
+  async (query: string, { rejectWithValue }) => {
+    try {
+      const response = await ApiRequest(
+        `/users/search-friend?query=${query}`,
+        'get',
+        {},
+        true,
+      );
+      return response.data; // array of users
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.error?.message ||
+          error.response?.data?.message ||
+          'Friend search failed.',
+      );
+    }
+  },
+);
+
 // Thunk to fetch a specific user profile
 export const fetchUserProfile = createAsyncThunk(
   'chat/fetchUserProfile',
-  async (userId: string, { getState, rejectWithValue }) => {
+  async (userId: string, { rejectWithValue }) => {
     try {
-      const state = getState() as { auth: { accessToken: string | null } };
-      const response = await axios.get(
-        `${API_URL}/users/${userId}`,
-        getAuthHeaders(state.auth.accessToken),
-      );
-      return response.data.data;
+      const response = await ApiRequest(`/users/${userId}`, 'get', {}, true);
+      return response.data;
     } catch (error: any) {
       return rejectWithValue(
         error.response?.data?.error?.message ||
@@ -189,12 +226,13 @@ export const fetchUserProfile = createAsyncThunk(
 // Thunk to delete a conversation thread
 export const deleteConversation = createAsyncThunk(
   'chat/deleteConversation',
-  async (conversationId: string, { getState, rejectWithValue }) => {
+  async (conversationId: string, { rejectWithValue }) => {
     try {
-      const state = getState() as { auth: { accessToken: string | null } };
-      await axios.delete(
-        `${API_URL}/chat/conversations/${conversationId}`,
-        getAuthHeaders(state.auth.accessToken),
+      await ApiRequest(
+        `/chat/conversations/${conversationId}`,
+        'delete',
+        {},
+        true,
       );
       return conversationId;
     } catch (error: any) {
@@ -210,14 +248,10 @@ export const deleteConversation = createAsyncThunk(
 // Thunk to fetch accepted friends
 export const fetchFriends = createAsyncThunk(
   'chat/fetchFriends',
-  async (_, { getState, rejectWithValue }) => {
+  async (_, { rejectWithValue }) => {
     try {
-      const state = getState() as { auth: { accessToken: string | null } };
-      const response = await axios.get(
-        `${API_URL}/users/friends`,
-        getAuthHeaders(state.auth.accessToken),
-      );
-      return response.data.data;
+      const response = await ApiRequest('/users/friends', 'get', {}, true);
+      return response.data;
     } catch (error: any) {
       return rejectWithValue(
         error.response?.data?.error?.message ||
@@ -231,14 +265,15 @@ export const fetchFriends = createAsyncThunk(
 // Thunk to fetch pending friend requests
 export const fetchPendingRequests = createAsyncThunk(
   'chat/fetchPendingRequests',
-  async (_, { getState, rejectWithValue }) => {
+  async (_, { rejectWithValue }) => {
     try {
-      const state = getState() as { auth: { accessToken: string | null } };
-      const response = await axios.get(
-        `${API_URL}/users/friends/requests`,
-        getAuthHeaders(state.auth.accessToken),
+      const response = await ApiRequest(
+        '/users/friends/requests',
+        'get',
+        {},
+        true,
       );
-      return response.data.data; // { incoming, outgoing }
+      return response.data; // { incoming, outgoing }
     } catch (error: any) {
       return rejectWithValue(
         error.response?.data?.error?.message ||
@@ -252,15 +287,15 @@ export const fetchPendingRequests = createAsyncThunk(
 // Thunk to send a friend request
 export const sendFriendRequest = createAsyncThunk(
   'chat/sendFriendRequest',
-  async (emailOrUsername: string, { getState, rejectWithValue }) => {
+  async (emailOrUsername: string, { rejectWithValue }) => {
     try {
-      const state = getState() as { auth: { accessToken: string | null } };
-      const response = await axios.post(
-        `${API_URL}/users/friends/request`,
+      const response = await ApiRequest(
+        '/users/friends/request',
+        'post',
         { emailOrUsername },
-        getAuthHeaders(state.auth.accessToken),
+        true,
       );
-      return response.data.data;
+      return response.data;
     } catch (error: any) {
       return rejectWithValue(
         error.response?.data?.error?.message ||
@@ -274,15 +309,15 @@ export const sendFriendRequest = createAsyncThunk(
 // Thunk to accept a friend request
 export const acceptFriendRequest = createAsyncThunk(
   'chat/acceptFriendRequest',
-  async (requestId: string, { getState, rejectWithValue }) => {
+  async (requestId: string, { rejectWithValue }) => {
     try {
-      const state = getState() as { auth: { accessToken: string | null } };
-      const response = await axios.post(
-        `${API_URL}/users/friends/requests/${requestId}/accept`,
+      const response = await ApiRequest(
+        `/users/friends/requests/${requestId}/accept`,
+        'post',
         {},
-        getAuthHeaders(state.auth.accessToken),
+        true,
       );
-      return response.data.data;
+      return response.data;
     } catch (error: any) {
       return rejectWithValue(
         error.response?.data?.error?.message ||
@@ -296,13 +331,13 @@ export const acceptFriendRequest = createAsyncThunk(
 // Thunk to decline/cancel a friend request
 export const declineFriendRequest = createAsyncThunk(
   'chat/declineFriendRequest',
-  async (requestId: string, { getState, rejectWithValue }) => {
+  async (requestId: string, { rejectWithValue }) => {
     try {
-      const state = getState() as { auth: { accessToken: string | null } };
-      await axios.post(
-        `${API_URL}/users/friends/requests/${requestId}/decline`,
+      await ApiRequest(
+        `/users/friends/requests/${requestId}/decline`,
+        'post',
         {},
-        getAuthHeaders(state.auth.accessToken),
+        true,
       );
       return requestId;
     } catch (error: any) {
@@ -318,13 +353,9 @@ export const declineFriendRequest = createAsyncThunk(
 // Thunk to remove a friend
 export const removeFriend = createAsyncThunk(
   'chat/removeFriend',
-  async (friendId: string, { getState, rejectWithValue }) => {
+  async (friendId: string, { rejectWithValue }) => {
     try {
-      const state = getState() as { auth: { accessToken: string | null } };
-      await axios.delete(
-        `${API_URL}/users/friends/${friendId}`,
-        getAuthHeaders(state.auth.accessToken),
-      );
+      await ApiRequest(`/users/friends/${friendId}`, 'delete', {}, true);
       return friendId;
     } catch (error: any) {
       return rejectWithValue(
@@ -440,6 +471,41 @@ const chatSlice = createSlice({
     },
     clearSearchResults: (state) => {
       state.searchResults = [];
+      state.friendSearchResults = [];
+    },
+    /**
+     * Load muted conversation IDs from localStorage for the signed-in user.
+     * Called once after session restore / login.
+     */
+    loadMutedConversations: (state, action: PayloadAction<string>) => {
+      state.mutedConversationIds = loadMutedConvoIds(action.payload);
+    },
+    /**
+     * Toggle the mute state for a specific conversation thread.
+     * Persists to localStorage keyed by userId so state survives refresh.
+     */
+    toggleMuteConversation: (
+      state,
+      action: PayloadAction<{ conversationId: string; userId: string }>,
+    ) => {
+      const { conversationId, userId } = action.payload;
+      const idx = state.mutedConversationIds.indexOf(conversationId);
+      if (idx === -1) {
+        state.mutedConversationIds.push(conversationId);
+      } else {
+        state.mutedConversationIds.splice(idx, 1);
+      }
+      // Persist to localStorage
+      if (typeof window !== 'undefined' && userId) {
+        try {
+          localStorage.setItem(
+            `rf-muted-convos-${userId}`,
+            JSON.stringify(state.mutedConversationIds),
+          );
+        } catch {
+          // Ignore storage errors
+        }
+      }
     },
     // Handle real-time conversation deletion pushed by the server (when the other participant deletes the thread)
     socketRemoveConversation: (state, action: PayloadAction<string>) => {
@@ -630,6 +696,14 @@ const chatSlice = createSlice({
       },
     );
 
+    // Search friend users
+    builder.addCase(
+      searchFriendUsers.fulfilled,
+      (state, action: PayloadAction<User[]>) => {
+        state.friendSearchResults = action.payload;
+      },
+    );
+
     // Fetch user profile
     builder.addCase(
       fetchUserProfile.fulfilled,
@@ -734,6 +808,8 @@ export const {
   socketFriendRequestAccepted,
   socketFriendRequestDeclined,
   socketFriendRemoved,
+  loadMutedConversations,
+  toggleMuteConversation,
 } = chatSlice.actions;
 
 export default chatSlice.reducer;
