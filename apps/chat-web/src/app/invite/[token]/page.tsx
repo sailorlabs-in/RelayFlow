@@ -3,7 +3,10 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '../../../store';
-import { restoreSession } from '../../../store/slices/authSlice';
+import {
+  restoreSession,
+  fetchCurrentUser,
+} from '../../../store/slices/authSlice';
 import {
   fetchGroups,
   setActiveGroup,
@@ -34,6 +37,11 @@ function InvitePageContent() {
   // Restore session
   useEffect(() => {
     dispatch(restoreSession());
+    const token =
+      typeof window !== 'undefined' ? localStorage.getItem('chat_token') : null;
+    if (token) {
+      dispatch(fetchCurrentUser());
+    }
   }, [dispatch]);
 
   // Load invite details if logged in

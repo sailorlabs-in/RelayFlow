@@ -18,7 +18,11 @@ import { GroupSettingsModal } from '../components/GroupSettingsModal';
 import { InviteMembersModal } from '../components/InviteMembersModal';
 import { MemberSidebar } from '../components/MemberSidebar';
 import { useAppDispatch, useAppSelector } from '../store';
-import { logoutUser, restoreSession } from '../store/slices/authSlice';
+import {
+  logoutUser,
+  restoreSession,
+  fetchCurrentUser,
+} from '../store/slices/authSlice';
 import {
   fetchConversations,
   fetchFriends,
@@ -83,6 +87,11 @@ function ChatDashboardContent() {
   // --- Session recovery on client mount ---
   useEffect(() => {
     dispatch(restoreSession());
+    const token =
+      typeof window !== 'undefined' ? localStorage.getItem('chat_token') : null;
+    if (token) {
+      dispatch(fetchCurrentUser());
+    }
     setIsHydrated(true);
   }, [dispatch]);
 

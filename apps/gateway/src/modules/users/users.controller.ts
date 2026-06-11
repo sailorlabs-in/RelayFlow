@@ -30,6 +30,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 
 import { UsersService } from './users.service';
+import { FriendSearchResponseDto } from './dto/friend-search-response.dto';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 
 @ApiTags('Users')
@@ -170,13 +171,26 @@ export class UsersController {
   @ApiResponse({
     status: 200,
     description: 'Found users profile.',
-    type: [User],
+    type: [FriendSearchResponseDto],
   })
   async searchFriend(
     @Query('query') query: string,
     @CurrentUser() currentUser: { userId: string },
-  ): Promise<User[]> {
-    return this.usersService.searchFriend(query || '', currentUser.userId);
+  ): Promise<FriendSearchResponseDto[]> {
+    this.logger.debug(`searchFriend: query='${query}' (type: ${typeof query})`);
+    const users = await this.usersService.searchFriend(
+      query,
+      currentUser.userId,
+    );
+    return users.map((u) => ({
+      id: u.id,
+      email: u.email,
+      username: u.username,
+      displayName: u.displayName,
+      avatarUrl: u.avatarUrl,
+      avatarThumbnailUrl: u.avatarThumbnailUrl,
+      status: u.status,
+    }));
   }
 
   @Post('friends/request')

@@ -59,31 +59,11 @@ export class User {
   @Column({ name: 'is_verified', default: false })
   isVerified!: boolean;
 
-  @Column({ name: 'verification_otp', nullable: true })
-  verificationOtp?: string;
-
-  @Column({
-    name: 'verification_otp_expires_at',
-    type: 'timestamptz',
-    nullable: true,
-  })
-  verificationOtpExpiresAt?: Date;
-
   @Column({ name: 'is_two_factor_enabled', default: false })
   isTwoFactorEnabled!: boolean;
 
   @Column({ name: 'two_factor_only_new_device', default: false })
   twoFactorOnlyNewDevice!: boolean;
-
-  @Column({ name: 'two_factor_otp', nullable: true })
-  twoFactorOtp?: string;
-
-  @Column({
-    name: 'two_factor_otp_expires_at',
-    type: 'timestamptz',
-    nullable: true,
-  })
-  twoFactorOtpExpiresAt?: Date;
 
   @Column({ name: 'remembered_devices', type: 'text', nullable: true })
   rememberedDevices?: string;

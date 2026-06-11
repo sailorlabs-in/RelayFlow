@@ -284,6 +284,23 @@ export const updateUserProfile = createAsyncThunk(
   },
 );
 
+// Async Thunk to fetch current user profile
+export const fetchCurrentUser = createAsyncThunk(
+  'auth/fetchCurrentUser',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await ApiRequest('/users/me', 'get', {}, true);
+      return response.data;
+    } catch (error: any) {
+      const errorMsg =
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        'Failed to fetch user profile.';
+      return rejectWithValue(errorMsg);
+    }
+  },
+);
+
 const authSlice = createSlice({
   name: 'auth',
   initialState,
@@ -523,6 +540,20 @@ const authSlice = createSlice({
       .addCase(updateUserProfile.rejected, (state, action) => {
         state.status = 'failed';
         state.error = action.payload as string;
+      });
+
+    // Fetch Current User
+    builder
+      .addCase(fetchCurrentUser.fulfilled, (state, action) => {
+        state.user = action.payload;
+        if (isBrowser) {
+          localStorage.setItem('chat_user', JSON.stringify(action.payload));
+        }
+      })
+      .addCase(fetchCurrentUser.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error =
+          (action.payload as string) || 'Failed to fetch current user profile.';
       });
   },
 });

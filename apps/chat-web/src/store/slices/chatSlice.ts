@@ -191,12 +191,11 @@ export const searchFriendUsers = createAsyncThunk(
   'chat/searchFriendUsers',
   async (query: string, { rejectWithValue }) => {
     try {
-      const response = await ApiRequest(
-        `/users/search-friend?query=${query}`,
-        'get',
-        {},
-        true,
-      );
+      const trimmedQuery = query ? query.trim() : '';
+      const url = trimmedQuery
+        ? `/users/search-friend?query=${encodeURIComponent(trimmedQuery)}`
+        : '/users/search-friend';
+      const response = await ApiRequest(url, 'get', {}, true);
       return response.data; // array of users
     } catch (error: any) {
       return rejectWithValue(

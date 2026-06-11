@@ -1428,6 +1428,101 @@ export function ProfileSettingsContent({
                     ))}
                   </div>
                 </div>
+
+                {/* Section 2: Visibility Settings */}
+                <div
+                  className="flex flex-col gap-2.5 border-t pt-4"
+                  style={{ borderColor: 'var(--border-muted)' }}
+                >
+                  <label
+                    className="text-[11.5px] font-bold uppercase tracking-wider"
+                    style={{ color: 'var(--text-secondary)' }}
+                  >
+                    Profile Visibility (Who can see you in the Add Friends list)
+                  </label>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {[
+                      {
+                        id: 'everyone',
+                        name: 'Everyone',
+                        desc: 'All users can see you in the suggestions list.',
+                      },
+                      {
+                        id: 'friends_of_friends',
+                        name: 'Friends of Friends',
+                        desc: 'Only friends of your friends can see you.',
+                      },
+                      {
+                        id: 'noone',
+                        name: 'No One',
+                        desc: 'Nobody can see you in the suggestions list.',
+                      },
+                    ].map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={async () => {
+                          setVisibility(opt.id);
+                          try {
+                            await dispatch(
+                              updateUserProfile({ visibility: opt.id }),
+                            ).unwrap();
+                          } catch (err) {
+                            console.error(
+                              'Failed to auto-save visibility:',
+                              err,
+                            );
+                          }
+                        }}
+                        className={`flex flex-col items-start p-4 rounded-xl cursor-pointer text-left transition-all duration-200 border ${
+                          visibility === opt.id
+                            ? 'border-[var(--accent-primary)] bg-[var(--theme-btn-active)]'
+                            : 'border-[var(--glass-border)] bg-[var(--theme-btn)]'
+                        }`}
+                        onMouseEnter={(e) => {
+                          if (visibility !== opt.id) {
+                            e.currentTarget.style.background =
+                              'var(--theme-btn-hover)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (visibility !== opt.id) {
+                            e.currentTarget.style.background =
+                              'var(--theme-btn)';
+                          }
+                        }}
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <span
+                            className="font-bold text-[13px]"
+                            style={{
+                              color:
+                                visibility === opt.id
+                                  ? 'var(--theme-btn-active-text)'
+                                  : 'var(--text-primary)',
+                            }}
+                          >
+                            {opt.name}
+                          </span>
+                          {visibility === opt.id && (
+                            <span
+                              style={{ color: 'var(--theme-btn-active-text)' }}
+                            >
+                              <IconCheck />
+                            </span>
+                          )}
+                        </div>
+                        <span
+                          className="text-[10.5px] mt-1"
+                          style={{ color: 'var(--text-muted)' }}
+                        >
+                          {opt.desc}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
 
