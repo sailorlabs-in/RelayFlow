@@ -25,7 +25,7 @@ export interface GroupChannel {
   name: string;
   groupId: string;
   type: 'channel';
-  layout: 'text' | 'bubble';
+  layout: 'text' | 'bubble' | 'voice';
   allowedRoleIds?: string[];
   createdAt: string;
   updatedAt: string;
@@ -76,6 +76,17 @@ export interface GroupsState {
   isGeneratingInvite: boolean;
   status: 'idle' | 'loading' | 'succeeded' | 'failed';
   error: string | null;
+  activeVoiceChannelId: string | null;
+  voiceStates: Record<
+    string,
+    {
+      userId: string;
+      groupId: string;
+      channelId: string;
+      isMuted: boolean;
+      isDeafened: boolean;
+    }
+  >;
 }
 
 const initialState: GroupsState = {
@@ -87,6 +98,8 @@ const initialState: GroupsState = {
   isGeneratingInvite: false,
   status: 'idle',
   error: null,
+  activeVoiceChannelId: null,
+  voiceStates: {},
 };
 
 // ── Fetch all groups for the current user ─────────────────────────────────────
@@ -200,7 +213,7 @@ export const createChannel = createAsyncThunk(
     payload: {
       groupId: string;
       name: string;
-      layout?: 'text' | 'bubble';
+      layout?: 'text' | 'bubble' | 'voice';
       allowedRoleIds?: string[];
       sectionId?: string;
     },
@@ -1008,6 +1021,51 @@ const groupsSlice = createSlice({
         group.channels = channels;
       }
     },
+    socketVoiceStateChanged: (
+      state,
+      action: PayloadAction<{
+        userId: string;
+        groupId: string;
+        channelId: string | null;
+        isMuted: boolean;
+        isDeafened: boolean;
+      }>,
+    ) => {
+      const { userId, groupId, channelId, isMuted, isDeafened } =
+        action.payload;
+      if (!channelId) {
+        delete state.voiceStates[userId];
+      } else {
+        state.voiceStates[userId] = {
+          userId,
+          groupId,
+          channelId,
+          isMuted,
+          isDeafened,
+        };
+      }
+    },
+    socketVoicePresenceSync: (
+      state,
+      action: PayloadAction<{
+        voiceStates: {
+          userId: string;
+          groupId: string;
+          channelId: string;
+          isMuted: boolean;
+          isDeafened: boolean;
+        }[];
+      }>,
+    ) => {
+      const newStates: Record<string, any> = {};
+      action.payload.voiceStates.forEach((vs) => {
+        newStates[vs.userId] = vs;
+      });
+      state.voiceStates = newStates;
+    },
+    localSetSelfVoiceChannel: (state, action: PayloadAction<string | null>) => {
+      state.activeVoiceChannelId = action.payload;
+    },
   },
   extraReducers: (builder) => {
     // Fetch groups
@@ -1327,6 +1385,9 @@ export const {
   socketSectionDeleted,
   socketSectionsReordered,
   socketChannelsReordered,
+  socketVoiceStateChanged,
+  socketVoicePresenceSync,
+  localSetSelfVoiceChannel,
 } = groupsSlice.actions;
 
 export default groupsSlice.reducer;

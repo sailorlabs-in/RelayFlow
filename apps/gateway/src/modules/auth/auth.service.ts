@@ -69,14 +69,14 @@ export class AuthService {
     userId?: string;
     email?: string;
   }> {
-    const user = await this.usersService.findByEmail(email);
+    const user = await this.usersService.findByEmailOrUsername(email);
     if (!user) {
-      throw new UnauthorizedException('❌ Invalid email or password');
+      throw new UnauthorizedException('❌ Invalid email/username or password');
     }
 
     const isMatch = CryptoUtil.verifyPassword(password, user.passwordHash);
     if (!isMatch) {
-      throw new UnauthorizedException('❌ Invalid email or password');
+      throw new UnauthorizedException('❌ Invalid email/username or password');
     }
 
     // 1) Verify account verification state
@@ -172,10 +172,8 @@ export class AuthService {
     }
 
     // Check expiry
-    const isExpired =
-      !user.verificationOtpExpiresAt ||
-      new Date() > new Date(user.verificationOtpExpiresAt);
-    if (isExpired) {
+    const storedOtp = await this.usersService.getVerificationOtp(user.id);
+    if (!storedOtp) {
       // Delete user
       await this.usersService.deleteUser(user.id);
       throw new BadRequestException(
@@ -183,7 +181,7 @@ export class AuthService {
       );
     }
 
-    if (user.verificationOtp !== otp) {
+    if (storedOtp !== otp) {
       throw new BadRequestException('❌ Invalid verification code');
     }
 
@@ -234,25 +232,19 @@ export class AuthService {
     }
 
     // Check expiry
-    const isExpired =
-      !user.twoFactorOtpExpiresAt ||
-      new Date() > new Date(user.twoFactorOtpExpiresAt);
-    if (isExpired) {
+    const storedOtp = await this.usersService.getTwoFactorOtp(user.id);
+    if (!storedOtp) {
       throw new BadRequestException(
         '❌ 2FA code expired. Please log in again.',
       );
     }
 
-    if (user.twoFactorOtp !== otp) {
+    if (storedOtp !== otp) {
       throw new BadRequestException('❌ Invalid 2FA code');
     }
 
     // Clear OTP
-    await this.usersService.updateTwoFactorOtp(
-      user.id,
-      undefined as any,
-      undefined as any,
-    );
+    await this.usersService.clearTwoFactorOtp(user.id);
 
     // Save device if remember is checked
     let updatedUser = user;

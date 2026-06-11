@@ -7,7 +7,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Not } from 'typeorm';
+import { Repository, Not, Brackets } from 'typeorm';
 
 import { CryptoUtil } from '../auth/crypto.util';
 
@@ -64,17 +64,19 @@ export class UsersService {
     return saved;
   }
 
-  async findById(id: string): Promise<User> {
+  async findById(id: string, bypassCache = false): Promise<User> {
     const redis = this.redisService.getClient();
     const cacheKey = `user:profile:${id}`;
 
-    try {
-      const cached = await redis.get(cacheKey);
-      if (cached) {
-        return JSON.parse(cached);
+    if (!bypassCache) {
+      try {
+        const cached = await redis.get(cacheKey);
+        if (cached) {
+          return JSON.parse(cached);
+        }
+      } catch (err) {
+        // Don't fail the request if Redis is down
       }
-    } catch (err) {
-      // Don't fail the request if Redis is down
     }
 
     const user = await this.userRepository.findOne({ where: { id } });
@@ -91,8 +93,25 @@ export class UsersService {
     return user;
   }
 
+  async findByIds(ids: string[]): Promise<User[]> {
+    if (!ids || ids.length === 0) {
+      return [];
+    }
+    return this.userRepository.findByIds(ids);
+  }
+
   async findByEmail(email: string): Promise<User | null> {
     return this.userRepository.findOne({ where: { email } });
+  }
+
+  async findByEmailOrUsername(emailOrUsername: string): Promise<User | null> {
+    const trimmed = emailOrUsername ? emailOrUsername.trim() : '';
+    if (!trimmed) {
+      return null;
+    }
+    return this.userRepository.findOne({
+      where: [{ email: trimmed }, { username: trimmed }],
+    });
   }
 
   async isUsernameAvailable(
@@ -233,13 +252,66 @@ export class UsersService {
   async searchFriend(query: string, excludeUserId: string): Promise<User[]> {
     const qb = this.userRepository
       .createQueryBuilder('user')
-      .where('user.id != :excludeUserId', { excludeUserId });
+      .select([
+        'user.id',
+        'user.email',
+        'user.username',
+        'user.displayName',
+        'user.avatarUrl',
+        'user.avatarThumbnailUrl',
+        'user.status',
+        'user.visibility',
+      ])
+      .where('user.id != :excludeUserId', { excludeUserId })
+      .andWhere('user.isVerified = :isVerified', { isVerified: true });
 
-    if (query.trim()) {
+    const trimmed = query ? query.trim() : '';
+    const isSearch =
+      trimmed !== '' && trimmed !== 'undefined' && trimmed !== 'null';
+
+    console.log(
+      `[searchFriend] query='${query}', trimmed='${trimmed}', isSearch=${isSearch}`,
+    );
+
+    if (isSearch) {
       qb.andWhere(
         '(user.email ILIKE :query OR user.username ILIKE :query OR user.display_name ILIKE :query)',
-        { query: `%${query.trim()}%` },
+        { query: `%${trimmed}%` },
       );
+    } else {
+      // Apply visibility settings since it's the initial load with no query
+      const friends = await this.listFriends(excludeUserId);
+      const friendsOfYIds = friends.map((f) => f.id);
+
+      if (friendsOfYIds.length > 0) {
+        qb.andWhere(
+          new Brackets((orQb) => {
+            orQb
+              .where("user.visibility = 'everyone'")
+              .orWhere('user.visibility IS NULL')
+              .orWhere(
+                "user.visibility = 'friends_of_friends' AND EXISTS (" +
+                  'SELECT 1 FROM friendship f ' +
+                  'WHERE ( ' +
+                  '(f.requester_id = user.id AND f.addressee_id IN (:...friendsOfYIds)) ' +
+                  'OR ' +
+                  '(f.addressee_id = user.id AND f.requester_id IN (:...friendsOfYIds)) ' +
+                  ') ' +
+                  "AND f.status = 'accepted'" +
+                  ')',
+                { friendsOfYIds },
+              );
+          }),
+        );
+      } else {
+        qb.andWhere(
+          new Brackets((orQb) => {
+            orQb
+              .where("user.visibility = 'everyone'")
+              .orWhere('user.visibility IS NULL');
+          }),
+        );
+      }
     }
 
     return qb.getMany();
@@ -421,26 +493,41 @@ export class UsersService {
     id: string,
     otp: string,
     expiresAt: Date,
-  ): Promise<User> {
-    const user = await this.findById(id);
-    user.verificationOtp = otp;
-    user.verificationOtpExpiresAt = expiresAt;
-    const saved = await this.userRepository.save(user);
-    await this.updateRedisCache(saved);
-    return saved;
+  ): Promise<void> {
+    const redis = this.redisService.getClient();
+    const ttlSeconds = Math.max(
+      1,
+      Math.floor((expiresAt.getTime() - Date.now()) / 1000),
+    );
+    await redis.setex(`otp:verification:${id}`, ttlSeconds, otp);
+  }
+
+  async getVerificationOtp(id: string): Promise<string | null> {
+    const redis = this.redisService.getClient();
+    return redis.get(`otp:verification:${id}`);
   }
 
   async updateTwoFactorOtp(
     id: string,
     otp: string,
     expiresAt: Date,
-  ): Promise<User> {
-    const user = await this.findById(id);
-    user.twoFactorOtp = otp;
-    user.twoFactorOtpExpiresAt = expiresAt;
-    const saved = await this.userRepository.save(user);
-    await this.updateRedisCache(saved);
-    return saved;
+  ): Promise<void> {
+    const redis = this.redisService.getClient();
+    const ttlSeconds = Math.max(
+      1,
+      Math.floor((expiresAt.getTime() - Date.now()) / 1000),
+    );
+    await redis.setex(`otp:2fa:${id}`, ttlSeconds, otp);
+  }
+
+  async getTwoFactorOtp(id: string): Promise<string | null> {
+    const redis = this.redisService.getClient();
+    return redis.get(`otp:2fa:${id}`);
+  }
+
+  async clearTwoFactorOtp(id: string): Promise<void> {
+    const redis = this.redisService.getClient();
+    await redis.del(`otp:2fa:${id}`);
   }
 
   async updateResetPasswordToken(
@@ -459,10 +546,17 @@ export class UsersService {
   async verifyUserEmail(id: string): Promise<User> {
     const user = await this.findById(id);
     user.isVerified = true;
-    user.verificationOtp = undefined;
-    user.verificationOtpExpiresAt = undefined;
     const saved = await this.userRepository.save(user);
     await this.updateRedisCache(saved);
+
+    // Clear verification OTP from Redis
+    const redis = this.redisService.getClient();
+    try {
+      await redis.del(`otp:verification:${id}`);
+    } catch {
+      // ignore
+    }
+
     return saved;
   }
 

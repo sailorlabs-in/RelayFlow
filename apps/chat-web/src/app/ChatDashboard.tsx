@@ -10,6 +10,7 @@ import { ChannelSettingsModal } from '../components/ChannelSettingsModal';
 import { ChannelSidebar } from '../components/ChannelSidebar';
 import { ChatArea } from '../components/ChatArea';
 import { ChatSidebar } from '../components/ChatSidebar';
+import { VoiceDashboard } from '../components/VoiceDashboard';
 import { ComposeModal } from '../components/ComposeModal';
 import { CreateChannelModal } from '../components/CreateChannelModal';
 import { CreateGroupModal } from '../components/CreateGroupModal';
@@ -18,11 +19,16 @@ import { GroupSettingsModal } from '../components/GroupSettingsModal';
 import { InviteMembersModal } from '../components/InviteMembersModal';
 import { MemberSidebar } from '../components/MemberSidebar';
 import { useAppDispatch, useAppSelector } from '../store';
-import { logoutUser, restoreSession } from '../store/slices/authSlice';
+import {
+  logoutUser,
+  restoreSession,
+  fetchCurrentUser,
+} from '../store/slices/authSlice';
 import {
   fetchConversations,
   fetchFriends,
   fetchPendingRequests,
+  setActiveConversation,
 } from '../store/slices/chatSlice';
 import { fetchGroups, setActiveGroup } from '../store/slices/groupsSlice';
 import type { GroupChannel, GroupSection } from '../store/slices/groupsSlice';
@@ -43,6 +49,8 @@ function ChatDashboardContent() {
     groups: rawGroups,
     activeGroupId,
     activeChannelId,
+    activeVoiceChannelId,
+    voiceStates,
   } = useAppSelector((s) => s.groups);
   const groups = Array.isArray(rawGroups) ? rawGroups : [];
 
@@ -83,6 +91,11 @@ function ChatDashboardContent() {
   // --- Session recovery on client mount ---
   useEffect(() => {
     dispatch(restoreSession());
+    const token =
+      typeof window !== 'undefined' ? localStorage.getItem('chat_token') : null;
+    if (token) {
+      dispatch(fetchCurrentUser());
+    }
     setIsHydrated(true);
   }, [dispatch]);
 
@@ -126,6 +139,7 @@ function ChatDashboardContent() {
 
   const handleShowDMs = () => {
     setIsDMMode(true);
+    dispatch(setActiveConversation('friends'));
   };
 
   const handleSelectGroup = (groupId: string) => {
@@ -217,6 +231,18 @@ function ChatDashboardContent() {
     };
   }, [accessToken, user?.id, manualStatus]);
 
+  // In group mode, the active conversation is the selected channel
+  const effectiveActiveConversationId = isDMMode
+    ? activeConversationId
+    : activeChannelId;
+
+  // Sync activeConversationId in chatSlice with effectiveActiveConversationId
+  useEffect(() => {
+    if (effectiveActiveConversationId !== activeConversationId) {
+      dispatch(setActiveConversation(effectiveActiveConversationId));
+    }
+  }, [effectiveActiveConversationId, activeConversationId, dispatch]);
+
   // ── RENDER: Hydration & Auth Gate ──
   if (!isHydrated) {
     return <div className="bg-theme-primary h-screen w-screen" />;
@@ -230,11 +256,6 @@ function ChatDashboardContent() {
   const activeGroup = activeGroupId
     ? groups.find((g) => g.id === activeGroupId) || null
     : null;
-
-  // In group mode, the active conversation is the selected channel
-  const effectiveActiveConversationId = isDMMode
-    ? activeConversationId
-    : activeChannelId;
 
   return (
     <div className="flex h-screen w-screen p-3.5 gap-3.5 bg-theme-primary">
@@ -306,6 +327,39 @@ function ChatDashboardContent() {
         isMembersListOpen={isMembersListOpen}
         onToggleMembersList={() => setIsMembersListOpen((v) => !v)}
       />
+
+      {/* ── Global Voice Dashboard Connection (Portal based) ── */}
+      {(() => {
+        let voiceGroup = null;
+        let voiceChannel = null;
+        if (activeVoiceChannelId) {
+          for (const g of groups) {
+            const ch = g.channels?.find((c) => c.id === activeVoiceChannelId);
+            if (ch) {
+              voiceGroup = g;
+              voiceChannel = ch;
+              break;
+            }
+          }
+        }
+        if (activeVoiceChannelId && voiceGroup && voiceChannel) {
+          return (
+            <VoiceDashboard
+              groupId={voiceGroup.id}
+              channel={voiceChannel}
+              voiceStates={voiceStates}
+              groupMembers={voiceGroup.members || []}
+              currentUser={user}
+              isViewed={
+                !isDMMode &&
+                activeGroupId === voiceGroup.id &&
+                activeChannelId === voiceChannel.id
+              }
+            />
+          );
+        }
+        return null;
+      })()}
 
       {/* ── Collapsible Group Member Sidebar ─────────────────────── */}
       {!isDMMode && activeGroup && isMembersListOpen && (

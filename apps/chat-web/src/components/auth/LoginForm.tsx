@@ -56,13 +56,13 @@ export const LoginForm = ({
       <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
         <div className="flex flex-col gap-1.5">
           <label className="text-[11.5px] font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
-            Email
+            Email or Username
           </label>
           <input
             id="auth-email"
-            type="email"
+            type="text"
             className="input-base rounded-[10px] px-4 py-3 text-[14.5px] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[3px] focus:ring-[var(--accent-ring)]"
-            placeholder="user@example.com"
+            placeholder="Enter your email or username"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required

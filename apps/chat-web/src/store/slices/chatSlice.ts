@@ -33,6 +33,7 @@ export interface Message {
   createdAt: string;
   updatedAt: string;
   media?: MessageMediaItem[];
+  readBy?: { userId: string; name: string }[];
 }
 
 export interface ChatState {
@@ -191,12 +192,11 @@ export const searchFriendUsers = createAsyncThunk(
   'chat/searchFriendUsers',
   async (query: string, { rejectWithValue }) => {
     try {
-      const response = await ApiRequest(
-        `/users/search-friend?query=${query}`,
-        'get',
-        {},
-        true,
-      );
+      const trimmedQuery = query ? query.trim() : '';
+      const url = trimmedQuery
+        ? `/users/search-friend?query=${encodeURIComponent(trimmedQuery)}`
+        : '/users/search-friend';
+      const response = await ApiRequest(url, 'get', {}, true);
       return response.data; // array of users
     } catch (error: any) {
       return rejectWithValue(
@@ -540,14 +540,45 @@ const chatSlice = createSlice({
     },
     socketMarkMessagesAsRead: (
       state,
-      action: PayloadAction<{ conversationId: string; readBy: string }>,
+      action: PayloadAction<{
+        conversationId: string;
+        readBy: string;
+        readByName?: string;
+      }>,
     ) => {
-      const { conversationId, readBy } = action.payload;
+      const { conversationId, readBy, readByName } = action.payload;
       if (state.messages[conversationId]) {
         state.messages[conversationId] = state.messages[conversationId].map(
           (m) => {
             if (m.senderId !== readBy) {
-              return { ...m, isRead: true };
+              const currentReadBy = m.readBy || [];
+              const alreadyRead = currentReadBy.some(
+                (r) => r.userId === readBy,
+              );
+
+              let nameToUse = readByName;
+              if (!nameToUse) {
+                const cachedUser =
+                  state.userProfiles[readBy] ||
+                  state.friends.find((f) => f.id === readBy);
+                if (cachedUser) {
+                  nameToUse = cachedUser.username
+                    ? `@${cachedUser.username}`
+                    : `@${cachedUser.email.split('@')[0]}`;
+                } else {
+                  nameToUse = 'User';
+                }
+              }
+
+              const updatedReadBy = alreadyRead
+                ? currentReadBy
+                : [...currentReadBy, { userId: readBy, name: nameToUse }];
+
+              return {
+                ...m,
+                isRead: true,
+                readBy: updatedReadBy,
+              };
             }
             return m;
           },
@@ -557,6 +588,26 @@ const chatSlice = createSlice({
       const convo = state.conversations.find((c) => c.id === conversationId);
       if (convo && convo.lastMessage && convo.lastMessage.senderId !== readBy) {
         convo.lastMessage.isRead = true;
+        const currentReadBy = convo.lastMessage.readBy || [];
+        const alreadyRead = currentReadBy.some((r) => r.userId === readBy);
+
+        let nameToUse = readByName;
+        if (!nameToUse) {
+          const cachedUser =
+            state.userProfiles[readBy] ||
+            state.friends.find((f) => f.id === readBy);
+          if (cachedUser) {
+            nameToUse = cachedUser.username
+              ? `@${cachedUser.username}`
+              : `@${cachedUser.email.split('@')[0]}`;
+          } else {
+            nameToUse = 'User';
+          }
+        }
+
+        convo.lastMessage.readBy = alreadyRead
+          ? currentReadBy
+          : [...currentReadBy, { userId: readBy, name: nameToUse }];
       }
     },
     socketReceiveFriendRequest: (state, action: PayloadAction<any>) => {

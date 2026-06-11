@@ -28,7 +28,7 @@ export const CreateChannelModal = ({
   const roles = group?.roles || [];
 
   const [channelName, setChannelName] = useState('');
-  const [layout, setLayout] = useState<'text' | 'bubble'>('text');
+  const [layout, setLayout] = useState<'text' | 'bubble' | 'voice'>('text');
   const [isPrivate, setIsPrivate] = useState(false);
   const [allowedRoleIds, setAllowedRoleIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -177,6 +177,24 @@ export const CreateChannelModal = ({
                 </span>
                 <span className="text-xs text-[var(--text-muted)] mt-1">
                   WhatsApp-style bubble feed
+                </span>
+              </label>
+              <label
+                className={`flex-1 flex flex-col p-3 rounded-[10px] border-[1.5px] cursor-pointer transition-all ${layout === 'voice' ? 'border-[var(--accent-primary)] bg-[rgba(114,137,218,0.1)]' : 'border-[var(--glass-border)] bg-transparent'}`}
+              >
+                <input
+                  type="radio"
+                  name="channelLayout"
+                  value="voice"
+                  checked={layout === 'voice'}
+                  onChange={() => setLayout('voice')}
+                  className="hidden"
+                />
+                <span className="text-sm font-semibold text-[var(--text-primary)]">
+                  Voice Channel
+                </span>
+                <span className="text-xs text-[var(--text-muted)] mt-1">
+                  Interactive voice room
                 </span>
               </label>
             </div>

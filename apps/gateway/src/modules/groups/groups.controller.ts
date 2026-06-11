@@ -322,7 +322,7 @@ export class GroupsController {
     @Param('id') groupId: string,
     @CurrentUser() currentUser: { userId: string },
     @Body('name') name: string,
-    @Body('layout') layout?: 'text' | 'bubble',
+    @Body('layout') layout?: 'text' | 'bubble' | 'voice',
     @Body('allowedRoleIds') allowedRoleIds?: string[],
     @Body('sectionId') sectionId?: string,
   ) {
