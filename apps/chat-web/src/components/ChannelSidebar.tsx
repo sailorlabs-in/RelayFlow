@@ -15,6 +15,7 @@ import {
   deleteSection,
   reorderSections,
   reorderChannels,
+  localSetSelfVoiceChannel,
 } from '../store/slices/groupsSlice';
 import { socketManager } from '../store/socketManager';
 
@@ -60,9 +61,42 @@ export const ChannelSidebar = ({
   onToggleRail,
 }: ChannelSidebarProps): React.JSX.Element => {
   const dispatch = useAppDispatch();
-  const { activeChannelId } = useAppSelector((s) => s.groups);
+  const { activeChannelId, activeVoiceChannelId, voiceStates } = useAppSelector(
+    (s) => s.groups,
+  );
   const { user } = useAppSelector((s) => s.auth);
   const { messages } = useAppSelector((s) => s.chat);
+
+  const selfVoiceState = user ? voiceStates[user.id] : null;
+  const isSelfMuted = selfVoiceState?.isMuted || false;
+  const isSelfDeafened = selfVoiceState?.isDeafened || false;
+
+  const handleToggleMute = () => {
+    if (!user) {
+      return;
+    }
+    const isMuted = !isSelfMuted;
+    const isDeafened = isSelfDeafened;
+    socketManager.updateVoiceState(isMuted, isDeafened);
+  };
+
+  const handleToggleDeafen = () => {
+    if (!user) {
+      return;
+    }
+    const isDeafened = !isSelfDeafened;
+    const isMuted = isDeafened ? true : isSelfMuted;
+    socketManager.updateVoiceState(isMuted, isDeafened);
+  };
+
+  const handleDisconnectVoice = () => {
+    if (activeVoiceChannelId === activeChannelId) {
+      dispatch(setActiveChannel(null));
+      dispatch(setActiveConversation(null));
+    }
+    dispatch(localSetSelfVoiceChannel(null));
+    socketManager.leaveVoice();
+  };
 
   const [collapsedSections, setCollapsedSections] = useState<
     Record<string, boolean>
@@ -94,7 +128,14 @@ export const ChannelSidebar = ({
   const handleSelectChannel = (channel: GroupChannel) => {
     dispatch(setActiveChannel(channel.id));
     dispatch(setActiveConversation(channel.id));
-    socketManager.joinConversation(channel.id);
+    if (channel.layout === 'voice') {
+      if (activeVoiceChannelId !== channel.id) {
+        dispatch(localSetSelfVoiceChannel(channel.id));
+        socketManager.joinVoice(group.id, channel.id);
+      }
+    } else {
+      socketManager.joinConversation(channel.id);
+    }
   };
 
   const handleDeleteGroup = () => {
@@ -359,77 +400,172 @@ export const ChannelSidebar = ({
       lastMsg && lastMsg.senderId !== user?.id && !lastMsg.isRead;
     const isOver = dragOverChannelId === channel.id;
 
+    // Get voice states for users currently in this voice channel
+    const channelVoiceStates = Object.values(voiceStates || {}).filter(
+      (vs) => vs.channelId === channel.id,
+    );
+
     return (
-      <div
-        key={channel.id}
-        draggable={canManage}
-        onDragStart={(e) => handleChannelDragStart(e, channel.id)}
-        onDragOver={handleChannelDragOver}
-        onDragEnter={(e) => handleChannelDragEnter(e, channel.id)}
-        onDragLeave={handleChannelDragLeave}
-        onDrop={(e) => handleChannelDropOnChannel(e, channel)}
-        className={`group/channel relative flex items-center justify-between w-full rounded-lg transition-all duration-150 pr-1.5 fade-in-list ${
-          isActive
-            ? 'bg-[var(--theme-btn-active)]'
-            : 'bg-transparent hover:bg-[var(--bg-input)]'
-        } ${isOver ? 'border-t-2 border-[var(--accent-primary)]' : ''}`}
-      >
-        <span
-          className={`absolute left-0 w-[3px] rounded-r bg-[var(--accent-primary)] transition-all duration-200
-          ${isActive ? 'h-5 top-[7.5px]' : 'h-0 top-[17.5px] opacity-0'}`}
-        />
-        <button
-          id={`channel-${channel.id}`}
-          onClick={() => handleSelectChannel(channel)}
-          className={`flex-1 flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg border-none cursor-pointer text-left transition-all duration-150 bg-transparent text-sm min-w-0 outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-primary)] active-press ${
+      <div key={channel.id} className="flex flex-col w-full">
+        <div
+          draggable={canManage}
+          onDragStart={(e) => handleChannelDragStart(e, channel.id)}
+          onDragOver={handleChannelDragOver}
+          onDragEnter={(e) => handleChannelDragEnter(e, channel.id)}
+          onDragLeave={handleChannelDragLeave}
+          onDrop={(e) => handleChannelDropOnChannel(e, channel)}
+          className={`group/channel relative flex items-center justify-between w-full rounded-lg transition-all duration-150 pr-1.5 fade-in-list ${
             isActive
-              ? 'text-[var(--theme-btn-active-text)] font-semibold'
-              : 'text-[var(--text-secondary)] font-normal'
-          }`}
+              ? 'bg-[var(--theme-btn-active)]'
+              : 'bg-transparent hover:bg-[var(--bg-input)]'
+          } ${isOver ? 'border-t-2 border-[var(--accent-primary)]' : ''}`}
         >
           <span
-            className={`flex-shrink-0 transition-opacity duration-150 ${
+            className={`absolute left-0 w-[3px] rounded-r bg-[var(--accent-primary)] transition-all duration-200
+            ${isActive ? 'h-5 top-[7.5px]' : 'h-0 top-[17.5px] opacity-0'}`}
+          />
+          <button
+            id={`channel-${channel.id}`}
+            onClick={() => handleSelectChannel(channel)}
+            className={`flex-1 flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg border-none cursor-pointer text-left transition-all duration-150 bg-transparent text-sm min-w-0 outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-primary)] active-press ${
               isActive
-                ? 'opacity-100'
-                : 'opacity-60 group-hover/channel:opacity-80'
+                ? 'text-[var(--theme-btn-active-text)] font-semibold'
+                : 'text-[var(--text-secondary)] font-normal'
             }`}
           >
-            {channel.layout === 'bubble' ? (
-              <span className="w-[15px] h-[15px] flex items-center justify-center text-[var(--text-secondary)]">
-                <IconMessageDm />
-              </span>
-            ) : (
-              <IconHash />
+            <span
+              className={`flex-shrink-0 transition-opacity duration-150 ${
+                isActive
+                  ? 'opacity-100'
+                  : 'opacity-60 group-hover/channel:opacity-80'
+              }`}
+            >
+              {channel.layout === 'bubble' ? (
+                <span className="w-[15px] h-[15px] flex items-center justify-center text-[var(--text-secondary)]">
+                  <IconMessageDm />
+                </span>
+              ) : channel.layout === 'voice' ? (
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  className="w-[14px] h-[14px]"
+                >
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                  <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                  <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+                </svg>
+              ) : (
+                <IconHash />
+              )}
+            </span>
+            <span className="truncate">{channel.name}</span>
+            {hasUnread && channel.layout !== 'voice' && (
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-primary)] animate-pulse shrink-0 ml-1.5" />
             )}
-          </span>
-          <span className="truncate">{channel.name}</span>
-          {hasUnread && (
-            <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-primary)] animate-pulse shrink-0 ml-1.5" />
-          )}
-        </button>
+          </button>
 
-        {canManage && (
-          <div className="flex gap-1 items-center">
-            <button
-              title="Channel Settings"
-              onClick={(e) => {
-                e.stopPropagation();
-                onEditChannel(channel);
-              }}
-              className="bg-transparent border-none cursor-pointer text-[var(--text-muted)] p-1 rounded hover:text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center transition-all duration-150 opacity-0 group-hover/channel:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-primary)] spin-hover active-press"
-            >
-              <IconSettings />
-            </button>
-            <button
-              title="Delete Channel"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDeleteChannel(channel);
-              }}
-              className="bg-transparent border-none cursor-pointer text-[var(--danger)] p-1 rounded hover:bg-[var(--danger-bg)] flex items-center transition-all duration-150 opacity-0 group-hover/channel:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-primary)] active-press"
-            >
-              <IconTrash />
-            </button>
+          {canManage && (
+            <div className="flex gap-1 items-center">
+              <button
+                title="Channel Settings"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEditChannel(channel);
+                }}
+                className="bg-transparent border-none cursor-pointer text-[var(--text-muted)] p-1 rounded hover:text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center transition-all duration-150 opacity-0 group-hover/channel:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-primary)] spin-hover active-press"
+              >
+                <IconSettings />
+              </button>
+              <button
+                title="Delete Channel"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteChannel(channel);
+                }}
+                className="bg-transparent border-none cursor-pointer text-[var(--danger)] p-1 rounded hover:bg-[var(--danger-bg)] flex items-center transition-all duration-150 opacity-0 group-hover/channel:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-primary)] active-press"
+              >
+                <IconTrash />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Connected voice participants nested list */}
+        {channel.layout === 'voice' && channelVoiceStates.length > 0 && (
+          <div className="pl-6 pr-2.5 py-1 flex flex-col gap-2 mt-0.5 border-l border-[rgba(255,255,255,0.06)] ml-4">
+            {channelVoiceStates.map((vs) => {
+              const member = group.members.find((m) => m.userId === vs.userId);
+              const profile = member?.user;
+              if (!profile) {
+                return null;
+              }
+
+              return (
+                <div
+                  key={vs.userId}
+                  className="flex items-center justify-between py-0.5 animate-fade-in"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Avatar
+                      letter={(profile.username ||
+                        profile.displayName ||
+                        profile.email ||
+                        'U')[0].toUpperCase()}
+                      url={profile.avatarThumbnailUrl || profile.avatarUrl}
+                      size="xs"
+                    />
+                    <span className="text-[12px] text-[var(--text-secondary)] truncate">
+                      {profile.username
+                        ? `@${profile.username}`
+                        : profile.displayName || profile.email.split('@')[0]}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {vs.isMuted && (
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="var(--danger)"
+                        strokeWidth="2"
+                        className="w-[13px] h-[13px] opacity-80"
+                      >
+                        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                        <path d="M19 10v1a7 7 0 0 1-14 0v-1M12 19v3M8 22h8" />
+                        <line
+                          x1="1"
+                          y1="1"
+                          x2="23"
+                          y2="23"
+                          stroke="var(--danger)"
+                          strokeWidth="2.5"
+                        />
+                      </svg>
+                    )}
+                    {vs.isDeafened && (
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="var(--danger)"
+                        strokeWidth="2"
+                        className="w-[13px] h-[13px] opacity-80"
+                      >
+                        <path d="M3 18v-6a9 9 0 0 1 18 0v6M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3" />
+                        <line
+                          x1="1"
+                          y1="1"
+                          x2="23"
+                          y2="23"
+                          stroke="var(--danger)"
+                          strokeWidth="2.5"
+                        />
+                      </svg>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -695,6 +831,149 @@ export const ChannelSidebar = ({
           </div>
         )}
       </div>
+
+      {/* Bottom Voice Status Bar */}
+      {activeVoiceChannelId && (
+        <div className="mx-2 mb-2 p-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--theme-btn-active)] backdrop-blur-md flex flex-col gap-2 shadow-md animate-fade-in text-[var(--theme-btn-active-text)]">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="relative flex h-2 w-2 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-[9.5px] font-bold text-green-500 uppercase tracking-wider">
+                  Voice Connected
+                </span>
+                <span className="text-xs truncate font-semibold">
+                  {group.channels.find((c) => c.id === activeVoiceChannelId)
+                    ?.name || 'Voice Channel'}
+                </span>
+              </div>
+            </div>
+
+            <button
+              title="Disconnect Call"
+              onClick={handleDisconnectVoice}
+              className="p-1.5 rounded-lg border-none bg-[var(--danger)] text-white hover:bg-red-600 active:scale-95 transition-all cursor-pointer flex items-center justify-center shrink-0"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                className="w-3.5 h-3.5"
+              >
+                <path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-5.33-5.34A19.79 19.79 0 0 1 2 3.18 2 2 0 0 1 4 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8 8.91c1.07 1.27 2.2 2.4 3.47 3.47z" />
+                <line
+                  x1="1"
+                  y1="1"
+                  x2="23"
+                  y2="23"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                />
+              </svg>
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between border-t border-[rgba(255,255,255,0.08)] pt-2 mt-1">
+            <button
+              onClick={handleToggleMute}
+              className={`flex-1 flex items-center justify-center gap-1 py-1 rounded-lg border-none text-[11px] font-semibold cursor-pointer transition-all active:scale-95
+                ${
+                  isSelfMuted
+                    ? 'bg-[var(--danger-bg)] text-[var(--danger)]'
+                    : 'bg-transparent text-[var(--theme-btn-active-text)] hover:bg-[rgba(255,255,255,0.05)] opacity-80 hover:opacity-100'
+                }`}
+            >
+              {isSelfMuted ? (
+                <>
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    className="w-3.5 h-3.5"
+                  >
+                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                    <path d="M19 10v1a7 7 0 0 1-14 0v-1M12 19v3M8 22h8" />
+                    <line
+                      x1="1"
+                      y1="1"
+                      x2="23"
+                      y2="23"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                    />
+                  </svg>
+                  Unmute
+                </>
+              ) : (
+                <>
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    className="w-3.5 h-3.5"
+                  >
+                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                    <path d="M19 10v1a7 7 0 0 1-14 0v-1M12 19v3M8 22h8" />
+                  </svg>
+                  Mute
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={handleToggleDeafen}
+              className={`flex-1 flex items-center justify-center gap-1 py-1 rounded-lg border-none text-[11px] font-semibold cursor-pointer transition-all active:scale-95
+                ${
+                  isSelfDeafened
+                    ? 'bg-[var(--danger-bg)] text-[var(--danger)]'
+                    : 'bg-transparent text-[var(--theme-btn-active-text)] hover:bg-[rgba(255,255,255,0.05)] opacity-80 hover:opacity-100'
+                }`}
+            >
+              {isSelfDeafened ? (
+                <>
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    className="w-3.5 h-3.5"
+                  >
+                    <path d="M3 18v-6a9 9 0 0 1 18 0v6M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3" />
+                    <line
+                      x1="1"
+                      y1="1"
+                      x2="23"
+                      y2="23"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                    />
+                  </svg>
+                  Undeafen
+                </>
+              ) : (
+                <>
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    className="w-3.5 h-3.5"
+                  >
+                    <path d="M3 18v-6a9 9 0 0 1 18 0v6M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3" />
+                  </svg>
+                  Deafen
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Bottom User Bar */}
       <div className="p-3 border-t-[1.5px] border-theme flex items-center gap-2 bg-[rgba(0,0,0,0.05)] dark:bg-[rgba(255,255,255,0.015)] shadow-inner">

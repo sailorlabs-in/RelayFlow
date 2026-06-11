@@ -343,7 +343,7 @@ export class GroupsService {
     groupId: string,
     requesterId: string,
     name: string,
-    layout?: 'text' | 'bubble',
+    layout?: 'text' | 'bubble' | 'voice',
     allowedRoleIds?: string[],
     sectionId?: string,
   ): Promise<Conversation> {

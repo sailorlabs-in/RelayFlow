@@ -40,6 +40,8 @@ import {
   socketSectionDeleted,
   socketSectionsReordered,
   socketChannelsReordered,
+  socketVoiceStateChanged,
+  socketVoicePresenceSync,
 } from './slices/groupsSlice';
 
 import { SOCKET_URL } from '../constants/config';
@@ -425,6 +427,29 @@ class SocketManager {
       },
     );
 
+    // Voice channel socket events
+    this.socket.on('voice.state.changed', (data: any) => {
+      PrintLog('🎙 Socket voice.state.changed:', data);
+      store.dispatch(socketVoiceStateChanged(data));
+    });
+
+    this.socket.on('voice.presence.sync', (data: any) => {
+      PrintLog('🎙 Socket voice.presence.sync:', data);
+      store.dispatch(socketVoicePresenceSync(data));
+    });
+
+    this.socket.on(
+      'voice.signal',
+      (data: { senderUserId: string; signal: any }) => {
+        PrintLog('🎙 Socket voice.signal:', data.senderUserId);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('voice-signal', { detail: data }),
+          );
+        }
+      },
+    );
+
     // Friend / relationship socket events
     this.socket.on('friend.request.received', (friendship: any) => {
       PrintLog('👤 Socket friend.request.received:', friendship.id);
@@ -682,6 +707,37 @@ class SocketManager {
         status,
         autoStatus: autoStatus || 'online',
       });
+    }
+  }
+
+  joinVoice(groupId: string, channelId: string) {
+    if (this.socket?.connected) {
+      PrintLog(
+        `📡 Emitting voice.join for room: ${channelId} in group: ${groupId}`,
+      );
+      this.socket.emit('voice.join', { groupId, channelId });
+    }
+  }
+
+  leaveVoice() {
+    if (this.socket?.connected) {
+      PrintLog('📡 Emitting voice.leave');
+      this.socket.emit('voice.leave');
+    }
+  }
+
+  updateVoiceState(isMuted: boolean, isDeafened: boolean) {
+    if (this.socket?.connected) {
+      PrintLog(
+        `📡 Emitting voice.state.update: isMuted=${isMuted}, isDeafened=${isDeafened}`,
+      );
+      this.socket.emit('voice.state.update', { isMuted, isDeafened });
+    }
+  }
+
+  sendVoiceSignal(targetUserId: string, signal: any) {
+    if (this.socket?.connected) {
+      this.socket.emit('voice.signal', { targetUserId, signal });
     }
   }
 

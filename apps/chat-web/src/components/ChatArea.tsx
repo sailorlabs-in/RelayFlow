@@ -255,6 +255,7 @@ export const ChatArea = ({
     (c) => c.id === activeConversationId,
   );
   const isBubbleLayout = !isChannelMode || activeChannel?.layout === 'bubble';
+  const isVoiceChannel = isChannelMode && activeChannel?.layout === 'voice';
 
   // --- Local state ---
   const [messageInput, setMessageInput] = useState('');
@@ -965,23 +966,37 @@ export const ChatArea = ({
               /* Channel mode header */
               <div className="flex-1 min-w-0 flex items-center gap-2.5">
                 <span className="text-[var(--text-muted)] flex shrink-0">
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    className="w-5 h-5"
-                  >
-                    <line x1="4" y1="9" x2="20" y2="9" />
-                    <line x1="4" y1="15" x2="20" y2="15" />
-                    <line x1="10" y1="3" x2="8" y2="21" />
-                    <line x1="16" y1="3" x2="14" y2="21" />
-                  </svg>
+                  {isVoiceChannel ? (
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      className="w-5 h-5"
+                    >
+                      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                      <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                      <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+                    </svg>
+                  ) : (
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      className="w-5 h-5"
+                    >
+                      <line x1="4" y1="9" x2="20" y2="9" />
+                      <line x1="4" y1="15" x2="20" y2="15" />
+                      <line x1="10" y1="3" x2="8" y2="21" />
+                      <line x1="16" y1="3" x2="14" y2="21" />
+                    </svg>
+                  )}
                 </span>
                 <h3 className="text-[16px] font-bold tracking-tight truncate text-[var(--text-primary)]">
                   {activeChannelName || activeDetails?.name || ''}
                 </h3>
-                {isActiveTyping && (
+                {isActiveTyping && !isVoiceChannel && (
                   <span className="text-[11.5px] font-medium ml-2 animate-pulse text-[var(--accent-primary)]">
                     {getTypingText()}…
                   </span>
@@ -1063,83 +1078,248 @@ export const ChatArea = ({
             )}
           </div>
 
-          {/* Message Feed */}
-          <div
-            ref={feedContainerRef}
-            onScroll={handleScroll}
-            className="flex-1 overflow-y-auto flex flex-col gap-3.5 p-5 bg-[var(--bg-chat)]"
-          >
-            {isFetchingMore && (
-              <div className="flex justify-center py-2 shrink-0">
-                <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin border-[var(--accent-primary)]" />
-              </div>
-            )}
-            {activeMessages.length === 0 ? (
-              <div className="flex-1 flex flex-col items-center justify-center gap-2.5 text-[13.5px] text-[var(--text-muted)]">
-                <IconChat />
-                <span>No messages yet. Send a greeting to begin.</span>
-              </div>
-            ) : (
-              activeMessages.map((msg) => {
-                const isOut = msg.senderId === user.id;
-                const senderProfile = userProfiles[msg.senderId];
-                const senderName = isOut
-                  ? user.username
-                    ? `@${user.username}`
-                    : user.displayName || user.email.split('@')[0]
-                  : senderProfile?.username
-                    ? `@${senderProfile.username}`
-                    : senderProfile?.displayName ||
-                      senderProfile?.email?.split('@')[0] ||
-                      'User';
+          {isVoiceChannel && activeGroupId && activeChannel ? (
+            <div
+              id="voice-dashboard-portal-container"
+              className="flex-1 min-h-0 relative flex flex-col"
+            />
+          ) : (
+            <>
+              {/* Message Feed */}
+              <div
+                ref={feedContainerRef}
+                onScroll={handleScroll}
+                className="flex-1 overflow-y-auto flex flex-col gap-3.5 p-5 bg-[var(--bg-chat)]"
+              >
+                {isFetchingMore && (
+                  <div className="flex justify-center py-2 shrink-0">
+                    <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin border-[var(--accent-primary)]" />
+                  </div>
+                )}
+                {activeMessages.length === 0 ? (
+                  <div className="flex-1 flex flex-col items-center justify-center gap-2.5 text-[13.5px] text-[var(--text-muted)]">
+                    <IconChat />
+                    <span>No messages yet. Send a greeting to begin.</span>
+                  </div>
+                ) : (
+                  activeMessages.map((msg) => {
+                    const isOut = msg.senderId === user.id;
+                    const senderProfile = userProfiles[msg.senderId];
+                    const senderName = isOut
+                      ? user.username
+                        ? `@${user.username}`
+                        : user.displayName || user.email.split('@')[0]
+                      : senderProfile?.username
+                        ? `@${senderProfile.username}`
+                        : senderProfile?.displayName ||
+                          senderProfile?.email?.split('@')[0] ||
+                          'User';
 
-                // Determine sender color if it's channel mode
-                let senderColor = 'inherit';
-                if (isChannelMode && activeGroup) {
-                  const member = activeGroup.members?.find(
-                    (mem) => mem.userId === msg.senderId,
-                  );
-                  if (member) {
-                    const memberRoleIds = member.roleIds || [];
-                    const matchingRole = activeGroup.roles?.find((r) =>
-                      memberRoleIds.includes(r.id),
-                    );
-                    senderColor =
-                      matchingRole?.color ||
-                      (msg.senderId === activeGroup.ownerId
-                        ? '#eab308'
-                        : 'inherit');
-                  }
-                }
+                    // Determine sender color if it's channel mode
+                    let senderColor = 'inherit';
+                    if (isChannelMode && activeGroup) {
+                      const member = activeGroup.members?.find(
+                        (mem) => mem.userId === msg.senderId,
+                      );
+                      if (member) {
+                        const memberRoleIds = member.roleIds || [];
+                        const matchingRole = activeGroup.roles?.find((r) =>
+                          memberRoleIds.includes(r.id),
+                        );
+                        senderColor =
+                          matchingRole?.color ||
+                          (msg.senderId === activeGroup.ownerId
+                            ? '#eab308'
+                            : 'inherit');
+                      }
+                    }
 
-                if (!isBubbleLayout) {
-                  const letter =
-                    (senderName.startsWith('@')
-                      ? senderName.slice(1)
-                      : senderName)[0]?.toUpperCase() || 'U';
-                  const presenceStatus = isOut
-                    ? onlineUsers[user.id] || user.status || 'online'
-                    : onlineUsers[msg.senderId] || 'offline';
-                  return (
-                    <div
-                      key={msg.id}
-                      onContextMenu={(e) => handleContextMenu(e, msg)}
-                      className="flex items-start gap-3 animate-fade-in group justify-between hover:bg-[rgba(0,0,0,0.015)] dark:hover:bg-[rgba(255,255,255,0.01)] rounded-xl px-2 py-1.5 transition-colors duration-150 -mx-2"
-                    >
-                      <div className="flex items-start gap-3 flex-1 min-w-0">
-                        <Avatar
-                          letter={letter}
-                          url={
-                            isOut
-                              ? user.avatarThumbnailUrl || user.avatarUrl
-                              : senderProfile?.avatarThumbnailUrl ||
+                    if (!isBubbleLayout) {
+                      const letter =
+                        (senderName.startsWith('@')
+                          ? senderName.slice(1)
+                          : senderName)[0]?.toUpperCase() || 'U';
+                      const presenceStatus = isOut
+                        ? onlineUsers[user.id] || user.status || 'online'
+                        : onlineUsers[msg.senderId] || 'offline';
+                      return (
+                        <div
+                          key={msg.id}
+                          onContextMenu={(e) => handleContextMenu(e, msg)}
+                          className="flex items-start gap-3 animate-fade-in group justify-between hover:bg-[rgba(0,0,0,0.015)] dark:hover:bg-[rgba(255,255,255,0.01)] rounded-xl px-2 py-1.5 transition-colors duration-150 -mx-2"
+                        >
+                          <div className="flex items-start gap-3 flex-1 min-w-0">
+                            <Avatar
+                              letter={letter}
+                              url={
+                                isOut
+                                  ? user.avatarThumbnailUrl || user.avatarUrl
+                                  : senderProfile?.avatarThumbnailUrl ||
+                                    senderProfile?.avatarUrl
+                              }
+                              status={presenceStatus}
+                              size="sm"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-baseline gap-2 mb-1">
+                                <span
+                                  style={{
+                                    color:
+                                      senderColor !== 'inherit'
+                                        ? senderColor
+                                        : undefined,
+                                  }}
+                                  className={`text-[13.5px] font-bold ${isOut ? 'text-[var(--accent-primary)]' : ''} ${!isOut && senderColor === 'inherit' ? 'text-[var(--text-primary)]' : ''}`}
+                                >
+                                  {senderName}
+                                </span>
+                                <span className="text-[10.5px] text-[var(--text-muted)]">
+                                  {new Date(msg.createdAt).toLocaleTimeString(
+                                    [],
+                                    {
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    },
+                                  )}
+                                </span>
+                                {msg.isEdited && (
+                                  <span className="text-[9.5px] text-[var(--text-muted)] opacity-85 select-none">
+                                    (edited)
+                                  </span>
+                                )}
+                              </div>
+                              {editingMessageId === msg.id ? (
+                                <div className="flex flex-col gap-2 mt-1 max-w-full">
+                                  <textarea
+                                    autoFocus
+                                    value={editingContent}
+                                    onChange={(e) =>
+                                      setEditingContent(e.target.value)
+                                    }
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' && !e.shiftKey) {
+                                        e.preventDefault();
+                                        handleSaveEdit(msg.id);
+                                      } else if (e.key === 'Escape') {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setEditingMessageId(null);
+                                        setEditingContent('');
+                                      }
+                                    }}
+                                    className="w-full bg-[var(--bg-input)] text-[var(--text-primary)] border border-[var(--border-muted)] rounded-lg p-2 text-sm focus:outline-none focus:border-[var(--accent-primary)] resize-none"
+                                    rows={2}
+                                  />
+                                  <div className="flex gap-2 justify-start text-[11px] text-[var(--text-muted)]">
+                                    <span>
+                                      escape to{' '}
+                                      <button
+                                        onClick={() => {
+                                          setEditingMessageId(null);
+                                          setEditingContent('');
+                                        }}
+                                        className="text-[var(--accent-primary)] hover:underline cursor-pointer bg-transparent border-none p-0"
+                                      >
+                                        cancel
+                                      </button>
+                                    </span>
+                                    <span>•</span>
+                                    <span>
+                                      enter to{' '}
+                                      <button
+                                        onClick={() => handleSaveEdit(msg.id)}
+                                        className="text-[var(--accent-primary)] hover:underline cursor-pointer bg-transparent border-none p-0"
+                                      >
+                                        save
+                                      </button>
+                                    </span>
+                                  </div>
+                                </div>
+                              ) : (
+                                <>
+                                  {msg.content && (
+                                    <div
+                                      className={`text-sm leading-relaxed text-[var(--text-primary)] break-all ${isOnlyEmojis(msg.content) ? 'text-[60px] leading-[60px]' : ''}`}
+                                    >
+                                      {msg.content}
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                              {renderMessageMedia(msg, setActiveMediaItem)}
+                            </div>
+                          </div>
+                          {isOut && editingMessageId !== msg.id && (
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 shrink-0">
+                              <button
+                                onClick={() => handleStartEdit(msg)}
+                                className="flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-[var(--bg-input)] text-[var(--text-secondary)] hover:text-[var(--accent-primary)] active-press"
+                                title="Edit message"
+                              >
+                                <IconCompose />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteMessage(msg.id)}
+                                className="msg-delete-btn flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-[var(--danger-bg)] text-[var(--danger)] active-press"
+                                title="Delete message"
+                              >
+                                <IconTrash />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    const letter =
+                      (senderName.startsWith('@')
+                        ? senderName.slice(1)
+                        : senderName)[0]?.toUpperCase() || 'U';
+                    const presenceStatus = isOut
+                      ? onlineUsers[user.id] || user.status || 'online'
+                      : onlineUsers[msg.senderId] || 'offline';
+
+                    return (
+                      <div
+                        key={msg.id}
+                        onContextMenu={(e) => handleContextMenu(e, msg)}
+                        className={`flex items-start gap-2.5 group max-w-[72%] animate-fade-in ${isOut ? 'self-end' : 'self-start'}`}
+                      >
+                        {isOut && editingMessageId !== msg.id && (
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 shrink-0 self-center">
+                            <button
+                              onClick={() => handleStartEdit(msg)}
+                              className="flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-[var(--bg-input)] text-[var(--text-secondary)] hover:text-[var(--accent-primary)] active-press"
+                              title="Edit message"
+                            >
+                              <IconCompose />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteMessage(msg.id)}
+                              className="msg-delete-btn flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-[var(--danger-bg)] text-[var(--danger)] active-press"
+                              title="Delete message"
+                            >
+                              <IconTrash />
+                            </button>
+                          </div>
+                        )}
+                        {!isOut && isChannelMode && (
+                          <div className="shrink-0 mt-0.5">
+                            <Avatar
+                              letter={letter}
+                              url={
+                                senderProfile?.avatarThumbnailUrl ||
                                 senderProfile?.avatarUrl
-                          }
-                          status={presenceStatus}
-                          size="sm"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-baseline gap-2 mb-1">
+                              }
+                              status={presenceStatus}
+                              size="sm"
+                            />
+                          </div>
+                        )}
+                        <div
+                          className={`flex flex-col ${isOut ? 'items-end' : 'items-start'} min-w-0`}
+                        >
+                          {!isOut && isChannelMode && (
                             <span
                               style={{
                                 color:
@@ -1147,24 +1327,13 @@ export const ChatArea = ({
                                     ? senderColor
                                     : undefined,
                               }}
-                              className={`text-[13.5px] font-bold ${isOut ? 'text-[var(--accent-primary)]' : ''} ${!isOut && senderColor === 'inherit' ? 'text-[var(--text-primary)]' : ''}`}
+                              className="text-[11.5px] font-bold mb-1 ml-1.5 text-[var(--text-secondary)]"
                             >
                               {senderName}
                             </span>
-                            <span className="text-[10.5px] text-[var(--text-muted)]">
-                              {new Date(msg.createdAt).toLocaleTimeString([], {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })}
-                            </span>
-                            {msg.isEdited && (
-                              <span className="text-[9.5px] text-[var(--text-muted)] opacity-85 select-none">
-                                (edited)
-                              </span>
-                            )}
-                          </div>
+                          )}
                           {editingMessageId === msg.id ? (
-                            <div className="flex flex-col gap-2 mt-1 max-w-full">
+                            <div className="flex flex-col gap-2 mt-1 w-[260px] sm:w-[350px]">
                               <textarea
                                 autoFocus
                                 value={editingContent}
@@ -1185,7 +1354,7 @@ export const ChatArea = ({
                                 className="w-full bg-[var(--bg-input)] text-[var(--text-primary)] border border-[var(--border-muted)] rounded-lg p-2 text-sm focus:outline-none focus:border-[var(--accent-primary)] resize-none"
                                 rows={2}
                               />
-                              <div className="flex gap-2 justify-start text-[11px] text-[var(--text-muted)]">
+                              <div className="flex gap-2 justify-end text-[11px] text-[var(--text-muted)]">
                                 <span>
                                   escape to{' '}
                                   <button
@@ -1214,7 +1383,11 @@ export const ChatArea = ({
                             <>
                               {msg.content && (
                                 <div
-                                  className={`text-sm leading-relaxed text-[var(--text-primary)] break-all ${isOnlyEmojis(msg.content) ? 'text-[60px] leading-[60px]' : ''}`}
+                                  className={
+                                    isOnlyEmojis(msg.content)
+                                      ? `text-[60px] leading-[60px] break-words select-all ${isOut ? 'text-right' : 'text-left'}`
+                                      : `px-4 py-2.5 rounded-[18px] text-[14px] leading-relaxed break-words ${isOut ? 'msg-bubble-out' : 'msg-bubble-in'}`
+                                  }
                                 >
                                   {msg.content}
                                 </div>
@@ -1222,414 +1395,276 @@ export const ChatArea = ({
                             </>
                           )}
                           {renderMessageMedia(msg, setActiveMediaItem)}
-                        </div>
-                      </div>
-                      {isOut && editingMessageId !== msg.id && (
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 shrink-0">
-                          <button
-                            onClick={() => handleStartEdit(msg)}
-                            className="flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-[var(--bg-input)] text-[var(--text-secondary)] hover:text-[var(--accent-primary)] active-press"
-                            title="Edit message"
-                          >
-                            <IconCompose />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteMessage(msg.id)}
-                            className="msg-delete-btn flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-[var(--danger-bg)] text-[var(--danger)] active-press"
-                            title="Delete message"
-                          >
-                            <IconTrash />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                }
-
-                const letter =
-                  (senderName.startsWith('@')
-                    ? senderName.slice(1)
-                    : senderName)[0]?.toUpperCase() || 'U';
-                const presenceStatus = isOut
-                  ? onlineUsers[user.id] || user.status || 'online'
-                  : onlineUsers[msg.senderId] || 'offline';
-
-                return (
-                  <div
-                    key={msg.id}
-                    onContextMenu={(e) => handleContextMenu(e, msg)}
-                    className={`flex items-start gap-2.5 group max-w-[72%] animate-fade-in ${isOut ? 'self-end' : 'self-start'}`}
-                  >
-                    {isOut && editingMessageId !== msg.id && (
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 shrink-0 self-center">
-                        <button
-                          onClick={() => handleStartEdit(msg)}
-                          className="flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-[var(--bg-input)] text-[var(--text-secondary)] hover:text-[var(--accent-primary)] active-press"
-                          title="Edit message"
-                        >
-                          <IconCompose />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteMessage(msg.id)}
-                          className="msg-delete-btn flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-[var(--danger-bg)] text-[var(--danger)] active-press"
-                          title="Delete message"
-                        >
-                          <IconTrash />
-                        </button>
-                      </div>
-                    )}
-                    {!isOut && isChannelMode && (
-                      <div className="shrink-0 mt-0.5">
-                        <Avatar
-                          letter={letter}
-                          url={
-                            senderProfile?.avatarThumbnailUrl ||
-                            senderProfile?.avatarUrl
-                          }
-                          status={presenceStatus}
-                          size="sm"
-                        />
-                      </div>
-                    )}
-                    <div
-                      className={`flex flex-col ${isOut ? 'items-end' : 'items-start'} min-w-0`}
-                    >
-                      {!isOut && isChannelMode && (
-                        <span
-                          style={{
-                            color:
-                              senderColor !== 'inherit'
-                                ? senderColor
-                                : undefined,
-                          }}
-                          className="text-[11.5px] font-bold mb-1 ml-1.5 text-[var(--text-secondary)]"
-                        >
-                          {senderName}
-                        </span>
-                      )}
-                      {editingMessageId === msg.id ? (
-                        <div className="flex flex-col gap-2 mt-1 w-[260px] sm:w-[350px]">
-                          <textarea
-                            autoFocus
-                            value={editingContent}
-                            onChange={(e) => setEditingContent(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' && !e.shiftKey) {
-                                e.preventDefault();
-                                handleSaveEdit(msg.id);
-                              } else if (e.key === 'Escape') {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setEditingMessageId(null);
-                                setEditingContent('');
-                              }
-                            }}
-                            className="w-full bg-[var(--bg-input)] text-[var(--text-primary)] border border-[var(--border-muted)] rounded-lg p-2 text-sm focus:outline-none focus:border-[var(--accent-primary)] resize-none"
-                            rows={2}
-                          />
-                          <div className="flex gap-2 justify-end text-[11px] text-[var(--text-muted)]">
-                            <span>
-                              escape to{' '}
-                              <button
-                                onClick={() => {
-                                  setEditingMessageId(null);
-                                  setEditingContent('');
-                                }}
-                                className="text-[var(--accent-primary)] hover:underline cursor-pointer bg-transparent border-none p-0"
-                              >
-                                cancel
-                              </button>
+                          <div className="flex items-center gap-1.5 mt-1 px-1 select-none">
+                            <span className="text-[10px] text-[var(--text-muted)]">
+                              {new Date(msg.createdAt).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
                             </span>
-                            <span>•</span>
-                            <span>
-                              enter to{' '}
-                              <button
-                                onClick={() => handleSaveEdit(msg.id)}
-                                className="text-[var(--accent-primary)] hover:underline cursor-pointer bg-transparent border-none p-0"
+                            {msg.isEdited && (
+                              <span className="text-[9.5px] text-[var(--text-muted)] opacity-85 select-none">
+                                (edited)
+                              </span>
+                            )}
+                            {isOut && !isChannelMode && (
+                              <span
+                                className={`inline-flex items-center ${msg.isRead ? 'text-[var(--accent-primary)]' : 'text-[var(--text-muted)]'}`}
+                                title={msg.isRead ? 'Read' : 'Sent'}
                               >
-                                save
-                              </button>
-                            </span>
+                                {msg.isRead ? (
+                                  <IconDoubleCheck />
+                                ) : (
+                                  <IconCheck />
+                                )}
+                              </span>
+                            )}
                           </div>
                         </div>
-                      ) : (
-                        <>
-                          {msg.content && (
-                            <div
-                              className={
-                                isOnlyEmojis(msg.content)
-                                  ? `text-[60px] leading-[60px] break-words select-all ${isOut ? 'text-right' : 'text-left'}`
-                                  : `px-4 py-2.5 rounded-[18px] text-[14px] leading-relaxed break-words ${isOut ? 'msg-bubble-out' : 'msg-bubble-in'}`
-                              }
-                            >
-                              {msg.content}
-                            </div>
-                          )}
-                        </>
-                      )}
-                      {renderMessageMedia(msg, setActiveMediaItem)}
-                      <div className="flex items-center gap-1.5 mt-1 px-1 select-none">
-                        <span className="text-[10px] text-[var(--text-muted)]">
-                          {new Date(msg.createdAt).toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
+                      </div>
+                    );
+                  })
+                )}
+
+                {/* Typing indicator */}
+                {isActiveTyping && (
+                  <div className="self-start flex items-center gap-2 px-4 py-2.5 rounded-[18px] animate-fade-in msg-bubble-in text-[13px] text-[var(--text-secondary)]">
+                    {isChannelMode ? (
+                      <>
+                        <span className="font-semibold text-[var(--text-primary)]">
+                          {getTypingText()}
                         </span>
-                        {msg.isEdited && (
-                          <span className="text-[9.5px] text-[var(--text-muted)] opacity-85 select-none">
-                            (edited)
-                          </span>
-                        )}
-                        {isOut && !isChannelMode && (
+                        <div className="flex items-center gap-1 ml-1">
                           <span
-                            className={`inline-flex items-center ${msg.isRead ? 'text-[var(--accent-primary)]' : 'text-[var(--text-muted)]'}`}
-                            title={msg.isRead ? 'Read' : 'Sent'}
-                          >
-                            {msg.isRead ? <IconDoubleCheck /> : <IconCheck />}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-
-            {/* Typing indicator */}
-            {isActiveTyping && (
-              <div className="self-start flex items-center gap-2 px-4 py-2.5 rounded-[18px] animate-fade-in msg-bubble-in text-[13px] text-[var(--text-secondary)]">
-                {isChannelMode ? (
-                  <>
-                    <span className="font-semibold text-[var(--text-primary)]">
-                      {getTypingText()}
-                    </span>
-                    <div className="flex items-center gap-1 ml-1">
-                      <span
-                        className="typing-dot"
-                        style={{
-                          animationDelay: '0s',
-                          width: '5px',
-                          height: '5px',
-                        }}
-                      />
-                      <span
-                        className="typing-dot"
-                        style={{
-                          animationDelay: '0.15s',
-                          width: '5px',
-                          height: '5px',
-                        }}
-                      />
-                      <span
-                        className="typing-dot"
-                        style={{
-                          animationDelay: '0.30s',
-                          width: '5px',
-                          height: '5px',
-                        }}
-                      />
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <span
-                      className="typing-dot"
-                      style={{ animationDelay: '0s' }}
-                    />
-                    <span
-                      className="typing-dot"
-                      style={{ animationDelay: '0.15s' }}
-                    />
-                    <span
-                      className="typing-dot"
-                      style={{ animationDelay: '0.30s' }}
-                    />
-                  </>
-                )}
-              </div>
-            )}
-
-            <div ref={feedEndRef} />
-          </div>
-
-          {/* Input Area */}
-          <div className="px-4 py-3.5 border-t border-[var(--border-muted)] bg-[var(--bg-sidebar)] rounded-b-2xl">
-            {attachedFiles.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-2 max-w-full">
-                {attachedFiles.map((file, idx) => (
-                  <div
-                    key={file.url + idx}
-                    className="flex items-center gap-3 p-2 rounded-xl border border-[var(--border-muted)] bg-[var(--bg-input)] animate-fade-in text-[13px] relative max-w-[200px]"
-                  >
-                    {file.type.startsWith('image/') ? (
-                      <img
-                        src={file.url}
-                        alt="Preview"
-                        className="w-10 h-10 object-cover rounded-lg shrink-0"
-                      />
+                            className="typing-dot"
+                            style={{
+                              animationDelay: '0s',
+                              width: '5px',
+                              height: '5px',
+                            }}
+                          />
+                          <span
+                            className="typing-dot"
+                            style={{
+                              animationDelay: '0.15s',
+                              width: '5px',
+                              height: '5px',
+                            }}
+                          />
+                          <span
+                            className="typing-dot"
+                            style={{
+                              animationDelay: '0.30s',
+                              width: '5px',
+                              height: '5px',
+                            }}
+                          />
+                        </div>
+                      </>
                     ) : (
-                      <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-[var(--accent-primary)] text-white text-[16px] shrink-0">
-                        📄
-                      </div>
+                      <>
+                        <span
+                          className="typing-dot"
+                          style={{ animationDelay: '0s' }}
+                        />
+                        <span
+                          className="typing-dot"
+                          style={{ animationDelay: '0.15s' }}
+                        />
+                        <span
+                          className="typing-dot"
+                          style={{ animationDelay: '0.30s' }}
+                        />
+                      </>
                     )}
-                    <div className="flex-1 min-w-0 pr-6">
-                      <div className="font-semibold truncate text-[var(--text-primary)] text-[12px]">
-                        {file.name}
-                      </div>
-                      <div className="text-[10px] text-[var(--text-muted)] mt-0.5">
-                        {(file.size / 1024).toFixed(1)} KB
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        deleteUploadedFile(file.url);
-                        if (file.thumbnailUrl) {
-                          deleteUploadedFile(file.thumbnailUrl);
-                        }
-                        setAttachedFiles((prev) =>
-                          prev.filter((f) => f.url !== file.url),
-                        );
-                      }}
-                      className="absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center bg-[var(--danger-bg)] text-[var(--danger)] border-none cursor-pointer hover:bg-[var(--danger)] hover:text-white transition-all duration-150 active-press shadow-sm"
-                      title="Remove attachment"
-                    >
-                      <IconX size={10} />
-                    </button>
                   </div>
-                ))}
-              </div>
-            )}
-            <form
-              className="flex gap-2.5 items-end"
-              onSubmit={handleSendMessage}
-            >
-              <div className="relative" ref={emojiPickerRef}>
-                <button
-                  type="button"
-                  onClick={() => setShowEmojiPicker((prev) => !prev)}
-                  className="w-[46px] h-[46px] rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-200 bg-[var(--bg-input)] text-[var(--text-muted)] hover:bg-[var(--theme-btn-hover)] hover:text-[var(--text-primary)] active-press"
-                  title="Choose an emoji"
-                >
-                  <IconEmoji size={20} />
-                </button>
+                )}
 
-                {showEmojiPicker && (
-                  <div className="absolute bottom-[56px] left-0 z-50 shadow-[var(--glass-shadow)] rounded-[14px] overflow-hidden border border-[var(--border-muted)] bg-[var(--bg-sidebar)]">
-                    <EmojiPicker
-                      onEmojiSelect={onEmojiSelect}
-                      theme="auto"
-                      previewPosition="none"
-                    />
-                  </div>
-                )}
+                <div ref={feedEndRef} />
               </div>
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                className="w-[46px] h-[46px] rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-200 bg-[var(--bg-input)] text-[var(--text-muted)] hover:bg-[var(--theme-btn-hover)] hover:text-[var(--text-primary)] active-press"
-                title="Attach a file"
-              >
-                {uploading ? (
-                  <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin border-[var(--text-primary)]" />
-                ) : (
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    className="w-[18px] h-[18px]"
-                  >
-                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-                  </svg>
-                )}
-              </button>
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileSelect}
-                className="hidden"
-                multiple
-              />
-              <div className="relative flex-1 flex items-end">
-                {mentionQuery && emojiResults.length > 0 && (
-                  <div className="absolute bottom-full left-0 mb-2 w-[300px] max-h-[200px] overflow-y-auto bg-[var(--bg-sidebar)] border border-[var(--border-muted)] rounded-xl shadow-[var(--glass-shadow)] z-50 flex flex-col p-1">
-                    {emojiResults.map((emoji: any) => (
-                      <button
-                        key={emoji.id}
-                        type="button"
-                        className="flex items-center gap-2 px-3 py-2 text-left rounded-lg hover:bg-[var(--bg-input)] active-press cursor-pointer border-none bg-transparent"
-                        onClick={() => {
-                          const val = messageInput;
-                          const newText =
-                            val.slice(0, mentionQuery.start) +
-                            emoji.skins[0].native +
-                            val.slice(mentionQuery.end);
-                          setMessageInput(newText);
-                          setMentionQuery(null);
-                          setEmojiResults([]);
-                          document.getElementById('message-input')?.focus();
-                        }}
+
+              {/* Input Area */}
+              <div className="px-4 py-3.5 border-t border-[var(--border-muted)] bg-[var(--bg-sidebar)] rounded-b-2xl">
+                {attachedFiles.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-2 max-w-full">
+                    {attachedFiles.map((file, idx) => (
+                      <div
+                        key={file.url + idx}
+                        className="flex items-center gap-3 p-2 rounded-xl border border-[var(--border-muted)] bg-[var(--bg-input)] animate-fade-in text-[13px] relative max-w-[200px]"
                       >
-                        <span className="text-[20px] leading-none">
-                          {emoji.skins[0].native}
-                        </span>
-                        <span className="text-[13px] text-[var(--text-primary)]">
-                          :{emoji.id}:
-                        </span>
-                      </button>
+                        {file.type.startsWith('image/') ? (
+                          <img
+                            src={file.url}
+                            alt="Preview"
+                            className="w-10 h-10 object-cover rounded-lg shrink-0"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-[var(--accent-primary)] text-white text-[16px] shrink-0">
+                            📄
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0 pr-6">
+                          <div className="font-semibold truncate text-[var(--text-primary)] text-[12px]">
+                            {file.name}
+                          </div>
+                          <div className="text-[10px] text-[var(--text-muted)] mt-0.5">
+                            {(file.size / 1024).toFixed(1)} KB
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            deleteUploadedFile(file.url);
+                            if (file.thumbnailUrl) {
+                              deleteUploadedFile(file.thumbnailUrl);
+                            }
+                            setAttachedFiles((prev) =>
+                              prev.filter((f) => f.url !== file.url),
+                            );
+                          }}
+                          className="absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center bg-[var(--danger-bg)] text-[var(--danger)] border-none cursor-pointer hover:bg-[var(--danger)] hover:text-white transition-all duration-150 active-press shadow-sm"
+                          title="Remove attachment"
+                        >
+                          <IconX size={10} />
+                        </button>
+                      </div>
                     ))}
                   </div>
                 )}
-                <textarea
-                  id="message-input"
-                  className="input-base w-full block rounded-xl px-4 text-[14px] resize-none leading-normal max-h-30 bg-theme-input border-[1.5px] border-glass text-theme-primary focus:outline-none focus:border-(--accent-primary) focus:ring-[3px] focus:ring-[var(--accent-ring)] box-border"
-                  style={{
-                    minHeight: '46px',
-                    paddingTop: '11px',
-                    paddingBottom: '11px',
-                  }}
-                  placeholder="Type a message… (Enter to send)"
-                  rows={1}
-                  value={messageInput}
-                  onChange={handleInputChange}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSendMessage(e);
-                    }
-                  }}
-                  onPaste={(e) => {
-                    const items = e.clipboardData?.items;
-                    if (items) {
-                      const filesToPaste: File[] = [];
-                      for (let i = 0; i < items.length; i++) {
-                        if (items[i].kind === 'file') {
-                          const file = items[i].getAsFile();
-                          if (file) {
-                            filesToPaste.push(file);
+                <form
+                  className="flex gap-2.5 items-end"
+                  onSubmit={handleSendMessage}
+                >
+                  <div className="relative" ref={emojiPickerRef}>
+                    <button
+                      type="button"
+                      onClick={() => setShowEmojiPicker((prev) => !prev)}
+                      className="w-[46px] h-[46px] rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-200 bg-[var(--bg-input)] text-[var(--text-muted)] hover:bg-[var(--theme-btn-hover)] hover:text-[var(--text-primary)] active-press"
+                      title="Choose an emoji"
+                    >
+                      <IconEmoji size={20} />
+                    </button>
+
+                    {showEmojiPicker && (
+                      <div className="absolute bottom-[56px] left-0 z-50 shadow-[var(--glass-shadow)] rounded-[14px] overflow-hidden border border-[var(--border-muted)] bg-[var(--bg-sidebar)]">
+                        <EmojiPicker
+                          onEmojiSelect={onEmojiSelect}
+                          theme="auto"
+                          previewPosition="none"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="w-[46px] h-[46px] rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-200 bg-[var(--bg-input)] text-[var(--text-muted)] hover:bg-[var(--theme-btn-hover)] hover:text-[var(--text-primary)] active-press"
+                    title="Attach a file"
+                  >
+                    {uploading ? (
+                      <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin border-[var(--text-primary)]" />
+                    ) : (
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        className="w-[18px] h-[18px]"
+                      >
+                        <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                      </svg>
+                    )}
+                  </button>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileSelect}
+                    className="hidden"
+                    multiple
+                  />
+                  <div className="relative flex-1 flex items-end">
+                    {mentionQuery && emojiResults.length > 0 && (
+                      <div className="absolute bottom-full left-0 mb-2 w-[300px] max-h-[200px] overflow-y-auto bg-[var(--bg-sidebar)] border border-[var(--border-muted)] rounded-xl shadow-[var(--glass-shadow)] z-50 flex flex-col p-1">
+                        {emojiResults.map((emoji: any) => (
+                          <button
+                            key={emoji.id}
+                            type="button"
+                            className="flex items-center gap-2 px-3 py-2 text-left rounded-lg hover:bg-[var(--bg-input)] active-press cursor-pointer border-none bg-transparent"
+                            onClick={() => {
+                              const val = messageInput;
+                              const newText =
+                                val.slice(0, mentionQuery.start) +
+                                emoji.skins[0].native +
+                                val.slice(mentionQuery.end);
+                              setMessageInput(newText);
+                              setMentionQuery(null);
+                              setEmojiResults([]);
+                              document.getElementById('message-input')?.focus();
+                            }}
+                          >
+                            <span className="text-[20px] leading-none">
+                              {emoji.skins[0].native}
+                            </span>
+                            <span className="text-[13px] text-[var(--text-primary)]">
+                              :{emoji.id}:
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <textarea
+                      id="message-input"
+                      className="input-base w-full block rounded-xl px-4 text-[14px] resize-none leading-normal max-h-30 bg-theme-input border-[1.5px] border-glass text-theme-primary focus:outline-none focus:border-(--accent-primary) focus:ring-[3px] focus:ring-[var(--accent-ring)] box-border"
+                      style={{
+                        minHeight: '46px',
+                        paddingTop: '11px',
+                        paddingBottom: '11px',
+                      }}
+                      placeholder="Type a message… (Enter to send)"
+                      rows={1}
+                      value={messageInput}
+                      onChange={handleInputChange}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSendMessage(e);
+                        }
+                      }}
+                      onPaste={(e) => {
+                        const items = e.clipboardData?.items;
+                        if (items) {
+                          const filesToPaste: File[] = [];
+                          for (let i = 0; i < items.length; i++) {
+                            if (items[i].kind === 'file') {
+                              const file = items[i].getAsFile();
+                              if (file) {
+                                filesToPaste.push(file);
+                              }
+                            }
+                          }
+                          if (filesToPaste.length > 0) {
+                            e.preventDefault();
+                            processFiles(filesToPaste);
                           }
                         }
-                      }
-                      if (filesToPaste.length > 0) {
-                        e.preventDefault();
-                        processFiles(filesToPaste);
-                      }
+                      }}
+                    />
+                  </div>
+                  <button
+                    id="send-message-btn"
+                    type="submit"
+                    disabled={
+                      !messageInput.trim() && attachedFiles.length === 0
                     }
-                  }}
-                />
+                    className="btn-send w-[46px] h-[46px] rounded-xl flex-shrink-0 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed hover:-translate-y-0.5 hover:shadow-[var(--btn-shadow)] active-press"
+                  >
+                    <IconSend />
+                  </button>
+                </form>
               </div>
-              <button
-                id="send-message-btn"
-                type="submit"
-                disabled={!messageInput.trim() && attachedFiles.length === 0}
-                className="btn-send w-[46px] h-[46px] rounded-xl flex-shrink-0 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed hover:-translate-y-0.5 hover:shadow-[var(--btn-shadow)] active-press"
-              >
-                <IconSend />
-              </button>
-            </form>
-          </div>
+            </>
+          )}
         </>
       ) : (
         /* Empty state */

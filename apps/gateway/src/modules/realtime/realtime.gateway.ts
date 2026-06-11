@@ -167,6 +167,25 @@ export class RealtimeGateway
           )
           .map((p) => p.userId),
       });
+
+      // Fetch ALL voice state data and send to the newly connected client
+      const allVoiceRaw = await redisClient.hgetall('voice_states');
+      const voiceStatesList: any[] = [];
+      for (const [uid, vStateJson] of Object.entries(allVoiceRaw)) {
+        try {
+          const vState = JSON.parse(vStateJson);
+          voiceStatesList.push({
+            userId: uid,
+            groupId: vState.groupId,
+            channelId: vState.channelId,
+            isMuted: vState.isMuted,
+            isDeafened: vState.isDeafened,
+          });
+        } catch {
+          // ignore
+        }
+      }
+      socket.emit('voice.presence.sync', { voiceStates: voiceStatesList });
     } catch (error) {
       this.logger.error(`❌ Socket authentication error`, error);
       socket.disconnect(true);
@@ -202,6 +221,28 @@ export class RealtimeGateway
       });
       // Legacy backward-compat event
       this.server.emit('user.offline', { userId });
+
+      // Check if user was in a voice channel
+      const voiceRaw = await redisClient.hget('voice_states', userId);
+      if (voiceRaw) {
+        try {
+          const voiceState = JSON.parse(voiceRaw);
+          await redisClient.hdel('voice_states', userId);
+          // Broadcast that user left voice channel
+          this.server.emit('voice.state.changed', {
+            userId,
+            groupId: voiceState.groupId,
+            channelId: null,
+            isMuted: false,
+            isDeafened: false,
+          });
+        } catch (err) {
+          this.logger.error(
+            `Failed to handle voice state cleanup on disconnect for user ${userId}`,
+            err,
+          );
+        }
+      }
     }
   }
 
@@ -789,5 +830,110 @@ export class RealtimeGateway
     this.logger.log(
       `✔ Broadcasted updated message ${messageId} in conversation ${conversationId} to ${members.length} members`,
     );
+  }
+
+  @SubscribeMessage('voice.join')
+  async handleVoiceJoin(
+    @MessageBody() payload: { groupId: string; channelId: string },
+    @ConnectedSocket() socket: Socket,
+  ): Promise<void> {
+    const userId = socket.data.userId as string;
+    const { groupId, channelId } = payload;
+    this.logger.log(
+      `🎙 User ${userId} joining voice channel ${channelId} in group ${groupId}`,
+    );
+
+    const redisClient = this.redisService.getClient();
+    const voiceState = {
+      groupId,
+      channelId,
+      isMuted: false,
+      isDeafened: false,
+    };
+    await redisClient.hset('voice_states', userId, JSON.stringify(voiceState));
+
+    this.server.emit('voice.state.changed', {
+      userId,
+      groupId,
+      channelId,
+      isMuted: false,
+      isDeafened: false,
+    });
+  }
+
+  @SubscribeMessage('voice.leave')
+  async handleVoiceLeave(@ConnectedSocket() socket: Socket): Promise<void> {
+    const userId = socket.data.userId as string;
+    this.logger.log(`🎙 User ${userId} leaving voice channel`);
+
+    const redisClient = this.redisService.getClient();
+    const voiceRaw = await redisClient.hget('voice_states', userId);
+    if (voiceRaw) {
+      try {
+        const voiceState = JSON.parse(voiceRaw);
+        await redisClient.hdel('voice_states', userId);
+
+        this.server.emit('voice.state.changed', {
+          userId,
+          groupId: voiceState.groupId,
+          channelId: null,
+          isMuted: false,
+          isDeafened: false,
+        });
+      } catch (err) {
+        this.logger.error(`Error on voice.leave for user ${userId}`, err);
+      }
+    }
+  }
+
+  @SubscribeMessage('voice.state.update')
+  async handleVoiceStateUpdate(
+    @MessageBody() payload: { isMuted: boolean; isDeafened: boolean },
+    @ConnectedSocket() socket: Socket,
+  ): Promise<void> {
+    const userId = socket.data.userId as string;
+    const { isMuted, isDeafened } = payload;
+
+    const redisClient = this.redisService.getClient();
+    const voiceRaw = await redisClient.hget('voice_states', userId);
+    if (voiceRaw) {
+      try {
+        const voiceState = JSON.parse(voiceRaw);
+        voiceState.isMuted = isMuted;
+        voiceState.isDeafened = isDeafened;
+
+        await redisClient.hset(
+          'voice_states',
+          userId,
+          JSON.stringify(voiceState),
+        );
+
+        this.server.emit('voice.state.changed', {
+          userId,
+          groupId: voiceState.groupId,
+          channelId: voiceState.channelId,
+          isMuted,
+          isDeafened,
+        });
+      } catch (err) {
+        this.logger.error(
+          `Error on voice.state.update for user ${userId}`,
+          err,
+        );
+      }
+    }
+  }
+
+  @SubscribeMessage('voice.signal')
+  async handleVoiceSignal(
+    @MessageBody() payload: { targetUserId: string; signal: any },
+    @ConnectedSocket() socket: Socket,
+  ): Promise<void> {
+    const senderUserId = socket.data.userId as string;
+    const { targetUserId, signal } = payload;
+    this.server.to(`user:${targetUserId}`).emit('voice.signal', {
+      senderUserId,
+      signal,
+    });
   }
 }

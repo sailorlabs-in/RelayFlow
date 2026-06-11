@@ -10,6 +10,7 @@ import { ChannelSettingsModal } from '../components/ChannelSettingsModal';
 import { ChannelSidebar } from '../components/ChannelSidebar';
 import { ChatArea } from '../components/ChatArea';
 import { ChatSidebar } from '../components/ChatSidebar';
+import { VoiceDashboard } from '../components/VoiceDashboard';
 import { ComposeModal } from '../components/ComposeModal';
 import { CreateChannelModal } from '../components/CreateChannelModal';
 import { CreateGroupModal } from '../components/CreateGroupModal';
@@ -48,6 +49,8 @@ function ChatDashboardContent() {
     groups: rawGroups,
     activeGroupId,
     activeChannelId,
+    activeVoiceChannelId,
+    voiceStates,
   } = useAppSelector((s) => s.groups);
   const groups = Array.isArray(rawGroups) ? rawGroups : [];
 
@@ -324,6 +327,39 @@ function ChatDashboardContent() {
         isMembersListOpen={isMembersListOpen}
         onToggleMembersList={() => setIsMembersListOpen((v) => !v)}
       />
+
+      {/* ── Global Voice Dashboard Connection (Portal based) ── */}
+      {(() => {
+        let voiceGroup = null;
+        let voiceChannel = null;
+        if (activeVoiceChannelId) {
+          for (const g of groups) {
+            const ch = g.channels?.find((c) => c.id === activeVoiceChannelId);
+            if (ch) {
+              voiceGroup = g;
+              voiceChannel = ch;
+              break;
+            }
+          }
+        }
+        if (activeVoiceChannelId && voiceGroup && voiceChannel) {
+          return (
+            <VoiceDashboard
+              groupId={voiceGroup.id}
+              channel={voiceChannel}
+              voiceStates={voiceStates}
+              groupMembers={voiceGroup.members || []}
+              currentUser={user}
+              isViewed={
+                !isDMMode &&
+                activeGroupId === voiceGroup.id &&
+                activeChannelId === voiceChannel.id
+              }
+            />
+          );
+        }
+        return null;
+      })()}
 
       {/* ── Collapsible Group Member Sidebar ─────────────────────── */}
       {!isDMMode && activeGroup && isMembersListOpen && (

@@ -34,7 +34,7 @@ export class Conversation {
   groupId?: string;
 
   @Column({ name: 'layout', type: 'varchar', length: 20, default: 'text' })
-  layout!: 'text' | 'bubble';
+  layout!: 'text' | 'bubble' | 'voice';
 
   @Column({
     name: 'allowed_role_ids',
