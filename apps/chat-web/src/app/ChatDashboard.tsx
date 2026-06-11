@@ -27,6 +27,7 @@ import {
   fetchConversations,
   fetchFriends,
   fetchPendingRequests,
+  setActiveConversation,
 } from '../store/slices/chatSlice';
 import { fetchGroups, setActiveGroup } from '../store/slices/groupsSlice';
 import type { GroupChannel, GroupSection } from '../store/slices/groupsSlice';
@@ -135,6 +136,7 @@ function ChatDashboardContent() {
 
   const handleShowDMs = () => {
     setIsDMMode(true);
+    dispatch(setActiveConversation('friends'));
   };
 
   const handleSelectGroup = (groupId: string) => {
@@ -226,6 +228,18 @@ function ChatDashboardContent() {
     };
   }, [accessToken, user?.id, manualStatus]);
 
+  // In group mode, the active conversation is the selected channel
+  const effectiveActiveConversationId = isDMMode
+    ? activeConversationId
+    : activeChannelId;
+
+  // Sync activeConversationId in chatSlice with effectiveActiveConversationId
+  useEffect(() => {
+    if (effectiveActiveConversationId !== activeConversationId) {
+      dispatch(setActiveConversation(effectiveActiveConversationId));
+    }
+  }, [effectiveActiveConversationId, activeConversationId, dispatch]);
+
   // ── RENDER: Hydration & Auth Gate ──
   if (!isHydrated) {
     return <div className="bg-theme-primary h-screen w-screen" />;
@@ -239,11 +253,6 @@ function ChatDashboardContent() {
   const activeGroup = activeGroupId
     ? groups.find((g) => g.id === activeGroupId) || null
     : null;
-
-  // In group mode, the active conversation is the selected channel
-  const effectiveActiveConversationId = isDMMode
-    ? activeConversationId
-    : activeChannelId;
 
   return (
     <div className="flex h-screen w-screen p-3.5 gap-3.5 bg-theme-primary">

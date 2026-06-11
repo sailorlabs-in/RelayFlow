@@ -64,17 +64,19 @@ export class UsersService {
     return saved;
   }
 
-  async findById(id: string): Promise<User> {
+  async findById(id: string, bypassCache = false): Promise<User> {
     const redis = this.redisService.getClient();
     const cacheKey = `user:profile:${id}`;
 
-    try {
-      const cached = await redis.get(cacheKey);
-      if (cached) {
-        return JSON.parse(cached);
+    if (!bypassCache) {
+      try {
+        const cached = await redis.get(cacheKey);
+        if (cached) {
+          return JSON.parse(cached);
+        }
+      } catch (err) {
+        // Don't fail the request if Redis is down
       }
-    } catch (err) {
-      // Don't fail the request if Redis is down
     }
 
     const user = await this.userRepository.findOne({ where: { id } });
@@ -92,7 +94,9 @@ export class UsersService {
   }
 
   async findByIds(ids: string[]): Promise<User[]> {
-    if (!ids || ids.length === 0) return [];
+    if (!ids || ids.length === 0) {
+      return [];
+    }
     return this.userRepository.findByIds(ids);
   }
 

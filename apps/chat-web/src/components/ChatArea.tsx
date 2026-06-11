@@ -7,6 +7,8 @@ import React, {
   useCallback,
   useLayoutEffect,
 } from 'react';
+import ReactDOM from 'react-dom';
+
 import dynamic from 'next/dynamic';
 
 const EmojiPicker = dynamic(
@@ -488,6 +490,15 @@ export const ChatArea = ({
     onConfirm: () => void;
   } | null>(null);
 
+  interface MessageContextMenuState {
+    message: Message;
+    x: number;
+    y: number;
+  }
+  const [contextMenu, setContextMenu] =
+    useState<MessageContextMenuState | null>(null);
+  const contextMenuRef = useRef<HTMLDivElement>(null);
+
   // --- Pagination & Scroll UX state ---
   const isFetchingMoreRef = useRef(false);
   const feedContainerRef = useRef<HTMLDivElement>(null);
@@ -828,6 +839,31 @@ export const ChatArea = ({
     setEditingContent('');
   };
 
+  const handleContextMenu = (e: React.MouseEvent, msg: Message) => {
+    if (msg.senderId !== user?.id) {
+      return;
+    }
+    e.preventDefault();
+    setContextMenu({ message: msg, x: e.clientX, y: e.clientY });
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        contextMenuRef.current &&
+        !contextMenuRef.current.contains(e.target as Node)
+      ) {
+        setContextMenu(null);
+      }
+    };
+    if (contextMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [contextMenu]);
+
   // ---- Conversation display name helper ----
   const getConversationDetails = (convo: any) => {
     if (!user) {
@@ -912,6 +948,12 @@ export const ChatArea = ({
     }
     return `${typingUsernames[0]}, ${typingUsernames[1]} and ${typingUsernames.length - 2} others are typing`;
   };
+
+  // Derive the live message from Redux so readBy is always up-to-date in the context menu
+  const liveContextMenuMsg = contextMenu
+    ? (activeMessages.find((m) => m.id === contextMenu.message.id) ??
+      contextMenu.message)
+    : null;
 
   return (
     <div className="glass-panel flex flex-col overflow-hidden h-full flex-1 min-w-0">
@@ -1081,6 +1123,7 @@ export const ChatArea = ({
                   return (
                     <div
                       key={msg.id}
+                      onContextMenu={(e) => handleContextMenu(e, msg)}
                       className="flex items-start gap-3 animate-fade-in group justify-between hover:bg-[rgba(0,0,0,0.015)] dark:hover:bg-[rgba(255,255,255,0.01)] rounded-xl px-2 py-1.5 transition-colors duration-150 -mx-2"
                     >
                       <div className="flex items-start gap-3 flex-1 min-w-0">
@@ -1214,6 +1257,7 @@ export const ChatArea = ({
                 return (
                   <div
                     key={msg.id}
+                    onContextMenu={(e) => handleContextMenu(e, msg)}
                     className={`flex items-start gap-2.5 group max-w-[72%] animate-fade-in ${isOut ? 'self-end' : 'self-start'}`}
                   >
                     {isOut && editingMessageId !== msg.id && (
@@ -1336,7 +1380,7 @@ export const ChatArea = ({
                             (edited)
                           </span>
                         )}
-                        {isOut && (
+                        {isOut && !isChannelMode && (
                           <span
                             className={`inline-flex items-center ${msg.isRead ? 'text-[var(--accent-primary)]' : 'text-[var(--text-muted)]'}`}
                             title={msg.isRead ? 'Read' : 'Sent'}
@@ -1609,6 +1653,106 @@ export const ChatArea = ({
           </button>
         </div>
       )}
+      {contextMenu &&
+        liveContextMenuMsg &&
+        ReactDOM.createPortal(
+          <div
+            ref={contextMenuRef}
+            className="convo-context-menu message-context-menu"
+            style={{ top: contextMenu.y, left: contextMenu.x }}
+            role="menu"
+            aria-label="Message options"
+          >
+            <button
+              className="convo-context-menu-item"
+              role="menuitem"
+              onClick={() => {
+                handleStartEdit(contextMenu.message);
+                setContextMenu(null);
+              }}
+            >
+              <IconCompose />
+              <span>Edit Message</span>
+            </button>
+            <button
+              className="convo-context-menu-item danger"
+              role="menuitem"
+              onClick={() => {
+                handleDeleteMessage(contextMenu.message.id);
+                setContextMenu(null);
+              }}
+            >
+              <IconTrash />
+              <span>Delete Message</span>
+            </button>
+            <div className="convo-context-menu-separator" />
+            <div
+              className="convo-context-menu-item group relative flex justify-between items-center cursor-pointer"
+              role="menuitem"
+            >
+              <div className="flex items-center gap-[10px]">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  width="15"
+                  height="15"
+                >
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+                <span>Read by {liveContextMenuMsg.readBy?.length || 0}</span>
+              </div>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                width="12"
+                height="12"
+                className="opacity-60"
+              >
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+              <div
+                className="hidden group-hover:block absolute top-0 w-[160px] bg-[var(--dropdown-bg)] border border-[var(--glass-border)] rounded-[10px] p-1 shadow-[0_16px_40px_rgba(0,0,0,0.35),0_0_0_1px_var(--glass-border)] backdrop-blur-[16px] z-[10000] animate-[fadeIn_0.15s_ease-out_forwards]"
+                style={
+                  contextMenu.x > window.innerWidth / 2
+                    ? { right: '100%', left: 'auto', marginRight: '4px' }
+                    : { left: '100%', right: 'auto', marginLeft: '4px' }
+                }
+              >
+                <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)] border-b border-[var(--glass-border)] mb-1">
+                  Read By
+                </div>
+                <div style={{ maxHeight: '150px', overflowY: 'auto' }}>
+                  {liveContextMenuMsg.readBy &&
+                  liveContextMenuMsg.readBy.length > 0 ? (
+                    liveContextMenuMsg.readBy.map((reader) => (
+                      <div
+                        key={reader.userId}
+                        className="flex items-center px-3 py-1.5 rounded-[6px] text-[12px] font-medium text-[var(--text-primary)] break-all"
+                      >
+                        <span className="whitespace-nowrap overflow-hidden text-ellipsis w-full">
+                          {reader.name}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="flex items-center px-3 py-1.5 rounded-[6px] text-[12px] font-medium text-[var(--text-muted)] italic break-all">
+                      <span className="whitespace-nowrap overflow-hidden text-ellipsis w-full">
+                        No one yet
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+
       {confirmModal && (
         <ConfirmationModal
           isOpen={confirmModal.isOpen}

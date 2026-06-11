@@ -1,4 +1,9 @@
-import { Conversation, ConversationMember, Message } from '@chat-app/database';
+import {
+  Conversation,
+  ConversationMember,
+  Message,
+  ReadReceipt,
+} from '@chat-app/database';
 import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
@@ -12,7 +17,12 @@ import { NotificationService } from './notification.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Conversation, ConversationMember, Message]),
+    TypeOrmModule.forFeature([
+      Conversation,
+      ConversationMember,
+      Message,
+      ReadReceipt,
+    ]),
     forwardRef(() => RealtimeModule),
     forwardRef(() => UsersModule),
     forwardRef(() => AuthModule),

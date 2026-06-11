@@ -51,6 +51,8 @@ export class Message {
     size: number;
   }[];
 
+  readBy?: { userId: string; name: string }[];
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 

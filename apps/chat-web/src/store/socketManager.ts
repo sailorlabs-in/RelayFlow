@@ -85,10 +85,24 @@ class SocketManager {
       PrintLog('✔ Socket successfully connected with ID:', this.socket?.id);
 
       // Auto-broadcast manual status upon connection/reconnection to sync with server presence
-      const state = store.getState() as { auth: { user: any } };
+      const state = store.getState() as {
+        auth: { user: any };
+        chat: { activeConversationId: string | null };
+      };
       if (state.auth?.user) {
         const manualStatus = state.auth.user.status || 'online';
         this.updateStatus(manualStatus, 'online');
+      }
+
+      // Rejoin active conversation room to ensure real-time read receipt tracking succeeds
+      if (
+        state.chat?.activeConversationId &&
+        state.chat.activeConversationId !== 'friends'
+      ) {
+        PrintLog(
+          `📡 Rejoining active conversation room: ${state.chat.activeConversationId}`,
+        );
+        this.joinConversation(state.chat.activeConversationId);
       }
     });
 
@@ -115,12 +129,23 @@ class SocketManager {
       PrintLog('💬 Socket message.new event received:', message);
       store.dispatch(socketReceiveMessage(message));
 
-      // Keep conversations in sync: fetch list if it's a new conversation thread
       const state = store.getState() as {
         chat: any;
         auth: { user: any };
         groups: { groups: any[] };
       };
+
+      // Mark as read immediately if the receiver has this conversation active
+      if (
+        state.chat?.activeConversationId === message.conversationId &&
+        state.auth?.user?.id !== message.senderId
+      ) {
+        PrintLog(
+          `📖 Active viewer marking received message as read: ${message.id}`,
+        );
+        this.markMessagesAsRead(message.conversationId);
+      }
+
       if (state.chat && state.chat.conversations && state.auth.user) {
         // Bypass if this is a group channel message
         const isChannel = state.groups?.groups?.some((g) =>
@@ -142,7 +167,11 @@ class SocketManager {
     // Handle messages read notification
     this.socket.on(
       'messages.read',
-      (data: { conversationId: string; readBy: string }) => {
+      (data: {
+        conversationId: string;
+        readBy: string;
+        readByName?: string;
+      }) => {
         PrintLog('📖 Socket messages.read event received:', data);
         store.dispatch(socketMarkMessagesAsRead(data));
       },
@@ -568,6 +597,13 @@ class SocketManager {
     if (this.socket?.connected) {
       PrintLog(`📡 Emitting leave.conversation for room: ${conversationId}`);
       this.socket.emit('leave.conversation', { conversationId });
+    }
+  }
+
+  markMessagesAsRead(conversationId: string) {
+    if (this.socket?.connected) {
+      PrintLog(`📡 Emitting messages.read for room: ${conversationId}`);
+      this.socket.emit('messages.read', { conversationId });
     }
   }
 

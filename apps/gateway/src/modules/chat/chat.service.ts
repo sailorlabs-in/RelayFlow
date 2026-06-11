@@ -3,6 +3,7 @@ import {
   ConversationMember,
   Message,
   ConversationType,
+  ReadReceipt,
 } from '@chat-app/database';
 import {
   Injectable,
@@ -23,6 +24,8 @@ export class ChatService {
     private readonly memberRepository: Repository<ConversationMember>,
     @InjectRepository(Message)
     private readonly messageRepository: Repository<Message>,
+    @InjectRepository(ReadReceipt)
+    private readonly readReceiptRepository: Repository<ReadReceipt>,
     private readonly usersService: UsersService,
   ) {}
 
@@ -226,6 +229,7 @@ export class ChatService {
     content: string,
     isRead = false,
     media?: any[],
+    readReceiptUserIds: string[] = [],
   ): Promise<Message> {
     const isMember = await this.memberRepository.findOne({
       where: { conversationId, userId: senderId },
@@ -244,13 +248,74 @@ export class ChatService {
       media,
     });
 
-    return this.messageRepository.save(message);
+    const savedMessage = await this.messageRepository.save(message);
+
+    // Save initial read receipts if any
+    const readBy: { userId: string; name: string }[] = [];
+    if (readReceiptUserIds && readReceiptUserIds.length > 0) {
+      const receipts = await Promise.all(
+        readReceiptUserIds.map(async (uid) => {
+          const receipt = this.readReceiptRepository.create({
+            messageId: savedMessage.id,
+            userId: uid,
+          });
+          await this.readReceiptRepository.save(receipt);
+
+          const u = await this.usersService.findById(uid, true);
+          const readerName = u.username
+            ? `@${u.username}`
+            : `@${u.email.split('@')[0]}`;
+
+          return { userId: uid, name: readerName };
+        }),
+      );
+      readBy.push(...receipts);
+    }
+
+    savedMessage.readBy = readBy;
+    return savedMessage;
   }
 
   async markMessagesAsRead(
     conversationId: string,
     userId: string,
   ): Promise<void> {
+    // Find all messages in the conversation that are NOT sent by the user
+    const messages = await this.messageRepository.find({
+      where: { conversationId, senderId: Not(userId) },
+      select: ['id'],
+    });
+
+    if (messages.length > 0) {
+      const messageIds = messages.map((m) => m.id);
+
+      // Find existing receipts for this user for these messages
+      const existingReceipts = await this.readReceiptRepository.find({
+        where: {
+          userId,
+          messageId: In(messageIds),
+        },
+        select: ['messageId'],
+      });
+
+      const existingMessageIds = new Set(
+        existingReceipts.map((r) => r.messageId),
+      );
+      const missingMessageIds = messageIds.filter(
+        (id) => !existingMessageIds.has(id),
+      );
+
+      if (missingMessageIds.length > 0) {
+        const newReceipts = missingMessageIds.map((msgId) => {
+          return this.readReceiptRepository.create({
+            messageId: msgId,
+            userId,
+          });
+        });
+        await this.readReceiptRepository.save(newReceipts);
+      }
+    }
+
     await this.messageRepository.update(
       { conversationId, senderId: Not(userId), isRead: false },
       { isRead: true },
@@ -262,16 +327,74 @@ export class ChatService {
     limit = 50,
     offset = 0,
   ): Promise<Message[]> {
-    return this.messageRepository.find({
+    const messages = await this.messageRepository.find({
       where: { conversationId },
       order: { createdAt: 'DESC' },
       take: limit,
       skip: offset,
     });
+
+    if (messages.length === 0) {
+      return [];
+    }
+
+    // Fetch read receipts for these messages
+    const messageIds = messages.map((m) => m.id);
+    const receipts = await this.readReceiptRepository.find({
+      where: { messageId: In(messageIds) },
+      relations: ['user'],
+    });
+
+    // Group receipts by message ID
+    const receiptsByMessageId: Record<
+      string,
+      { userId: string; name: string }[]
+    > = {};
+    for (const r of receipts) {
+      if (!receiptsByMessageId[r.messageId]) {
+        receiptsByMessageId[r.messageId] = [];
+      }
+      if (r.user) {
+        const name = r.user.username
+          ? `@${r.user.username}`
+          : `@${r.user.email.split('@')[0]}`;
+        receiptsByMessageId[r.messageId].push({ userId: r.userId, name });
+      }
+    }
+
+    for (const m of messages) {
+      m.readBy = receiptsByMessageId[m.id] || [];
+    }
+
+    return messages;
   }
 
   async getMessage(messageId: string): Promise<Message | null> {
-    return this.messageRepository.findOne({ where: { id: messageId } });
+    const message = await this.messageRepository.findOne({
+      where: { id: messageId },
+    });
+    if (!message) {
+      return null;
+    }
+
+    const receipts = await this.readReceiptRepository.find({
+      where: { messageId },
+      relations: ['user'],
+    });
+
+    message.readBy = receipts
+      .map((r) => {
+        if (!r.user) {
+          return null;
+        }
+        const name = r.user.username
+          ? `@${r.user.username}`
+          : `@${r.user.email.split('@')[0]}`;
+        return { userId: r.userId, name };
+      })
+      .filter((x): x is { userId: string; name: string } => x !== null);
+
+    return message;
   }
 
   async updateMessage(
