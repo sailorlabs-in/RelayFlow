@@ -671,7 +671,8 @@ export class RealtimeGateway
 
   @SubscribeMessage('edit.message')
   async handleEditMessage(
-    @MessageBody() body: { messageId: string; conversationId: string; content: string },
+    @MessageBody()
+    body: { messageId: string; conversationId: string; content: string },
     @ConnectedSocket() socket: Socket,
   ): Promise<void> {
     const userId = socket.data.userId as string;

@@ -249,7 +249,9 @@ export const ChatArea = ({
   const { groups, activeGroupId } = useAppSelector((s) => s.groups);
 
   const activeGroup = groups.find((g) => g.id === activeGroupId);
-  const activeChannel = activeGroup?.channels?.find((c) => c.id === activeConversationId);
+  const activeChannel = activeGroup?.channels?.find(
+    (c) => c.id === activeConversationId,
+  );
   const isBubbleLayout = !isChannelMode || activeChannel?.layout === 'bubble';
 
   // --- Local state ---
@@ -817,7 +819,11 @@ export const ChatArea = ({
     if (!editingContent.trim() || !activeConversationId) {
       return;
     }
-    socketManager.editMessage(messageId, activeConversationId, editingContent.trim());
+    socketManager.editMessage(
+      messageId,
+      activeConversationId,
+      editingContent.trim(),
+    );
     setEditingMessageId(null);
     setEditingContent('');
   };
@@ -1048,11 +1054,19 @@ export const ChatArea = ({
                 // Determine sender color if it's channel mode
                 let senderColor = 'inherit';
                 if (isChannelMode && activeGroup) {
-                  const member = activeGroup.members?.find((mem) => mem.userId === msg.senderId);
+                  const member = activeGroup.members?.find(
+                    (mem) => mem.userId === msg.senderId,
+                  );
                   if (member) {
                     const memberRoleIds = member.roleIds || [];
-                    const matchingRole = activeGroup.roles?.find((r) => memberRoleIds.includes(r.id));
-                    senderColor = matchingRole?.color || (msg.senderId === activeGroup.ownerId ? '#eab308' : 'inherit');
+                    const matchingRole = activeGroup.roles?.find((r) =>
+                      memberRoleIds.includes(r.id),
+                    );
+                    senderColor =
+                      matchingRole?.color ||
+                      (msg.senderId === activeGroup.ownerId
+                        ? '#eab308'
+                        : 'inherit');
                   }
                 }
 
@@ -1084,7 +1098,12 @@ export const ChatArea = ({
                         <div className="flex-1 min-w-0">
                           <div className="flex items-baseline gap-2 mb-1">
                             <span
-                              style={{ color: senderColor !== 'inherit' ? senderColor : undefined }}
+                              style={{
+                                color:
+                                  senderColor !== 'inherit'
+                                    ? senderColor
+                                    : undefined,
+                              }}
                               className={`text-[13.5px] font-bold ${isOut ? 'text-[var(--accent-primary)]' : ''} ${!isOut && senderColor === 'inherit' ? 'text-[var(--text-primary)]' : ''}`}
                             >
                               {senderName}
@@ -1106,7 +1125,9 @@ export const ChatArea = ({
                               <textarea
                                 autoFocus
                                 value={editingContent}
-                                onChange={(e) => setEditingContent(e.target.value)}
+                                onChange={(e) =>
+                                  setEditingContent(e.target.value)
+                                }
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter' && !e.shiftKey) {
                                     e.preventDefault();
@@ -1122,9 +1143,28 @@ export const ChatArea = ({
                                 rows={2}
                               />
                               <div className="flex gap-2 justify-start text-[11px] text-[var(--text-muted)]">
-                                <span>escape to <button onClick={() => { setEditingMessageId(null); setEditingContent(''); }} className="text-[var(--accent-primary)] hover:underline cursor-pointer bg-transparent border-none p-0">cancel</button></span>
+                                <span>
+                                  escape to{' '}
+                                  <button
+                                    onClick={() => {
+                                      setEditingMessageId(null);
+                                      setEditingContent('');
+                                    }}
+                                    className="text-[var(--accent-primary)] hover:underline cursor-pointer bg-transparent border-none p-0"
+                                  >
+                                    cancel
+                                  </button>
+                                </span>
                                 <span>•</span>
-                                <span>enter to <button onClick={() => handleSaveEdit(msg.id)} className="text-[var(--accent-primary)] hover:underline cursor-pointer bg-transparent border-none p-0">save</button></span>
+                                <span>
+                                  enter to{' '}
+                                  <button
+                                    onClick={() => handleSaveEdit(msg.id)}
+                                    className="text-[var(--accent-primary)] hover:underline cursor-pointer bg-transparent border-none p-0"
+                                  >
+                                    save
+                                  </button>
+                                </span>
                               </div>
                             </div>
                           ) : (
@@ -1198,7 +1238,10 @@ export const ChatArea = ({
                       <div className="shrink-0 mt-0.5">
                         <Avatar
                           letter={letter}
-                          url={senderProfile?.avatarThumbnailUrl || senderProfile?.avatarUrl}
+                          url={
+                            senderProfile?.avatarThumbnailUrl ||
+                            senderProfile?.avatarUrl
+                          }
                           status={presenceStatus}
                           size="sm"
                         />
@@ -1209,7 +1252,12 @@ export const ChatArea = ({
                     >
                       {!isOut && isChannelMode && (
                         <span
-                          style={{ color: senderColor !== 'inherit' ? senderColor : undefined }}
+                          style={{
+                            color:
+                              senderColor !== 'inherit'
+                                ? senderColor
+                                : undefined,
+                          }}
                           className="text-[11.5px] font-bold mb-1 ml-1.5 text-[var(--text-secondary)]"
                         >
                           {senderName}
@@ -1236,9 +1284,28 @@ export const ChatArea = ({
                             rows={2}
                           />
                           <div className="flex gap-2 justify-end text-[11px] text-[var(--text-muted)]">
-                            <span>escape to <button onClick={() => { setEditingMessageId(null); setEditingContent(''); }} className="text-[var(--accent-primary)] hover:underline cursor-pointer bg-transparent border-none p-0">cancel</button></span>
+                            <span>
+                              escape to{' '}
+                              <button
+                                onClick={() => {
+                                  setEditingMessageId(null);
+                                  setEditingContent('');
+                                }}
+                                className="text-[var(--accent-primary)] hover:underline cursor-pointer bg-transparent border-none p-0"
+                              >
+                                cancel
+                              </button>
+                            </span>
                             <span>•</span>
-                            <span>enter to <button onClick={() => handleSaveEdit(msg.id)} className="text-[var(--accent-primary)] hover:underline cursor-pointer bg-transparent border-none p-0">save</button></span>
+                            <span>
+                              enter to{' '}
+                              <button
+                                onClick={() => handleSaveEdit(msg.id)}
+                                className="text-[var(--accent-primary)] hover:underline cursor-pointer bg-transparent border-none p-0"
+                              >
+                                save
+                              </button>
+                            </span>
                           </div>
                         </div>
                       ) : (

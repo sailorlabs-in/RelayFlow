@@ -35,6 +35,11 @@ import {
   socketRoleUpdated,
   socketRoleDeleted,
   socketMemberRolesUpdated,
+  socketSectionCreated,
+  socketSectionUpdated,
+  socketSectionDeleted,
+  socketSectionsReordered,
+  socketChannelsReordered,
 } from './slices/groupsSlice';
 
 import { SOCKET_URL } from '../constants/config';
@@ -310,26 +315,84 @@ class SocketManager {
       },
     );
 
-    this.socket.on('group.role.created', (data: { groupId: string; role: any }) => {
-      PrintLog('🏷️ Socket group.role.created:', data.role.id);
-      store.dispatch(socketRoleCreated(data));
-    });
+    this.socket.on(
+      'group.role.created',
+      (data: { groupId: string; role: any }) => {
+        PrintLog('🏷️ Socket group.role.created:', data.role.id);
+        store.dispatch(socketRoleCreated(data));
+      },
+    );
 
-    this.socket.on('group.role.updated', (data: { groupId: string; role: any }) => {
-      PrintLog('🏷️ Socket group.role.updated:', data.role.id);
-      store.dispatch(socketRoleUpdated(data));
-    });
+    this.socket.on(
+      'group.role.updated',
+      (data: { groupId: string; role: any }) => {
+        PrintLog('🏷️ Socket group.role.updated:', data.role.id);
+        store.dispatch(socketRoleUpdated(data));
+      },
+    );
 
-    this.socket.on('group.role.deleted', (data: { groupId: string; roleId: string }) => {
-      PrintLog('🗑️ Socket group.role.deleted:', data.roleId);
-      store.dispatch(socketRoleDeleted(data));
-    });
+    this.socket.on(
+      'group.role.deleted',
+      (data: { groupId: string; roleId: string }) => {
+        PrintLog('🗑️ Socket group.role.deleted:', data.roleId);
+        store.dispatch(socketRoleDeleted(data));
+      },
+    );
 
     this.socket.on(
       'group.member.roles.updated',
-      (data: { groupId: string; userId: string; roleIds: string[]; member?: any }) => {
-        PrintLog('👤 Socket group.member.roles.updated:', data.userId, data.roleIds);
+      (data: {
+        groupId: string;
+        userId: string;
+        roleIds: string[];
+        member?: any;
+      }) => {
+        PrintLog(
+          '👤 Socket group.member.roles.updated:',
+          data.userId,
+          data.roleIds,
+        );
         store.dispatch(socketMemberRolesUpdated(data));
+      },
+    );
+
+    this.socket.on(
+      'group.section.created',
+      (data: { groupId: string; section: any }) => {
+        PrintLog('📂 Socket group.section.created:', data.section.id);
+        store.dispatch(socketSectionCreated(data));
+      },
+    );
+
+    this.socket.on(
+      'group.section.updated',
+      (data: { groupId: string; section: any }) => {
+        PrintLog('📂 Socket group.section.updated:', data.section.id);
+        store.dispatch(socketSectionUpdated(data));
+      },
+    );
+
+    this.socket.on(
+      'group.section.deleted',
+      (data: { groupId: string; sectionId: string }) => {
+        PrintLog('📂 Socket group.section.deleted:', data.sectionId);
+        store.dispatch(socketSectionDeleted(data));
+      },
+    );
+
+    this.socket.on(
+      'group.sections.reordered',
+      (data: { groupId: string; sections: any[] }) => {
+        PrintLog('📂 Socket group.sections.reordered:', data.groupId);
+        store.dispatch(socketSectionsReordered(data));
+      },
+    );
+
+    this.socket.on(
+      'group.channels.reordered',
+      (data: { groupId: string; channels: any[] }) => {
+        PrintLog('📂 Socket group.channels.reordered:', data.groupId);
+        store.dispatch(socketChannelsReordered(data));
       },
     );
 

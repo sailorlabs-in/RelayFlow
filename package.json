@@ -4,7 +4,7 @@
   "license": "MIT",
   "scripts": {
     "prepare": "husky",
-    "serve-all": "nx run-many -t serve --parallel=10",
+    "serve-all": "nx run-many -t serve",
     "serve-all:prod": "nx run-many -t serve --configuration=production --parallel=10",
     "build-all": "nx run-many -t build --exclude=@chat-app/chat-web && npm run --prefix apps/chat-web build",
     "build-all:prod": "nx run-many -t build --exclude=@chat-app/chat-web --configuration=production && npm run --prefix apps/chat-web build",
@@ -124,7 +124,7 @@
   "lint-staged": {
     "**/*.{ts,tsx}": [
       "prettier --write",
-      "eslint --max-warnings=0"
+      "eslint --max-warnings=0 --cache"
     ],
     "**/*.{js,jsx,json,css,md}": [
       "prettier --write"

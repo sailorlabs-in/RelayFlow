@@ -11,3 +11,4 @@ export * from './lib/entities/group-member.entity';
 export * from './lib/entities/friendship.entity';
 export * from './lib/entities/group-invite.entity';
 export * from './lib/entities/group-role.entity';
+export * from './lib/entities/group-section.entity';

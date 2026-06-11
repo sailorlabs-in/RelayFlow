@@ -2,7 +2,10 @@ import React, { useState } from 'react';
 
 import { useAppDispatch, useAppSelector } from '../store';
 import type { Group, GroupMember } from '../store/slices/groupsSlice';
-import { removeGroupMember, assignMemberRoles } from '../store/slices/groupsSlice';
+import {
+  removeGroupMember,
+  assignMemberRoles,
+} from '../store/slices/groupsSlice';
 import {
   sendFriendRequest,
   acceptFriendRequest,
@@ -52,9 +55,9 @@ export const MemberSidebar = ({
   const { user: currentUser } = useAppSelector((s) => s.auth);
 
   // Get active group from redux to keep state in sync
-  const activeGroup = useAppSelector((s) =>
-    s.groups.groups.find((g) => g.id === group.id),
-  ) || group;
+  const activeGroup =
+    useAppSelector((s) => s.groups.groups.find((g) => g.id === group.id)) ||
+    group;
 
   const [activeTab, setActiveTab] = useState<PresenceStatus>('online');
   const [confirmModal, setConfirmModal] = useState<{
@@ -165,7 +168,9 @@ export const MemberSidebar = ({
 
     const memberRoleIds = m.roleIds || [];
     const groupRoles = activeGroup.roles || [];
-    const matchingRoles = groupRoles.filter((r) => memberRoleIds.includes(r.id));
+    const matchingRoles = groupRoles.filter((r) =>
+      memberRoleIds.includes(r.id),
+    );
     const color = matchingRoles[0]?.color || (isOwner ? '#eab308' : 'inherit');
 
     return {
@@ -259,7 +264,9 @@ export const MemberSidebar = ({
               <span
                 style={{ color: m.color !== 'inherit' ? m.color : undefined }}
                 className={`text-[13px] font-semibold truncate ${
-                  m.presence === 'offline' && m.color === 'inherit' ? 'text-theme-muted' : ''
+                  m.presence === 'offline' && m.color === 'inherit'
+                    ? 'text-theme-muted'
+                    : ''
                 } ${m.color === 'inherit' && m.presence !== 'offline' ? 'text-theme-primary' : ''}`}
               >
                 {primaryName}
@@ -453,7 +460,15 @@ export const MemberSidebar = ({
               size="md"
             />
             <div className="flex-1 min-w-0">
-              <h3 className="m-0 text-[14px] font-bold text-theme-primary truncate" style={{ color: selectedMember.color !== 'inherit' ? selectedMember.color : undefined }}>
+              <h3
+                className="m-0 text-[14px] font-bold text-theme-primary truncate"
+                style={{
+                  color:
+                    selectedMember.color !== 'inherit'
+                      ? selectedMember.color
+                      : undefined,
+                }}
+              >
                 {selectedMember.displayName}
               </h3>
               <div className="text-[10.5px] text-theme-muted mt-0.5 capitalize">
@@ -505,85 +520,100 @@ export const MemberSidebar = ({
                   : selectedMember.presence}
               </span>
             </div>
-            
+
             {/* Display Member matching roles */}
-            {selectedMember.matchingRoles && selectedMember.matchingRoles.length > 0 && (
-              <div>
-                <span className="text-theme-muted font-bold block mb-1 uppercase tracking-wide text-[9.5px]">
-                  Roles
-                </span>
-                <div className="flex flex-wrap gap-1">
-                  {selectedMember.matchingRoles.map((role: any) => (
-                    <span
-                      key={role.id}
-                      style={{
-                        backgroundColor: `${role.color}15`,
-                        color: role.color,
-                        borderColor: `${role.color}30`,
-                      }}
-                      className="text-[10px] px-2 py-0.5 rounded-[4px] border font-bold"
-                    >
-                      {role.name}
-                    </span>
-                  ))}
+            {selectedMember.matchingRoles &&
+              selectedMember.matchingRoles.length > 0 && (
+                <div>
+                  <span className="text-theme-muted font-bold block mb-1 uppercase tracking-wide text-[9.5px]">
+                    Roles
+                  </span>
+                  <div className="flex flex-wrap gap-1">
+                    {selectedMember.matchingRoles.map((role: any) => (
+                      <span
+                        key={role.id}
+                        style={{
+                          backgroundColor: `${role.color}15`,
+                          color: role.color,
+                          borderColor: `${role.color}30`,
+                        }}
+                        className="text-[10px] px-2 py-0.5 rounded-[4px] border font-bold"
+                      >
+                        {role.name}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
           </div>
 
           {/* Roles Assignment (For Owner/Admin) */}
-          {(currentUserRole === 'owner' || currentUserRole === 'admin') && activeGroup.roles && activeGroup.roles.length > 0 && (
-            <div className="flex flex-col gap-1.5 text-[12px] mt-1 border-t border-[var(--border-muted)] pt-2.5">
-              <span className="text-theme-muted font-bold block mb-1 uppercase tracking-wide text-[9.5px]">
-                Assign Roles
-              </span>
-              <div className="flex flex-wrap gap-1.5 max-h-[100px] overflow-y-auto pr-1">
-                {activeGroup.roles.map((role) => {
-                  const isAssigned = selectedMember.roleIds?.includes(role.id);
-                  return (
-                    <button
-                      key={role.id}
-                      type="button"
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        const newRoleIds = isAssigned
-                          ? selectedMember.roleIds.filter((id: string) => id !== role.id)
-                          : [...(selectedMember.roleIds || []), role.id];
-                        try {
-                          await dispatch(
-                            assignMemberRoles({
-                              groupId: activeGroup.id,
-                              userId: selectedMember.id,
+          {(currentUserRole === 'owner' || currentUserRole === 'admin') &&
+            activeGroup.roles &&
+            activeGroup.roles.length > 0 && (
+              <div className="flex flex-col gap-1.5 text-[12px] mt-1 border-t border-[var(--border-muted)] pt-2.5">
+                <span className="text-theme-muted font-bold block mb-1 uppercase tracking-wide text-[9.5px]">
+                  Assign Roles
+                </span>
+                <div className="flex flex-wrap gap-1.5 max-h-[100px] overflow-y-auto pr-1">
+                  {activeGroup.roles.map((role) => {
+                    const isAssigned = selectedMember.roleIds?.includes(
+                      role.id,
+                    );
+                    return (
+                      <button
+                        key={role.id}
+                        type="button"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          const newRoleIds = isAssigned
+                            ? selectedMember.roleIds.filter(
+                                (id: string) => id !== role.id,
+                              )
+                            : [...(selectedMember.roleIds || []), role.id];
+                          try {
+                            await dispatch(
+                              assignMemberRoles({
+                                groupId: activeGroup.id,
+                                userId: selectedMember.id,
+                                roleIds: newRoleIds,
+                              }),
+                            ).unwrap();
+
+                            // Update the selected member state
+                            setSelectedMember({
+                              ...selectedMember,
                               roleIds: newRoleIds,
-                            }),
-                          ).unwrap();
-                          
-                          // Update the selected member state
-                          setSelectedMember({
-                            ...selectedMember,
-                            roleIds: newRoleIds,
-                            matchingRoles: activeGroup.roles.filter((r) => newRoleIds.includes(r.id)),
-                            color: activeGroup.roles.filter((r) => newRoleIds.includes(r.id))[0]?.color || 'inherit'
-                          });
-                          showToast.success('Member roles updated!');
-                        } catch (err: any) {
-                          showToast.error(err || 'Failed to assign role.');
-                        }
-                      }}
-                      style={{
-                        borderColor: role.color,
-                        backgroundColor: isAssigned ? `${role.color}15` : 'transparent',
-                        color: role.color,
-                      }}
-                      className="px-2 py-1 rounded-[6px] border text-[10.5px] font-bold cursor-pointer hover:bg-black/10 transition-all select-none active-press"
-                    >
-                      {isAssigned ? '✓ ' : ''}{role.name}
-                    </button>
-                  );
-                })}
+                              matchingRoles: activeGroup.roles.filter((r) =>
+                                newRoleIds.includes(r.id),
+                              ),
+                              color:
+                                activeGroup.roles.filter((r) =>
+                                  newRoleIds.includes(r.id),
+                                )[0]?.color || 'inherit',
+                            });
+                            showToast.success('Member roles updated!');
+                          } catch (err: any) {
+                            showToast.error(err || 'Failed to assign role.');
+                          }
+                        }}
+                        style={{
+                          borderColor: role.color,
+                          backgroundColor: isAssigned
+                            ? `${role.color}15`
+                            : 'transparent',
+                          color: role.color,
+                        }}
+                        className="px-2 py-1 rounded-[6px] border text-[10.5px] font-bold cursor-pointer hover:bg-black/10 transition-all select-none active-press"
+                      >
+                        {isAssigned ? '✓ ' : ''}
+                        {role.name}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
           {/* Friendship Actions */}
           {selectedMember.id !== currentUser?.id && (

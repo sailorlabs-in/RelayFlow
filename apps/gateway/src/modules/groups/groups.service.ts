@@ -8,6 +8,7 @@ import {
   ConversationType,
   GroupInvite,
   GroupRole,
+  GroupSection,
 } from '@chat-app/database';
 import {
   Injectable,
@@ -35,6 +36,8 @@ export class GroupsService {
     private readonly groupInviteRepo: Repository<GroupInvite>,
     @InjectRepository(GroupRole)
     private readonly groupRoleRepo: Repository<GroupRole>,
+    @InjectRepository(GroupSection)
+    private readonly groupSectionRepo: Repository<GroupSection>,
   ) {}
 
   // Helper to load profiles for group members
@@ -99,25 +102,12 @@ export class GroupsService {
     const membersWithProfiles =
       await this.attachProfilesToMembers(savedMembers);
 
-    // Create a default "general" channel
-    const generalChannel = this.conversationRepo.create({
-      name: 'general',
-      type: ConversationType.CHANNEL,
-      groupId: savedGroup.id,
-    });
-    const savedChannel = await this.conversationRepo.save(generalChannel);
-
-    // Add all group members to the general channel
-    const channelMembers = allUserIds.map((userId) =>
-      this.convMemberRepo.create({ conversationId: savedChannel.id, userId }),
-    );
-    await this.convMemberRepo.save(channelMembers);
-
     return {
       ...savedGroup,
       members: membersWithProfiles,
-      channels: [savedChannel],
+      channels: [],
       roles: [],
+      sections: [],
     };
   }
 
@@ -140,11 +130,22 @@ export class GroupsService {
         const membersWithProfiles = await this.attachProfilesToMembers(members);
         const allChannels = await this.conversationRepo.find({
           where: { groupId: group.id, type: ConversationType.CHANNEL },
-          order: { createdAt: 'ASC' },
+          order: { position: 'ASC', createdAt: 'ASC' },
         });
-        const channels = await this.filterChannelsForUser(group.id, userId, allChannels);
+        const channels = await this.filterChannelsForUser(
+          group.id,
+          userId,
+          allChannels,
+        );
         const roles = await this.getGroupRoles(group.id);
-        return { ...group, members: membersWithProfiles, channels, roles };
+        const sections = await this.getGroupSectionsForUser(group.id, userId);
+        return {
+          ...group,
+          members: membersWithProfiles,
+          channels,
+          roles,
+          sections,
+        };
       }),
     );
   }
@@ -193,12 +194,23 @@ export class GroupsService {
     const membersWithProfiles = await this.attachProfilesToMembers(members);
     const allChannels = await this.conversationRepo.find({
       where: { groupId, type: ConversationType.CHANNEL },
-      order: { createdAt: 'ASC' },
+      order: { position: 'ASC', createdAt: 'ASC' },
     });
-    const channels = await this.filterChannelsForUser(groupId, requesterId, allChannels);
+    const channels = await this.filterChannelsForUser(
+      groupId,
+      requesterId,
+      allChannels,
+    );
     const roles = await this.getGroupRoles(groupId);
+    const sections = await this.getGroupSectionsForUser(groupId, requesterId);
 
-    return { ...savedGroup, members: membersWithProfiles, channels, roles };
+    return {
+      ...savedGroup,
+      members: membersWithProfiles,
+      channels,
+      roles,
+      sections,
+    };
   }
 
   // ─── Add members to an existing group ────────────────────────────────────────
@@ -333,6 +345,7 @@ export class GroupsService {
     name: string,
     layout?: 'text' | 'bubble',
     allowedRoleIds?: string[],
+    sectionId?: string,
   ): Promise<Conversation> {
     const membership = await this.groupMemberRepo.findOne({
       where: { groupId, userId: requesterId },
@@ -357,6 +370,7 @@ export class GroupsService {
       groupId,
       layout: layout || 'text',
       allowedRoleIds: allowedRoleIds || [],
+      sectionId,
     });
     const savedChannel = await this.conversationRepo.save(channel);
 
@@ -411,10 +425,6 @@ export class GroupsService {
       throw new NotFoundException('Channel not found in this group');
     }
 
-    if (channel.name === 'general' && channel.name !== name.trim().toLowerCase()) {
-      throw new ForbiddenException('Cannot rename the general channel');
-    }
-
     channel.name = name.trim().toLowerCase().replace(/\s+/g, '-');
     if (allowedRoleIds !== undefined) {
       channel.allowedRoleIds = allowedRoleIds;
@@ -454,10 +464,6 @@ export class GroupsService {
     });
     if (!channel) {
       throw new NotFoundException('Channel not found in this group');
-    }
-
-    if (channel.name === 'general') {
-      throw new ForbiddenException('Cannot delete the general channel');
     }
 
     // Delete message history
@@ -503,7 +509,7 @@ export class GroupsService {
   async getGroupChannels(groupId: string): Promise<Conversation[]> {
     return this.conversationRepo.find({
       where: { groupId, type: ConversationType.CHANNEL },
-      order: { createdAt: 'ASC' },
+      order: { position: 'ASC', createdAt: 'ASC' },
     });
   }
 
@@ -513,12 +519,12 @@ export class GroupsService {
   ): Promise<Conversation[]> {
     const channels = await this.conversationRepo.find({
       where: { groupId, type: ConversationType.CHANNEL },
-      order: { createdAt: 'ASC' },
+      order: { position: 'ASC', createdAt: 'ASC' },
     });
     return this.filterChannelsForUser(groupId, userId, channels);
   }
 
-  // Helper to filter channels based on user custom roles
+  // Helper to filter channels based on user custom roles and parent section visibility
   private async filterChannelsForUser(
     groupId: string,
     userId: string,
@@ -531,13 +537,21 @@ export class GroupsService {
       return [];
     }
 
-    if (member.role === GroupMemberRole.OWNER || member.role === GroupMemberRole.ADMIN) {
+    if (
+      member.role === GroupMemberRole.OWNER ||
+      member.role === GroupMemberRole.ADMIN
+    ) {
       return channels;
     }
 
     const memberRoleIds = member.roleIds || [];
+    const sections = await this.getGroupSectionsForUser(groupId, userId);
+    const allowedSectionIds = new Set(sections.map((s) => s.id));
 
     return channels.filter((channel) => {
+      if (channel.sectionId && !allowedSectionIds.has(channel.sectionId)) {
+        return false;
+      }
       const allowed = channel.allowedRoleIds || [];
       if (allowed.length === 0) {
         return true;
@@ -558,7 +572,10 @@ export class GroupsService {
       return false;
     }
 
-    if (member.role === GroupMemberRole.OWNER || member.role === GroupMemberRole.ADMIN) {
+    if (
+      member.role === GroupMemberRole.OWNER ||
+      member.role === GroupMemberRole.ADMIN
+    ) {
       return true;
     }
 
@@ -567,6 +584,22 @@ export class GroupsService {
     });
     if (!channel) {
       return false;
+    }
+
+    if (channel.sectionId) {
+      const section = await this.groupSectionRepo.findOne({
+        where: { id: channel.sectionId },
+      });
+      if (section) {
+        const allowedSections = await this.filterSectionsForUser(
+          groupId,
+          userId,
+          [section],
+        );
+        if (allowedSections.length === 0) {
+          return false;
+        }
+      }
     }
 
     const allowed = channel.allowedRoleIds || [];
@@ -588,8 +621,14 @@ export class GroupsService {
     const member = await this.groupMemberRepo.findOne({
       where: { groupId, userId: requesterId },
     });
-    if (!member || (member.role !== GroupMemberRole.OWNER && member.role !== GroupMemberRole.ADMIN)) {
-      throw new ForbiddenException('Only group owners or admins can manage roles');
+    if (
+      !member ||
+      (member.role !== GroupMemberRole.OWNER &&
+        member.role !== GroupMemberRole.ADMIN)
+    ) {
+      throw new ForbiddenException(
+        'Only group owners or admins can manage roles',
+      );
     }
 
     const role = this.groupRoleRepo.create({
@@ -610,8 +649,14 @@ export class GroupsService {
     const member = await this.groupMemberRepo.findOne({
       where: { groupId, userId: requesterId },
     });
-    if (!member || (member.role !== GroupMemberRole.OWNER && member.role !== GroupMemberRole.ADMIN)) {
-      throw new ForbiddenException('Only group owners or admins can manage roles');
+    if (
+      !member ||
+      (member.role !== GroupMemberRole.OWNER &&
+        member.role !== GroupMemberRole.ADMIN)
+    ) {
+      throw new ForbiddenException(
+        'Only group owners or admins can manage roles',
+      );
     }
 
     const role = await this.groupRoleRepo.findOne({
@@ -636,8 +681,14 @@ export class GroupsService {
     const member = await this.groupMemberRepo.findOne({
       where: { groupId, userId: requesterId },
     });
-    if (!member || (member.role !== GroupMemberRole.OWNER && member.role !== GroupMemberRole.ADMIN)) {
-      throw new ForbiddenException('Only group owners or admins can manage roles');
+    if (
+      !member ||
+      (member.role !== GroupMemberRole.OWNER &&
+        member.role !== GroupMemberRole.ADMIN)
+    ) {
+      throw new ForbiddenException(
+        'Only group owners or admins can manage roles',
+      );
     }
 
     const role = await this.groupRoleRepo.findOne({
@@ -662,7 +713,9 @@ export class GroupsService {
     const channels = await this.conversationRepo.find({ where: { groupId } });
     for (const channel of channels) {
       if (channel.allowedRoleIds && channel.allowedRoleIds.includes(roleId)) {
-        channel.allowedRoleIds = channel.allowedRoleIds.filter((id) => id !== roleId);
+        channel.allowedRoleIds = channel.allowedRoleIds.filter(
+          (id) => id !== roleId,
+        );
         await this.conversationRepo.save(channel);
       }
     }
@@ -684,8 +737,14 @@ export class GroupsService {
     const requester = await this.groupMemberRepo.findOne({
       where: { groupId, userId: requesterId },
     });
-    if (!requester || (requester.role !== GroupMemberRole.OWNER && requester.role !== GroupMemberRole.ADMIN)) {
-      throw new ForbiddenException('Only group owners or admins can assign roles');
+    if (
+      !requester ||
+      (requester.role !== GroupMemberRole.OWNER &&
+        requester.role !== GroupMemberRole.ADMIN)
+    ) {
+      throw new ForbiddenException(
+        'Only group owners or admins can assign roles',
+      );
     }
 
     const target = await this.groupMemberRepo.findOne({
@@ -864,5 +923,218 @@ export class GroupsService {
     }
 
     return group;
+  }
+
+  async createSection(
+    groupId: string,
+    requesterId: string,
+    name: string,
+    allowedRoleIds?: string[],
+  ): Promise<GroupSection> {
+    const member = await this.groupMemberRepo.findOne({
+      where: { groupId, userId: requesterId },
+    });
+    if (
+      !member ||
+      (member.role !== GroupMemberRole.OWNER &&
+        member.role !== GroupMemberRole.ADMIN)
+    ) {
+      throw new ForbiddenException(
+        'Only group owners or admins can manage categories',
+      );
+    }
+
+    const section = this.groupSectionRepo.create({
+      groupId,
+      name: name.trim(),
+      allowedRoleIds: allowedRoleIds || [],
+    });
+    return this.groupSectionRepo.save(section);
+  }
+
+  async updateSection(
+    groupId: string,
+    sectionId: string,
+    requesterId: string,
+    name?: string,
+    allowedRoleIds?: string[],
+    position?: number,
+  ): Promise<GroupSection> {
+    const member = await this.groupMemberRepo.findOne({
+      where: { groupId, userId: requesterId },
+    });
+    if (
+      !member ||
+      (member.role !== GroupMemberRole.OWNER &&
+        member.role !== GroupMemberRole.ADMIN)
+    ) {
+      throw new ForbiddenException(
+        'Only group owners or admins can manage categories',
+      );
+    }
+
+    const section = await this.groupSectionRepo.findOne({
+      where: { id: sectionId, groupId },
+    });
+    if (!section) {
+      throw new NotFoundException('Category not found');
+    }
+
+    if (name !== undefined) {
+      section.name = name.trim();
+    }
+    if (allowedRoleIds !== undefined) {
+      section.allowedRoleIds = allowedRoleIds;
+    }
+    if (position !== undefined) {
+      section.position = position;
+    }
+
+    return this.groupSectionRepo.save(section);
+  }
+
+  async deleteSection(
+    groupId: string,
+    sectionId: string,
+    requesterId: string,
+  ): Promise<void> {
+    const member = await this.groupMemberRepo.findOne({
+      where: { groupId, userId: requesterId },
+    });
+    if (
+      !member ||
+      (member.role !== GroupMemberRole.OWNER &&
+        member.role !== GroupMemberRole.ADMIN)
+    ) {
+      throw new ForbiddenException(
+        'Only group owners or admins can manage categories',
+      );
+    }
+
+    const section = await this.groupSectionRepo.findOne({
+      where: { id: sectionId, groupId },
+    });
+    if (!section) {
+      throw new NotFoundException('Category not found');
+    }
+
+    // Set section_id of all channels in this section to NULL
+    await this.conversationRepo.update(
+      { sectionId },
+      { sectionId: null as any },
+    );
+
+    await this.groupSectionRepo.delete({ id: sectionId });
+  }
+
+  async getGroupSectionsForUser(
+    groupId: string,
+    userId: string,
+  ): Promise<GroupSection[]> {
+    const sections = await this.groupRepo.manager.find(GroupSection, {
+      where: { groupId },
+      order: { position: 'ASC', createdAt: 'ASC' },
+    });
+    return this.filterSectionsForUser(groupId, userId, sections);
+  }
+
+  private async filterSectionsForUser(
+    groupId: string,
+    userId: string,
+    sections: GroupSection[],
+  ): Promise<GroupSection[]> {
+    const member = await this.groupMemberRepo.findOne({
+      where: { groupId, userId },
+    });
+    if (!member) {
+      return [];
+    }
+
+    if (
+      member.role === GroupMemberRole.OWNER ||
+      member.role === GroupMemberRole.ADMIN
+    ) {
+      return sections;
+    }
+
+    const memberRoleIds = member.roleIds || [];
+
+    return sections.filter((section) => {
+      const allowed = section.allowedRoleIds || [];
+      if (allowed.length === 0) {
+        return true;
+      }
+      return allowed.some((roleId) => memberRoleIds.includes(roleId));
+    });
+  }
+
+  async reorderSections(
+    groupId: string,
+    requesterId: string,
+    sectionIds: string[],
+  ): Promise<GroupSection[]> {
+    const member = await this.groupMemberRepo.findOne({
+      where: { groupId, userId: requesterId },
+    });
+    if (
+      !member ||
+      (member.role !== GroupMemberRole.OWNER &&
+        member.role !== GroupMemberRole.ADMIN)
+    ) {
+      throw new ForbiddenException(
+        'Only group owners or admins can manage categories',
+      );
+    }
+
+    await Promise.all(
+      sectionIds.map(async (sectionId, index) => {
+        await this.groupSectionRepo.update(
+          { id: sectionId, groupId },
+          { position: index },
+        );
+      }),
+    );
+
+    return this.getGroupSectionsForUser(groupId, requesterId);
+  }
+
+  async reorderChannels(
+    groupId: string,
+    requesterId: string,
+    channelOrders: {
+      channelId: string;
+      sectionId: string | null;
+      position: number;
+    }[],
+  ): Promise<Conversation[]> {
+    const member = await this.groupMemberRepo.findOne({
+      where: { groupId, userId: requesterId },
+    });
+    if (
+      !member ||
+      (member.role !== GroupMemberRole.OWNER &&
+        member.role !== GroupMemberRole.ADMIN)
+    ) {
+      throw new ForbiddenException(
+        'Only group owners or admins can manage channels',
+      );
+    }
+
+    await Promise.all(
+      channelOrders.map(async (order) => {
+        await this.conversationRepo.update(
+          { id: order.channelId, groupId },
+          {
+            sectionId: order.sectionId as any,
+            position: order.position,
+          },
+        );
+      }),
+    );
+
+    return this.conversationRepo.find({
+      where: { groupId, type: ConversationType.CHANNEL },
+      order: { position: 'ASC', createdAt: 'ASC' },
+    });
   }
 }

@@ -476,8 +476,8 @@ const chatSlice = createSlice({
       const { id, conversationId } = updatedMsg;
 
       if (state.messages[conversationId]) {
-        state.messages[conversationId] = state.messages[conversationId].map((m) =>
-          m.id === id ? updatedMsg : m
+        state.messages[conversationId] = state.messages[conversationId].map(
+          (m) => (m.id === id ? updatedMsg : m),
         );
       }
 

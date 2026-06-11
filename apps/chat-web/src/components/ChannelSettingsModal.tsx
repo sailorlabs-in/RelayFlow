@@ -29,7 +29,9 @@ export const ChannelSettingsModal = ({
 
   const [name, setName] = useState(channel.name);
   const [isPrivate, setIsPrivate] = useState(!!channel.allowedRoleIds?.length);
-  const [allowedRoleIds, setAllowedRoleIds] = useState<string[]>(channel.allowedRoleIds || []);
+  const [allowedRoleIds, setAllowedRoleIds] = useState<string[]>(
+    channel.allowedRoleIds || [],
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{
@@ -142,7 +144,10 @@ export const ChannelSettingsModal = ({
         </div>
 
         {/* Body */}
-        <form onSubmit={handleSave} className="px-5 py-5 flex flex-col gap-4 max-h-[70vh] overflow-y-auto">
+        <form
+          onSubmit={handleSave}
+          className="px-5 py-5 flex flex-col gap-4 max-h-[70vh] overflow-y-auto"
+        >
           <div>
             <label
               htmlFor="channel-name-input"
@@ -174,7 +179,9 @@ export const ChannelSettingsModal = ({
             <div className="p-3.5 rounded-xl border-[1.5px] border-[var(--glass-border)] bg-[rgba(255,255,255,0.02)] flex flex-col gap-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="text-[13px] font-bold text-[var(--text-primary)]">Private Channel</span>
+                  <span className="text-[13px] font-bold text-[var(--text-primary)]">
+                    Private Channel
+                  </span>
                   <p className="m-0 mt-0.5 text-[11px] text-[var(--text-muted)]">
                     Only selected roles will be able to view this channel
                   </p>
@@ -197,12 +204,16 @@ export const ChannelSettingsModal = ({
                   </span>
                   {roles.length === 0 ? (
                     <p className="m-0 text-xs text-[var(--text-muted)] italic">
-                      No custom roles exist. Create roles in Server Settings first.
+                      No custom roles exist. Create roles in Server Settings
+                      first.
                     </p>
                   ) : (
                     <div className="flex flex-col gap-2 max-h-[120px] overflow-y-auto pr-1">
                       {roles.map((role) => (
-                        <label key={role.id} className="flex items-center gap-2.5 text-sm cursor-pointer select-none">
+                        <label
+                          key={role.id}
+                          className="flex items-center gap-2.5 text-sm cursor-pointer select-none"
+                        >
                           <input
                             type="checkbox"
                             checked={allowedRoleIds.includes(role.id)}
@@ -210,12 +221,17 @@ export const ChannelSettingsModal = ({
                               if (e.target.checked) {
                                 setAllowedRoleIds([...allowedRoleIds, role.id]);
                               } else {
-                                setAllowedRoleIds(allowedRoleIds.filter((id) => id !== role.id));
+                                setAllowedRoleIds(
+                                  allowedRoleIds.filter((id) => id !== role.id),
+                                );
                               }
                             }}
                             className="rounded border-[var(--glass-border)] text-[var(--accent-primary)] focus:ring-[var(--accent-primary)]"
                           />
-                          <span style={{ color: role.color }} className="font-semibold text-[var(--text-primary)]">
+                          <span
+                            style={{ color: role.color }}
+                            className="font-semibold text-[var(--text-primary)]"
+                          >
                             {role.name}
                           </span>
                         </label>
@@ -270,8 +286,10 @@ export const ChannelSettingsModal = ({
               !name.trim() ||
               !(
                 name !== channel.name ||
-                isPrivate !== (!!channel.allowedRoleIds?.length) ||
-                (isPrivate && JSON.stringify(allowedRoleIds.sort()) !== JSON.stringify([...(channel.allowedRoleIds || [])].sort()))
+                isPrivate !== !!channel.allowedRoleIds?.length ||
+                (isPrivate &&
+                  JSON.stringify(allowedRoleIds.sort()) !==
+                    JSON.stringify([...(channel.allowedRoleIds || [])].sort()))
               )
             }
             className="btn-send px-6 py-2.5 rounded-[10px] border-none text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 active-press"

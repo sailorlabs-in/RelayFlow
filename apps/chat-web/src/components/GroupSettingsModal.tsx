@@ -24,7 +24,7 @@ export const GroupSettingsModal = ({
   onClose,
 }: GroupSettingsModalProps): React.JSX.Element => {
   const dispatch = useAppDispatch();
-  
+
   // Select active group details to get real-time roles
   const activeGroup = useAppSelector((state) =>
     state.groups.groups.find((g) => g.id === group.id),
@@ -32,7 +32,7 @@ export const GroupSettingsModal = ({
   const roles = activeGroup?.roles || [];
 
   const [activeTab, setActiveTab] = useState<'overview' | 'roles'>('overview');
-  
+
   // Overview Tab State
   const [name, setName] = useState(group.name);
   const [description, setDescription] = useState(group.description || '');
@@ -190,7 +190,11 @@ export const GroupSettingsModal = ({
     setIsRoleLoading(true);
     try {
       await dispatch(
-        createGroupRole({ groupId: group.id, name: cleanName, color: roleColor }),
+        createGroupRole({
+          groupId: group.id,
+          name: cleanName,
+          color: roleColor,
+        }),
       ).unwrap();
       setRoleName('');
       setRoleColor('#7289da');
@@ -314,7 +318,10 @@ export const GroupSettingsModal = ({
 
         {/* Body */}
         {activeTab === 'overview' ? (
-          <form onSubmit={handleSubmit} className="px-5 py-5 flex flex-col gap-4">
+          <form
+            onSubmit={handleSubmit}
+            className="px-5 py-5 flex flex-col gap-4"
+          >
             {/* Avatar Upload */}
             <div className="flex items-center gap-4 p-3.5 rounded-xl border border-[var(--glass-border)] bg-[rgba(0,0,0,0.015)] dark:bg-[rgba(255,255,255,0.01)] shadow-sm mb-1 animate-fade-in">
               <div className="relative shrink-0">
@@ -464,7 +471,11 @@ export const GroupSettingsModal = ({
                   disabled={isRoleLoading || !roleName.trim()}
                   className="btn-send px-4 py-2 rounded-[8px] border-none text-xs font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed active-press"
                 >
-                  {isRoleLoading ? 'Saving...' : editingRoleId ? 'Save Role' : 'Create Role'}
+                  {isRoleLoading
+                    ? 'Saving...'
+                    : editingRoleId
+                      ? 'Save Role'
+                      : 'Create Role'}
                 </button>
               </div>
             </div>
@@ -490,7 +501,10 @@ export const GroupSettingsModal = ({
                           className="w-3.5 h-3.5 rounded-full border border-black/10 shrink-0"
                           style={{ backgroundColor: role.color }}
                         />
-                        <span style={{ color: role.color }} className="font-semibold text-sm">
+                        <span
+                          style={{ color: role.color }}
+                          className="font-semibold text-sm"
+                        >
                           {role.name}
                         </span>
                       </div>
