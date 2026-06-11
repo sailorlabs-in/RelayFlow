@@ -274,6 +274,28 @@ export class ChatService {
     return this.messageRepository.findOne({ where: { id: messageId } });
   }
 
+  async updateMessage(
+    messageId: string,
+    senderId: string,
+    content: string,
+  ): Promise<Message> {
+    const message = await this.messageRepository.findOne({
+      where: { id: messageId },
+    });
+    if (!message) {
+      throw new NotFoundException('Message not found');
+    }
+    if (message.senderId !== senderId) {
+      throw new ForbiddenException("You cannot edit someone else's message");
+    }
+
+    message.content = content;
+    message.isEdited = true;
+    message.editedAt = new Date();
+
+    return this.messageRepository.save(message);
+  }
+
   async deleteMessage(messageId: string): Promise<void> {
     try {
       const message = await this.messageRepository.findOne({

@@ -25,7 +25,8 @@ import {
   fetchPendingRequests,
 } from '../store/slices/chatSlice';
 import { fetchGroups, setActiveGroup } from '../store/slices/groupsSlice';
-import type { GroupChannel } from '../store/slices/groupsSlice';
+import type { GroupChannel, GroupSection } from '../store/slices/groupsSlice';
+import { CreateSectionModal } from '../components/CreateSectionModal';
 import { socketManager } from '../store/socketManager';
 import StoreProvider from '../store/StoreProvider';
 
@@ -60,6 +61,11 @@ function ChatDashboardContent() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
   const [isCreateChannelOpen, setIsCreateChannelOpen] = useState(false);
+  const [createChannelSectionId, setCreateChannelSectionId] = useState<
+    string | undefined
+  >(undefined);
+  const [isCreateSectionOpen, setIsCreateSectionOpen] = useState(false);
+  const [sectionToEdit, setSectionToEdit] = useState<GroupSection | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // New settings and member features states
@@ -254,7 +260,18 @@ function ChatDashboardContent() {
       ) : activeGroup ? (
         <ChannelSidebar
           group={activeGroup}
-          onCreateChannel={() => setIsCreateChannelOpen(true)}
+          onCreateChannel={(secId) => {
+            setCreateChannelSectionId(secId);
+            setIsCreateChannelOpen(true);
+          }}
+          onCreateSection={() => {
+            setSectionToEdit(null);
+            setIsCreateSectionOpen(true);
+          }}
+          onEditSection={(sec) => {
+            setSectionToEdit(sec);
+            setIsCreateSectionOpen(true);
+          }}
           onEditChannel={(c) => {
             setChannelToEdit(c);
             setIsChannelSettingsOpen(true);
@@ -315,7 +332,23 @@ function ChatDashboardContent() {
         <CreateChannelModal
           groupId={activeGroup.id}
           groupName={activeGroup.name}
-          onClose={() => setIsCreateChannelOpen(false)}
+          sectionId={createChannelSectionId}
+          onClose={() => {
+            setIsCreateChannelOpen(false);
+            setCreateChannelSectionId(undefined);
+          }}
+        />
+      )}
+
+      {/* Create Section Category */}
+      {isCreateSectionOpen && activeGroup && (
+        <CreateSectionModal
+          groupId={activeGroup.id}
+          section={sectionToEdit || undefined}
+          onClose={() => {
+            setIsCreateSectionOpen(false);
+            setSectionToEdit(null);
+          }}
         />
       )}
 

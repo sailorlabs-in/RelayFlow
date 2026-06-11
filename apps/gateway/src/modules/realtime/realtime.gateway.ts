@@ -222,6 +222,24 @@ export class RealtimeGateway
         ? (conversationId as any).conversationId
         : conversationId;
 
+    const conversation = await this.chatService.getConversation(targetConvoId);
+    if (!conversation) {
+      throw new NotFoundException('Conversation not found');
+    }
+
+    if (conversation.groupId) {
+      const hasAccess = await this.groupsService.canUserAccessChannel(
+        conversation.groupId,
+        targetConvoId,
+        userId,
+      );
+      if (!hasAccess) {
+        throw new ForbiddenException(
+          '❌ You do not have permission to access this channel.',
+        );
+      }
+    }
+
     const roomName = `conv:${targetConvoId}`;
 
     // Self-healing: Leave all other conversation rooms safely (copying array to avoid mutation during iteration)
@@ -326,6 +344,19 @@ export class RealtimeGateway
     const conversation = await this.chatService.getConversation(conversationId);
     if (!conversation) {
       throw new NotFoundException('Conversation not found');
+    }
+
+    if (conversation.groupId) {
+      const hasAccess = await this.groupsService.canUserAccessChannel(
+        conversation.groupId,
+        conversationId,
+        userId,
+      );
+      if (!hasAccess) {
+        throw new ForbiddenException(
+          '❌ You do not have permission to access this channel.',
+        );
+      }
     }
 
     const members =
@@ -635,6 +666,50 @@ export class RealtimeGateway
     }
     this.logger.log(
       `✔ Broadcasted deleted message ${messageId} in conversation ${conversationId} to ${members.length} members`,
+    );
+  }
+
+  @SubscribeMessage('edit.message')
+  async handleEditMessage(
+    @MessageBody()
+    body: { messageId: string; conversationId: string; content: string },
+    @ConnectedSocket() socket: Socket,
+  ): Promise<void> {
+    const userId = socket.data.userId as string;
+    const { messageId, conversationId, content } = body;
+
+    if (!content || !content.trim()) {
+      throw new BadRequestException('Message content cannot be empty');
+    }
+
+    const message = await this.chatService.getMessage(messageId);
+    if (!message) {
+      throw new NotFoundException('Message not found');
+    }
+    if (message.senderId !== userId) {
+      throw new ForbiddenException("You cannot edit someone else's message");
+    }
+    if (message.conversationId !== conversationId) {
+      throw new BadRequestException(
+        'Message does not belong to this conversation',
+      );
+    }
+
+    const updatedMessage = await this.chatService.updateMessage(
+      messageId,
+      userId,
+      content.trim(),
+    );
+
+    // Broadcast to all conversation members
+    const members =
+      await this.chatService.getConversationMembers(conversationId);
+    for (const member of members) {
+      const memberRoom = `user:${member.userId}`;
+      this.server.to(memberRoom).emit('message.updated', updatedMessage);
+    }
+    this.logger.log(
+      `✔ Broadcasted updated message ${messageId} in conversation ${conversationId} to ${members.length} members`,
     );
   }
 }

@@ -56,3 +56,6 @@ out
 
 # Agent configurations and context
 .agent/
+
+# ESLint cache
+.eslintcache
