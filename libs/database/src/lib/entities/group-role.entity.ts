@@ -8,6 +8,15 @@ import {
 } from 'typeorm';
 import { Group } from './group.entity';
 
+export enum GroupPermission {
+  MANAGE_GROUP = 'manage_group',
+  MANAGE_CHANNELS = 'manage_channels',
+  MANAGE_ROLES = 'manage_roles',
+  KICK_MEMBERS = 'kick_members',
+  SEND_MESSAGES = 'send_messages',
+  ATTACH_FILES = 'attach_files',
+}
+
 @Entity('group_role')
 export class GroupRole {
   @PrimaryGeneratedColumn('uuid')
@@ -25,6 +34,9 @@ export class GroupRole {
 
   @Column({ length: 7, default: '#7289da' })
   color!: string;
+
+  @Column({ name: 'permissions', type: 'jsonb', nullable: true, default: [] })
+  permissions?: string[];
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;

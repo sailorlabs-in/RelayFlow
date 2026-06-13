@@ -61,6 +61,7 @@ import {
 } from '../store/slices/chatSlice';
 import { socketManager } from '../store/socketManager';
 import { generateImageThumbnail, generateVideoThumbnail } from '../utils/media';
+import { hasGroupPermission } from '../utils/permissions';
 
 import { Avatar } from './Avatar';
 import { ConfirmationModal } from './ConfirmationModal';
@@ -256,6 +257,14 @@ export const ChatArea = ({
   );
   const isBubbleLayout = !isChannelMode || activeChannel?.layout === 'bubble';
   const isVoiceChannel = isChannelMode && activeChannel?.layout === 'voice';
+
+  const isGroupChannel = !!(activeGroup && activeChannel);
+  const canSendMessages =
+    !isGroupChannel ||
+    hasGroupPermission(activeGroup, user?.id, 'send_messages');
+  const canAttachFiles =
+    !isGroupChannel ||
+    hasGroupPermission(activeGroup, user?.id, 'attach_files');
 
   // --- Local state ---
   const [messageInput, setMessageInput] = useState('');
@@ -1538,9 +1547,14 @@ export const ChatArea = ({
                   <div className="relative" ref={emojiPickerRef}>
                     <button
                       type="button"
+                      disabled={!canSendMessages}
                       onClick={() => setShowEmojiPicker((prev) => !prev)}
-                      className="w-[46px] h-[46px] rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-200 bg-[var(--bg-input)] text-[var(--text-muted)] hover:bg-[var(--theme-btn-hover)] hover:text-[var(--text-primary)] active-press"
-                      title="Choose an emoji"
+                      className="w-[46px] h-[46px] rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-200 bg-[var(--bg-input)] text-[var(--text-muted)] hover:bg-[var(--theme-btn-hover)] hover:text-[var(--text-primary)] disabled:opacity-40 disabled:cursor-not-allowed active-press"
+                      title={
+                        canSendMessages
+                          ? 'Choose an emoji'
+                          : 'You do not have permission to send messages'
+                      }
                     >
                       <IconEmoji size={20} />
                     </button>
@@ -1558,9 +1572,15 @@ export const ChatArea = ({
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    disabled={uploading}
-                    className="w-[46px] h-[46px] rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-200 bg-[var(--bg-input)] text-[var(--text-muted)] hover:bg-[var(--theme-btn-hover)] hover:text-[var(--text-primary)] active-press"
-                    title="Attach a file"
+                    disabled={uploading || !canAttachFiles || !canSendMessages}
+                    className="w-[46px] h-[46px] rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-200 bg-[var(--bg-input)] text-[var(--text-muted)] hover:bg-[var(--theme-btn-hover)] hover:text-[var(--text-primary)] disabled:opacity-40 disabled:cursor-not-allowed active-press"
+                    title={
+                      !canSendMessages
+                        ? 'You do not have permission to send messages'
+                        : !canAttachFiles
+                          ? 'You do not have permission to attach files'
+                          : 'Attach a file'
+                    }
                   >
                     {uploading ? (
                       <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin border-[var(--text-primary)]" />
@@ -1615,20 +1635,27 @@ export const ChatArea = ({
                     )}
                     <textarea
                       id="message-input"
-                      className="input-base w-full block rounded-xl px-4 text-[14px] resize-none leading-normal max-h-30 bg-theme-input border-[1.5px] border-glass text-theme-primary focus:outline-none focus:border-(--accent-primary) focus:ring-[3px] focus:ring-[var(--accent-ring)] box-border"
+                      disabled={!canSendMessages}
+                      className="input-base w-full block rounded-xl px-4 text-[14px] resize-none leading-normal max-h-30 bg-theme-input border-[1.5px] border-glass text-theme-primary focus:outline-none focus:border-(--accent-primary) focus:ring-[3px] focus:ring-[var(--accent-ring)] disabled:opacity-50 disabled:cursor-not-allowed box-border"
                       style={{
                         minHeight: '46px',
                         paddingTop: '11px',
                         paddingBottom: '11px',
                       }}
-                      placeholder="Type a message… (Enter to send)"
+                      placeholder={
+                        canSendMessages
+                          ? 'Type a message… (Enter to send)'
+                          : 'You do not have permission to send messages in this group.'
+                      }
                       rows={1}
                       value={messageInput}
                       onChange={handleInputChange}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey) {
                           e.preventDefault();
-                          handleSendMessage(e);
+                          if (canSendMessages) {
+                            handleSendMessage(e);
+                          }
                         }
                       }}
                       onPaste={(e) => {
@@ -1655,7 +1682,8 @@ export const ChatArea = ({
                     id="send-message-btn"
                     type="submit"
                     disabled={
-                      !messageInput.trim() && attachedFiles.length === 0
+                      (!messageInput.trim() && attachedFiles.length === 0) ||
+                      !canSendMessages
                     }
                     className="btn-send w-[46px] h-[46px] rounded-xl flex-shrink-0 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed hover:-translate-y-0.5 hover:shadow-[var(--btn-shadow)] active-press"
                   >

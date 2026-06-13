@@ -12,6 +12,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AuthModule } from '../auth/auth.module';
 import { RealtimeModule } from '../realtime/realtime.module';
+import { ChatModule } from '../chat/chat.module';
 
 import { GroupsController } from './groups.controller';
 import { GroupsService } from './groups.service';
@@ -28,6 +29,7 @@ import { GroupsService } from './groups.service';
     ]),
     forwardRef(() => RealtimeModule),
     forwardRef(() => AuthModule),
+    forwardRef(() => ChatModule),
   ],
   controllers: [GroupsController],
   providers: [GroupsService],

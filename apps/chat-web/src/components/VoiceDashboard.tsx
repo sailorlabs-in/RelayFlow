@@ -9,6 +9,7 @@ import { setActiveConversation } from '../store/slices/chatSlice';
 import { socketManager } from '../store/socketManager';
 import { Avatar } from './Avatar';
 import { showToast } from './toast';
+import { PrintLog } from '../utils/logger';
 
 interface VoiceDashboardProps {
   groupId: string;
@@ -372,7 +373,7 @@ export const VoiceDashboard = ({
       return peersRef.current[targetUserId];
     }
 
-    console.log(
+    PrintLog(
       `🎙 WebRTC: Initiating connection with ${targetUserId} (initiator: ${isInitiator})`,
     );
 
@@ -404,7 +405,7 @@ export const VoiceDashboard = ({
     };
 
     pc.ontrack = () => {
-      console.log(`🎙 WebRTC: Received remote track from ${targetUserId}`);
+      PrintLog(`🎙 WebRTC: Received remote track from ${targetUserId}`);
       const newStream = new MediaStream();
       pc.getReceivers().forEach((receiver) => {
         if (receiver.track) {
@@ -430,7 +431,7 @@ export const VoiceDashboard = ({
     if (isInitiator) {
       pc.onnegotiationneeded = async () => {
         try {
-          console.log(`🎙 WebRTC: Creating offer for ${targetUserId}`);
+          PrintLog(`🎙 WebRTC: Creating offer for ${targetUserId}`);
           const offer = await pc.createOffer();
           await pc.setLocalDescription(offer);
           socketManager.sendVoiceSignal(targetUserId, {
@@ -452,7 +453,7 @@ export const VoiceDashboard = ({
       return;
     }
     try {
-      console.log(`🎙 WebRTC: Renegotiating connection with ${targetUserId}`);
+      PrintLog(`🎙 WebRTC: Renegotiating connection with ${targetUserId}`);
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
       socketManager.sendVoiceSignal(targetUserId, {
@@ -520,7 +521,7 @@ export const VoiceDashboard = ({
 
     const startLocalStream = async () => {
       try {
-        console.log('🎙 WebRTC: Requesting microphone permission...');
+        PrintLog('🎙 WebRTC: Requesting microphone permission...');
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: true,
           video: false,
@@ -731,7 +732,7 @@ export const VoiceDashboard = ({
       setIsCameraOn(false);
     } else {
       try {
-        console.log('🎙 Requesting camera permission...');
+        PrintLog('🎙 Requesting camera permission...');
         const cameraStream = await navigator.mediaDevices.getUserMedia({
           video: true,
         });
@@ -787,7 +788,7 @@ export const VoiceDashboard = ({
       setIsScreenSharing(false);
     } else {
       try {
-        console.log('🎙 Requesting screen share permission...');
+        PrintLog('🎙 Requesting screen share permission...');
         const screenStream = await navigator.mediaDevices.getDisplayMedia({
           video: true,
         });

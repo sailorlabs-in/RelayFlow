@@ -32,6 +32,7 @@ import {
 import { showToast } from './toast';
 import { ConfirmationModal } from './ConfirmationModal';
 import { Avatar } from './Avatar';
+import { hasGroupPermission } from '../utils/permissions';
 
 interface ChannelSidebarProps {
   group: Group;
@@ -113,7 +114,10 @@ export const ChannelSidebar = ({
   const isOwner = group.ownerId === user?.id;
   const isAdmin =
     group.members.find((m) => m.userId === user?.id)?.role === 'admin';
-  const canManage = isOwner || isAdmin;
+  const canManage =
+    isOwner ||
+    isAdmin ||
+    hasGroupPermission(group, user?.id, 'manage_channels');
 
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -658,7 +662,10 @@ export const ChannelSidebar = ({
                 </svg>
               </IconButton>
             )}
-            {isOwner && (
+            {(isOwner ||
+              isAdmin ||
+              hasGroupPermission(group, user?.id, 'manage_group') ||
+              hasGroupPermission(group, user?.id, 'manage_roles')) && (
               <IconButton
                 title="Group Settings"
                 onClick={onEditGroup}

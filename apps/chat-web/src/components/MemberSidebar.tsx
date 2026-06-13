@@ -17,6 +17,7 @@ import { Avatar } from './Avatar';
 import { IconCrown, IconPeople, IconTrash, IconPlus } from './Icons';
 import { showToast } from './toast';
 import { ConfirmationModal } from './ConfirmationModal';
+import { hasGroupPermission } from '../utils/permissions';
 
 const IconAddFriend = (): React.JSX.Element => (
   <svg
@@ -164,7 +165,10 @@ export const MemberSidebar = ({
       targetUserId !== currentUser?.id &&
       !isOwner &&
       (isCurrentUserOwner ||
-        (currentUserRole === 'admin' && m.role === 'member'));
+        (m.role !== 'owner' &&
+          m.role !== 'admin' &&
+          (currentUserRole === 'admin' ||
+            hasGroupPermission(activeGroup, currentUser?.id, 'kick_members'))));
 
     const memberRoleIds = m.roleIds || [];
     const groupRoles = activeGroup.roles || [];
@@ -548,7 +552,9 @@ export const MemberSidebar = ({
           </div>
 
           {/* Roles Assignment (For Owner/Admin) */}
-          {(currentUserRole === 'owner' || currentUserRole === 'admin') &&
+          {(currentUserRole === 'owner' ||
+            currentUserRole === 'admin' ||
+            hasGroupPermission(activeGroup, currentUser?.id, 'manage_roles')) &&
             activeGroup.roles &&
             activeGroup.roles.length > 0 && (
               <div className="flex flex-col gap-1.5 text-[12px] mt-1 border-t border-[var(--border-muted)] pt-2.5">
