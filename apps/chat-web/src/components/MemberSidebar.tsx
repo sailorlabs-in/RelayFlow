@@ -353,7 +353,7 @@ export const MemberSidebar = ({
 
   return (
     <>
-      <div className="glass-panel w-60 min-w-60 h-full flex flex-col overflow-hidden">
+      <div className="glass-panel h-full flex flex-col overflow-hidden w-60 min-w-60 fixed right-0 top-0 bottom-0 z-50 md:relative bg-[var(--bg-sidebar)] md:bg-transparent border-l border-[var(--border-muted)] md:border-none shadow-2xl md:shadow-none p-3.5 md:p-0">
         {/* Title */}
         <div className="px-4 py-3.5 border-b-[1.5px] border-theme flex items-center justify-between text-theme-primary text-sm font-bold bg-theme-sidebar rounded-t-2xl">
           <div className="flex items-center gap-1.5">

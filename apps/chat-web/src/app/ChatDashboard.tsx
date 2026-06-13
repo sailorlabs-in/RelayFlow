@@ -75,9 +75,10 @@ function ChatDashboardContent() {
   const [isCreateSectionOpen, setIsCreateSectionOpen] = useState(false);
   const [sectionToEdit, setSectionToEdit] = useState<GroupSection | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   // New settings and member features states
-  const [isMembersListOpen, setIsMembersListOpen] = useState(true);
+  const [isMembersListOpen, setIsMembersListOpen] = useState(false);
   const [isGroupSettingsOpen, setIsGroupSettingsOpen] = useState(false);
   const [isChannelSettingsOpen, setIsChannelSettingsOpen] = useState(false);
   const [channelToEdit, setChannelToEdit] = useState<GroupChannel | null>(null);
@@ -87,6 +88,33 @@ function ChatDashboardContent() {
   const [autoStatus, setAutoStatus] = useState<'online' | 'away'>('online');
 
   const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const prevIsDMModeRef = useRef(isDMMode);
+  const prevActiveGroupIdRef = useRef(activeGroupId);
+
+  // Sync mobile sidebar open state based on conversation selection
+  useEffect(() => {
+    const activeId = isDMMode ? activeConversationId : activeChannelId;
+    if (!activeId) {
+      setIsMobileSidebarOpen(true);
+      return;
+    }
+
+    const isDMModeChanged = prevIsDMModeRef.current !== isDMMode;
+    const activeGroupIdChanged = prevActiveGroupIdRef.current !== activeGroupId;
+
+    // Update refs for the next run
+    prevIsDMModeRef.current = isDMMode;
+    prevActiveGroupIdRef.current = activeGroupId;
+
+    if (isDMModeChanged || activeGroupIdChanged) {
+      // Keep sidebar open when switching group or DM mode via rail
+      setIsMobileSidebarOpen(true);
+      return;
+    }
+
+    // Close sidebar only when a specific channel or DM row is selected
+    setIsMobileSidebarOpen(false);
+  }, [activeConversationId, activeChannelId, isDMMode, activeGroupId]);
 
   // --- Session recovery on client mount ---
   useEffect(() => {
@@ -258,60 +286,75 @@ function ChatDashboardContent() {
     : null;
 
   return (
-    <div className="flex h-screen w-screen p-3.5 gap-3.5 bg-theme-primary">
-      {/* ── Left: Group Rail ─────────────────────────────────────── */}
-      <GroupRail
-        onCreateGroup={() => setIsCreateGroupOpen(true)}
-        onShowDMs={handleShowDMs}
-        onSelectGroup={handleSelectGroup}
-        isDMMode={isDMMode}
-        isCollapsed={isSidebarCollapsed}
-      />
-
-      {/* ── Middle: DM Sidebar OR Channel Sidebar ────────────────── */}
-      {isDMMode ? (
-        <ChatSidebar
-          ownStatus={ownStatus}
-          setIsProfileOpen={setIsProfileOpen}
-          setIsComposeOpen={setIsComposeOpen}
-          handleLogout={handleLogout}
-          isRailCollapsed={isSidebarCollapsed}
-          onToggleRail={() => setIsSidebarCollapsed((v) => !v)}
+    <div className="flex h-screen w-screen p-0 md:p-3.5 gap-0 md:gap-3.5 bg-theme-primary">
+      {/* Backdrop for mobile sidebar */}
+      {isMobileSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden transition-opacity duration-300 animate-fade-in"
+          onClick={() => setIsMobileSidebarOpen(false)}
         />
-      ) : activeGroup ? (
-        <ChannelSidebar
-          group={activeGroup}
-          onCreateChannel={(secId) => {
-            setCreateChannelSectionId(secId);
-            setIsCreateChannelOpen(true);
-          }}
-          onCreateSection={() => {
-            setSectionToEdit(null);
-            setIsCreateSectionOpen(true);
-          }}
-          onEditSection={(sec) => {
-            setSectionToEdit(sec);
-            setIsCreateSectionOpen(true);
-          }}
-          onEditChannel={(c) => {
-            setChannelToEdit(c);
-            setIsChannelSettingsOpen(true);
-          }}
-          onEditGroup={() => setIsGroupSettingsOpen(true)}
-          onInviteMembers={() => setIsInviteMembersOpen(true)}
-          ownStatus={ownStatus}
-          setIsProfileOpen={setIsProfileOpen}
-          isRailCollapsed={isSidebarCollapsed}
-          onToggleRail={() => setIsSidebarCollapsed((v) => !v)}
-        />
-      ) : (
-        /* Fallback: no group selected yet */
-        <div className="glass-panel flex flex-col items-center justify-center w-60 min-w-60 h-full">
-          <p className="text-theme-muted text-[13px] text-center p-5">
-            Select a group from the rail or create a new one.
-          </p>
-        </div>
       )}
+
+      {/* Responsive Navigation Container (GroupRail + Active Sidebar) */}
+      <div
+        className={`flex h-full gap-3.5 shrink-0 transition-transform duration-300 z-50
+          fixed inset-y-0 left-0 p-3.5 bg-theme-primary/95 backdrop-blur-md md:bg-transparent md:p-0 md:relative md:translate-x-0
+          ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
+      >
+        {/* ── Left: Group Rail ─────────────────────────────────────── */}
+        <GroupRail
+          onCreateGroup={() => setIsCreateGroupOpen(true)}
+          onShowDMs={handleShowDMs}
+          onSelectGroup={handleSelectGroup}
+          isDMMode={isDMMode}
+          isCollapsed={isSidebarCollapsed}
+        />
+
+        {/* ── Middle: DM Sidebar OR Channel Sidebar ────────────────── */}
+        {isDMMode ? (
+          <ChatSidebar
+            ownStatus={ownStatus}
+            setIsProfileOpen={setIsProfileOpen}
+            setIsComposeOpen={setIsComposeOpen}
+            handleLogout={handleLogout}
+            isRailCollapsed={isSidebarCollapsed}
+            onToggleRail={() => setIsSidebarCollapsed((v) => !v)}
+          />
+        ) : activeGroup ? (
+          <ChannelSidebar
+            group={activeGroup}
+            onCreateChannel={(secId) => {
+              setCreateChannelSectionId(secId);
+              setIsCreateChannelOpen(true);
+            }}
+            onCreateSection={() => {
+              setSectionToEdit(null);
+              setIsCreateSectionOpen(true);
+            }}
+            onEditSection={(sec) => {
+              setSectionToEdit(sec);
+              setIsCreateSectionOpen(true);
+            }}
+            onEditChannel={(c) => {
+              setChannelToEdit(c);
+              setIsChannelSettingsOpen(true);
+            }}
+            onEditGroup={() => setIsGroupSettingsOpen(true)}
+            onInviteMembers={() => setIsInviteMembersOpen(true)}
+            ownStatus={ownStatus}
+            setIsProfileOpen={setIsProfileOpen}
+            isRailCollapsed={isSidebarCollapsed}
+            onToggleRail={() => setIsSidebarCollapsed((v) => !v)}
+          />
+        ) : (
+          /* Fallback: no group selected yet */
+          <div className="glass-panel flex flex-col items-center justify-center w-60 min-w-60 h-full">
+            <p className="text-theme-muted text-[13px] text-center p-5">
+              Select a group from the rail or create a new one.
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* ── Right: Chat Area ─────────────────────────────────────── */}
       <ChatArea
@@ -326,6 +369,7 @@ function ChatDashboardContent() {
         }
         isMembersListOpen={isMembersListOpen}
         onToggleMembersList={() => setIsMembersListOpen((v) => !v)}
+        onMenuClick={() => setIsMobileSidebarOpen(true)}
       />
 
       {/* ── Global Voice Dashboard Connection (Portal based) ── */}
@@ -360,6 +404,14 @@ function ChatDashboardContent() {
         }
         return null;
       })()}
+
+      {/* Backdrop for mobile member sidebar */}
+      {!isDMMode && activeGroup && isMembersListOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden transition-opacity duration-300 animate-fade-in"
+          onClick={() => setIsMembersListOpen(false)}
+        />
+      )}
 
       {/* ── Collapsible Group Member Sidebar ─────────────────────── */}
       {!isDMMode && activeGroup && isMembersListOpen && (

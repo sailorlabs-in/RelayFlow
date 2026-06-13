@@ -87,6 +87,7 @@ interface ChatAreaProps {
   activeChannelName?: string | null;
   isMembersListOpen?: boolean;
   onToggleMembersList?: () => void;
+  onMenuClick?: () => void;
 }
 
 const isOnlyEmojis = (str: string): boolean => {
@@ -234,6 +235,7 @@ export const ChatArea = ({
   activeChannelName = null,
   isMembersListOpen = false,
   onToggleMembersList,
+  onMenuClick,
 }: ChatAreaProps): React.JSX.Element => {
   const dispatch = useAppDispatch();
   const feedEndRef = useRef<HTMLDivElement>(null);
@@ -274,6 +276,16 @@ export const ChatArea = ({
   const [editingContent, setEditingContent] = useState('');
 
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isMobileScreen, setIsMobileScreen] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobileScreen(window.innerWidth < 768);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
 
   const [mentionQuery, setMentionQuery] = useState<{
@@ -914,7 +926,7 @@ export const ChatArea = ({
   }
 
   if (activeConversationId === 'friends') {
-    return <FriendsDashboard />;
+    return <FriendsDashboard onMenuClick={onMenuClick} />;
   }
 
   const activeConvo = conversations.find((c) => c.id === activeConversationId);
@@ -973,7 +985,27 @@ export const ChatArea = ({
           <div className="flex items-center gap-3 px-5 py-3.5 border-b border-[var(--border-muted)] bg-[var(--bg-sidebar)] rounded-t-2xl">
             {isChannelMode ? (
               /* Channel mode header */
-              <div className="flex-1 min-w-0 flex items-center gap-2.5">
+              <div className="flex-1 min-w-0 flex items-center gap-2">
+                {onMenuClick && (
+                  <button
+                    id="mobile-menu-btn"
+                    onClick={onMenuClick}
+                    className="md:hidden flex items-center justify-center p-1.5 rounded-md text-[var(--text-muted)] hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)] cursor-pointer active-press focus:outline-none shrink-0"
+                    title="Open Navigation"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      className="w-5 h-5"
+                    >
+                      <line x1="3" y1="12" x2="21" y2="12" />
+                      <line x1="3" y1="6" x2="21" y2="6" />
+                      <line x1="3" y1="18" x2="21" y2="18" />
+                    </svg>
+                  </button>
+                )}
                 <span className="text-[var(--text-muted)] flex shrink-0">
                   {isVoiceChannel ? (
                     <svg
@@ -1013,6 +1045,26 @@ export const ChatArea = ({
               </div>
             ) : (
               <>
+                {onMenuClick && (
+                  <button
+                    id="mobile-menu-btn"
+                    onClick={onMenuClick}
+                    className="md:hidden flex items-center justify-center p-1.5 rounded-md text-[var(--text-muted)] hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)] cursor-pointer active-press focus:outline-none shrink-0 mr-1"
+                    title="Open Navigation"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      className="w-5 h-5"
+                    >
+                      <line x1="3" y1="12" x2="21" y2="12" />
+                      <line x1="3" y1="6" x2="21" y2="6" />
+                      <line x1="3" y1="18" x2="21" y2="18" />
+                    </svg>
+                  </button>
+                )}
                 <Avatar
                   letter={activeDetails?.letter || ''}
                   url={
@@ -1544,7 +1596,10 @@ export const ChatArea = ({
                   className="flex gap-2.5 items-end"
                   onSubmit={handleSendMessage}
                 >
-                  <div className="relative" ref={emojiPickerRef}>
+                  <div
+                    className="relative hidden md:block"
+                    ref={emojiPickerRef}
+                  >
                     <button
                       type="button"
                       disabled={!canSendMessages}
@@ -1644,7 +1699,9 @@ export const ChatArea = ({
                       }}
                       placeholder={
                         canSendMessages
-                          ? 'Type a message… (Enter to send)'
+                          ? isMobileScreen
+                            ? 'Type a message…'
+                            : 'Type a message… (Enter to send)'
                           : 'You do not have permission to send messages in this group.'
                       }
                       rows={1}

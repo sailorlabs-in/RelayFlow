@@ -265,7 +265,7 @@ export const ChatSidebar = ({
 
   return (
     <>
-      <div className="glass-panel flex flex-col overflow-hidden h-full w-[300px] flex-shrink-0">
+      <div className="glass-panel flex flex-col overflow-hidden h-full w-[300px] max-w-[calc(100vw-130px)] md:max-w-none flex-shrink-0">
         {/* Profile Card */}
         <div className="flex items-center gap-2.5 p-3.5 border-b border-[var(--border-muted)]">
           {/* Rail toggle — always first, acts like a nav handle */}

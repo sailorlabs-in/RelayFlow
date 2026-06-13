@@ -586,7 +586,7 @@ export const ChannelSidebar = ({
     : [];
 
   return (
-    <div className="glass-panel w-60 min-w-60 h-full flex flex-col overflow-hidden select-none transition-all duration-300 ease-in-out">
+    <div className="glass-panel w-60 min-w-[180px] max-w-[calc(100vw-130px)] md:w-60 md:min-w-60 h-full flex flex-col overflow-hidden select-none transition-all duration-300 ease-in-out">
       {/* Group Header */}
       <div className="px-4 py-3.5 border-b-[1.5px] border-theme bg-theme-sidebar flex flex-col gap-2.5 shadow-sm">
         <div className="flex items-center justify-between gap-2">
