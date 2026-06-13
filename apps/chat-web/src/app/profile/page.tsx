@@ -21,7 +21,7 @@ import { socketUpdateUserStatus } from '../../store/slices/chatSlice';
 import { socketManager } from '../../store/socketManager';
 import StoreProvider from '../../store/StoreProvider';
 import { Avatar } from '../../components/Avatar';
-import { generateImageThumbnail, compressImage } from '../../utils/media';
+import { generateAvatarThumbnail, compressImage } from '../../utils/media';
 
 /* ── SVGs for icons ────────────────────────────────────────── */
 
@@ -256,8 +256,8 @@ export function ProfileSettingsContent({
         type: 'image/jpeg',
       });
 
-      // Generate 20% thumbnail
-      const thumbBlob = await generateImageThumbnail(file);
+      // Generate 50x50 thumbnail
+      const thumbBlob = await generateAvatarThumbnail(file);
       const thumbFile = new File([thumbBlob], `thumb_${file.name}`, {
         type: 'image/jpeg',
       });

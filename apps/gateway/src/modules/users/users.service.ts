@@ -350,10 +350,7 @@ export class UsersService {
           // The other person sent a request, auto-accept it!
           existing.status = FriendshipStatus.ACCEPTED;
           const saved = await this.friendshipRepository.save(existing);
-          return this.friendshipRepository.findOne({
-            where: { id: saved.id },
-            relations: ['requester', 'addressee'],
-          });
+          return this.findFriendshipOrThrow(saved.id);
         }
       }
       // If declined, reset to pending
@@ -361,10 +358,7 @@ export class UsersService {
       existing.requesterId = requesterId;
       existing.addresseeId = addressee.id;
       const saved = await this.friendshipRepository.save(existing);
-      return this.friendshipRepository.findOne({
-        where: { id: saved.id },
-        relations: ['requester', 'addressee'],
-      });
+      return this.findFriendshipOrThrow(saved.id);
     }
 
     const request = this.friendshipRepository.create({
@@ -374,10 +368,7 @@ export class UsersService {
     });
 
     const saved = await this.friendshipRepository.save(request);
-    return this.friendshipRepository.findOne({
-      where: { id: saved.id },
-      relations: ['requester', 'addressee'],
-    });
+    return this.findFriendshipOrThrow(saved.id);
   }
 
   async getPendingRequests(
@@ -411,10 +402,7 @@ export class UsersService {
     }
     request.status = FriendshipStatus.ACCEPTED;
     const saved = await this.friendshipRepository.save(request);
-    return this.friendshipRepository.findOne({
-      where: { id: saved.id },
-      relations: ['requester', 'addressee'],
-    });
+    return this.findFriendshipOrThrow(saved.id);
   }
 
   async declineFriendRequest(
@@ -617,5 +605,16 @@ export class UsersService {
     } catch {
       // ignore
     }
+  }
+
+  private async findFriendshipOrThrow(id: string): Promise<Friendship> {
+    const friendship = await this.friendshipRepository.findOne({
+      where: { id },
+      relations: ['requester', 'addressee'],
+    });
+    if (!friendship) {
+      throw new NotFoundException('❌ Friendship not found');
+    }
+    return friendship;
   }
 }

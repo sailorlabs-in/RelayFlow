@@ -138,7 +138,7 @@ const renderMessageMedia = (
               <img
                 src={displayUrl}
                 alt={item.name || 'Image'}
-                className="h-[240px] w-auto max-w-full object-contain cursor-pointer hover:opacity-90 transition-opacity"
+                className="h-[240px] w-[360px] max-w-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
                 onClick={() => onMediaClick(item)}
               />
             </div>
@@ -158,7 +158,7 @@ const renderMessageMedia = (
                   <img
                     src={displayUrl}
                     alt={item.name || 'Video'}
-                    className="h-[240px] w-auto max-w-full object-contain transition-opacity"
+                    className="h-[240px] w-[360px] max-w-full object-cover transition-opacity"
                   />
                   <div className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-black/25 transition-colors duration-150">
                     <div className="w-12 h-12 rounded-full bg-white/95 flex items-center justify-center text-black shadow-lg hover:scale-105 active:scale-95 transition-all duration-150">
@@ -175,7 +175,7 @@ const renderMessageMedia = (
               ) : (
                 <video
                   src={item.url}
-                  className="h-[240px] w-auto max-w-full object-contain"
+                  className="h-[240px] w-[360px] max-w-full object-cover"
                   preload="metadata"
                 />
               )}
@@ -1359,27 +1359,24 @@ export const ChatArea = ({
                         onContextMenu={(e) => handleContextMenu(e, msg)}
                         className={`flex items-start gap-2.5 group max-w-[72%] animate-fade-in ${isOut ? 'self-end' : 'self-start'}`}
                       >
-                        {(isOut || canDeleteOthers) &&
-                          editingMessageId !== msg.id && (
-                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 shrink-0 self-center">
-                              {isOut && (
-                                <button
-                                  onClick={() => handleStartEdit(msg)}
-                                  className="flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-[var(--bg-input)] text-[var(--text-secondary)] hover:text-[var(--accent-primary)] active-press"
-                                  title="Edit message"
-                                >
-                                  <IconCompose />
-                                </button>
-                              )}
-                              <button
-                                onClick={() => handleDeleteMessage(msg.id)}
-                                className="msg-delete-btn flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-[var(--danger-bg)] text-[var(--danger)] active-press"
-                                title="Delete message"
-                              >
-                                <IconTrash />
-                              </button>
-                            </div>
-                          )}
+                        {isOut && editingMessageId !== msg.id && (
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 shrink-0 self-center">
+                            <button
+                              onClick={() => handleStartEdit(msg)}
+                              className="flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-[var(--bg-input)] text-[var(--text-secondary)] hover:text-[var(--accent-primary)] active-press"
+                              title="Edit message"
+                            >
+                              <IconCompose />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteMessage(msg.id)}
+                              className="msg-delete-btn flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-[var(--danger-bg)] text-[var(--danger)] active-press"
+                              title="Delete message"
+                            >
+                              <IconTrash />
+                            </button>
+                          </div>
+                        )}
                         {!isOut && isChannelMode && (
                           <div className="shrink-0 mt-0.5">
                             <Avatar
@@ -1498,6 +1495,19 @@ export const ChatArea = ({
                             )}
                           </div>
                         </div>
+                        {!isOut &&
+                          canDeleteOthers &&
+                          editingMessageId !== msg.id && (
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 shrink-0 self-center">
+                              <button
+                                onClick={() => handleDeleteMessage(msg.id)}
+                                className="msg-delete-btn flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-[var(--danger-bg)] text-[var(--danger)] active-press"
+                                title="Delete message"
+                              >
+                                <IconTrash />
+                              </button>
+                            </div>
+                          )}
                       </div>
                     );
                   })

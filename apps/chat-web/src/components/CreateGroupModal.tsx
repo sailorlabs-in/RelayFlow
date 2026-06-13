@@ -7,7 +7,7 @@ import { createGroup } from '../store/slices/groupsSlice';
 import { Avatar } from './Avatar';
 import { IconX, IconSearch, IconPlus } from './Icons';
 import { showToast } from './toast';
-import { generateImageThumbnail, compressImage } from '../utils/media';
+import { generateAvatarThumbnail, compressImage } from '../utils/media';
 
 interface CreateGroupModalProps {
   onClose: () => void;
@@ -110,8 +110,8 @@ export const CreateGroupModal = ({
         type: 'image/jpeg',
       });
 
-      // Generate 20% thumbnail
-      const thumbBlob = await generateImageThumbnail(file);
+      // Generate 50x50 avatar thumbnail
+      const thumbBlob = await generateAvatarThumbnail(file);
       const thumbFile = new File([thumbBlob], `thumb_${file.name}`, {
         type: 'image/jpeg',
       });
