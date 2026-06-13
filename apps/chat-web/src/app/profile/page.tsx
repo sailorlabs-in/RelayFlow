@@ -675,10 +675,12 @@ export function ProfileSettingsContent({
       <div className="flex flex-1 flex-col md:flex-row overflow-hidden">
         {/* Left Navigation tab list */}
         <div
-          className="w-full md:w-[240px] flex flex-row md:flex-col p-3 gap-1.5 border-r"
+          className="w-full md:w-[240px] flex flex-row md:flex-col p-3 gap-1.5 border-b md:border-b-0 md:border-r overflow-x-auto md:overflow-x-visible shrink-0 flex-nowrap"
           style={{
             borderColor: 'var(--border-muted)',
             background: 'rgba(0,0,0,0.015)',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
           }}
         >
           {[
@@ -706,7 +708,7 @@ export function ProfileSettingsContent({
                   tab.id as 'account' | 'theme' | 'status' | 'notifications',
                 );
               }}
-              className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl text-[13.5px] font-semibold cursor-pointer text-left transition-all duration-200 border-none ${
+              className={`flex items-center gap-3 shrink-0 w-max md:w-full px-4 py-3 rounded-xl text-[13.5px] font-semibold cursor-pointer text-left transition-all duration-200 border-none ${
                 activeTab === tab.id ? 'theme-btn-active' : ''
               }`}
               style={
@@ -740,7 +742,7 @@ export function ProfileSettingsContent({
           <button
             type="button"
             onClick={handleSignOut}
-            className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-[13.5px] font-semibold cursor-pointer text-left transition-all duration-200 border border-[var(--danger-border)] bg-[var(--danger-bg)] text-[var(--danger)] hover:opacity-85 mt-auto md:mt-0"
+            className="flex items-center gap-3 shrink-0 w-max md:w-full px-4 py-3 rounded-xl text-[13.5px] font-semibold cursor-pointer text-left transition-all duration-200 border border-[var(--danger-border)] bg-[var(--danger-bg)] text-[var(--danger)] hover:opacity-85 mt-auto md:mt-0"
           >
             <IconLogout />
             <span>Sign Out</span>

@@ -17,7 +17,13 @@ import { Avatar } from './Avatar';
 import { showToast } from './toast';
 import { ConfirmationModal } from './ConfirmationModal';
 
-export const FriendsDashboard = (): React.JSX.Element => {
+interface FriendsDashboardProps {
+  onMenuClick?: () => void;
+}
+
+export const FriendsDashboard = ({
+  onMenuClick,
+}: FriendsDashboardProps = {}): React.JSX.Element => {
   const dispatch = useAppDispatch();
   const { user, accessToken } = useAppSelector((s) => s.auth);
   const {
@@ -246,8 +252,28 @@ export const FriendsDashboard = (): React.JSX.Element => {
   return (
     <div className="flex flex-col h-full flex-1 bg-[var(--bg-chat)] rounded-2xl overflow-hidden animate-fade-in">
       {/* Top Navigation Bar */}
-      <div className="flex items-center justify-between px-6 py-4.5 border-b border-[var(--border-muted)] bg-[var(--bg-sidebar)]">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between px-4 sm:px-6 py-4.5 border-b border-[var(--border-muted)] bg-[var(--bg-sidebar)]">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          {onMenuClick && (
+            <button
+              id="mobile-menu-btn"
+              onClick={onMenuClick}
+              className="md:hidden flex items-center justify-center p-1.5 rounded-md text-[var(--text-muted)] hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)] cursor-pointer active-press focus:outline-none shrink-0"
+              title="Open Navigation"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                className="w-5 h-5"
+              >
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
+            </button>
+          )}
           <div className="text-[var(--text-primary)] flex shrink-0">
             <svg
               viewBox="0 0 24 24"
@@ -262,12 +288,15 @@ export const FriendsDashboard = (): React.JSX.Element => {
               <path d="M16 3.13a4 4 0 0 1 0 7.75" />
             </svg>
           </div>
-          <h2 className="text-[16px] font-bold text-[var(--text-primary)] mr-4">
+          <h2 className="text-[16px] font-bold text-[var(--text-primary)] mr-2 sm:mr-4 shrink-0">
             Friends
           </h2>
 
           {/* Navigation Tabs */}
-          <div className="flex gap-1.5 items-center select-none">
+          <div
+            className="flex gap-1.5 items-center select-none overflow-x-auto max-w-full py-0.5 no-scrollbar flex-nowrap"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          >
             {[
               { id: 'online', label: 'Online' },
               { id: 'all', label: 'All Friends' },
@@ -540,7 +569,10 @@ export const FriendsDashboard = (): React.JSX.Element => {
               </p>
             </div>
 
-            <form onSubmit={handleSearchUser} className="flex gap-2">
+            <form
+              onSubmit={handleSearchUser}
+              className="flex flex-col sm:flex-row gap-2"
+            >
               <input
                 type="text"
                 className="input-base flex-1 rounded-xl px-4 py-3 text-[14px] bg-[var(--bg-input)] border-[1.5px] border-[var(--glass-border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[3px] focus:ring-[var(--accent-ring)]"

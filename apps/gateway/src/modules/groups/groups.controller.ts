@@ -25,12 +25,15 @@ import {
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Permissions } from '../../common/decorators/permissions.decorator';
+import { GroupPermission } from '@chat-app/database';
 
 import { GroupsService } from './groups.service';
 
 @ApiTags('Groups (Servers)')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('groups')
 export class GroupsController {
   constructor(
@@ -193,6 +196,7 @@ export class GroupsController {
 
   // ─── Update group name/description ───────────────────────────────────────────
   @Patch(':id')
+  @Permissions(GroupPermission.MANAGE_GROUP)
   @ApiOperation({ summary: 'Update group name, description, and avatar' })
   @ApiParam({ name: 'id', description: 'Group UUID' })
   @ApiBody({
@@ -280,6 +284,7 @@ export class GroupsController {
 
   // ─── Remove a member from a group ────────────────────────────────────────────
   @Delete(':id/members/:userId')
+  @Permissions(GroupPermission.KICK_MEMBERS)
   @ApiOperation({ summary: 'Remove a member from a group' })
   @ApiParam({ name: 'id', description: 'Group UUID' })
   @ApiParam({ name: 'userId', description: 'User UUID to remove' })
@@ -303,6 +308,7 @@ export class GroupsController {
 
   // ─── Create a channel inside a group ─────────────────────────────────────────
   @Post(':id/channels')
+  @Permissions(GroupPermission.MANAGE_CHANNELS)
   @ApiOperation({
     summary: 'Create a new text or conversation channel inside a group',
   })
@@ -351,6 +357,7 @@ export class GroupsController {
 
   // ─── Update channel name and allowed roles inside a group ────────────────────
   @Patch(':id/channels/:channelId')
+  @Permissions(GroupPermission.MANAGE_CHANNELS)
   @ApiOperation({ summary: 'Update channel configurations' })
   @ApiParam({ name: 'id', description: 'Group UUID' })
   @ApiParam({ name: 'channelId', description: 'Channel UUID' })
@@ -409,6 +416,7 @@ export class GroupsController {
 
   // ─── Delete a channel inside a group ─────────────────────────────────────────
   @Delete(':id/channels/:channelId')
+  @Permissions(GroupPermission.MANAGE_CHANNELS)
   @ApiOperation({ summary: 'Delete a text channel inside a group' })
   @ApiParam({ name: 'id', description: 'Group UUID' })
   @ApiParam({ name: 'channelId', description: 'Channel UUID' })
@@ -465,6 +473,7 @@ export class GroupsController {
   }
 
   @Post(':id/roles')
+  @Permissions(GroupPermission.MANAGE_ROLES)
   @ApiOperation({ summary: 'Create a new custom role' })
   @ApiParam({ name: 'id', description: 'Group UUID' })
   @ApiBody({
@@ -474,6 +483,7 @@ export class GroupsController {
       properties: {
         name: { type: 'string', example: 'Moderator' },
         color: { type: 'string', example: '#7289da' },
+        permissions: { type: 'array', items: { type: 'string' } },
       },
     },
   })
@@ -482,12 +492,14 @@ export class GroupsController {
     @CurrentUser() currentUser: { userId: string },
     @Body('name') name: string,
     @Body('color') color?: string,
+    @Body('permissions') permissions?: string[],
   ) {
     const role = await this.groupsService.createRole(
       groupId,
       currentUser.userId,
       name,
       color,
+      permissions,
     );
 
     // Broadcast update to all group members
@@ -502,6 +514,7 @@ export class GroupsController {
   }
 
   @Patch(':id/roles/:roleId')
+  @Permissions(GroupPermission.MANAGE_ROLES)
   @ApiOperation({ summary: 'Update a custom role' })
   @ApiParam({ name: 'id', description: 'Group UUID' })
   @ApiParam({ name: 'roleId', description: 'Role UUID' })
@@ -511,6 +524,7 @@ export class GroupsController {
       properties: {
         name: { type: 'string', example: 'Moderator' },
         color: { type: 'string', example: '#7289da' },
+        permissions: { type: 'array', items: { type: 'string' } },
       },
     },
   })
@@ -520,6 +534,7 @@ export class GroupsController {
     @CurrentUser() currentUser: { userId: string },
     @Body('name') name: string,
     @Body('color') color?: string,
+    @Body('permissions') permissions?: string[],
   ) {
     const role = await this.groupsService.updateRole(
       groupId,
@@ -527,6 +542,7 @@ export class GroupsController {
       currentUser.userId,
       name,
       color,
+      permissions,
     );
 
     // Broadcast update to all group members
@@ -541,6 +557,7 @@ export class GroupsController {
   }
 
   @Delete(':id/roles/:roleId')
+  @Permissions(GroupPermission.MANAGE_ROLES)
   @ApiOperation({ summary: 'Delete a custom role' })
   @ApiParam({ name: 'id', description: 'Group UUID' })
   @ApiParam({ name: 'roleId', description: 'Role UUID' })
@@ -562,6 +579,7 @@ export class GroupsController {
   }
 
   @Post(':id/members/:userId/roles')
+  @Permissions(GroupPermission.MANAGE_ROLES)
   @ApiOperation({ summary: 'Assign custom roles to a member' })
   @ApiParam({ name: 'id', description: 'Group UUID' })
   @ApiParam({ name: 'userId', description: 'User UUID of member' })
@@ -605,6 +623,7 @@ export class GroupsController {
 
   // ─── Group Sections/Categories Management ───
   @Post(':id/sections')
+  @Permissions(GroupPermission.MANAGE_CHANNELS)
   @ApiOperation({ summary: 'Create a new group section/category' })
   @ApiParam({ name: 'id', description: 'Group UUID' })
   @ApiBody({
@@ -645,6 +664,7 @@ export class GroupsController {
   }
 
   @Patch(':id/sections/:sectionId')
+  @Permissions(GroupPermission.MANAGE_CHANNELS)
   @ApiOperation({ summary: 'Update a group section/category' })
   @ApiParam({ name: 'id', description: 'Group UUID' })
   @ApiParam({ name: 'sectionId', description: 'Section UUID' })
@@ -690,6 +710,7 @@ export class GroupsController {
   }
 
   @Delete(':id/sections/:sectionId')
+  @Permissions(GroupPermission.MANAGE_CHANNELS)
   @ApiOperation({ summary: 'Delete a group section/category' })
   @ApiParam({ name: 'id', description: 'Group UUID' })
   @ApiParam({ name: 'sectionId', description: 'Section UUID' })
@@ -718,6 +739,7 @@ export class GroupsController {
   }
 
   @Post(':id/sections/reorder')
+  @Permissions(GroupPermission.MANAGE_CHANNELS)
   @ApiOperation({ summary: 'Reorder categories/sections' })
   @ApiParam({ name: 'id', description: 'Group UUID' })
   @ApiBody({
@@ -755,6 +777,7 @@ export class GroupsController {
   }
 
   @Post(':id/channels/reorder')
+  @Permissions(GroupPermission.MANAGE_CHANNELS)
   @ApiOperation({ summary: 'Reorder channels' })
   @ApiParam({ name: 'id', description: 'Group UUID' })
   @ApiBody({

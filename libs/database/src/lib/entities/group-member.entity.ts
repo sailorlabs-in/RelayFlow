@@ -46,6 +46,9 @@ export class GroupMember {
   @Column({ name: 'role_ids', type: 'jsonb', nullable: true, default: [] })
   roleIds?: string[];
 
+  @Column({ name: 'permissions', type: 'jsonb', nullable: true, default: [] })
+  permissions?: string[];
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 }

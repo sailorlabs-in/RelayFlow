@@ -32,6 +32,7 @@ import {
 import { showToast } from './toast';
 import { ConfirmationModal } from './ConfirmationModal';
 import { Avatar } from './Avatar';
+import { hasGroupPermission } from '../utils/permissions';
 
 interface ChannelSidebarProps {
   group: Group;
@@ -113,7 +114,10 @@ export const ChannelSidebar = ({
   const isOwner = group.ownerId === user?.id;
   const isAdmin =
     group.members.find((m) => m.userId === user?.id)?.role === 'admin';
-  const canManage = isOwner || isAdmin;
+  const canManage =
+    isOwner ||
+    isAdmin ||
+    hasGroupPermission(group, user?.id, 'manage_channels');
 
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -582,7 +586,7 @@ export const ChannelSidebar = ({
     : [];
 
   return (
-    <div className="glass-panel w-60 min-w-60 h-full flex flex-col overflow-hidden select-none transition-all duration-300 ease-in-out">
+    <div className="glass-panel w-60 min-w-[180px] max-w-[calc(100vw-130px)] md:w-60 md:min-w-60 h-full flex flex-col overflow-hidden select-none transition-all duration-300 ease-in-out">
       {/* Group Header */}
       <div className="px-4 py-3.5 border-b-[1.5px] border-theme bg-theme-sidebar flex flex-col gap-2.5 shadow-sm">
         <div className="flex items-center justify-between gap-2">
@@ -658,7 +662,10 @@ export const ChannelSidebar = ({
                 </svg>
               </IconButton>
             )}
-            {isOwner && (
+            {(isOwner ||
+              isAdmin ||
+              hasGroupPermission(group, user?.id, 'manage_group') ||
+              hasGroupPermission(group, user?.id, 'manage_roles')) && (
               <IconButton
                 title="Group Settings"
                 onClick={onEditGroup}

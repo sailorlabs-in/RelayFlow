@@ -13,6 +13,16 @@ import { IconX } from './Icons';
 import { showToast } from './toast';
 import { Avatar } from './Avatar';
 import { generateImageThumbnail, compressImage } from '../utils/media';
+import { hasGroupPermission } from '../utils/permissions';
+
+const AVAILABLE_PERMISSIONS = [
+  { value: 'manage_group', label: 'Manage Server' },
+  { value: 'manage_channels', label: 'Manage Channels' },
+  { value: 'manage_roles', label: 'Manage Roles' },
+  { value: 'kick_members', label: 'Kick Members' },
+  { value: 'send_messages', label: 'Send Messages' },
+  { value: 'attach_files', label: 'Attach Files' },
+];
 
 interface GroupSettingsModalProps {
   group: Group;
@@ -24,6 +34,7 @@ export const GroupSettingsModal = ({
   onClose,
 }: GroupSettingsModalProps): React.JSX.Element => {
   const dispatch = useAppDispatch();
+  const { user } = useAppSelector((state) => state.auth);
 
   // Select active group details to get real-time roles
   const activeGroup = useAppSelector((state) =>
@@ -31,7 +42,17 @@ export const GroupSettingsModal = ({
   );
   const roles = activeGroup?.roles || [];
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'roles'>('overview');
+  const isOwnerOrAdmin =
+    activeGroup?.ownerId === user?.id ||
+    activeGroup?.members.find((m) => m.userId === user?.id)?.role === 'admin';
+  const canManageGroup =
+    isOwnerOrAdmin || hasGroupPermission(activeGroup, user?.id, 'manage_group');
+  const canManageRoles =
+    isOwnerOrAdmin || hasGroupPermission(activeGroup, user?.id, 'manage_roles');
+
+  const [activeTab, setActiveTab] = useState<'overview' | 'roles'>(
+    canManageGroup ? 'overview' : 'roles',
+  );
 
   // Overview Tab State
   const [name, setName] = useState(group.name);
@@ -48,6 +69,7 @@ export const GroupSettingsModal = ({
   const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
   const [roleName, setRoleName] = useState('');
   const [roleColor, setRoleColor] = useState('#7289da');
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [isRoleLoading, setIsRoleLoading] = useState(false);
 
   const deleteOldMedia = async (url: string) => {
@@ -194,10 +216,12 @@ export const GroupSettingsModal = ({
           groupId: group.id,
           name: cleanName,
           color: roleColor,
+          permissions: selectedPermissions,
         }),
       ).unwrap();
       setRoleName('');
       setRoleColor('#7289da');
+      setSelectedPermissions([]);
       showToast.success('Role created successfully!');
     } catch (err: any) {
       showToast.error(err || 'Failed to create role.');
@@ -210,6 +234,7 @@ export const GroupSettingsModal = ({
     setEditingRoleId(role.id);
     setRoleName(role.name);
     setRoleColor(role.color);
+    setSelectedPermissions(role.permissions || []);
   };
 
   const handleUpdateRole = async () => {
@@ -225,11 +250,13 @@ export const GroupSettingsModal = ({
           roleId: editingRoleId,
           name: cleanName,
           color: roleColor,
+          permissions: selectedPermissions,
         }),
       ).unwrap();
       setEditingRoleId(null);
       setRoleName('');
       setRoleColor('#7289da');
+      setSelectedPermissions([]);
       showToast.success('Role updated successfully!');
     } catch (err: any) {
       showToast.error(err || 'Failed to update role.');
@@ -254,6 +281,7 @@ export const GroupSettingsModal = ({
         setEditingRoleId(null);
         setRoleName('');
         setRoleColor('#7289da');
+        setSelectedPermissions([]);
       }
     } catch (err: any) {
       showToast.error(err || 'Failed to delete role.');
@@ -291,30 +319,32 @@ export const GroupSettingsModal = ({
         </div>
 
         {/* Tabs */}
-        <div className="px-5 border-b border-[var(--border-muted)] flex gap-4 bg-[rgba(0,0,0,0.02)]">
-          <button
-            type="button"
-            onClick={() => setActiveTab('overview')}
-            className={`py-2 px-1 text-xs font-bold uppercase tracking-wider border-b-2 border-transparent transition-all cursor-pointer bg-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)] ${
-              activeTab === 'overview'
-                ? '!border-[var(--accent-primary)] !text-[var(--accent-primary)]'
-                : ''
-            }`}
-          >
-            Overview
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('roles')}
-            className={`py-2 px-1 text-xs font-bold uppercase tracking-wider border-b-2 border-transparent transition-all cursor-pointer bg-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)] ${
-              activeTab === 'roles'
-                ? '!border-[var(--accent-primary)] !text-[var(--accent-primary)]'
-                : ''
-            }`}
-          >
-            Roles
-          </button>
-        </div>
+        {canManageGroup && canManageRoles && (
+          <div className="px-5 border-b border-[var(--border-muted)] flex gap-4 bg-[rgba(0,0,0,0.02)]">
+            <button
+              type="button"
+              onClick={() => setActiveTab('overview')}
+              className={`py-2 px-1 text-xs font-bold uppercase tracking-wider border-b-2 border-transparent transition-all cursor-pointer bg-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)] ${
+                activeTab === 'overview'
+                  ? '!border-[var(--accent-primary)] !text-[var(--accent-primary)]'
+                  : ''
+              }`}
+            >
+              Overview
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('roles')}
+              className={`py-2 px-1 text-xs font-bold uppercase tracking-wider border-b-2 border-transparent transition-all cursor-pointer bg-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)] ${
+                activeTab === 'roles'
+                  ? '!border-[var(--accent-primary)] !text-[var(--accent-primary)]'
+                  : ''
+              }`}
+            >
+              Roles
+            </button>
+          </div>
+        )}
 
         {/* Body */}
         {activeTab === 'overview' ? (
@@ -451,6 +481,43 @@ export const GroupSettingsModal = ({
                   </div>
                 </div>
               </div>
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-1.5">
+                  Permissions
+                </label>
+                <div className="grid grid-cols-2 gap-2 max-h-[140px] overflow-y-auto pr-1 border border-[var(--glass-border)] p-2.5 rounded-lg bg-[var(--bg-input)]">
+                  {AVAILABLE_PERMISSIONS.map((perm) => {
+                    const isChecked = selectedPermissions.includes(perm.value);
+                    return (
+                      <label
+                        key={perm.value}
+                        className="flex items-center gap-2 text-xs text-[var(--text-secondary)] cursor-pointer hover:text-[var(--text-primary)] select-none"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedPermissions([
+                                ...selectedPermissions,
+                                perm.value,
+                              ]);
+                            } else {
+                              setSelectedPermissions(
+                                selectedPermissions.filter(
+                                  (p) => p !== perm.value,
+                                ),
+                              );
+                            }
+                          }}
+                          className="w-3.5 h-3.5 accent-[var(--accent-primary)] cursor-pointer"
+                        />
+                        {perm.label}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
               <div className="flex justify-end gap-2.5 mt-2">
                 {editingRoleId && (
                   <button
@@ -459,6 +526,7 @@ export const GroupSettingsModal = ({
                       setEditingRoleId(null);
                       setRoleName('');
                       setRoleColor('#7289da');
+                      setSelectedPermissions([]);
                     }}
                     className="px-3 py-2 rounded-[8px] border-[1.5px] border-[var(--glass-border)] bg-transparent text-[var(--text-secondary)] text-xs font-semibold cursor-pointer active-press"
                   >
