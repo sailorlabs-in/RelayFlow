@@ -15,6 +15,8 @@ export enum GroupPermission {
   KICK_MEMBERS = 'kick_members',
   SEND_MESSAGES = 'send_messages',
   ATTACH_FILES = 'attach_files',
+  INVITE_MEMBERS = 'invite_members',
+  DELETE_OTHER_MESSAGES = 'delete_other_messages',
 }
 
 @Entity('group_role')
@@ -37,6 +39,9 @@ export class GroupRole {
 
   @Column({ name: 'permissions', type: 'jsonb', nullable: true, default: [] })
   permissions?: string[];
+
+  @Column({ name: 'priority', type: 'int', default: 0 })
+  priority!: number;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;

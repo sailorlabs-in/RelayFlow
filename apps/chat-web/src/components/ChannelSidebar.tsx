@@ -119,6 +119,9 @@ export const ChannelSidebar = ({
     isAdmin ||
     hasGroupPermission(group, user?.id, 'manage_channels');
 
+  const canInvite =
+    isOwner || isAdmin || hasGroupPermission(group, user?.id, 'invite_members');
+
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -629,13 +632,15 @@ export const ChannelSidebar = ({
 
         <div className="text-xs flex gap-3 items-center justify-between mt-1">
           <div className="text-[11px] text-[var(--text-muted)] flex items-center gap-1.5">
-            <IconButton
-              title="Invite Members"
-              onClick={onInviteMembers}
-              id="members-btn"
-            >
-              <IconPeople />
-            </IconButton>
+            {canInvite && (
+              <IconButton
+                title="Invite Members"
+                onClick={onInviteMembers}
+                id="members-btn"
+              >
+                <IconPeople />
+              </IconButton>
+            )}
             <span className="font-medium">
               {group.members.length} member
               {group.members.length !== 1 ? 's' : ''}

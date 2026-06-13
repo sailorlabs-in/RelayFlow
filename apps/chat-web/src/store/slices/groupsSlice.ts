@@ -8,8 +8,20 @@ export interface GroupRole {
   name: string;
   color: string;
   permissions?: string[];
+  priority?: number;
   createdAt: string;
 }
+
+const sortRoles = (roles: GroupRole[]) => {
+  return [...roles].sort((a, b) => {
+    const pA = a.priority ?? 0;
+    const pB = b.priority ?? 0;
+    if (pB !== pA) {
+      return pB - pA;
+    }
+    return a.createdAt.localeCompare(b.createdAt);
+  });
+};
 
 export interface GroupSection {
   id: string;
@@ -587,6 +599,34 @@ export const deleteGroupRole = createAsyncThunk(
   },
 );
 
+// ── Reorder group roles ──────────────────────────────────────────────────────
+export const reorderGroupRoles = createAsyncThunk(
+  'groups/reorderGroupRoles',
+  async (
+    payload: {
+      groupId: string;
+      roleIds: string[];
+    },
+    { rejectWithValue },
+  ) => {
+    try {
+      const response = await ApiRequest(
+        `/groups/${payload.groupId}/roles/reorder`,
+        'post',
+        { roleIds: payload.roleIds },
+        true,
+      );
+      return { groupId: payload.groupId, roles: response.data as GroupRole[] };
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.error?.message ||
+          error.response?.data?.message ||
+          'Failed to reorder roles.',
+      );
+    }
+  },
+);
+
 // ── Assign roles to member ─────────────────────────────────────────────────────
 export const assignMemberRoles = createAsyncThunk(
   'groups/assignMemberRoles',
@@ -908,6 +948,7 @@ const groupsSlice = createSlice({
         if (!exists) {
           group.roles.push(role);
         }
+        group.roles = sortRoles(group.roles);
       }
     },
     socketRoleUpdated: (
@@ -920,6 +961,7 @@ const groupsSlice = createSlice({
         const rIdx = group.roles.findIndex((r) => r.id === role.id);
         if (rIdx !== -1) {
           group.roles[rIdx] = role;
+          group.roles = sortRoles(group.roles);
         }
       }
     },
@@ -954,6 +996,16 @@ const groupsSlice = createSlice({
             return c;
           });
         }
+      }
+    },
+    socketRolesReordered: (
+      state,
+      action: PayloadAction<{ groupId: string; roles: GroupRole[] }>,
+    ) => {
+      const { groupId, roles } = action.payload;
+      const group = state.groups.find((g) => g.id === groupId);
+      if (group) {
+        group.roles = sortRoles(roles);
       }
     },
     socketMemberRolesUpdated: (
@@ -1247,7 +1299,7 @@ const groupsSlice = createSlice({
       const { groupId, roles } = action.payload;
       const group = state.groups.find((g) => g.id === groupId);
       if (group) {
-        group.roles = roles;
+        group.roles = sortRoles(roles);
       }
     });
 
@@ -1263,6 +1315,7 @@ const groupsSlice = createSlice({
         if (!exists) {
           group.roles.push(role);
         }
+        group.roles = sortRoles(group.roles);
       }
     });
 
@@ -1274,7 +1327,17 @@ const groupsSlice = createSlice({
         const rIdx = group.roles.findIndex((r) => r.id === role.id);
         if (rIdx !== -1) {
           group.roles[rIdx] = role;
+          group.roles = sortRoles(group.roles);
         }
+      }
+    });
+
+    // Reorder group roles
+    builder.addCase(reorderGroupRoles.fulfilled, (state, action) => {
+      const { groupId, roles } = action.payload;
+      const group = state.groups.find((g) => g.id === groupId);
+      if (group) {
+        group.roles = sortRoles(roles);
       }
     });
 
@@ -1400,6 +1463,7 @@ export const {
   socketRoleCreated,
   socketRoleUpdated,
   socketRoleDeleted,
+  socketRolesReordered,
   socketMemberRolesUpdated,
   socketSectionCreated,
   socketSectionUpdated,

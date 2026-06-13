@@ -48,7 +48,7 @@ export class Conversation {
   sectionId?: string;
 
   @ManyToOne(() => GroupSection, (section) => section.conversations, {
-    onDelete: 'CASCADE',
+    onDelete: 'SET NULL',
   })
   @JoinColumn({ name: 'section_id' })
   section?: GroupSection;

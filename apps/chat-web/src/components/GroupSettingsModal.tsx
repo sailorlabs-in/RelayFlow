@@ -7,6 +7,7 @@ import {
   createGroupRole,
   updateGroupRole,
   deleteGroupRole,
+  reorderGroupRoles,
 } from '../store/slices/groupsSlice';
 
 import { IconX } from './Icons';
@@ -15,6 +16,34 @@ import { Avatar } from './Avatar';
 import { generateImageThumbnail, compressImage } from '../utils/media';
 import { hasGroupPermission } from '../utils/permissions';
 
+const IconArrowUp = ({ size = 16 }: { size?: number }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    style={{ width: size, height: size }}
+  >
+    <polyline points="18 15 12 9 6 15" />
+  </svg>
+);
+
+const IconArrowDown = ({ size = 16 }: { size?: number }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    style={{ width: size, height: size }}
+  >
+    <polyline points="6 9 12 15 18 9" />
+  </svg>
+);
+
 const AVAILABLE_PERMISSIONS = [
   { value: 'manage_group', label: 'Manage Server' },
   { value: 'manage_channels', label: 'Manage Channels' },
@@ -22,6 +51,8 @@ const AVAILABLE_PERMISSIONS = [
   { value: 'kick_members', label: 'Kick Members' },
   { value: 'send_messages', label: 'Send Messages' },
   { value: 'attach_files', label: 'Attach Files' },
+  { value: 'invite_members', label: 'Invite Others' },
+  { value: 'delete_other_messages', label: "Delete Other's Messages" },
 ];
 
 interface GroupSettingsModalProps {
@@ -285,6 +316,38 @@ export const GroupSettingsModal = ({
       }
     } catch (err: any) {
       showToast.error(err || 'Failed to delete role.');
+    } finally {
+      setIsRoleLoading(false);
+    }
+  };
+
+  const handleReorderRole = async (
+    roleId: string,
+    direction: 'up' | 'down',
+  ) => {
+    const idx = roles.findIndex((r) => r.id === roleId);
+    if (idx === -1) {
+      return;
+    }
+    const newRoles = [...roles];
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= newRoles.length) {
+      return;
+    }
+
+    const temp = newRoles[idx];
+    newRoles[idx] = newRoles[targetIdx];
+    newRoles[targetIdx] = temp;
+
+    const roleIds = newRoles.map((r) => r.id);
+    setIsRoleLoading(true);
+    try {
+      await dispatch(
+        reorderGroupRoles({ groupId: group.id, roleIds }),
+      ).unwrap();
+      showToast.success('Role order updated successfully!');
+    } catch (err: any) {
+      showToast.error(err || 'Failed to reorder roles.');
     } finally {
       setIsRoleLoading(false);
     }
@@ -559,7 +622,7 @@ export const GroupSettingsModal = ({
                 </p>
               ) : (
                 <div className="flex flex-col gap-2">
-                  {roles.map((role) => (
+                  {roles.map((role, idx) => (
                     <div
                       key={role.id}
                       className="flex items-center justify-between p-2.5 rounded-[10px] border border-[var(--glass-border)] bg-[rgba(255,255,255,0.01)] hover:bg-[rgba(255,255,255,0.02)] transition-all"
@@ -577,6 +640,30 @@ export const GroupSettingsModal = ({
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
+                        {canManageRoles && (
+                          <div className="flex gap-1 mr-1">
+                            <button
+                              type="button"
+                              disabled={idx === 0 || isRoleLoading}
+                              onClick={() => handleReorderRole(role.id, 'up')}
+                              className="p-1.5 rounded-[6px] cursor-pointer border border-[var(--glass-border)] bg-[rgba(255,255,255,0.03)] text-[var(--text-secondary)] hover:bg-[rgba(255,255,255,0.06)] disabled:opacity-30 disabled:cursor-not-allowed active-press flex items-center justify-center"
+                              title="Move Role Up (Higher Priority)"
+                            >
+                              <IconArrowUp size={14} />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={
+                                idx === roles.length - 1 || isRoleLoading
+                              }
+                              onClick={() => handleReorderRole(role.id, 'down')}
+                              className="p-1.5 rounded-[6px] cursor-pointer border border-[var(--glass-border)] bg-[rgba(255,255,255,0.03)] text-[var(--text-secondary)] hover:bg-[rgba(255,255,255,0.06)] disabled:opacity-30 disabled:cursor-not-allowed active-press flex items-center justify-center"
+                              title="Move Role Down (Lower Priority)"
+                            >
+                              <IconArrowDown size={14} />
+                            </button>
+                          </div>
+                        )}
                         <button
                           type="button"
                           onClick={() => handleStartEdit(role)}
