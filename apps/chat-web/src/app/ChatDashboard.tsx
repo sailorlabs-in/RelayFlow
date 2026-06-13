@@ -1,6 +1,9 @@
 'use client';
 
-import { INACTIVITY_TIMEOUT_MS } from '@chat-app/shared-constants';
+import {
+  INACTIVITY_TIMEOUT_MS,
+  AUTO_OFFLINE_TIMEOUT_MS,
+} from '@chat-app/shared-constants';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 // Import modular components
@@ -85,9 +88,12 @@ function ChatDashboardContent() {
   const [isInviteMembersOpen, setIsInviteMembersOpen] = useState(false);
 
   const [isDMMode, setIsDMMode] = useState(true); // true = show DM sidebar, false = show group channel sidebar
-  const [autoStatus, setAutoStatus] = useState<'online' | 'away'>('online');
+  const [autoStatus, setAutoStatus] = useState<'online' | 'away' | 'offline'>(
+    'online',
+  );
 
   const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const awayToOfflineTimerRef = useRef<NodeJS.Timeout | null>(null);
   const prevIsDMModeRef = useRef(isDMMode);
   const prevActiveGroupIdRef = useRef(activeGroupId);
 
@@ -189,7 +195,7 @@ function ChatDashboardContent() {
     autoStatusRef.current = autoStatus;
   }, [autoStatus]);
 
-  // ---- Inactivity detection: auto-away after 2 minutes ----
+  // ---- Inactivity detection: auto-away after 2 minutes, auto-offline after another 10 minutes ----
   useEffect(() => {
     if (!accessToken || !user) {
       return;
@@ -199,6 +205,10 @@ function ChatDashboardContent() {
       if (inactivityTimerRef.current) {
         clearTimeout(inactivityTimerRef.current);
         inactivityTimerRef.current = null;
+      }
+      if (awayToOfflineTimerRef.current) {
+        clearTimeout(awayToOfflineTimerRef.current);
+        awayToOfflineTimerRef.current = null;
       }
       socketManager.updateStatus(manualStatus, 'online');
       return;
@@ -210,8 +220,15 @@ function ChatDashboardContent() {
       if (inactivityTimerRef.current) {
         clearTimeout(inactivityTimerRef.current);
       }
+      if (awayToOfflineTimerRef.current) {
+        clearTimeout(awayToOfflineTimerRef.current);
+        awayToOfflineTimerRef.current = null;
+      }
 
-      if (autoStatusRef.current === 'away') {
+      if (
+        autoStatusRef.current === 'away' ||
+        autoStatusRef.current === 'offline'
+      ) {
         setAutoStatus('online');
         socketManager.updateStatus('online', 'online');
       }
@@ -219,6 +236,12 @@ function ChatDashboardContent() {
       inactivityTimerRef.current = setTimeout(() => {
         setAutoStatus('away');
         socketManager.updateStatus('online', 'away');
+
+        // Start 10 minutes countdown to automatically transition to offline
+        awayToOfflineTimerRef.current = setTimeout(() => {
+          setAutoStatus('offline');
+          socketManager.updateStatus('offline', 'online');
+        }, AUTO_OFFLINE_TIMEOUT_MS);
       }, INACTIVITY_MS);
     };
 
@@ -227,8 +250,17 @@ function ChatDashboardContent() {
         if (inactivityTimerRef.current) {
           clearTimeout(inactivityTimerRef.current);
         }
+        if (awayToOfflineTimerRef.current) {
+          clearTimeout(awayToOfflineTimerRef.current);
+        }
         setAutoStatus('away');
         socketManager.updateStatus('online', 'away');
+
+        // Start 10 minutes countdown to automatically transition to offline if tab stays hidden
+        awayToOfflineTimerRef.current = setTimeout(() => {
+          setAutoStatus('offline');
+          socketManager.updateStatus('offline', 'online');
+        }, AUTO_OFFLINE_TIMEOUT_MS);
       } else {
         resetTimer();
       }
@@ -251,6 +283,9 @@ function ChatDashboardContent() {
     return () => {
       if (inactivityTimerRef.current) {
         clearTimeout(inactivityTimerRef.current);
+      }
+      if (awayToOfflineTimerRef.current) {
+        clearTimeout(awayToOfflineTimerRef.current);
       }
       activityEvents.forEach((ev) =>
         window.removeEventListener(ev, resetTimer),
