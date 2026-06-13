@@ -6,6 +6,7 @@ import {
   NotFoundException,
   BadRequestException,
   UseGuards,
+  OnModuleInit,
 } from '@nestjs/common';
 import { RateLimitGuard } from '../../common/guards/rate-limit.guard';
 import { InjectQueue } from '@nestjs/bullmq';
@@ -33,7 +34,7 @@ import { GroupsService } from '../groups/groups.service';
   namespace: 'chat',
 })
 export class RealtimeGateway
-  implements OnGatewayConnection, OnGatewayDisconnect
+  implements OnGatewayConnection, OnGatewayDisconnect, OnModuleInit
 {
   private readonly logger = new Logger(RealtimeGateway.name);
 
@@ -50,6 +51,59 @@ export class RealtimeGateway
     @InjectQueue(QueueNames.NOTIFICATIONS)
     private readonly notificationsQueue: Queue,
   ) {}
+
+  onModuleInit() {
+    // Start periodic check for users who are away by autostatus for > 10 minutes
+    setInterval(
+      () => {
+        this.checkAndCleanupAwayUsers();
+      },
+      2 * 60 * 1000,
+    ); // Check every 2 minutes
+  }
+
+  async checkAndCleanupAwayUsers(): Promise<void> {
+    try {
+      const redisClient = this.redisService.getClient();
+      const allPresence = await redisClient.hgetall('presence:status');
+      const now = Date.now();
+      const tenMinutesMs = 10 * 60 * 1000;
+
+      for (const [userId, presenceJson] of Object.entries(allPresence)) {
+        try {
+          const presence = JSON.parse(presenceJson);
+          if (presence.status === 'away' && presence.autoStatus === 'away') {
+            const lastSeen = new Date(presence.lastSeen).getTime();
+            if (now - lastSeen >= tenMinutesMs) {
+              presence.status = 'offline';
+              await redisClient.hset(
+                'presence:status',
+                userId,
+                JSON.stringify(presence),
+              );
+
+              this.logger.log(
+                `🔄 Auto-cleanup: User ${userId} has been away/disconnected for >10 mins. Marked offline.`,
+              );
+
+              // Broadcast status change to all connected clients
+              this.server.emit('user.status.changed', {
+                userId,
+                status: 'offline',
+                autoStatus: 'away',
+              });
+              // Legacy backward-compat event
+              this.server.emit('user.offline', { userId });
+            }
+          }
+        } catch {
+          // ignore parsing error for corrupted individual hash fields
+        }
+      }
+    } catch (error) {
+      this.logger.error('Failed to run presence status cleanup check', error);
+    }
+  }
 
   async handleConnection(socket: Socket): Promise<void> {
     try {
