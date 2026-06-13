@@ -578,6 +578,41 @@ export class GroupsController {
     }
   }
 
+  @Post(':id/roles/reorder')
+  @Permissions(GroupPermission.MANAGE_ROLES)
+  @ApiOperation({ summary: 'Reorder custom roles priority' })
+  @ApiParam({ name: 'id', description: 'Group UUID' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['roleIds'],
+      properties: {
+        roleIds: { type: 'array', items: { type: 'string' } },
+      },
+    },
+  })
+  async reorderRoles(
+    @Param('id') groupId: string,
+    @CurrentUser() currentUser: { userId: string },
+    @Body('roleIds') roleIds: string[],
+  ) {
+    const roles = await this.groupsService.reorderRoles(
+      groupId,
+      currentUser.userId,
+      roleIds,
+    );
+
+    // Broadcast update to all group members
+    const members = await this.groupsService.getGroupMembers(groupId);
+    for (const member of members) {
+      this.realtimeGateway.server
+        .to(`user:${member.userId}`)
+        .emit('group.roles.reordered', { groupId, roles });
+    }
+
+    return roles;
+  }
+
   @Post(':id/members/:userId/roles')
   @Permissions(GroupPermission.MANAGE_ROLES)
   @ApiOperation({ summary: 'Assign custom roles to a member' })

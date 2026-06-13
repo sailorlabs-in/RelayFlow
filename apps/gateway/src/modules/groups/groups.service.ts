@@ -688,6 +688,7 @@ export class GroupsService {
       name: name.trim(),
       color: color || '#7289da',
       permissions: permissions || [],
+      priority: permissions ? permissions.length : 0,
     });
     return this.groupRoleRepo.save(role);
   }
@@ -786,10 +787,54 @@ export class GroupsService {
     }
   }
 
+  async reorderRoles(
+    groupId: string,
+    requesterId: string,
+    roleIds: string[],
+  ): Promise<GroupRole[]> {
+    const member = await this.groupMemberRepo.findOne({
+      where: { groupId, userId: requesterId },
+    });
+    if (!member) {
+      throw new ForbiddenException('You are not a member of this group');
+    }
+    const hasPerm = await this.hasPermission(
+      groupId,
+      requesterId,
+      'manage_roles',
+    );
+    if (!hasPerm) {
+      throw new ForbiddenException(
+        'Only group owners, admins, or members with manage roles permission can manage roles',
+      );
+    }
+
+    const roles = await this.groupRoleRepo.find({
+      where: { groupId },
+    });
+
+    const roleMap = new Map(roles.map((r) => [r.id, r]));
+    const invalidId = roleIds.some((id) => !roleMap.has(id));
+    if (invalidId) {
+      throw new BadRequestException('Invalid role IDs provided');
+    }
+
+    for (let i = 0; i < roleIds.length; i++) {
+      const roleId = roleIds[i];
+      const role = roleMap.get(roleId);
+      if (role) {
+        role.priority = roleIds.length - i;
+        await this.groupRoleRepo.save(role);
+      }
+    }
+
+    return this.getGroupRoles(groupId);
+  }
+
   async getGroupRoles(groupId: string): Promise<GroupRole[]> {
     return this.groupRoleRepo.find({
       where: { groupId },
-      order: { createdAt: 'ASC' },
+      order: { priority: 'DESC', createdAt: 'ASC' },
     });
   }
 
@@ -854,6 +899,16 @@ export class GroupsService {
     if (!membership) {
       throw new ForbiddenException('You are not a member of this group');
     }
+    const hasPerm = await this.hasPermission(
+      groupId,
+      creatorId,
+      'invite_members',
+    );
+    if (!hasPerm) {
+      throw new ForbiddenException(
+        'You do not have permission to invite members',
+      );
+    }
 
     let expiresAt: Date | undefined = undefined;
     if (expiresIn && expiresIn !== 'never') {
@@ -892,6 +947,16 @@ export class GroupsService {
     });
     if (!membership) {
       throw new ForbiddenException('You are not a member of this group');
+    }
+    const hasPerm = await this.hasPermission(
+      groupId,
+      requesterId,
+      'invite_members',
+    );
+    if (!hasPerm) {
+      throw new ForbiddenException(
+        'You do not have permission to view invite links',
+      );
     }
 
     return this.groupInviteRepo.find({

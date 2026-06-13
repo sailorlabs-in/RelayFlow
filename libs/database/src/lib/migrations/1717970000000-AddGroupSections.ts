@@ -25,9 +25,9 @@ export class AddGroupSections1717970000000 implements MigrationInterface {
       ALTER TABLE "conversation" ADD COLUMN IF NOT EXISTS "position" integer NOT NULL DEFAULT 0;
     `);
 
-    // 3. Add FK from conversation(section_id) to group_section(id) ON DELETE CASCADE
+    // 3. Add FK from conversation(section_id) to group_section(id) ON DELETE SET NULL
     await queryRunner.query(`
-      ALTER TABLE "conversation" ADD CONSTRAINT "FK_conversation_section_id" FOREIGN KEY ("section_id") REFERENCES "group_section"("id") ON DELETE CASCADE;
+      ALTER TABLE "conversation" ADD CONSTRAINT "FK_conversation_section_id" FOREIGN KEY ("section_id") REFERENCES "group_section"("id") ON DELETE SET NULL;
     `);
   }
 

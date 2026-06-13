@@ -145,6 +145,10 @@ export const MemberSidebar = ({
   );
   const currentUserRole = currentUserMember?.role || 'member';
   const isCurrentUserOwner = activeGroup.ownerId === currentUser?.id;
+  const canInvite =
+    isCurrentUserOwner ||
+    currentUserRole === 'admin' ||
+    hasGroupPermission(activeGroup, currentUser?.id, 'invite_members');
 
   const getMemberDetails = (m: GroupMember) => {
     const userDetail = m.user;
@@ -360,7 +364,7 @@ export const MemberSidebar = ({
             <IconPeople />
             <span>Group Members ({members.length})</span>
           </div>
-          {onInviteClick && (
+          {onInviteClick && canInvite && (
             <button
               type="button"
               onClick={(e) => {

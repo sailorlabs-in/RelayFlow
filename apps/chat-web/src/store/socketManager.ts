@@ -34,6 +34,7 @@ import {
   socketRoleCreated,
   socketRoleUpdated,
   socketRoleDeleted,
+  socketRolesReordered,
   socketMemberRolesUpdated,
   socketSectionCreated,
   socketSectionUpdated,
@@ -367,6 +368,14 @@ class SocketManager {
       (data: { groupId: string; roleId: string }) => {
         PrintLog('🗑️ Socket group.role.deleted:', data.roleId);
         store.dispatch(socketRoleDeleted(data));
+      },
+    );
+
+    this.socket.on(
+      'group.roles.reordered',
+      (data: { groupId: string; roles: any[] }) => {
+        PrintLog('🏷️ Socket group.roles.reordered:', data.groupId);
+        store.dispatch(socketRolesReordered(data));
       },
     );
 

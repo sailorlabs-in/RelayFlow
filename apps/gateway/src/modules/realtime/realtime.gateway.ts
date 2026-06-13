@@ -842,7 +842,23 @@ export class RealtimeGateway
       throw new NotFoundException('Message not found');
     }
     if (message.senderId !== userId) {
-      throw new ForbiddenException("You cannot delete someone else's message");
+      const convo = await this.chatService.getConversation(conversationId);
+      if (convo && convo.groupId) {
+        const canDeleteOthers = await this.groupsService.hasPermission(
+          convo.groupId,
+          userId,
+          'delete_other_messages',
+        );
+        if (!canDeleteOthers) {
+          throw new ForbiddenException(
+            "You do not have permission to delete someone else's message",
+          );
+        }
+      } else {
+        throw new ForbiddenException(
+          "You cannot delete someone else's message",
+        );
+      }
     }
     if (message.conversationId !== conversationId) {
       throw new BadRequestException(
