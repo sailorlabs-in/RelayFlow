@@ -7,6 +7,7 @@ export interface GroupRole {
   groupId: string;
   name: string;
   color: string;
+  permissions?: string[];
   createdAt: string;
 }
 
@@ -39,6 +40,7 @@ export interface GroupMember {
   userId: string;
   role: 'owner' | 'admin' | 'member';
   roleIds?: string[];
+  permissions?: string[];
   createdAt: string;
   user?: {
     id: string;
@@ -498,14 +500,23 @@ export const fetchGroupRoles = createAsyncThunk(
 export const createGroupRole = createAsyncThunk(
   'groups/createGroupRole',
   async (
-    payload: { groupId: string; name: string; color?: string },
+    payload: {
+      groupId: string;
+      name: string;
+      color?: string;
+      permissions?: string[];
+    },
     { rejectWithValue },
   ) => {
     try {
       const response = await ApiRequest(
         `/groups/${payload.groupId}/roles`,
         'post',
-        { name: payload.name, color: payload.color },
+        {
+          name: payload.name,
+          color: payload.color,
+          permissions: payload.permissions,
+        },
         true,
       );
       return { groupId: payload.groupId, role: response.data as GroupRole };
@@ -523,14 +534,24 @@ export const createGroupRole = createAsyncThunk(
 export const updateGroupRole = createAsyncThunk(
   'groups/updateGroupRole',
   async (
-    payload: { groupId: string; roleId: string; name: string; color?: string },
+    payload: {
+      groupId: string;
+      roleId: string;
+      name: string;
+      color?: string;
+      permissions?: string[];
+    },
     { rejectWithValue },
   ) => {
     try {
       const response = await ApiRequest(
         `/groups/${payload.groupId}/roles/${payload.roleId}`,
         'patch',
-        { name: payload.name, color: payload.color },
+        {
+          name: payload.name,
+          color: payload.color,
+          permissions: payload.permissions,
+        },
         true,
       );
       return { groupId: payload.groupId, role: response.data as GroupRole };

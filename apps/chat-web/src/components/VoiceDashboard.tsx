@@ -9,6 +9,7 @@ import { setActiveConversation } from '../store/slices/chatSlice';
 import { socketManager } from '../store/socketManager';
 import { Avatar } from './Avatar';
 import { showToast } from './toast';
+import { PrintLog } from '../utils/logger';
 
 interface VoiceDashboardProps {
   groupId: string;
@@ -372,7 +373,7 @@ export const VoiceDashboard = ({
       return peersRef.current[targetUserId];
     }
 
-    console.log(
+    PrintLog(
       `🎙 WebRTC: Initiating connection with ${targetUserId} (initiator: ${isInitiator})`,
     );
 
@@ -404,7 +405,7 @@ export const VoiceDashboard = ({
     };
 
     pc.ontrack = () => {
-      console.log(`🎙 WebRTC: Received remote track from ${targetUserId}`);
+      PrintLog(`🎙 WebRTC: Received remote track from ${targetUserId}`);
       const newStream = new MediaStream();
       pc.getReceivers().forEach((receiver) => {
         if (receiver.track) {
@@ -430,7 +431,7 @@ export const VoiceDashboard = ({
     if (isInitiator) {
       pc.onnegotiationneeded = async () => {
         try {
-          console.log(`🎙 WebRTC: Creating offer for ${targetUserId}`);
+          PrintLog(`🎙 WebRTC: Creating offer for ${targetUserId}`);
           const offer = await pc.createOffer();
           await pc.setLocalDescription(offer);
           socketManager.sendVoiceSignal(targetUserId, {
@@ -452,7 +453,7 @@ export const VoiceDashboard = ({
       return;
     }
     try {
-      console.log(`🎙 WebRTC: Renegotiating connection with ${targetUserId}`);
+      PrintLog(`🎙 WebRTC: Renegotiating connection with ${targetUserId}`);
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
       socketManager.sendVoiceSignal(targetUserId, {
@@ -520,7 +521,7 @@ export const VoiceDashboard = ({
 
     const startLocalStream = async () => {
       try {
-        console.log('🎙 WebRTC: Requesting microphone permission...');
+        PrintLog('🎙 WebRTC: Requesting microphone permission...');
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: true,
           video: false,
@@ -731,7 +732,7 @@ export const VoiceDashboard = ({
       setIsCameraOn(false);
     } else {
       try {
-        console.log('🎙 Requesting camera permission...');
+        PrintLog('🎙 Requesting camera permission...');
         const cameraStream = await navigator.mediaDevices.getUserMedia({
           video: true,
         });
@@ -787,7 +788,7 @@ export const VoiceDashboard = ({
       setIsScreenSharing(false);
     } else {
       try {
-        console.log('🎙 Requesting screen share permission...');
+        PrintLog('🎙 Requesting screen share permission...');
         const screenStream = await navigator.mediaDevices.getDisplayMedia({
           video: true,
         });
@@ -966,7 +967,7 @@ export const VoiceDashboard = ({
                 /* ════════════════════════════════════════════════════
              DISCORD FOCUS MODE — Focus View + Participant Strip
              ════════════════════════════════════════════════════ */
-                <div className="flex flex-1 gap-2.5 overflow-hidden min-h-0 w-full h-full">
+                <div className="flex flex-col md:flex-row flex-1 gap-2.5 overflow-hidden min-h-0 w-full h-full">
                   {/* ── Focus View (large stream area) ── */}
                   <div
                     className="flex-1 relative rounded-2xl overflow-hidden bg-[rgba(0,0,0,0.35)] border border-[var(--glass-border)] flex items-center justify-center min-h-0"
@@ -1141,7 +1142,10 @@ export const VoiceDashboard = ({
                   </div>
 
                   {/* ── Participant Strip (right sidebar) ── */}
-                  <div className="w-[220px] min-w-[220px] flex flex-col gap-1.5 overflow-y-auto pr-0.5 custom-scrollbar">
+                  <div
+                    className="w-full md:w-[220px] md:min-w-[220px] flex flex-row md:flex-col gap-1.5 overflow-x-auto md:overflow-y-auto pr-0.5 custom-scrollbar no-scrollbar"
+                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                  >
                     {channelVoiceStates.map((vs) => {
                       const member = groupMembers.find(
                         (m) => m.userId === vs.userId,
@@ -1167,7 +1171,7 @@ export const VoiceDashboard = ({
                         <div
                           key={vs.userId}
                           onClick={() => setFocusedUserId(vs.userId)}
-                          className={`voice-card relative flex flex-col items-center justify-center aspect-[16/10] rounded-[10px] overflow-hidden cursor-pointer shrink-0 transition-all duration-200
+                          className={`voice-card relative flex flex-col items-center justify-center aspect-[16/10] rounded-[10px] overflow-hidden cursor-pointer shrink-0 transition-all duration-200 w-[140px] md:w-auto
                       ${
                         isFocused
                           ? 'border-2 border-[var(--accent-primary)] bg-[rgba(56,189,248,0.08)]'
@@ -1559,7 +1563,7 @@ export const VoiceDashboard = ({
                 >
                   {isSelfMuted ? <IconMicOff /> : <IconMic />}
                 </CtrlBtn>
-                <div className="flex items-center gap-1.5 bg-[rgba(0,0,0,0.2)] px-2 py-1.5 rounded-xl border border-[var(--glass-border)] h-[42px]">
+                <div className="hidden sm:flex items-center gap-1.5 bg-[rgba(0,0,0,0.2)] px-2 py-1.5 rounded-xl border border-[var(--glass-border)] h-[42px]">
                   <input
                     type="range"
                     min="0"

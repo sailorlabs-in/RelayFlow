@@ -441,6 +441,30 @@ export class RealtimeGateway
           '❌ You do not have permission to access this channel.',
         );
       }
+
+      const canSend = await this.groupsService.hasPermission(
+        conversation.groupId,
+        userId,
+        'send_messages',
+      );
+      if (!canSend) {
+        throw new ForbiddenException(
+          '❌ You do not have permission to send messages in this group.',
+        );
+      }
+
+      if (media && media.length > 0) {
+        const canAttach = await this.groupsService.hasPermission(
+          conversation.groupId,
+          userId,
+          'attach_files',
+        );
+        if (!canAttach) {
+          throw new ForbiddenException(
+            '❌ You do not have permission to attach files in this group.',
+          );
+        }
+      }
     }
 
     const members =

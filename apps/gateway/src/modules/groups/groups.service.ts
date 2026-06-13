@@ -40,6 +40,46 @@ export class GroupsService {
     private readonly groupSectionRepo: Repository<GroupSection>,
   ) {}
 
+  async hasPermission(
+    groupId: string,
+    userId: string,
+    permission: string,
+  ): Promise<boolean> {
+    const member = await this.groupMemberRepo.findOne({
+      where: { groupId, userId },
+    });
+    if (!member) {
+      return false;
+    }
+
+    if (
+      member.role === GroupMemberRole.OWNER ||
+      member.role === GroupMemberRole.ADMIN
+    ) {
+      return true;
+    }
+
+    if (member.permissions && member.permissions.includes(permission)) {
+      return true;
+    }
+
+    if (member.roleIds && member.roleIds.length > 0) {
+      const roles = await this.groupRoleRepo.find({
+        where: {
+          id: In(member.roleIds),
+          groupId,
+        },
+      });
+      for (const role of roles) {
+        if (role.permissions && role.permissions.includes(permission)) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
   // Helper to load profiles for group members
   private async attachProfilesToMembers(
     members: GroupMember[],
@@ -164,15 +204,14 @@ export class GroupsService {
       throw new NotFoundException('Group not found');
     }
 
-    const requesterMembership = await this.groupMemberRepo.findOne({
-      where: { groupId, userId: requesterId },
-    });
-    if (
-      !requesterMembership ||
-      requesterMembership.role !== GroupMemberRole.OWNER
-    ) {
+    const hasPerm = await this.hasPermission(
+      groupId,
+      requesterId,
+      'manage_group',
+    );
+    if (!hasPerm) {
       throw new ForbiddenException(
-        'Only the group owner can update group settings',
+        'Only group owners, admins, or members with manage group permission can update group settings',
       );
     }
 
@@ -306,20 +345,24 @@ export class GroupsService {
       // Check permissions:
       // Owner can kick anyone.
       // Admin can only kick regular members.
-      if (requesterMembership.role === GroupMemberRole.OWNER) {
-        // Allowed
-      } else if (requesterMembership.role === GroupMemberRole.ADMIN) {
-        if (
-          targetMembership.role === GroupMemberRole.OWNER ||
-          targetMembership.role === GroupMemberRole.ADMIN
-        ) {
-          throw new ForbiddenException(
-            'Admins cannot kick other admins or the group owner',
-          );
-        }
-      } else {
+      const hasPerm = await this.hasPermission(
+        groupId,
+        requesterId,
+        'kick_members',
+      );
+      if (!hasPerm) {
         throw new ForbiddenException(
-          'Only group owners or admins can remove members',
+          'Only group owners, admins, or members with kick permissions can remove members',
+        );
+      }
+
+      if (
+        (targetMembership.role === GroupMemberRole.OWNER ||
+          targetMembership.role === GroupMemberRole.ADMIN) &&
+        requesterMembership.role !== GroupMemberRole.OWNER
+      ) {
+        throw new ForbiddenException(
+          'Only the group owner can remove admins or owners',
         );
       }
     }
@@ -409,12 +452,14 @@ export class GroupsService {
       throw new ForbiddenException('You are not a member of this group');
     }
 
-    if (
-      requesterMembership.role !== GroupMemberRole.OWNER &&
-      requesterMembership.role !== GroupMemberRole.ADMIN
-    ) {
+    const hasPerm = await this.hasPermission(
+      groupId,
+      requesterId,
+      'manage_channels',
+    );
+    if (!hasPerm) {
       throw new ForbiddenException(
-        'Only group owners or admins can edit channels',
+        'Only group owners, admins, or members with manage channels permission can edit channels',
       );
     }
 
@@ -450,12 +495,14 @@ export class GroupsService {
       throw new ForbiddenException('You are not a member of this group');
     }
 
-    if (
-      requesterMembership.role !== GroupMemberRole.OWNER &&
-      requesterMembership.role !== GroupMemberRole.ADMIN
-    ) {
+    const hasPerm = await this.hasPermission(
+      groupId,
+      requesterId,
+      'manage_channels',
+    );
+    if (!hasPerm) {
       throw new ForbiddenException(
-        'Only group owners or admins can delete channels',
+        'Only group owners, admins, or members with manage channels permission can delete channels',
       );
     }
 
@@ -617,17 +664,22 @@ export class GroupsService {
     requesterId: string,
     name: string,
     color?: string,
+    permissions?: string[],
   ): Promise<GroupRole> {
     const member = await this.groupMemberRepo.findOne({
       where: { groupId, userId: requesterId },
     });
-    if (
-      !member ||
-      (member.role !== GroupMemberRole.OWNER &&
-        member.role !== GroupMemberRole.ADMIN)
-    ) {
+    if (!member) {
+      throw new ForbiddenException('You are not a member of this group');
+    }
+    const hasPerm = await this.hasPermission(
+      groupId,
+      requesterId,
+      'manage_roles',
+    );
+    if (!hasPerm) {
       throw new ForbiddenException(
-        'Only group owners or admins can manage roles',
+        'Only group owners, admins, or members with manage roles permission can manage roles',
       );
     }
 
@@ -635,6 +687,7 @@ export class GroupsService {
       groupId,
       name: name.trim(),
       color: color || '#7289da',
+      permissions: permissions || [],
     });
     return this.groupRoleRepo.save(role);
   }
@@ -645,17 +698,22 @@ export class GroupsService {
     requesterId: string,
     name: string,
     color?: string,
+    permissions?: string[],
   ): Promise<GroupRole> {
     const member = await this.groupMemberRepo.findOne({
       where: { groupId, userId: requesterId },
     });
-    if (
-      !member ||
-      (member.role !== GroupMemberRole.OWNER &&
-        member.role !== GroupMemberRole.ADMIN)
-    ) {
+    if (!member) {
+      throw new ForbiddenException('You are not a member of this group');
+    }
+    const hasPerm = await this.hasPermission(
+      groupId,
+      requesterId,
+      'manage_roles',
+    );
+    if (!hasPerm) {
       throw new ForbiddenException(
-        'Only group owners or admins can manage roles',
+        'Only group owners, admins, or members with manage roles permission can manage roles',
       );
     }
 
@@ -670,6 +728,9 @@ export class GroupsService {
     if (color) {
       role.color = color;
     }
+    if (permissions !== undefined) {
+      role.permissions = permissions;
+    }
     return this.groupRoleRepo.save(role);
   }
 
@@ -681,13 +742,17 @@ export class GroupsService {
     const member = await this.groupMemberRepo.findOne({
       where: { groupId, userId: requesterId },
     });
-    if (
-      !member ||
-      (member.role !== GroupMemberRole.OWNER &&
-        member.role !== GroupMemberRole.ADMIN)
-    ) {
+    if (!member) {
+      throw new ForbiddenException('You are not a member of this group');
+    }
+    const hasPerm = await this.hasPermission(
+      groupId,
+      requesterId,
+      'manage_roles',
+    );
+    if (!hasPerm) {
       throw new ForbiddenException(
-        'Only group owners or admins can manage roles',
+        'Only group owners, admins, or members with manage roles permission can manage roles',
       );
     }
 
@@ -737,13 +802,17 @@ export class GroupsService {
     const requester = await this.groupMemberRepo.findOne({
       where: { groupId, userId: requesterId },
     });
-    if (
-      !requester ||
-      (requester.role !== GroupMemberRole.OWNER &&
-        requester.role !== GroupMemberRole.ADMIN)
-    ) {
+    if (!requester) {
+      throw new ForbiddenException('You are not a member of this group');
+    }
+    const hasPerm = await this.hasPermission(
+      groupId,
+      requesterId,
+      'manage_roles',
+    );
+    if (!hasPerm) {
       throw new ForbiddenException(
-        'Only group owners or admins can assign roles',
+        'Only group owners, admins, or members with manage roles permission can assign roles',
       );
     }
 
@@ -934,13 +1003,17 @@ export class GroupsService {
     const member = await this.groupMemberRepo.findOne({
       where: { groupId, userId: requesterId },
     });
-    if (
-      !member ||
-      (member.role !== GroupMemberRole.OWNER &&
-        member.role !== GroupMemberRole.ADMIN)
-    ) {
+    if (!member) {
+      throw new ForbiddenException('You are not a member of this group');
+    }
+    const hasPerm = await this.hasPermission(
+      groupId,
+      requesterId,
+      'manage_channels',
+    );
+    if (!hasPerm) {
       throw new ForbiddenException(
-        'Only group owners or admins can manage categories',
+        'Only group owners, admins, or members with manage channels permission can manage categories',
       );
     }
 
@@ -963,13 +1036,17 @@ export class GroupsService {
     const member = await this.groupMemberRepo.findOne({
       where: { groupId, userId: requesterId },
     });
-    if (
-      !member ||
-      (member.role !== GroupMemberRole.OWNER &&
-        member.role !== GroupMemberRole.ADMIN)
-    ) {
+    if (!member) {
+      throw new ForbiddenException('You are not a member of this group');
+    }
+    const hasPerm = await this.hasPermission(
+      groupId,
+      requesterId,
+      'manage_channels',
+    );
+    if (!hasPerm) {
       throw new ForbiddenException(
-        'Only group owners or admins can manage categories',
+        'Only group owners, admins, or members with manage channels permission can manage categories',
       );
     }
 
@@ -1001,13 +1078,17 @@ export class GroupsService {
     const member = await this.groupMemberRepo.findOne({
       where: { groupId, userId: requesterId },
     });
-    if (
-      !member ||
-      (member.role !== GroupMemberRole.OWNER &&
-        member.role !== GroupMemberRole.ADMIN)
-    ) {
+    if (!member) {
+      throw new ForbiddenException('You are not a member of this group');
+    }
+    const hasPerm = await this.hasPermission(
+      groupId,
+      requesterId,
+      'manage_channels',
+    );
+    if (!hasPerm) {
       throw new ForbiddenException(
-        'Only group owners or admins can manage categories',
+        'Only group owners, admins, or members with manage channels permission can manage categories',
       );
     }
 
@@ -1076,13 +1157,17 @@ export class GroupsService {
     const member = await this.groupMemberRepo.findOne({
       where: { groupId, userId: requesterId },
     });
-    if (
-      !member ||
-      (member.role !== GroupMemberRole.OWNER &&
-        member.role !== GroupMemberRole.ADMIN)
-    ) {
+    if (!member) {
+      throw new ForbiddenException('You are not a member of this group');
+    }
+    const hasPerm = await this.hasPermission(
+      groupId,
+      requesterId,
+      'manage_channels',
+    );
+    if (!hasPerm) {
       throw new ForbiddenException(
-        'Only group owners or admins can manage categories',
+        'Only group owners, admins, or members with manage channels permission can manage categories',
       );
     }
 
@@ -1110,13 +1195,17 @@ export class GroupsService {
     const member = await this.groupMemberRepo.findOne({
       where: { groupId, userId: requesterId },
     });
-    if (
-      !member ||
-      (member.role !== GroupMemberRole.OWNER &&
-        member.role !== GroupMemberRole.ADMIN)
-    ) {
+    if (!member) {
+      throw new ForbiddenException('You are not a member of this group');
+    }
+    const hasPerm = await this.hasPermission(
+      groupId,
+      requesterId,
+      'manage_channels',
+    );
+    if (!hasPerm) {
       throw new ForbiddenException(
-        'Only group owners or admins can manage channels',
+        'Only group owners, admins, or members with manage channels permission can manage channels',
       );
     }
 
