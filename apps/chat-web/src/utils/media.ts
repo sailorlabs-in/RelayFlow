@@ -13,8 +13,24 @@ export const generateImageThumbnail = (file: File): Promise<Blob> => {
           reject(new Error('Could not get canvas context'));
           return;
         }
-        const width = img.width * 0.2;
-        const height = img.height * 0.2;
+        let width = img.width;
+        let height = img.height;
+        const maxW = 360;
+        const maxH = 240;
+
+        const ratioW = width / maxW;
+        const ratioH = height / maxH;
+
+        if (ratioW > 1 || ratioH > 1) {
+          if (ratioW > ratioH) {
+            width = maxW;
+            height = Math.round(img.height / ratioW);
+          } else {
+            height = maxH;
+            width = Math.round(img.width / ratioH);
+          }
+        }
+
         canvas.width = width;
         canvas.height = height;
         ctx.drawImage(img, 0, 0, width, height);
@@ -63,8 +79,24 @@ export const generateVideoThumbnail = (file: File): Promise<Blob> => {
           reject(new Error('Could not get canvas context'));
           return;
         }
-        const width = video.videoWidth * 0.2;
-        const height = video.videoHeight * 0.2;
+        let width = video.videoWidth;
+        let height = video.videoHeight;
+        const maxW = 360;
+        const maxH = 240;
+
+        const ratioW = width / maxW;
+        const ratioH = height / maxH;
+
+        if (ratioW > 1 || ratioH > 1) {
+          if (ratioW > ratioH) {
+            width = maxW;
+            height = Math.round(video.videoHeight / ratioW);
+          } else {
+            height = maxH;
+            width = Math.round(video.videoWidth / ratioH);
+          }
+        }
+
         canvas.width = width;
         canvas.height = height;
         ctx.drawImage(video, 0, 0, width, height);
@@ -153,6 +185,53 @@ export const compressImage = (
           },
           'image/jpeg',
           quality,
+        );
+      };
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.readAsDataURL(file);
+  });
+};
+
+/**
+ * Generates an avatar thumbnail Blob (50px * 50px).
+ * Scales and crops the image to fill a 50x50 square exactly.
+ */
+export const generateAvatarThumbnail = (file: File): Promise<Blob> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Could not get canvas context'));
+          return;
+        }
+
+        canvas.width = 50;
+        canvas.height = 50;
+
+        // Center crop the image
+        const size = Math.min(img.width, img.height);
+        const sx = (img.width - size) / 2;
+        const sy = (img.height - size) / 2;
+
+        ctx.drawImage(img, sx, sy, size, size, 0, 0, 50, 50);
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(blob);
+            } else {
+              reject(new Error('Canvas toBlob failed'));
+            }
+          },
+          'image/jpeg',
+          0.8,
         );
       };
       img.onerror = () => reject(new Error('Failed to load image'));

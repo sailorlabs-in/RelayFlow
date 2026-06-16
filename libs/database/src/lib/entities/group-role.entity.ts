@@ -6,6 +6,7 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
+import { ApiProperty } from '@nestjs/swagger';
 import { Group } from './group.entity';
 
 export enum GroupPermission {
@@ -21,9 +22,11 @@ export enum GroupPermission {
 
 @Entity('group_role')
 export class GroupRole {
+  @ApiProperty({ example: '56568887-b39d-4912-abeb-3c7d1457b7a9' })
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
+  @ApiProperty({ example: '56568887-b39d-4912-abeb-3c7d1457b7a9' })
   @Column({ name: 'group_id', type: 'uuid' })
   groupId!: string;
 
@@ -31,15 +34,22 @@ export class GroupRole {
   @JoinColumn({ name: 'group_id' })
   group?: Group;
 
+  @ApiProperty({ example: 'Moderator' })
   @Column({ length: 100 })
   name!: string;
 
+  @ApiProperty({ example: '#7289da' })
   @Column({ length: 7, default: '#7289da' })
   color!: string;
 
+  @ApiProperty({
+    type: [String],
+    example: ['manage_channels', 'send_messages'],
+  })
   @Column({ name: 'permissions', type: 'jsonb', nullable: true, default: [] })
   permissions?: string[];
 
+  @ApiProperty({ example: 1 })
   @Column({ name: 'priority', type: 'int', default: 0 })
   priority!: number;
 

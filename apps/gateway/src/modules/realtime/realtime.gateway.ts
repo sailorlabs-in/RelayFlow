@@ -25,7 +25,6 @@ import { Server, Socket } from 'socket.io';
 
 import { AuthService } from '../auth/auth.service';
 import { ChatService } from '../chat/chat.service';
-import { NotificationService } from '../chat/notification.service';
 import { UsersService } from '../users/users.service';
 import { GroupsService } from '../groups/groups.service';
 
@@ -45,7 +44,6 @@ export class RealtimeGateway
     private readonly authService: AuthService,
     private readonly chatService: ChatService,
     private readonly redisService: RedisService,
-    private readonly notificationService: NotificationService,
     private readonly usersService: UsersService,
     private readonly groupsService: GroupsService,
     @InjectQueue(QueueNames.NOTIFICATIONS)
@@ -477,7 +475,7 @@ export class RealtimeGateway
       `📥 Received send.message for: ${conversationId} from user ${userId}`,
     );
 
-    const mediaItems = media || null;
+    const mediaItems = media || undefined;
 
     const conversation = await this.chatService.getConversation(conversationId);
     if (!conversation) {
@@ -679,7 +677,7 @@ export class RealtimeGateway
         if (isDm) {
           pushTitle = senderDisplayName;
         } else {
-          if (conversation.groupId) {
+          if (conversation?.groupId) {
             groupId = conversation.groupId;
             try {
               const group = await this.groupsService.getGroup(

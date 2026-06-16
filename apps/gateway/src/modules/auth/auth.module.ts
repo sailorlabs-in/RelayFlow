@@ -21,7 +21,10 @@ import { AuthService } from './auth.service';
           'relayflow-super-secret-key-12345',
         ),
         signOptions: {
-          expiresIn: configService.get<string>('auth.accessExpiration', '15m'),
+          expiresIn: configService.get<string>(
+            'auth.accessExpiration',
+            '15m',
+          ) as any,
         },
       }),
     }),
