@@ -13,7 +13,7 @@ import {
 import { IconX } from './Icons';
 import { showToast } from './toast';
 import { Avatar } from './Avatar';
-import { generateImageThumbnail, compressImage } from '../utils/media';
+import { generateAvatarThumbnail, compressImage } from '../utils/media';
 import { hasGroupPermission } from '../utils/permissions';
 
 const IconArrowUp = ({ size = 16 }: { size?: number }) => (
@@ -167,8 +167,8 @@ export const GroupSettingsModal = ({
         type: 'image/jpeg',
       });
 
-      // Generate 20% thumbnail
-      const thumbBlob = await generateImageThumbnail(file);
+      // Generate 50x50 avatar thumbnail
+      const thumbBlob = await generateAvatarThumbnail(file);
       const thumbFile = new File([thumbBlob], `thumb_${file.name}`, {
         type: 'image/jpeg',
       });

@@ -27,7 +27,12 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Permissions } from '../../common/decorators/permissions.decorator';
-import { GroupPermission } from '@chat-app/database';
+import {
+  GroupPermission,
+  GroupRole,
+  GroupSection,
+  Conversation,
+} from '@chat-app/database';
 
 import { GroupsService } from './groups.service';
 
@@ -150,6 +155,11 @@ export class GroupsController {
           type: 'string',
           example: 'https://bucket.umangsailor.com/storage/profiles/group.png',
         },
+        avatarThumbnailUrl: {
+          type: 'string',
+          example:
+            'https://bucket.umangsailor.com/storage/profiles/group_thumb.png',
+        },
       },
     },
   })
@@ -208,6 +218,11 @@ export class GroupsController {
         avatarUrl: {
           type: 'string',
           example: 'https://bucket.umangsailor.com/storage/profiles/group.png',
+        },
+        avatarThumbnailUrl: {
+          type: 'string',
+          example:
+            'https://bucket.umangsailor.com/storage/profiles/group_thumb.png',
         },
       },
     },
@@ -321,6 +336,11 @@ export class GroupsController {
         name: { type: 'string', example: 'announcements' },
         layout: { type: 'string', example: 'text' },
         allowedRoleIds: { type: 'array', items: { type: 'string' } },
+        sectionId: {
+          type: 'string',
+          example: '56568887-b39d-4912-abeb-3c7d1457b7a9',
+          nullable: true,
+        },
       },
     },
   })
@@ -591,6 +611,11 @@ export class GroupsController {
       },
     },
   })
+  @ApiResponse({
+    status: 200,
+    description: 'Roles successfully reordered.',
+    type: [GroupRole],
+  })
   async reorderRoles(
     @Param('id') groupId: string,
     @CurrentUser() currentUser: { userId: string },
@@ -671,6 +696,11 @@ export class GroupsController {
       },
     },
   })
+  @ApiResponse({
+    status: 201,
+    description: 'Section successfully created.',
+    type: GroupSection,
+  })
   async createSection(
     @Param('id') groupId: string,
     @CurrentUser() currentUser: { userId: string },
@@ -713,6 +743,11 @@ export class GroupsController {
       },
     },
   })
+  @ApiResponse({
+    status: 200,
+    description: 'Section successfully updated.',
+    type: GroupSection,
+  })
   async updateSection(
     @Param('id') groupId: string,
     @Param('sectionId') sectionId: string,
@@ -750,6 +785,7 @@ export class GroupsController {
   @ApiParam({ name: 'id', description: 'Group UUID' })
   @ApiParam({ name: 'sectionId', description: 'Section UUID' })
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiResponse({ status: 204, description: 'Section successfully deleted.' })
   async deleteSection(
     @Param('id') groupId: string,
     @Param('sectionId') sectionId: string,
@@ -785,6 +821,11 @@ export class GroupsController {
         sectionIds: { type: 'array', items: { type: 'string' } },
       },
     },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Sections successfully reordered.',
+    type: [GroupSection],
   })
   async reorderSections(
     @Param('id') groupId: string,
@@ -834,6 +875,11 @@ export class GroupsController {
         },
       },
     },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Channels successfully reordered.',
+    type: [Conversation],
   })
   async reorderChannels(
     @Param('id') groupId: string,

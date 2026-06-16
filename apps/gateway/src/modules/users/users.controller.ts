@@ -115,6 +115,8 @@ export class UsersController {
         notificationsGroupEnabled: { type: 'boolean', example: true },
         notificationsInAppEnabled: { type: 'boolean', example: true },
         notificationsFriendRequestEnabled: { type: 'boolean', example: true },
+        isTwoFactorEnabled: { type: 'boolean', example: true },
+        twoFactorOnlyNewDevice: { type: 'boolean', example: false },
         avatarUrl: {
           type: 'string',
           example: 'https://bucket.umangsailor.com/storage/profiles/avatar.png',
