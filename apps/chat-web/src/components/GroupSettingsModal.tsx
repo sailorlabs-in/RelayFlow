@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 
 import { useAppDispatch, useAppSelector } from '../store';
+import ApiRequest from '../utils/ApiRequest';
 import type { Group } from '../store/slices/groupsSlice';
 import {
   updateGroup,
@@ -102,6 +103,13 @@ export const GroupSettingsModal = ({
   const [roleColor, setRoleColor] = useState('#7289da');
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [isRoleLoading, setIsRoleLoading] = useState(false);
+
+  // Transfer ownership state
+  const [transferTargetUserId, setTransferTargetUserId] = useState('');
+  const [transferModalStep, setTransferModalStep] = useState<number | null>(
+    null,
+  );
+  const [titleClicks, setTitleClicks] = useState(0);
 
   const deleteOldMedia = async (url: string) => {
     if (!url) {
@@ -353,6 +361,30 @@ export const GroupSettingsModal = ({
     }
   };
 
+  const handleConfirmOwnershipTransfer = async () => {
+    if (!transferTargetUserId) {
+      return;
+    }
+    setIsLoading(true);
+    setTransferModalStep(null);
+    try {
+      await ApiRequest(`/groups/${group.id}/transfer-ownership`, 'post', {
+        newOwnerId: transferTargetUserId,
+      });
+      showToast.success('Ownership transfer request email sent to member!');
+      setTransferTargetUserId('');
+      onClose();
+    } catch (err: any) {
+      const errMsg =
+        err.response?.data?.message ||
+        err.message ||
+        'Failed to initiate ownership transfer.';
+      showToast.error(errMsg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div
       className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-[rgba(4,6,12,0.65)] backdrop-blur-[4px]"
@@ -365,7 +397,16 @@ export const GroupSettingsModal = ({
         {/* Header */}
         <div className="px-5 py-4 border-b border-[var(--border-muted)] flex items-center justify-between">
           <div>
-            <h2 className="m-0 text-[18px] font-bold text-[var(--text-primary)]">
+            <h2
+              onClick={() => {
+                const next = titleClicks + 1;
+                setTitleClicks(next);
+                if (next === 5) {
+                  showToast.info('Advanced administrative settings unlocked.');
+                }
+              }}
+              className="m-0 text-[18px] font-bold text-[var(--text-primary)] cursor-default select-none"
+            >
               Group Settings
             </h2>
             <p className="m-1 text-[12.5px] text-[var(--text-muted)]">
@@ -508,6 +549,48 @@ export const GroupSettingsModal = ({
                 className="input-base w-full px-3.5 py-2.5 rounded-[10px] bg-[var(--bg-input)] border-[1.5px] border-[var(--glass-border)] text-[var(--text-primary)] text-sm box-border resize-none font-sans focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[2.5px] focus:ring-[var(--accent-ring)]"
               />
             </div>
+
+            {activeGroup?.ownerId === user?.id && titleClicks >= 5 && (
+              <div className="mt-6 pt-5 border-t border-[var(--border-muted)] flex flex-col gap-3">
+                <h4 className="m-0 text-xs font-bold text-[var(--danger)] uppercase tracking-wider">
+                  Danger Zone
+                </h4>
+                <p className="m-0 text-[11px] leading-relaxed text-[var(--text-secondary)]">
+                  Transfer ownership of this server to another member. You will
+                  lose owner permissions and control.
+                </p>
+                <div className="flex gap-2 animate-fade-in">
+                  <select
+                    value={transferTargetUserId}
+                    onChange={(e) => setTransferTargetUserId(e.target.value)}
+                    className="flex-1 input-base px-3 py-2 rounded-lg bg-[var(--bg-input)] border border-[var(--glass-border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)]"
+                  >
+                    <option value="">Select a member...</option>
+                    {(activeGroup?.members || [])
+                      .filter((m) => m.userId !== user?.id)
+                      .map((m) => {
+                        const displayName =
+                          m.user?.displayName ||
+                          m.user?.username ||
+                          m.user?.email.split('@')[0];
+                        return (
+                          <option key={m.userId} value={m.userId}>
+                            {displayName}
+                          </option>
+                        );
+                      })}
+                  </select>
+                  <button
+                    type="button"
+                    disabled={!transferTargetUserId}
+                    onClick={() => setTransferModalStep(1)}
+                    className="px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer border border-[var(--danger-border)] bg-[var(--danger-bg)] text-[var(--danger)] hover:bg-[var(--danger)] hover:text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed active-press"
+                  >
+                    Transfer
+                  </button>
+                </div>
+              </div>
+            )}
           </form>
         ) : (
           <div className="px-5 py-5 flex flex-col gap-5 max-h-[60vh] overflow-y-auto">
@@ -716,6 +799,103 @@ export const GroupSettingsModal = ({
             >
               Close
             </button>
+          </div>
+        )}
+
+        {transferModalStep !== null && (
+          <div className="fixed inset-0 z-[1200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in">
+            <div className="w-[400px] max-w-full bg-[var(--glass-bg)] border-[1.5px] border-[var(--glass-border)] rounded-[18px] p-6 shadow-2xl animate-scale-in flex flex-col gap-4 text-center">
+              <div className="w-12 h-12 rounded-full bg-[var(--danger-bg)] text-[var(--danger)] flex items-center justify-center mx-auto text-xl font-bold animate-pulse">
+                ⚠️
+              </div>
+
+              {transferModalStep === 1 && (
+                <>
+                  <h3 className="m-0 text-base font-bold text-[var(--text-primary)]">
+                    Transfer Ownership — Step 1 of 3
+                  </h3>
+                  <p className="m-0 text-sm leading-relaxed text-[var(--text-secondary)]">
+                    Are you absolutely sure you want to transfer ownership of{' '}
+                    <strong>{group.name}</strong>? This is a critical action.
+                  </p>
+                  <div className="flex gap-3 mt-2">
+                    <button
+                      type="button"
+                      onClick={() => setTransferModalStep(null)}
+                      className="flex-1 px-4 py-2.5 rounded-lg border border-[var(--glass-border)] bg-transparent text-[var(--text-secondary)] text-sm font-semibold cursor-pointer active-press"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTransferModalStep(2)}
+                      className="flex-1 px-4 py-2.5 rounded-lg border-none bg-[var(--danger)] text-white text-sm font-semibold cursor-pointer active-press"
+                    >
+                      Continue
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {transferModalStep === 2 && (
+                <>
+                  <h3 className="m-0 text-base font-bold text-[var(--text-primary)]">
+                    Confirm Transfer — Step 2 of 3
+                  </h3>
+                  <p className="m-0 text-sm leading-relaxed text-[var(--text-secondary)]">
+                    By transferring ownership, you will lose owner privileges.
+                    You will no longer be able to delete this server or manage
+                    its administrative settings. You will become a regular
+                    member.
+                  </p>
+                  <div className="flex gap-3 mt-2">
+                    <button
+                      type="button"
+                      onClick={() => setTransferModalStep(1)}
+                      className="flex-1 px-4 py-2.5 rounded-lg border border-[var(--glass-border)] bg-transparent text-[var(--text-secondary)] text-sm font-semibold cursor-pointer active-press"
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTransferModalStep(3)}
+                      className="flex-1 px-4 py-2.5 rounded-lg border-none bg-[var(--danger)] text-white text-sm font-semibold cursor-pointer active-press"
+                    >
+                      I Agree
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {transferModalStep === 3 && (
+                <>
+                  <h3 className="m-0 text-base font-bold text-[var(--text-primary)]">
+                    Final Step — Step 3 of 3
+                  </h3>
+                  <p className="m-0 text-sm leading-relaxed text-[var(--text-secondary)]">
+                    A confirmation link will be sent to the selected member's
+                    registered email address. The ownership transfer will be
+                    finalized ONLY once they accept it.
+                  </p>
+                  <div className="flex gap-3 mt-2">
+                    <button
+                      type="button"
+                      onClick={() => setTransferModalStep(2)}
+                      className="flex-1 px-4 py-2.5 rounded-lg border border-[var(--glass-border)] bg-transparent text-[var(--text-secondary)] text-sm font-semibold cursor-pointer active-press"
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleConfirmOwnershipTransfer()}
+                      className="flex-1 px-4 py-2.5 rounded-lg border-none bg-[var(--accent-primary)] text-white text-sm font-semibold cursor-pointer active-press"
+                    >
+                      Send Request Mail
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         )}
       </div>

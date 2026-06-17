@@ -2,7 +2,7 @@
  * Formats a message's creation timestamp.
  * - If today: "Today h:mm AM/PM"
  * - If yesterday: "Yesterday h:mm AM/PM"
- * - Otherwise: "MM/DD/YYYY h:mm AM/PM"
+ * - Otherwise: "DD/MM/YYYY h:mm AM/PM"
  */
 export const formatMessageTimestamp = (
   dateInput: string | Date | number,
@@ -34,11 +34,10 @@ export const formatMessageTimestamp = (
   } else if (isYesterday) {
     return `Yesterday ${timeStr}`;
   } else {
-    const dateStr = date.toLocaleDateString([], {
-      month: '2-digit',
-      day: '2-digit',
-      year: 'numeric',
-    });
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const dateStr = `${day}/${month}/${year}`;
     return `${dateStr} ${timeStr}`;
   }
 };

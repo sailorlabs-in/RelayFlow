@@ -77,6 +77,8 @@ export class EmailProcessor extends WorkerHost implements OnModuleInit {
         return this.handleSend2Fa(data);
       case 'send-reset-password-email':
         return this.handleSendResetPassword(data);
+      case 'send-ownership-transfer-email':
+        return this.handleSendOwnershipTransfer(data);
       default:
         this.logger.warn(
           `Unknown job name: "${name}" in queue ${QueueNames.EMAILS}`,
@@ -188,6 +190,48 @@ export class EmailProcessor extends WorkerHost implements OnModuleInit {
     } catch (error) {
       this.logger.error(
         `❌ Failed to send reset password email to ${email}:`,
+        error,
+      );
+      throw error;
+    }
+  }
+
+  private async handleSendOwnershipTransfer(data: {
+    email: string;
+    displayName: string;
+    groupName: string;
+    token: string;
+  }) {
+    const { email, displayName, groupName, token } = data;
+
+    const frontendUrl = this.configService.get<string>(
+      'FRONTEND_URL',
+      'http://localhost:4000',
+    );
+    const acceptLink = `${frontendUrl}/accept-transfer?token=${token}`;
+
+    const html = await this.renderTemplate('ownership-transfer', {
+      displayName,
+      groupName,
+      acceptLink,
+    });
+
+    const mailOptions = {
+      from: `"RelayFlow" <${this.configService.get<string>('SMTP_USER', 'service@sailorlabs.in')}>`,
+      to: email,
+      subject: `👑 Transfer of Ownership for "${groupName}"`,
+      html,
+    };
+
+    try {
+      await this.transporter.sendMail(mailOptions);
+      this.logger.log(
+        `📧 Ownership transfer email sent successfully to ${email}`,
+      );
+      return { success: true };
+    } catch (error) {
+      this.logger.error(
+        `❌ Failed to send ownership transfer email to ${email}:`,
         error,
       );
       throw error;

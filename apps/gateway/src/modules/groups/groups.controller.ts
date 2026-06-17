@@ -95,6 +95,37 @@ export class GroupsController {
     return group;
   }
 
+  @Post('transfer-ownership/accept')
+  @ApiOperation({ summary: 'Accept group ownership transfer request' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['token'],
+      properties: {
+        token: { type: 'string', example: 'random-transfer-token-hex' },
+      },
+    },
+  })
+  async acceptOwnershipTransfer(
+    @CurrentUser() currentUser: { userId: string },
+    @Body('token') token: string,
+  ) {
+    const updatedGroup = await this.groupsService.acceptOwnershipTransfer(
+      token,
+      currentUser.userId,
+    );
+
+    // Broadcast updated group to all members
+    const members = await this.groupsService.getGroupMembers(updatedGroup.id);
+    for (const member of members) {
+      this.realtimeGateway.server
+        .to(`user:${member.userId}`)
+        .emit('group.updated', updatedGroup);
+    }
+
+    return updatedGroup;
+  }
+
   // ─── Group Invite Links Management ───
   @Post(':id/invites')
   @ApiOperation({ summary: 'Create group invite link' })
@@ -913,5 +944,32 @@ export class GroupsController {
     }
 
     return channels;
+  }
+
+  @Post(':id/transfer-ownership')
+  @ApiOperation({ summary: 'Initiate group ownership transfer request' })
+  @ApiParam({ name: 'id', description: 'Group UUID' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['newOwnerId'],
+      properties: {
+        newOwnerId: {
+          type: 'string',
+          example: '56568887-b39d-4912-abeb-3c7d1457b7a9',
+        },
+      },
+    },
+  })
+  async initiateOwnershipTransfer(
+    @Param('id') groupId: string,
+    @CurrentUser() currentUser: { userId: string },
+    @Body('newOwnerId') newOwnerId: string,
+  ) {
+    return this.groupsService.initiateOwnershipTransfer(
+      groupId,
+      currentUser.userId,
+      newOwnerId,
+    );
   }
 }
