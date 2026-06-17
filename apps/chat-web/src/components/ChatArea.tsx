@@ -62,6 +62,7 @@ import {
 import { socketManager } from '../store/socketManager';
 import { generateImageThumbnail, generateVideoThumbnail } from '../utils/media';
 import { hasGroupPermission } from '../utils/permissions';
+import { formatMessageTimestamp } from '../utils/date';
 
 import { Avatar } from './Avatar';
 import { ConfirmationModal } from './ConfirmationModal';
@@ -1245,13 +1246,7 @@ export const ChatArea = ({
                                   {senderName}
                                 </span>
                                 <span className="text-[10.5px] text-[var(--text-muted)]">
-                                  {new Date(msg.createdAt).toLocaleTimeString(
-                                    [],
-                                    {
-                                      hour: '2-digit',
-                                      minute: '2-digit',
-                                    },
-                                  )}
+                                  {formatMessageTimestamp(msg.createdAt)}
                                 </span>
                                 {msg.isEdited && (
                                   <span className="text-[9.5px] text-[var(--text-muted)] opacity-85 select-none">
@@ -1471,10 +1466,7 @@ export const ChatArea = ({
                           {renderMessageMedia(msg, setActiveMediaItem)}
                           <div className="flex items-center gap-1.5 mt-1 px-1 select-none">
                             <span className="text-[10px] text-[var(--text-muted)]">
-                              {new Date(msg.createdAt).toLocaleTimeString([], {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })}
+                              {formatMessageTimestamp(msg.createdAt)}
                             </span>
                             {msg.isEdited && (
                               <span className="text-[9.5px] text-[var(--text-muted)] opacity-85 select-none">
