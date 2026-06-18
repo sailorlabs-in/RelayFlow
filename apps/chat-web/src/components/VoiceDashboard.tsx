@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import ReactDOM from 'react-dom';
-import { useAppDispatch } from '../store';
+import { useAppDispatch, useAppSelector } from '../store';
 import {
   localSetSelfVoiceChannel,
   setActiveChannel,
@@ -10,6 +10,7 @@ import { socketManager } from '../store/socketManager';
 import { Avatar } from './Avatar';
 import { showToast } from './toast';
 import { PrintLog } from '../utils/logger';
+import { hasGroupPermission } from '../utils/permissions';
 
 interface VoiceDashboardProps {
   groupId: string;
@@ -179,13 +180,13 @@ const IconScreen = () => (
     <line x1="12" y1="17" x2="12" y2="21" />
   </svg>
 );
-const IconDisconnect = () => (
+const IconDisconnect = ({ size = 18 }: { size?: number }) => (
   <svg
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
     strokeWidth="2.5"
-    className="w-[18px] h-[18px]"
+    style={{ width: size, height: size }}
   >
     <path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-5.33-5.34A19.79 19.79 0 0 1 2 3.18 2 2 0 0 1 4 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8 8.91c1.07 1.27 2.2 2.4 3.47 3.47z" />
     <line
@@ -261,6 +262,18 @@ export const VoiceDashboard = ({
   isViewed = false,
 }: VoiceDashboardProps): React.JSX.Element => {
   const dispatch = useAppDispatch();
+
+  const group = useAppSelector((state) =>
+    state.groups.groups.find((g) => g.id === _groupId),
+  );
+
+  const canDisconnect =
+    hasGroupPermission(group, currentUser?.id, 'manage_roles') ||
+    hasGroupPermission(group, currentUser?.id, 'manage_group');
+
+  const handleDisconnectParticipant = (targetUserId: string) => {
+    socketManager.disconnectParticipant(_groupId, targetUserId);
+  };
 
   // Portal target state and effect
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
@@ -1212,6 +1225,20 @@ export const VoiceDashboard = ({
                                 size="sm"
                               />
                             </div>
+                          )}
+
+                          {/* Disconnect button (appears on hover) */}
+                          {canDisconnect && !isMe && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDisconnectParticipant(vs.userId);
+                              }}
+                              className="voice-disconnect-btn absolute top-1.5 left-1.5 w-[26px] h-[26px] rounded-md border-none bg-[rgba(237,66,69,0.85)] hover:bg-[#ed4245] text-white cursor-pointer flex items-center justify-center opacity-0 scale-[0.85] transition-all duration-150 z-[4]"
+                              title="Disconnect user"
+                            >
+                              <IconDisconnect size={14} />
+                            </button>
                           )}
 
                           {/* Expand button (appears on hover) */}

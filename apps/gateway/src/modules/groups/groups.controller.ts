@@ -382,6 +382,9 @@ export class GroupsController {
     @Body('layout') layout?: 'text' | 'bubble' | 'voice',
     @Body('allowedRoleIds') allowedRoleIds?: string[],
     @Body('sectionId') sectionId?: string,
+    @Body('readRoleIds') readRoleIds?: string[],
+    @Body('writeRoleIds') writeRoleIds?: string[],
+    @Body('hiddenFromUserIds') hiddenFromUserIds?: string[],
   ) {
     const channel = await this.groupsService.createChannel(
       groupId,
@@ -390,6 +393,9 @@ export class GroupsController {
       layout,
       allowedRoleIds,
       sectionId,
+      readRoleIds,
+      writeRoleIds,
+      hiddenFromUserIds,
     );
 
     // Notify all group members about the new channel
@@ -418,6 +424,9 @@ export class GroupsController {
       properties: {
         name: { type: 'string', example: 'announcements' },
         allowedRoleIds: { type: 'array', items: { type: 'string' } },
+        readRoleIds: { type: 'array', items: { type: 'string' } },
+        writeRoleIds: { type: 'array', items: { type: 'string' } },
+        hiddenFromUserIds: { type: 'array', items: { type: 'string' } },
       },
     },
   })
@@ -427,6 +436,9 @@ export class GroupsController {
     @CurrentUser() currentUser: { userId: string },
     @Body('name') name: string,
     @Body('allowedRoleIds') allowedRoleIds?: string[],
+    @Body('readRoleIds') readRoleIds?: string[],
+    @Body('writeRoleIds') writeRoleIds?: string[],
+    @Body('hiddenFromUserIds') hiddenFromUserIds?: string[],
   ) {
     const channel = await this.groupsService.updateChannel(
       groupId,
@@ -434,6 +446,9 @@ export class GroupsController {
       currentUser.userId,
       name,
       allowedRoleIds,
+      readRoleIds,
+      writeRoleIds,
+      hiddenFromUserIds,
     );
 
     // Notify all group members about the channel update

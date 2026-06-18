@@ -74,13 +74,64 @@ export const GroupSettingsModal = ({
   );
   const roles = activeGroup?.roles || [];
 
+  const isOwner = activeGroup?.ownerId === user?.id;
   const isOwnerOrAdmin =
-    activeGroup?.ownerId === user?.id ||
+    isOwner ||
     activeGroup?.members.find((m) => m.userId === user?.id)?.role === 'admin';
   const canManageGroup =
     isOwnerOrAdmin || hasGroupPermission(activeGroup, user?.id, 'manage_group');
   const canManageRoles =
     isOwnerOrAdmin || hasGroupPermission(activeGroup, user?.id, 'manage_roles');
+  const getPermissionsHighestManageRank = (permissions: string[]): number => {
+    const perms = new Set<string>(permissions || []);
+    if (perms.has('manage_group')) {
+      return 1;
+    }
+    if (perms.has('manage_channels')) {
+      return 2;
+    }
+    if (perms.has('manage_roles')) {
+      return 3;
+    }
+    return 4;
+  };
+
+  const currentUserMember = activeGroup?.members.find(
+    (m) => m.userId === user?.id,
+  );
+
+  const getRequesterRank = (): number => {
+    if (isOwner) {
+      return 0;
+    }
+    if (currentUserMember?.role === 'admin') {
+      return 1;
+    }
+
+    const perms = new Set<string>(currentUserMember?.permissions || []);
+    if (
+      currentUserMember?.roleIds &&
+      currentUserMember.roleIds.length > 0 &&
+      activeGroup?.roles
+    ) {
+      const assignedRoles = activeGroup.roles.filter((role) =>
+        currentUserMember.roleIds?.includes(role.id),
+      );
+      for (const role of assignedRoles) {
+        if (role.permissions) {
+          role.permissions.forEach((p) => perms.add(p));
+        }
+      }
+    }
+    return getPermissionsHighestManageRank(Array.from(perms));
+  };
+
+  const requesterRank = getRequesterRank();
+
+  const visiblePermissions = AVAILABLE_PERMISSIONS.filter((perm) => {
+    const permRank = getPermissionsHighestManageRank([perm.value]);
+    return permRank > requesterRank;
+  });
 
   const [activeTab, setActiveTab] = useState<'overview' | 'roles'>(
     canManageGroup ? 'overview' : 'roles',
@@ -632,7 +683,7 @@ export const GroupSettingsModal = ({
                   Permissions
                 </label>
                 <div className="grid grid-cols-2 gap-2 max-h-[140px] overflow-y-auto pr-1 border border-[var(--glass-border)] p-2.5 rounded-lg bg-[var(--bg-input)]">
-                  {AVAILABLE_PERMISSIONS.map((perm) => {
+                  {visiblePermissions.map((perm) => {
                     const isChecked = selectedPermissions.includes(perm.value);
                     return (
                       <label
@@ -747,20 +798,27 @@ export const GroupSettingsModal = ({
                             </button>
                           </div>
                         )}
-                        <button
-                          type="button"
-                          onClick={() => handleStartEdit(role)}
-                          className="px-2.5 py-1.5 rounded-[6px] text-[11px] font-bold cursor-pointer border border-[var(--glass-border)] bg-[rgba(255,255,255,0.03)] text-[var(--text-secondary)] hover:bg-[rgba(255,255,255,0.06)] active-press"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteRole(role.id)}
-                          className="px-2.5 py-1.5 rounded-[6px] text-[11px] font-bold cursor-pointer border border-[var(--danger-border)] bg-[var(--danger-bg)] text-[var(--danger)] hover:bg-[var(--danger)] hover:text-white transition-all active-press"
-                        >
-                          Delete
-                        </button>
+                        {(isOwner ||
+                          getPermissionsHighestManageRank(
+                            role.permissions || [],
+                          ) > requesterRank) && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleStartEdit(role)}
+                              className="px-2.5 py-1.5 rounded-[6px] text-[11px] font-bold cursor-pointer border border-[var(--glass-border)] bg-[rgba(255,255,255,0.03)] text-[var(--text-secondary)] hover:bg-[rgba(255,255,255,0.06)] active-press"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteRole(role.id)}
+                              className="px-2.5 py-1.5 rounded-[6px] text-[11px] font-bold cursor-pointer border border-[var(--danger-border)] bg-[var(--danger-bg)] text-[var(--danger)] hover:bg-[var(--danger)] hover:text-white transition-all active-press"
+                            >
+                              Delete
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                   ))}

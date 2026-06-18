@@ -441,6 +441,9 @@ export class GroupsService {
     layout?: 'text' | 'bubble' | 'voice',
     allowedRoleIds?: string[],
     sectionId?: string,
+    readRoleIds?: string[],
+    writeRoleIds?: string[],
+    hiddenFromUserIds?: string[],
   ): Promise<Conversation> {
     const membership = await this.groupMemberRepo.findOne({
       where: { groupId, userId: requesterId },
@@ -465,6 +468,9 @@ export class GroupsService {
       groupId,
       layout: layout || 'text',
       allowedRoleIds: allowedRoleIds || [],
+      readRoleIds: readRoleIds || [],
+      writeRoleIds: writeRoleIds || [],
+      hiddenFromUserIds: hiddenFromUserIds || [],
       sectionId,
     });
     const savedChannel = await this.conversationRepo.save(channel);
@@ -491,6 +497,9 @@ export class GroupsService {
     requesterId: string,
     name: string,
     allowedRoleIds?: string[],
+    readRoleIds?: string[],
+    writeRoleIds?: string[],
+    hiddenFromUserIds?: string[],
   ): Promise<Conversation> {
     const group = await this.groupRepo.findOne({ where: { id: groupId } });
     if (!group) {
@@ -525,6 +534,15 @@ export class GroupsService {
     channel.name = name.trim().toLowerCase().replace(/\s+/g, '-');
     if (allowedRoleIds !== undefined) {
       channel.allowedRoleIds = allowedRoleIds;
+    }
+    if (readRoleIds !== undefined) {
+      channel.readRoleIds = readRoleIds;
+    }
+    if (writeRoleIds !== undefined) {
+      channel.writeRoleIds = writeRoleIds;
+    }
+    if (hiddenFromUserIds !== undefined) {
+      channel.hiddenFromUserIds = hiddenFromUserIds;
     }
     return this.conversationRepo.save(channel);
   }
@@ -636,9 +654,15 @@ export class GroupsService {
       return [];
     }
 
+    const hasManageGroup = await this.hasPermission(
+      groupId,
+      userId,
+      'manage_group',
+    );
     if (
       member.role === GroupMemberRole.OWNER ||
-      member.role === GroupMemberRole.ADMIN
+      member.role === GroupMemberRole.ADMIN ||
+      hasManageGroup
     ) {
       return channels;
     }
@@ -651,11 +675,30 @@ export class GroupsService {
       if (channel.sectionId && !allowedSectionIds.has(channel.sectionId)) {
         return false;
       }
+
+      // Check if user is explicitly hidden from this channel
+      const hiddenFrom = channel.hiddenFromUserIds || [];
+      if (hiddenFrom.includes(userId)) {
+        return false;
+      }
+
       const allowed = channel.allowedRoleIds || [];
-      if (allowed.length === 0) {
+      const readRoles = channel.readRoleIds || [];
+      const writeRoles = channel.writeRoleIds || [];
+
+      if (
+        allowed.length === 0 &&
+        readRoles.length === 0 &&
+        writeRoles.length === 0
+      ) {
         return true;
       }
-      return allowed.some((roleId) => memberRoleIds.includes(roleId));
+
+      return (
+        allowed.some((roleId) => memberRoleIds.includes(roleId)) ||
+        readRoles.some((roleId) => memberRoleIds.includes(roleId)) ||
+        writeRoles.some((roleId) => memberRoleIds.includes(roleId))
+      );
     });
   }
 
@@ -671,9 +714,15 @@ export class GroupsService {
       return false;
     }
 
+    const hasManageGroup = await this.hasPermission(
+      groupId,
+      userId,
+      'manage_group',
+    );
     if (
       member.role === GroupMemberRole.OWNER ||
-      member.role === GroupMemberRole.ADMIN
+      member.role === GroupMemberRole.ADMIN ||
+      hasManageGroup
     ) {
       return true;
     }
@@ -682,6 +731,12 @@ export class GroupsService {
       where: { id: channelId },
     });
     if (!channel) {
+      return false;
+    }
+
+    // Check if user is explicitly hidden from this channel
+    const hiddenFrom = channel.hiddenFromUserIds || [];
+    if (hiddenFrom.includes(userId)) {
       return false;
     }
 
@@ -702,12 +757,73 @@ export class GroupsService {
     }
 
     const allowed = channel.allowedRoleIds || [];
-    if (allowed.length === 0) {
+    const readRoles = channel.readRoleIds || [];
+    const writeRoles = channel.writeRoleIds || [];
+
+    if (
+      allowed.length === 0 &&
+      readRoles.length === 0 &&
+      writeRoles.length === 0
+    ) {
       return true;
     }
 
     const memberRoleIds = member.roleIds || [];
-    return allowed.some((roleId) => memberRoleIds.includes(roleId));
+    return (
+      allowed.some((roleId) => memberRoleIds.includes(roleId)) ||
+      readRoles.some((roleId) => memberRoleIds.includes(roleId)) ||
+      writeRoles.some((roleId) => memberRoleIds.includes(roleId))
+    );
+  }
+
+  async canUserWriteToChannel(
+    groupId: string,
+    channelId: string,
+    userId: string,
+  ): Promise<boolean> {
+    const member = await this.groupMemberRepo.findOne({
+      where: { groupId, userId },
+    });
+    if (!member) {
+      return false;
+    }
+
+    const hasManageGroup = await this.hasPermission(
+      groupId,
+      userId,
+      'manage_group',
+    );
+    if (
+      member.role === GroupMemberRole.OWNER ||
+      member.role === GroupMemberRole.ADMIN ||
+      hasManageGroup
+    ) {
+      return true;
+    }
+
+    const channel = await this.conversationRepo.findOne({
+      where: { id: channelId },
+    });
+    if (!channel) {
+      return false;
+    }
+
+    const hasReadAccess = await this.canUserAccessChannel(
+      groupId,
+      channelId,
+      userId,
+    );
+    if (!hasReadAccess) {
+      return false;
+    }
+
+    const writeRoles = channel.writeRoleIds || [];
+    if (writeRoles.length === 0) {
+      return true;
+    }
+
+    const memberRoleIds = member.roleIds || [];
+    return writeRoles.some((roleId) => memberRoleIds.includes(roleId));
   }
 
   // ─── Custom Role Management ─────────────────────────────────────────────────
@@ -733,6 +849,11 @@ export class GroupsService {
       throw new ForbiddenException(
         'Only group owners, admins, or members with manage roles permission can manage roles',
       );
+    }
+
+    const group = await this.groupRepo.findOne({ where: { id: groupId } });
+    if (!group) {
+      throw new NotFoundException('Group not found');
     }
 
     // Permission hierarchy checks
@@ -798,6 +919,11 @@ export class GroupsService {
     });
     if (!role) {
       throw new NotFoundException('Role not found');
+    }
+
+    const group = await this.groupRepo.findOne({ where: { id: groupId } });
+    if (!group) {
+      throw new NotFoundException('Group not found');
     }
 
     // Permission hierarchy checks
@@ -871,6 +997,11 @@ export class GroupsService {
     });
     if (!role) {
       throw new NotFoundException('Role not found');
+    }
+
+    const group = await this.groupRepo.findOne({ where: { id: groupId } });
+    if (!group) {
+      throw new NotFoundException('Group not found');
     }
 
     // Permission hierarchy checks
