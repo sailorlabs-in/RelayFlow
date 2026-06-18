@@ -2989,8 +2989,9 @@ body {
   animation: voiceLiveDot 1.4s ease-in-out infinite;
 }
 
-/* Expand button reveal on card hover */
-.voice-card:hover .voice-expand-btn {
+/* Expand and Disconnect buttons reveal on card hover */
+.voice-card:hover .voice-expand-btn,
+.voice-card:hover .voice-disconnect-btn {
   opacity: 1;
   transform: scale(1);
 }

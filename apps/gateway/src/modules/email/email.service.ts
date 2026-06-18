@@ -72,4 +72,28 @@ export class EmailService {
       throw error;
     }
   }
+
+  async sendOwnershipTransferEmail(
+    email: string,
+    displayName: string,
+    groupName: string,
+    token: string,
+  ) {
+    this.logger.log(`⚡ Queueing ownership transfer email to ${email}`);
+    try {
+      await this.emailsQueue.add('send-ownership-transfer-email', {
+        email,
+        displayName,
+        groupName,
+        token,
+      });
+      this.logger.log(`✅ Ownership transfer email queued for ${email}`);
+    } catch (error) {
+      this.logger.error(
+        `❌ Failed to queue ownership transfer email for ${email}:`,
+        error,
+      );
+      throw error;
+    }
+  }
 }

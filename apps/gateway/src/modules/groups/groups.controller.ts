@@ -95,6 +95,37 @@ export class GroupsController {
     return group;
   }
 
+  @Post('transfer-ownership/accept')
+  @ApiOperation({ summary: 'Accept group ownership transfer request' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['token'],
+      properties: {
+        token: { type: 'string', example: 'random-transfer-token-hex' },
+      },
+    },
+  })
+  async acceptOwnershipTransfer(
+    @CurrentUser() currentUser: { userId: string },
+    @Body('token') token: string,
+  ) {
+    const updatedGroup = await this.groupsService.acceptOwnershipTransfer(
+      token,
+      currentUser.userId,
+    );
+
+    // Broadcast updated group to all members
+    const members = await this.groupsService.getGroupMembers(updatedGroup.id);
+    for (const member of members) {
+      this.realtimeGateway.server
+        .to(`user:${member.userId}`)
+        .emit('group.updated', updatedGroup);
+    }
+
+    return updatedGroup;
+  }
+
   // ─── Group Invite Links Management ───
   @Post(':id/invites')
   @ApiOperation({ summary: 'Create group invite link' })
@@ -351,6 +382,9 @@ export class GroupsController {
     @Body('layout') layout?: 'text' | 'bubble' | 'voice',
     @Body('allowedRoleIds') allowedRoleIds?: string[],
     @Body('sectionId') sectionId?: string,
+    @Body('readRoleIds') readRoleIds?: string[],
+    @Body('writeRoleIds') writeRoleIds?: string[],
+    @Body('hiddenFromUserIds') hiddenFromUserIds?: string[],
   ) {
     const channel = await this.groupsService.createChannel(
       groupId,
@@ -359,6 +393,9 @@ export class GroupsController {
       layout,
       allowedRoleIds,
       sectionId,
+      readRoleIds,
+      writeRoleIds,
+      hiddenFromUserIds,
     );
 
     // Notify all group members about the new channel
@@ -387,6 +424,9 @@ export class GroupsController {
       properties: {
         name: { type: 'string', example: 'announcements' },
         allowedRoleIds: { type: 'array', items: { type: 'string' } },
+        readRoleIds: { type: 'array', items: { type: 'string' } },
+        writeRoleIds: { type: 'array', items: { type: 'string' } },
+        hiddenFromUserIds: { type: 'array', items: { type: 'string' } },
       },
     },
   })
@@ -396,6 +436,9 @@ export class GroupsController {
     @CurrentUser() currentUser: { userId: string },
     @Body('name') name: string,
     @Body('allowedRoleIds') allowedRoleIds?: string[],
+    @Body('readRoleIds') readRoleIds?: string[],
+    @Body('writeRoleIds') writeRoleIds?: string[],
+    @Body('hiddenFromUserIds') hiddenFromUserIds?: string[],
   ) {
     const channel = await this.groupsService.updateChannel(
       groupId,
@@ -403,6 +446,9 @@ export class GroupsController {
       currentUser.userId,
       name,
       allowedRoleIds,
+      readRoleIds,
+      writeRoleIds,
+      hiddenFromUserIds,
     );
 
     // Notify all group members about the channel update
@@ -913,5 +959,32 @@ export class GroupsController {
     }
 
     return channels;
+  }
+
+  @Post(':id/transfer-ownership')
+  @ApiOperation({ summary: 'Initiate group ownership transfer request' })
+  @ApiParam({ name: 'id', description: 'Group UUID' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['newOwnerId'],
+      properties: {
+        newOwnerId: {
+          type: 'string',
+          example: '56568887-b39d-4912-abeb-3c7d1457b7a9',
+        },
+      },
+    },
+  })
+  async initiateOwnershipTransfer(
+    @Param('id') groupId: string,
+    @CurrentUser() currentUser: { userId: string },
+    @Body('newOwnerId') newOwnerId: string,
+  ) {
+    return this.groupsService.initiateOwnershipTransfer(
+      groupId,
+      currentUser.userId,
+      newOwnerId,
+    );
   }
 }

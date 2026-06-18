@@ -20,6 +20,7 @@ import {
   socketFriendRequestAccepted,
   socketFriendRequestDeclined,
   socketFriendRemoved,
+  setActiveConversation,
 } from './slices/chatSlice';
 import type { Group } from './slices/groupsSlice';
 import {
@@ -43,6 +44,8 @@ import {
   socketChannelsReordered,
   socketVoiceStateChanged,
   socketVoicePresenceSync,
+  setActiveChannel,
+  localSetSelfVoiceChannel,
 } from './slices/groupsSlice';
 
 import { SOCKET_URL } from '../constants/config';
@@ -448,6 +451,20 @@ class SocketManager {
     });
 
     this.socket.on(
+      'voice.force.disconnect',
+      (data: { groupId: string; channelId: string }) => {
+        PrintLog('🎙 Socket voice.force.disconnect received:', data);
+        showToast.info(
+          'You have been disconnected from the voice channel by an administrator.',
+        );
+        store.dispatch(setActiveChannel(null));
+        store.dispatch(setActiveConversation(null));
+        store.dispatch(localSetSelfVoiceChannel(null));
+        this.leaveVoice();
+      },
+    );
+
+    this.socket.on(
       'voice.signal',
       (data: { senderUserId: string; signal: any }) => {
         PrintLog('🎙 Socket voice.signal:', data.senderUserId);
@@ -747,6 +764,15 @@ class SocketManager {
   sendVoiceSignal(targetUserId: string, signal: any) {
     if (this.socket?.connected) {
       this.socket.emit('voice.signal', { targetUserId, signal });
+    }
+  }
+
+  disconnectParticipant(groupId: string, targetUserId: string) {
+    if (this.socket?.connected) {
+      PrintLog(
+        `📡 Emitting voice.disconnect.user: targetUserId=${targetUserId} in group=${groupId}`,
+      );
+      this.socket.emit('voice.disconnect.user', { groupId, targetUserId });
     }
   }
 

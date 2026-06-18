@@ -40,6 +40,9 @@ export interface GroupChannel {
   type: 'channel';
   layout: 'text' | 'bubble' | 'voice';
   allowedRoleIds?: string[];
+  readRoleIds?: string[];
+  writeRoleIds?: string[];
+  hiddenFromUserIds?: string[];
   createdAt: string;
   updatedAt: string;
   sectionId?: string;
@@ -230,6 +233,9 @@ export const createChannel = createAsyncThunk(
       layout?: 'text' | 'bubble' | 'voice';
       allowedRoleIds?: string[];
       sectionId?: string;
+      readRoleIds?: string[];
+      writeRoleIds?: string[];
+      hiddenFromUserIds?: string[];
     },
     { rejectWithValue },
   ) => {
@@ -242,6 +248,9 @@ export const createChannel = createAsyncThunk(
           layout: payload.layout || 'text',
           allowedRoleIds: payload.allowedRoleIds || [],
           sectionId: payload.sectionId,
+          readRoleIds: payload.readRoleIds || [],
+          writeRoleIds: payload.writeRoleIds || [],
+          hiddenFromUserIds: payload.hiddenFromUserIds || [],
         },
         true,
       );
@@ -268,6 +277,9 @@ export const updateChannel = createAsyncThunk(
       channelId: string;
       name: string;
       allowedRoleIds?: string[];
+      readRoleIds?: string[];
+      writeRoleIds?: string[];
+      hiddenFromUserIds?: string[];
     },
     { rejectWithValue },
   ) => {
@@ -278,6 +290,9 @@ export const updateChannel = createAsyncThunk(
         {
           name: payload.name,
           allowedRoleIds: payload.allowedRoleIds,
+          readRoleIds: payload.readRoleIds,
+          writeRoleIds: payload.writeRoleIds,
+          hiddenFromUserIds: payload.hiddenFromUserIds,
         },
         true,
       );

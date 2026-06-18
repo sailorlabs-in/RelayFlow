@@ -1,4 +1,4 @@
-import { ConversationType } from '@chat-app/database';
+import { ConversationType, GroupMemberRole } from '@chat-app/database';
 import { RedisService } from '@chat-app/redis';
 import {
   Logger,
@@ -502,6 +502,17 @@ export class RealtimeGateway
       if (!canSend) {
         throw new ForbiddenException(
           '❌ You do not have permission to send messages in this group.',
+        );
+      }
+
+      const canWriteChannel = await this.groupsService.canUserWriteToChannel(
+        conversation.groupId,
+        conversationId,
+        userId,
+      );
+      if (!canWriteChannel) {
+        throw new ForbiddenException(
+          '❌ You do not have permission to send messages in this channel.',
         );
       }
 
@@ -1013,6 +1024,122 @@ export class RealtimeGateway
           err,
         );
       }
+    }
+  }
+
+  @SubscribeMessage('voice.disconnect.user')
+  async handleVoiceDisconnectUser(
+    @MessageBody() payload: { groupId: string; targetUserId: string },
+    @ConnectedSocket() socket: Socket,
+  ): Promise<void> {
+    // eslint-disable-next-line no-useless-catch
+    try {
+      const requesterId = socket.data.userId as string;
+      const { groupId, targetUserId } = payload;
+      this.logger.log(
+        `🎙 User ${requesterId} requesting disconnect of user ${targetUserId} in group ${groupId}`,
+      );
+
+      if (targetUserId === requesterId) {
+        throw new BadRequestException('You cannot force disconnect yourself.');
+      }
+
+      const group = await this.groupsService.getGroup(groupId);
+      if (!group) {
+        throw new NotFoundException('Group not found');
+      }
+
+      const members = await this.groupsService.getGroupMembers(groupId);
+      const member = members.find((x) => x.userId === requesterId);
+      if (!member) {
+        throw new ForbiddenException('You are not a member of this group');
+      }
+
+      const targetMember = members.find((x) => x.userId === targetUserId);
+      if (!targetMember) {
+        throw new NotFoundException(
+          'Target user is not a member of this group',
+        );
+      }
+
+      const isOwner = group.ownerId === requesterId;
+      const isAdmin = member.role === GroupMemberRole.ADMIN;
+      const hasManageRoles = await this.groupsService.hasPermission(
+        groupId,
+        requesterId,
+        'manage_roles',
+      );
+      const hasManageGroup = await this.groupsService.hasPermission(
+        groupId,
+        requesterId,
+        'manage_group',
+      );
+
+      if (!isOwner && !isAdmin && !hasManageRoles && !hasManageGroup) {
+        throw new ForbiddenException(
+          '❌ You do not have permission to disconnect users from voice channels.',
+        );
+      }
+
+      // Enforcement of priority/rank check
+      // "smaller no priority can change the larger one but larger one cannot change smaller no and own"
+      // So if requesterRank >= targetRank, the requester cannot disconnect the target (except if they are the owner)
+      if (!isOwner) {
+        const requesterRank =
+          await this.groupsService.getMemberHighestManageRank(
+            groupId,
+            requesterId,
+            member,
+          );
+        const targetRank = await this.groupsService.getMemberHighestManageRank(
+          groupId,
+          targetUserId,
+          targetMember,
+        );
+
+        if (requesterRank >= targetRank) {
+          throw new ForbiddenException(
+            '❌ You cannot disconnect a member with equal or higher permissions than your own.',
+          );
+        }
+      }
+
+      const redisClient = this.redisService.getClient();
+      const voiceRaw = await redisClient.hget('voice_states', targetUserId);
+      if (voiceRaw) {
+        try {
+          const voiceState = JSON.parse(voiceRaw);
+          await redisClient.hdel('voice_states', targetUserId);
+
+          // Notify everyone that the user disconnected/left the voice channel
+          this.server.emit('voice.state.changed', {
+            userId: targetUserId,
+            groupId: voiceState.groupId,
+            channelId: null,
+            isMuted: false,
+            isDeafened: false,
+          });
+
+          // Specifically notify the disconnected user's socket so it updates its local state (leaves the WebRTC room, closes audio etc.)
+          this.server
+            .to(`user:${targetUserId}`)
+            .emit('voice.force.disconnect', {
+              groupId,
+              channelId: voiceState.channelId,
+            });
+
+          this.logger.log(
+            `🎙 User ${targetUserId} was disconnected by ${requesterId}`,
+          );
+        } catch (err: any) {
+          this.logger.error(
+            `Error on voice disconnect for user ${targetUserId}`,
+            err,
+          );
+        }
+      }
+    } catch (globalErr: any) {
+      throw globalErr;
     }
   }
 

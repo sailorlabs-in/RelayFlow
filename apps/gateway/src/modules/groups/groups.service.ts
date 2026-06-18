@@ -9,6 +9,7 @@ import {
   GroupInvite,
   GroupRole,
   GroupSection,
+  GroupOwnershipTransfer,
 } from '@chat-app/database';
 import {
   Injectable,
@@ -20,6 +21,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import * as crypto from 'crypto';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class GroupsService {
@@ -38,6 +40,9 @@ export class GroupsService {
     private readonly groupRoleRepo: Repository<GroupRole>,
     @InjectRepository(GroupSection)
     private readonly groupSectionRepo: Repository<GroupSection>,
+    @InjectRepository(GroupOwnershipTransfer)
+    private readonly groupOwnershipTransferRepo: Repository<GroupOwnershipTransfer>,
+    private readonly emailService: EmailService,
   ) {}
 
   async hasPermission(
@@ -78,6 +83,53 @@ export class GroupsService {
     }
 
     return false;
+  }
+
+  getPermissionsHighestManageRank(permissions: string[]): number {
+    const perms = new Set<string>(permissions || []);
+    if (perms.has('manage_group')) {
+      return 1;
+    }
+    if (perms.has('manage_channels')) {
+      return 2;
+    }
+    if (perms.has('manage_roles')) {
+      return 3;
+    }
+    return 4;
+  }
+
+  async getMemberHighestManageRank(
+    groupId: string,
+    userId: string,
+    member?: GroupMember,
+  ): Promise<number> {
+    const mem =
+      member ||
+      (await this.groupMemberRepo.findOne({ where: { groupId, userId } }));
+    if (!mem) {
+      return 5;
+    }
+    if (mem.role === GroupMemberRole.OWNER) {
+      return 0; // GOD
+    }
+    if (mem.role === GroupMemberRole.ADMIN) {
+      return 1; // ADMIN gets rank 1
+    }
+
+    const perms = new Set<string>(mem.permissions || []);
+    if (mem.roleIds && mem.roleIds.length > 0) {
+      const roles = await this.groupRoleRepo.find({
+        where: { id: In(mem.roleIds), groupId },
+      });
+      for (const role of roles) {
+        if (role.permissions) {
+          role.permissions.forEach((p) => perms.add(p));
+        }
+      }
+    }
+
+    return this.getPermissionsHighestManageRank(Array.from(perms));
   }
 
   // Helper to load profiles for group members
@@ -389,6 +441,9 @@ export class GroupsService {
     layout?: 'text' | 'bubble' | 'voice',
     allowedRoleIds?: string[],
     sectionId?: string,
+    readRoleIds?: string[],
+    writeRoleIds?: string[],
+    hiddenFromUserIds?: string[],
   ): Promise<Conversation> {
     const membership = await this.groupMemberRepo.findOne({
       where: { groupId, userId: requesterId },
@@ -413,6 +468,9 @@ export class GroupsService {
       groupId,
       layout: layout || 'text',
       allowedRoleIds: allowedRoleIds || [],
+      readRoleIds: readRoleIds || [],
+      writeRoleIds: writeRoleIds || [],
+      hiddenFromUserIds: hiddenFromUserIds || [],
       sectionId,
     });
     const savedChannel = await this.conversationRepo.save(channel);
@@ -439,6 +497,9 @@ export class GroupsService {
     requesterId: string,
     name: string,
     allowedRoleIds?: string[],
+    readRoleIds?: string[],
+    writeRoleIds?: string[],
+    hiddenFromUserIds?: string[],
   ): Promise<Conversation> {
     const group = await this.groupRepo.findOne({ where: { id: groupId } });
     if (!group) {
@@ -473,6 +534,15 @@ export class GroupsService {
     channel.name = name.trim().toLowerCase().replace(/\s+/g, '-');
     if (allowedRoleIds !== undefined) {
       channel.allowedRoleIds = allowedRoleIds;
+    }
+    if (readRoleIds !== undefined) {
+      channel.readRoleIds = readRoleIds;
+    }
+    if (writeRoleIds !== undefined) {
+      channel.writeRoleIds = writeRoleIds;
+    }
+    if (hiddenFromUserIds !== undefined) {
+      channel.hiddenFromUserIds = hiddenFromUserIds;
     }
     return this.conversationRepo.save(channel);
   }
@@ -584,9 +654,15 @@ export class GroupsService {
       return [];
     }
 
+    const hasManageGroup = await this.hasPermission(
+      groupId,
+      userId,
+      'manage_group',
+    );
     if (
       member.role === GroupMemberRole.OWNER ||
-      member.role === GroupMemberRole.ADMIN
+      member.role === GroupMemberRole.ADMIN ||
+      hasManageGroup
     ) {
       return channels;
     }
@@ -599,11 +675,30 @@ export class GroupsService {
       if (channel.sectionId && !allowedSectionIds.has(channel.sectionId)) {
         return false;
       }
+
+      // Check if user is explicitly hidden from this channel
+      const hiddenFrom = channel.hiddenFromUserIds || [];
+      if (hiddenFrom.includes(userId)) {
+        return false;
+      }
+
       const allowed = channel.allowedRoleIds || [];
-      if (allowed.length === 0) {
+      const readRoles = channel.readRoleIds || [];
+      const writeRoles = channel.writeRoleIds || [];
+
+      if (
+        allowed.length === 0 &&
+        readRoles.length === 0 &&
+        writeRoles.length === 0
+      ) {
         return true;
       }
-      return allowed.some((roleId) => memberRoleIds.includes(roleId));
+
+      return (
+        allowed.some((roleId) => memberRoleIds.includes(roleId)) ||
+        readRoles.some((roleId) => memberRoleIds.includes(roleId)) ||
+        writeRoles.some((roleId) => memberRoleIds.includes(roleId))
+      );
     });
   }
 
@@ -619,9 +714,15 @@ export class GroupsService {
       return false;
     }
 
+    const hasManageGroup = await this.hasPermission(
+      groupId,
+      userId,
+      'manage_group',
+    );
     if (
       member.role === GroupMemberRole.OWNER ||
-      member.role === GroupMemberRole.ADMIN
+      member.role === GroupMemberRole.ADMIN ||
+      hasManageGroup
     ) {
       return true;
     }
@@ -630,6 +731,12 @@ export class GroupsService {
       where: { id: channelId },
     });
     if (!channel) {
+      return false;
+    }
+
+    // Check if user is explicitly hidden from this channel
+    const hiddenFrom = channel.hiddenFromUserIds || [];
+    if (hiddenFrom.includes(userId)) {
       return false;
     }
 
@@ -650,12 +757,73 @@ export class GroupsService {
     }
 
     const allowed = channel.allowedRoleIds || [];
-    if (allowed.length === 0) {
+    const readRoles = channel.readRoleIds || [];
+    const writeRoles = channel.writeRoleIds || [];
+
+    if (
+      allowed.length === 0 &&
+      readRoles.length === 0 &&
+      writeRoles.length === 0
+    ) {
       return true;
     }
 
     const memberRoleIds = member.roleIds || [];
-    return allowed.some((roleId) => memberRoleIds.includes(roleId));
+    return (
+      allowed.some((roleId) => memberRoleIds.includes(roleId)) ||
+      readRoles.some((roleId) => memberRoleIds.includes(roleId)) ||
+      writeRoles.some((roleId) => memberRoleIds.includes(roleId))
+    );
+  }
+
+  async canUserWriteToChannel(
+    groupId: string,
+    channelId: string,
+    userId: string,
+  ): Promise<boolean> {
+    const member = await this.groupMemberRepo.findOne({
+      where: { groupId, userId },
+    });
+    if (!member) {
+      return false;
+    }
+
+    const hasManageGroup = await this.hasPermission(
+      groupId,
+      userId,
+      'manage_group',
+    );
+    if (
+      member.role === GroupMemberRole.OWNER ||
+      member.role === GroupMemberRole.ADMIN ||
+      hasManageGroup
+    ) {
+      return true;
+    }
+
+    const channel = await this.conversationRepo.findOne({
+      where: { id: channelId },
+    });
+    if (!channel) {
+      return false;
+    }
+
+    const hasReadAccess = await this.canUserAccessChannel(
+      groupId,
+      channelId,
+      userId,
+    );
+    if (!hasReadAccess) {
+      return false;
+    }
+
+    const writeRoles = channel.writeRoleIds || [];
+    if (writeRoles.length === 0) {
+      return true;
+    }
+
+    const memberRoleIds = member.roleIds || [];
+    return writeRoles.some((roleId) => memberRoleIds.includes(roleId));
   }
 
   // ─── Custom Role Management ─────────────────────────────────────────────────
@@ -681,6 +849,34 @@ export class GroupsService {
       throw new ForbiddenException(
         'Only group owners, admins, or members with manage roles permission can manage roles',
       );
+    }
+
+    const group = await this.groupRepo.findOne({ where: { id: groupId } });
+    if (!group) {
+      throw new NotFoundException('Group not found');
+    }
+
+    // Permission hierarchy checks
+    const requesterRank = await this.getMemberHighestManageRank(
+      groupId,
+      requesterId,
+      member,
+    );
+    if (requesterRank > 0) {
+      // Not owner
+      if (requesterRank >= 4) {
+        throw new ForbiddenException(
+          'You do not have permission to manage roles',
+        );
+      }
+      const newRoleRank = this.getPermissionsHighestManageRank(
+        permissions || [],
+      );
+      if (newRoleRank <= requesterRank) {
+        throw new ForbiddenException(
+          'You cannot create a role with equal or higher permissions than your own',
+        );
+      }
     }
 
     const role = this.groupRoleRepo.create({
@@ -725,6 +921,45 @@ export class GroupsService {
       throw new NotFoundException('Role not found');
     }
 
+    const group = await this.groupRepo.findOne({ where: { id: groupId } });
+    if (!group) {
+      throw new NotFoundException('Group not found');
+    }
+
+    // Permission hierarchy checks
+    const requesterRank = await this.getMemberHighestManageRank(
+      groupId,
+      requesterId,
+      member,
+    );
+    if (requesterRank > 0) {
+      // Not owner
+      if (requesterRank >= 4) {
+        throw new ForbiddenException(
+          'You do not have permission to manage roles',
+        );
+      }
+      if (member.roleIds && member.roleIds.includes(roleId)) {
+        throw new ForbiddenException('You cannot edit your own assigned roles');
+      }
+      const currentRoleRank = this.getPermissionsHighestManageRank(
+        role.permissions || [],
+      );
+      if (currentRoleRank <= requesterRank) {
+        throw new ForbiddenException(
+          'You cannot edit a role with equal or higher permissions than your own',
+        );
+      }
+      if (permissions !== undefined) {
+        const newRoleRank = this.getPermissionsHighestManageRank(permissions);
+        if (newRoleRank <= requesterRank) {
+          throw new ForbiddenException(
+            'You cannot assign equal or higher permissions than your own to a role',
+          );
+        }
+      }
+    }
+
     role.name = name.trim();
     if (color) {
       role.color = color;
@@ -762,6 +997,39 @@ export class GroupsService {
     });
     if (!role) {
       throw new NotFoundException('Role not found');
+    }
+
+    const group = await this.groupRepo.findOne({ where: { id: groupId } });
+    if (!group) {
+      throw new NotFoundException('Group not found');
+    }
+
+    // Permission hierarchy checks
+    const requesterRank = await this.getMemberHighestManageRank(
+      groupId,
+      requesterId,
+      member,
+    );
+    if (requesterRank > 0) {
+      // Not owner
+      if (requesterRank >= 4) {
+        throw new ForbiddenException(
+          'You do not have permission to manage roles',
+        );
+      }
+      if (member.roleIds && member.roleIds.includes(roleId)) {
+        throw new ForbiddenException(
+          'You cannot delete your own assigned roles',
+        );
+      }
+      const roleRank = this.getPermissionsHighestManageRank(
+        role.permissions || [],
+      );
+      if (roleRank <= requesterRank) {
+        throw new ForbiddenException(
+          'You cannot delete a role with equal or higher permissions than your own',
+        );
+      }
     }
 
     await this.groupRoleRepo.delete({ id: roleId });
@@ -868,6 +1136,74 @@ export class GroupsService {
       throw new NotFoundException('Group member not found');
     }
 
+    // Permission hierarchy checks
+    const requesterRank = await this.getMemberHighestManageRank(
+      groupId,
+      requesterId,
+      requester,
+    );
+    if (requesterRank > 0) {
+      // Not owner
+      if (requesterRank >= 4) {
+        throw new ForbiddenException(
+          'You do not have permission to assign roles',
+        );
+      }
+      if (targetUserId === requesterId) {
+        throw new ForbiddenException('You cannot modify your own roles');
+      }
+      const targetRank = await this.getMemberHighestManageRank(
+        groupId,
+        targetUserId,
+        target,
+      );
+      if (targetRank <= requesterRank) {
+        throw new ForbiddenException(
+          'You cannot modify roles of a member with equal or higher permissions than your own',
+        );
+      }
+
+      // Verify roles being added/removed
+      const groupRoles = await this.groupRoleRepo.find({ where: { groupId } });
+      const rolesMap = new Map(groupRoles.map((r) => [r.id, r]));
+
+      const targetCurrentRoleIds = target.roleIds || [];
+      const addedRoleIds = roleIds.filter(
+        (id) => !targetCurrentRoleIds.includes(id),
+      );
+      const removedRoleIds = targetCurrentRoleIds.filter(
+        (id) => !roleIds.includes(id),
+      );
+
+      for (const roleId of addedRoleIds) {
+        const role = rolesMap.get(roleId);
+        if (role) {
+          const roleRank = this.getPermissionsHighestManageRank(
+            role.permissions || [],
+          );
+          if (roleRank <= requesterRank) {
+            throw new ForbiddenException(
+              'You cannot assign a role with equal or higher permissions than your own',
+            );
+          }
+        }
+      }
+
+      for (const roleId of removedRoleIds) {
+        const role = rolesMap.get(roleId);
+        if (role) {
+          const roleRank = this.getPermissionsHighestManageRank(
+            role.permissions || [],
+          );
+          if (roleRank <= requesterRank) {
+            throw new ForbiddenException(
+              'You cannot remove a role with equal or higher permissions than your own',
+            );
+          }
+        }
+      }
+    }
+
     // Verify all roleIds belong to the group
     const roles = await this.groupRoleRepo.find({ where: { groupId } });
     const groupRoleIds = roles.map((r) => r.id);
@@ -876,6 +1212,133 @@ export class GroupsService {
     target.roleIds = validRoleIds;
     const savedTarget = await this.groupMemberRepo.save(target);
     return (await this.attachProfilesToMembers([savedTarget]))[0];
+  }
+
+  async initiateOwnershipTransfer(
+    groupId: string,
+    requesterId: string,
+    newOwnerId: string,
+  ): Promise<any> {
+    const group = await this.groupRepo.findOne({ where: { id: groupId } });
+    if (!group) {
+      throw new NotFoundException('Group not found');
+    }
+    if (group.ownerId !== requesterId) {
+      throw new ForbiddenException(
+        'Only the group owner can transfer ownership',
+      );
+    }
+
+    const newOwnerMember = await this.groupMemberRepo.findOne({
+      where: { groupId, userId: newOwnerId },
+    });
+    if (!newOwnerMember) {
+      throw new NotFoundException('Target user is not a member of this group');
+    }
+
+    if (requesterId === newOwnerId) {
+      throw new BadRequestException('You are already the owner of this group');
+    }
+
+    // Load new owner user details to get display name & email
+    const newOwnerUser = await this.groupRepo.manager.findOne(User, {
+      where: { id: newOwnerId },
+    });
+    if (!newOwnerUser) {
+      throw new NotFoundException('Target user profile not found');
+    }
+
+    // Remove any existing transfers for this group to avoid duplication
+    await this.groupOwnershipTransferRepo.delete({ groupId });
+
+    // Generate token
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    const transfer = this.groupOwnershipTransferRepo.create({
+      groupId,
+      currentOwnerId: requesterId,
+      newOwnerId,
+      token,
+      expiresAt,
+    });
+
+    await this.groupOwnershipTransferRepo.save(transfer);
+
+    // Send accepting mail
+    const displayName =
+      newOwnerUser.displayName ||
+      newOwnerUser.username ||
+      newOwnerUser.email.split('@')[0];
+    await this.emailService.sendOwnershipTransferEmail(
+      newOwnerUser.email,
+      displayName,
+      group.name,
+      token,
+    );
+
+    return { success: true };
+  }
+
+  async acceptOwnershipTransfer(token: string, userId: string): Promise<Group> {
+    const transfer = await this.groupOwnershipTransferRepo.findOne({
+      where: { token },
+    });
+    if (!transfer) {
+      throw new BadRequestException('Invalid or expired transfer request');
+    }
+
+    if (transfer.expiresAt < new Date()) {
+      await this.groupOwnershipTransferRepo.delete({ id: transfer.id });
+      throw new BadRequestException('This transfer request has expired');
+    }
+
+    if (transfer.newOwnerId !== userId) {
+      throw new ForbiddenException(
+        'You are not authorized to accept this transfer',
+      );
+    }
+
+    const group = await this.groupRepo.findOne({
+      where: { id: transfer.groupId },
+    });
+    if (!group) {
+      throw new NotFoundException('Group not found');
+    }
+
+    if (group.ownerId !== transfer.currentOwnerId) {
+      throw new BadRequestException('The transfer request is no longer valid');
+    }
+
+    // Perform ownership transfer
+    group.ownerId = transfer.newOwnerId;
+    const savedGroup = await this.groupRepo.save(group);
+
+    // Update old owner membership role to GroupMemberRole.MEMBER
+    const oldOwnerMember = await this.groupMemberRepo.findOne({
+      where: { groupId: transfer.groupId, userId: transfer.currentOwnerId },
+    });
+    if (oldOwnerMember) {
+      oldOwnerMember.role = GroupMemberRole.MEMBER;
+      await this.groupMemberRepo.save(oldOwnerMember);
+    }
+
+    // Update new owner membership role to GroupMemberRole.OWNER
+    const newOwnerMember = await this.groupMemberRepo.findOne({
+      where: { groupId: transfer.groupId, userId: transfer.newOwnerId },
+    });
+    if (newOwnerMember) {
+      newOwnerMember.role = GroupMemberRole.OWNER;
+      await this.groupMemberRepo.save(newOwnerMember);
+    }
+
+    // Delete transfer record
+    await this.groupOwnershipTransferRepo.delete({ id: transfer.id });
+
+    // Return full updated group structure
+    const fullGroup = await this.getGroupsForUser(userId);
+    const updated = fullGroup.find((g) => g.id === group.id);
+    return updated || savedGroup;
   }
 
   async getGroup(groupId: string): Promise<Group | null> {

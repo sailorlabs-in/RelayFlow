@@ -122,6 +122,16 @@ export const ChannelSidebar = ({
   const canInvite =
     isOwner || isAdmin || hasGroupPermission(group, user?.id, 'invite_members');
 
+  const canDisconnect =
+    isOwner ||
+    isAdmin ||
+    hasGroupPermission(group, user?.id, 'manage_roles') ||
+    hasGroupPermission(group, user?.id, 'manage_group');
+
+  const handleDisconnectParticipant = (targetUserId: string) => {
+    socketManager.disconnectParticipant(group.id, targetUserId);
+  };
+
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -530,6 +540,27 @@ export const ChannelSidebar = ({
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {canDisconnect && vs.userId !== user?.id && (
+                      <button
+                        title="Disconnect from voice channel"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDisconnectParticipant(vs.userId);
+                        }}
+                        className="bg-transparent border-none cursor-pointer text-[var(--danger)] hover:text-red-500 p-0.5 rounded flex items-center transition-colors focus:outline-none"
+                      >
+                        <svg
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          className="w-[12px] h-[12px]"
+                        >
+                          <line x1="18" y1="6" x2="6" y2="18" />
+                          <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                      </button>
+                    )}
                     {vs.isMuted && (
                       <svg
                         viewBox="0 0 24 24"

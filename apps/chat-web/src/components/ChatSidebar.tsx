@@ -13,6 +13,7 @@ import { Avatar } from './Avatar';
 import { IconSettings, IconCompose, IconLogout, IconChat } from './Icons';
 import { showToast } from './toast';
 import { ConfirmationModal } from './ConfirmationModal';
+import { formatMessageTimestamp } from '../utils/date';
 
 interface ContextMenuState {
   conversationId: string;
@@ -469,13 +470,7 @@ export const ChatSidebar = ({
                         )}
                         {lastMsg && (
                           <span className="text-[10px] text-[var(--text-muted)]">
-                            {new Date(lastMsg.createdAt).toLocaleTimeString(
-                              [],
-                              {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              },
-                            )}
+                            {formatMessageTimestamp(lastMsg.createdAt)}
                           </span>
                         )}
                       </div>

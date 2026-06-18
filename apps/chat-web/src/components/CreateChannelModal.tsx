@@ -31,6 +31,10 @@ export const CreateChannelModal = ({
   const [layout, setLayout] = useState<'text' | 'bubble' | 'voice'>('text');
   const [isPrivate, setIsPrivate] = useState(false);
   const [allowedRoleIds, setAllowedRoleIds] = useState<string[]>([]);
+  const [readRoleIds, setReadRoleIds] = useState<string[]>([]);
+  const [writeRoleIds, setWriteRoleIds] = useState<string[]>([]);
+  const [hiddenFromUserIds, setHiddenFromUserIds] = useState<string[]>([]);
+  const [memberSearchQuery, setMemberSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const sanitize = (val: string) =>
@@ -58,6 +62,9 @@ export const CreateChannelModal = ({
           name,
           layout,
           allowedRoleIds: isPrivate ? allowedRoleIds : [],
+          readRoleIds: isPrivate ? readRoleIds : [],
+          writeRoleIds: isPrivate ? writeRoleIds : [],
+          hiddenFromUserIds: isPrivate ? hiddenFromUserIds : [],
           sectionId,
         }),
       ).unwrap();
@@ -223,46 +230,170 @@ export const CreateChannelModal = ({
             </div>
 
             {isPrivate && (
-              <div className="mt-4 border-t border-[var(--border-muted)] pt-3">
-                <span className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2">
-                  Select Roles
-                </span>
-                {roles.length === 0 ? (
-                  <p className="m-0 text-xs text-[var(--text-muted)] italic">
-                    No custom roles exist. Create roles in Server Settings
-                    first, or only Owners/Admins will access this channel.
-                  </p>
-                ) : (
-                  <div className="flex flex-col gap-2 max-h-[120px] overflow-y-auto pr-1">
-                    {roles.map((role) => (
-                      <label
-                        key={role.id}
-                        className="flex items-center gap-2.5 text-sm cursor-pointer select-none"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={allowedRoleIds.includes(role.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setAllowedRoleIds([...allowedRoleIds, role.id]);
-                            } else {
-                              setAllowedRoleIds(
-                                allowedRoleIds.filter((id) => id !== role.id),
-                              );
-                            }
-                          }}
-                          className="rounded border-[var(--glass-border)] text-[var(--accent-primary)] focus:ring-[var(--accent-primary)]"
-                        />
-                        <span
-                          style={{ color: role.color }}
-                          className="font-semibold text-[var(--text-primary)]"
+              <div className="flex flex-col gap-4 mt-4 border-t border-[var(--border-muted)] pt-3">
+                {/* Read Access Roles */}
+                <div>
+                  <span className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] mb-2">
+                    Who can read / view
+                  </span>
+                  {roles.length === 0 ? (
+                    <p className="m-0 text-xs text-[var(--text-muted)] italic">
+                      No custom roles exist. Create roles in Server Settings
+                      first.
+                    </p>
+                  ) : (
+                    <div className="flex flex-col gap-2 max-h-[100px] overflow-y-auto pr-1">
+                      {roles.map((role) => (
+                        <label
+                          key={role.id}
+                          className="flex items-center gap-2.5 text-sm cursor-pointer select-none"
                         >
-                          {role.name}
-                        </span>
-                      </label>
-                    ))}
+                          <input
+                            type="checkbox"
+                            checked={readRoleIds.includes(role.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setReadRoleIds([...readRoleIds, role.id]);
+                                setAllowedRoleIds([...allowedRoleIds, role.id]);
+                              } else {
+                                setReadRoleIds(
+                                  readRoleIds.filter((id) => id !== role.id),
+                                );
+                                setAllowedRoleIds(
+                                  allowedRoleIds.filter((id) => id !== role.id),
+                                );
+                              }
+                            }}
+                            className="rounded border-[var(--glass-border)] text-[var(--accent-primary)] focus:ring-[var(--accent-primary)]"
+                          />
+                          <span
+                            style={{ color: role.color }}
+                            className="font-semibold text-[var(--text-primary)]"
+                          >
+                            {role.name}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Write Access Roles */}
+                <div className="border-t border-[var(--border-muted)] pt-3">
+                  <span className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] mb-2">
+                    Who can message / write
+                  </span>
+                  {roles.length === 0 ? (
+                    <p className="m-0 text-xs text-[var(--text-muted)] italic">
+                      No custom roles exist. Create roles in Server Settings
+                      first.
+                    </p>
+                  ) : (
+                    <div className="flex flex-col gap-2 max-h-[100px] overflow-y-auto pr-1">
+                      {roles.map((role) => (
+                        <label
+                          key={role.id}
+                          className="flex items-center gap-2.5 text-sm cursor-pointer select-none"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={writeRoleIds.includes(role.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setWriteRoleIds([...writeRoleIds, role.id]);
+                              } else {
+                                setWriteRoleIds(
+                                  writeRoleIds.filter((id) => id !== role.id),
+                                );
+                              }
+                            }}
+                            className="rounded border-[var(--glass-border)] text-[var(--accent-primary)] focus:ring-[var(--accent-primary)]"
+                          />
+                          <span
+                            style={{ color: role.color }}
+                            className="font-semibold text-[var(--text-primary)]"
+                          >
+                            {role.name}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Hide Channel From */}
+                <div className="border-t border-[var(--border-muted)] pt-3">
+                  <span className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] mb-2">
+                    Hide channel from
+                  </span>
+                  <div className="mb-2">
+                    <input
+                      type="text"
+                      placeholder="Search members..."
+                      value={memberSearchQuery}
+                      onChange={(e) => setMemberSearchQuery(e.target.value)}
+                      className="input-base w-full py-1.5 px-3 rounded-[8px] bg-[var(--bg-input)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs box-border focus:outline-none focus:border-[var(--accent-primary)]"
+                    />
                   </div>
-                )}
+                  {group?.members.length === 0 ? (
+                    <p className="m-0 text-xs text-[var(--text-muted)] italic">
+                      No members exist in this server.
+                    </p>
+                  ) : (
+                    <div className="flex flex-col gap-2 max-h-[100px] overflow-y-auto pr-1">
+                      {group?.members
+                        .filter((m) => {
+                          const name =
+                            m.user?.displayName ||
+                            m.user?.username ||
+                            m.user?.email ||
+                            '';
+                          return name
+                            .toLowerCase()
+                            .includes(memberSearchQuery.toLowerCase());
+                        })
+                        .map((m) => {
+                          const isSelected = hiddenFromUserIds.includes(
+                            m.userId,
+                          );
+                          const name =
+                            m.user?.displayName ||
+                            m.user?.username ||
+                            m.user?.email ||
+                            m.userId;
+                          return (
+                            <label
+                              key={m.userId}
+                              className="flex items-center gap-2.5 text-sm cursor-pointer select-none"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setHiddenFromUserIds([
+                                      ...hiddenFromUserIds,
+                                      m.userId,
+                                    ]);
+                                  } else {
+                                    setHiddenFromUserIds(
+                                      hiddenFromUserIds.filter(
+                                        (id) => id !== m.userId,
+                                      ),
+                                    );
+                                  }
+                                }}
+                                className="rounded border-[var(--glass-border)] text-[var(--accent-primary)] focus:ring-[var(--accent-primary)]"
+                              />
+                              <span className="text-[var(--text-primary)] truncate">
+                                {name}
+                              </span>
+                            </label>
+                          );
+                        })}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>

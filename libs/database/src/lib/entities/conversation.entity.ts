@@ -44,6 +44,30 @@ export class Conversation {
   })
   allowedRoleIds?: string[];
 
+  @Column({
+    name: 'read_role_ids',
+    type: 'jsonb',
+    nullable: true,
+    default: [],
+  })
+  readRoleIds?: string[];
+
+  @Column({
+    name: 'write_role_ids',
+    type: 'jsonb',
+    nullable: true,
+    default: [],
+  })
+  writeRoleIds?: string[];
+
+  @Column({
+    name: 'hidden_from_user_ids',
+    type: 'jsonb',
+    nullable: true,
+    default: [],
+  })
+  hiddenFromUserIds?: string[];
+
   @Column({ name: 'section_id', type: 'uuid', nullable: true })
   sectionId?: string;
 

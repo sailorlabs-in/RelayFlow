@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Accept Ownership Transfer</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f8fbff;
+      color: #111827;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrapper {
+      width: 100%;
+      table-layout: fixed;
+      background-color: #f8fbff;
+      padding: 40px 0;
+    }
+    .container {
+      max-width: 540px;
+      margin: 0 auto;
+      background-color: #ffffff;
+      border: 1.5px solid rgba(0, 153, 255, 0.08);
+      border-radius: 18px;
+      box-shadow: 0 10px 30px rgba(0, 153, 255, 0.06);
+      overflow: hidden;
+    }
+    .header {
+      background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+      padding: 30px 40px;
+      text-align: center;
+    }
+    .header h1 {
+      margin: 0;
+      color: #ffffff;
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+    .content {
+      padding: 40px;
+      line-height: 1.6;
+    }
+    .content h2 {
+      margin-top: 0;
+      color: #7c3aed;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+    .content p {
+      color: #4b5563;
+      font-size: 15px;
+      margin-bottom: 24px;
+    }
+    .action-box {
+      text-align: center;
+      margin: 30px 0;
+    }
+    .btn-accept {
+      display: inline-block;
+      padding: 14px 30px;
+      background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+      color: #ffffff !important;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 15px;
+      border-radius: 10px;
+      box-shadow: 0 4px 14px rgba(124, 58, 237, 0.35);
+      transition: all 0.2s ease;
+    }
+    .footer {
+      padding: 0 40px 40px 40px;
+      text-align: center;
+    }
+    .footer p {
+      font-size: 12px;
+      color: #9ca3af;
+      margin: 0 0 8px 0;
+    }
+    .warning {
+      color: #b91c1c !important;
+      font-weight: 600;
+      background: #fef2f2;
+      border: 1px solid #fee2e2;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 13.5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="container">
+      <div class="header">
+        <h1>RelayFlow</h1>
+      </div>
+      <div class="content">
+        <h2>Ownership Transfer Request</h2>
+        <p>Hello <strong><%= displayName %></strong>,</p>
+        <p>An ownership transfer request has been initiated for you to become the new owner of the group/server: <strong><%= groupName %></strong>.</p>
+        
+        <p class="warning">
+          ⚠️ <strong>Important Security Warning:</strong> Accepting this transfer will make you the primary owner of the group. You will assume full responsibility, including permissions management and server controls.
+        </p>
+
+        <div class="action-box">
+          <a href="<%= acceptLink %>" class="btn-accept">Accept Ownership Transfer</a>
+        </div>
+        
+        <p>This request link will expire in 24 hours. If you did not request or expect this transfer, you can safely ignore this email.</p>
+      </div>
+      <div class="footer">
+        <p>© <%= new Date().getFullYear() %> RelayFlow. All rights reserved.</p>
+        <p>Vibrant & Secure Real-Time Messaging Platform.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
