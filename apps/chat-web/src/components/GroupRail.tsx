@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../store';
 import { setActiveGroup } from '../store/slices/groupsSlice';
 
-import { IconMessageDm, IconPlus } from './Icons';
+import { IconPlus } from './Icons';
 
 interface GroupRailProps {
   onCreateGroup: () => void;
@@ -39,15 +39,6 @@ export const GroupRail = ({
 
   return (
     <div className="group-rail w-[68px] min-w-[68px] h-full flex flex-col items-center py-2.5 gap-1.5 bg-[var(--bg-rail)] rounded-[14px] relative overflow-hidden">
-      {/* Platform Logo */}
-      <div className="w-[44px] h-[44px] rounded-xl overflow-hidden bg-[var(--bg-sidebar)] border border-glass shadow-sm shrink-0 mb-1.5 select-none animate-fade-in hover:scale-105 transition-all duration-200">
-        <img
-          src="/logo.png"
-          alt="RelayFlow Logo"
-          className="w-full h-full object-cover"
-        />
-      </div>
-
       {/* DMs Button */}
       <RailButton
         id="rail-dm-btn"
@@ -57,7 +48,11 @@ export const GroupRail = ({
         tooltip_state={tooltip}
         setTooltip={setTooltip}
       >
-        <IconMessageDm />
+        <img
+          src="/logo.png"
+          alt="Direct Messages"
+          className="w-full h-full object-cover rounded-[inherit]"
+        />
       </RailButton>
 
       {/* Divider */}
