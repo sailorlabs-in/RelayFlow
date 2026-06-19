@@ -15,7 +15,7 @@ import { ResetPasswordForm } from './auth/ResetPasswordForm';
 import { SignUpForm } from './auth/SignUpForm';
 import { TwoFactorForm } from './auth/TwoFactorForm';
 import { VerifyEmailForm } from './auth/VerifyEmailForm';
-import { IconBolt, IconZap, IconShield, IconGlobe } from './Icons';
+import { IconZap, IconShield, IconGlobe } from './Icons';
 import type { Theme } from './ThemeSwitcher';
 import { ThemeSwitcher } from './ThemeSwitcher';
 
@@ -154,8 +154,12 @@ export const AuthGate = (): React.JSX.Element => {
           <div className="absolute -bottom-14 -right-14 w-56 h-56 rounded-full bg-[rgba(255,255,255,0.06)]" />
 
           {/* Brand icon */}
-          <div className="relative z-10 w-14 h-14 rounded-2xl flex items-center justify-center mb-6 bg-[rgba(255,255,255,0.18)] backdrop-blur-[8px]">
-            <IconBolt />
+          <div className="relative z-10 w-14 h-14 rounded-2xl overflow-hidden mb-6 bg-[rgba(255,255,255,0.1)] border border-[rgba(255,255,255,0.15)] backdrop-blur-[8px]">
+            <img
+              src="/logo.png"
+              alt="RelayFlow Logo"
+              className="w-full h-full object-cover"
+            />
           </div>
 
           <h1 className="relative z-10 text-[38px] font-bold tracking-tight mb-3">

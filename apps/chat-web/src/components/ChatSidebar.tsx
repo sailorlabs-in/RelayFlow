@@ -266,9 +266,9 @@ export const ChatSidebar = ({
 
   return (
     <>
-      <div className="glass-panel flex flex-col overflow-hidden h-full w-[300px] max-w-[calc(100vw-130px)] md:max-w-none flex-shrink-0">
+      <div className="glass-panel flex flex-col overflow-hidden h-full w-75 max-w-[calc(100vw-130px)] md:max-w-none shrink-0">
         {/* Profile Card */}
-        <div className="flex items-center gap-2.5 p-3.5 border-b border-[var(--border-muted)]">
+        <div className="flex items-center gap-2.5 p-3.5 border-b border-theme">
           {/* Rail toggle — always first, acts like a nav handle */}
           <button
             id="rail-toggle-btn"
@@ -276,7 +276,7 @@ export const ChatSidebar = ({
               isRailCollapsed ? 'Show navigation rail' : 'Hide navigation rail'
             }
             onClick={onToggleRail}
-            className={`w-[30px] h-[30px] rounded-[8px] flex items-center justify-center cursor-pointer transition-all duration-200 flex-shrink-0 border-none active-press ${isRailCollapsed ? 'bg-[var(--theme-btn-active)] text-[var(--theme-btn-active-text)]' : 'bg-transparent text-[var(--text-muted)] hover:bg-[var(--theme-btn-hover)] hover:text-[var(--text-primary)]'}`}
+            className={`w-7.5 h-7.5 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 shrink-0 border-none active-press ${isRailCollapsed ? 'bg-(--theme-btn-active) text-(--theme-btn-active-text)' : 'bg-transparent text-theme-muted hover:bg-(--theme-btn-hover) hover:text-theme-primary'}`}
           >
             {/* Sidebar panels icon — two vertical bars */}
             <svg
@@ -300,12 +300,12 @@ export const ChatSidebar = ({
             size="md"
           />
           <div className="flex-1 min-w-0">
-            <div className="font-semibold text-[13.5px] truncate text-[var(--text-primary)]">
+            <div className="font-semibold text-[13.5px] truncate text-theme-primary">
               {user.username
                 ? `@${user.username}`
                 : user.displayName || 'Active User'}
             </div>
-            <div className="text-[11px] truncate mt-0.5 text-[var(--text-muted)]">
+            <div className="text-[11px] truncate mt-0.5 text-theme-muted">
               {user.email}
             </div>
           </div>
@@ -316,7 +316,7 @@ export const ChatSidebar = ({
             onClick={() => setIsProfileOpen(true)}
             id="profile-settings-btn"
             title="Profile Settings"
-            className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center cursor-pointer transition-all duration-200 flex-shrink-0 border-none bg-transparent text-[var(--text-muted)] hover:bg-[var(--theme-btn-hover)] hover:text-[var(--text-primary)] spin-hover active-press"
+            className="w-7.5 h-7.5 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 shrink-0 border-none bg-transparent text-theme-muted hover:bg-(--theme-btn-hover) hover:text-theme-primary spin-hover active-press"
           >
             <IconSettings />
           </button>
@@ -325,7 +325,7 @@ export const ChatSidebar = ({
           <button
             id="logout-btn"
             title="Sign out"
-            className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center cursor-pointer transition-all duration-200 flex-shrink-0 border-none bg-transparent text-[var(--text-muted)] hover:bg-[var(--danger-bg)] hover:text-[var(--danger)] active-press"
+            className="w-7.5 h-7.5 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 shrink-0 border-none bg-transparent text-theme-muted hover:bg-(--danger-bg) hover:text-(--danger) active-press"
             onClick={handleLogout}
           >
             <IconLogout />
@@ -333,28 +333,28 @@ export const ChatSidebar = ({
         </div>
 
         {/* Permanent Friends Navigation Item */}
-        <div className="px-1.5 pt-2 flex-shrink-0">
+        <div className="px-1.5 pt-2 shrink-0">
           <div
             id="sidebar-friends-tab"
             className={`relative flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl cursor-pointer transition-all duration-200 mb-1 border active-press ${
               activeConversationId === 'friends'
-                ? 'bg-[var(--theme-btn-active)] border-[var(--accent-primary)] shadow-[var(--btn-shadow)]'
-                : 'bg-transparent border-transparent hover:bg-[var(--bg-input)] hover:border-[var(--glass-border)]'
+                ? 'bg-(--theme-btn-active) border-(--accent-primary) shadow-(--btn-shadow)'
+                : 'bg-transparent border-transparent hover:bg-theme-input hover:border-glass'
             }`}
             onClick={() => dispatch(setActiveConversation('friends'))}
           >
             {/* Left active glow bar */}
             <span
-              className={`absolute left-0 w-[3.5px] rounded-r bg-[var(--accent-primary)] transition-all duration-200
-              ${activeConversationId === 'friends' ? 'h-7 top-[7.5px]' : 'h-0 top-[21px] opacity-0'}`}
+              className={`absolute left-0 w-[3.5px] rounded-r bg-(--accent-primary) transition-all duration-200
+              ${activeConversationId === 'friends' ? 'h-7 top-[7.5px]' : 'h-0 top-5.25 opacity-0'}`}
             />
-            <div className="w-[30px] h-[30px] rounded-lg flex items-center justify-center bg-[var(--theme-btn)] text-[var(--accent-primary)] flex-shrink-0">
+            <div className="w-7.5 h-7.5 rounded-lg flex items-center justify-center bg-(--theme-btn) text-(--accent-primary) shrink-0">
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="2.5"
-                className="w-[15px] h-[15px]"
+                className="w-3.75 h-3.75"
               >
                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
                 <circle cx="9" cy="7" r="4" />
@@ -366,15 +366,15 @@ export const ChatSidebar = ({
               <span
                 className={`font-semibold text-[13px] ${
                   activeConversationId === 'friends'
-                    ? 'text-[var(--theme-btn-active-text)]'
-                    : 'text-[var(--text-primary)]'
+                    ? 'text-(--theme-btn-active-text)'
+                    : 'text-theme-primary'
                 }`}
               >
                 Friends
               </span>
             </div>
             {pendingRequests?.incoming?.length > 0 && (
-              <span className="bg-[var(--danger)] text-white text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 animate-pulse">
+              <span className="bg-(--danger) text-white text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 animate-pulse">
                 {pendingRequests.incoming.length}
               </span>
             )}
@@ -383,13 +383,13 @@ export const ChatSidebar = ({
 
         {/* Direct Messages Label + New DM button */}
         <div className="flex items-center justify-between px-3.5 pt-2 pb-1.5">
-          <span className="text-[10.5px] font-bold uppercase tracking-widest text-[var(--text-muted)]">
+          <span className="text-[10.5px] font-bold uppercase tracking-widest text-theme-muted">
             Direct Messages
           </span>
           <button
             id="compose-btn"
             title="New Direct Message"
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-[7px] text-[11px] font-semibold cursor-pointer border-none transition-all duration-200 bg-[var(--theme-btn-active)] text-[var(--theme-btn-active-text)] hover:opacity-90 active-press"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-[7px] text-[11px] font-semibold cursor-pointer border-none transition-all duration-200 bg-(--theme-btn-active) text-[var(--theme-btn-active-text)] hover:opacity-90 active-press"
             onClick={() => setIsComposeOpen(true)}
           >
             <IconCompose />

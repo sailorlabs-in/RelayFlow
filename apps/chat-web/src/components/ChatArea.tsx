@@ -24,8 +24,8 @@ const EmojiPicker = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="p-4 text-center text-[13px] text-[var(--text-muted)] w-[352px] h-[435px] flex items-center justify-center">
-        <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin border-[var(--accent-primary)]" />
+      <div className="p-4 text-center text-[13px] text-theme-muted w-88 h-108.75 flex items-center justify-center">
+        <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin border-(--accent-primary)" />
       </div>
     ),
   },
@@ -134,12 +134,12 @@ const renderMessageMedia = (
           return (
             <div
               key={idx}
-              className="mt-1 max-w-sm w-fit rounded-lg overflow-hidden border border-[var(--border-muted)] bg-[var(--bg-input)] hover:scale-[1.01] transition-all duration-200"
+              className="mt-1 max-w-sm w-fit rounded-lg overflow-hidden border border-theme bg-theme-input hover:scale-[1.01] transition-all duration-200"
             >
               <img
                 src={displayUrl}
                 alt={item.name || 'Image'}
-                className="h-[240px] w-[360px] max-w-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                className="h-60 w-90 max-w-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
                 onClick={() => onMediaClick(item)}
               />
             </div>
@@ -151,7 +151,7 @@ const renderMessageMedia = (
           return (
             <div
               key={idx}
-              className="mt-1 max-w-sm w-fit rounded-lg overflow-hidden border border-[var(--border-muted)] bg-[var(--bg-input)] relative cursor-pointer hover:scale-[1.01] transition-all duration-200 group"
+              className="mt-1 max-w-sm w-fit rounded-lg overflow-hidden border border-theme bg-theme-input relative cursor-pointer hover:scale-[1.01] transition-all duration-200 group"
               onClick={() => onMediaClick(item)}
             >
               {item.thumbnailUrl ? (
@@ -159,14 +159,14 @@ const renderMessageMedia = (
                   <img
                     src={displayUrl}
                     alt={item.name || 'Video'}
-                    className="h-[240px] w-[360px] max-w-full object-cover transition-opacity"
+                    className="h-60 w-90 max-w-full object-cover transition-opacity"
                   />
                   <div className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-black/25 transition-colors duration-150">
                     <div className="w-12 h-12 rounded-full bg-white/95 flex items-center justify-center text-black shadow-lg hover:scale-105 active:scale-95 transition-all duration-150">
                       <svg
                         viewBox="0 0 24 24"
                         fill="currentColor"
-                        className="w-5 h-5 ml-0.5 text-[var(--accent-primary)]"
+                        className="w-5 h-5 ml-0.5 text-(--accent-primary)"
                       >
                         <path d="M8 5v14l11-7z" />
                       </svg>
@@ -176,7 +176,7 @@ const renderMessageMedia = (
               ) : (
                 <video
                   src={item.url}
-                  className="h-[240px] w-[360px] max-w-full object-cover"
+                  className="h-60 w-90 max-w-full object-cover"
                   preload="metadata"
                 />
               )}
@@ -187,16 +187,16 @@ const renderMessageMedia = (
         return (
           <div
             key={idx}
-            className="mt-1 flex items-center gap-3 p-3 rounded-lg border border-[var(--border-muted)] bg-[var(--bg-input)] max-w-sm text-[13px] text-left"
+            className="mt-1 flex items-center gap-3 p-3 rounded-lg border border-theme bg-theme-input max-w-sm text-[13px] text-left"
           >
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-[var(--accent-primary)] text-white text-[16px] shrink-0">
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-(--accent-primary) text-white text-[16px] shrink-0">
               📁
             </div>
             <div className="flex-1 min-w-0 pr-2">
-              <div className="font-semibold truncate text-[var(--text-primary)] text-[13.5px]">
+              <div className="font-semibold truncate text-theme-primary text-[13.5px]">
                 {item.name || 'Attachment'}
               </div>
-              <div className="text-[11px] text-[var(--text-muted)] mt-0.5">
+              <div className="text-[11px] text-theme-muted mt-0.5">
                 {item.size
                   ? `${(item.size / 1024).toFixed(1)} KB`
                   : 'Unknown size'}
@@ -206,7 +206,7 @@ const renderMessageMedia = (
               href={item.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="p-1.5 rounded-lg bg-[var(--theme-btn)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--theme-btn-hover)] shrink-0 flex items-center justify-center active-press"
+              className="p-1.5 rounded-lg bg-(--theme-btn) text-theme-secondary hover:text-theme-primary hover:bg-(--theme-btn-hover) shrink-0 flex items-center justify-center active-press"
               title="Download file"
               onClick={(e) => e.stopPropagation()}
             >
@@ -993,7 +993,7 @@ export const ChatArea = ({
       {activeConversationId && (activeDetails || isChannelMode) ? (
         <>
           {/* Chat Header */}
-          <div className="flex items-center gap-3 px-5 py-3.5 border-b border-[var(--border-muted)] bg-[var(--bg-sidebar)] rounded-t-2xl">
+          <div className="flex items-center gap-3 px-5 py-3.5 border-b border-theme bg-theme-sidebar rounded-t-2xl">
             {isChannelMode ? (
               /* Channel mode header */
               <div className="flex-1 min-w-0 flex items-center gap-2">
@@ -1001,7 +1001,7 @@ export const ChatArea = ({
                   <button
                     id="mobile-menu-btn"
                     onClick={onMenuClick}
-                    className="md:hidden flex items-center justify-center p-1.5 rounded-md text-[var(--text-muted)] hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)] cursor-pointer active-press focus:outline-none shrink-0"
+                    className="md:hidden flex items-center justify-center p-1.5 rounded-md text-theme-muted hover:bg-theme-input hover:text-theme-primary cursor-pointer active-press focus:outline-none shrink-0"
                     title="Open Navigation"
                   >
                     <svg
@@ -1017,7 +1017,7 @@ export const ChatArea = ({
                     </svg>
                   </button>
                 )}
-                <span className="text-[var(--text-muted)] flex shrink-0">
+                <span className="text-theme-muted flex shrink-0">
                   {isVoiceChannel ? (
                     <svg
                       viewBox="0 0 24 24"
@@ -1045,11 +1045,11 @@ export const ChatArea = ({
                     </svg>
                   )}
                 </span>
-                <h3 className="text-[16px] font-bold tracking-tight truncate text-[var(--text-primary)]">
+                <h3 className="text-[16px] font-bold tracking-tight truncate text-theme-primary">
                   {activeChannelName || activeDetails?.name || ''}
                 </h3>
                 {isActiveTyping && !isVoiceChannel && (
-                  <span className="text-[11.5px] font-medium ml-2 animate-pulse text-[var(--accent-primary)]">
+                  <span className="text-[11.5px] font-medium ml-2 animate-pulse text-(--accent-primary)">
                     {getTypingText()}…
                   </span>
                 )}
@@ -1060,7 +1060,7 @@ export const ChatArea = ({
                   <button
                     id="mobile-menu-btn"
                     onClick={onMenuClick}
-                    className="md:hidden flex items-center justify-center p-1.5 rounded-md text-[var(--text-muted)] hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)] cursor-pointer active-press focus:outline-none shrink-0 mr-1"
+                    className="md:hidden flex items-center justify-center p-1.5 rounded-md text-theme-muted hover:bg-theme-input hover:text-theme-primary cursor-pointer active-press focus:outline-none shrink-0 mr-1"
                     title="Open Navigation"
                   >
                     <svg
@@ -1086,11 +1086,11 @@ export const ChatArea = ({
                   size="md"
                 />
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-[16px] font-bold tracking-tight truncate text-[var(--text-primary)]">
+                  <h3 className="text-[16px] font-bold tracking-tight truncate text-theme-primary">
                     {activeDetails?.name || ''}
                   </h3>
                   {isActiveTyping ? (
-                    <span className="text-[11.5px] font-medium text-[var(--accent-primary)]">
+                    <span className="text-[11.5px] font-medium text-(--accent-primary)">
                       typing…
                     </span>
                   ) : (
@@ -1117,7 +1117,7 @@ export const ChatArea = ({
               <button
                 id="delete-thread-btn"
                 title="Delete thread"
-                className="flex items-center gap-1.5 rounded-[9px] px-3 py-1.5 text-[12px] font-semibold cursor-pointer transition-all duration-200 shrink-0 border-[1.5px] bg-[var(--danger-bg)] text-[var(--danger)] border-[var(--danger-border)] hover:bg-[var(--danger)] hover:text-white hover:border-[var(--danger)] hover:shadow-[0_4px_14px_rgba(239,68,68,0.3)] active-press"
+                className="flex items-center gap-1.5 rounded-[9px] px-3 py-1.5 text-[12px] font-semibold cursor-pointer transition-all duration-200 shrink-0 border-[1.5px] bg-(--danger-bg) text-(--danger) border-(--danger-border) hover:bg-(--danger) hover:text-white hover:border-(--danger) hover:shadow-[0_4px_14px_rgba(239,68,68,0.3)] active-press"
                 onClick={() => handleDeleteConversation(activeConversationId)}
               >
                 <IconTrash />
@@ -1131,15 +1131,15 @@ export const ChatArea = ({
                 id="toggle-members-btn"
                 title="Toggle Member List"
                 onClick={onToggleMembersList}
-                className={`bg-transparent border-none cursor-pointer p-1.5 rounded-[6px] flex items-center transition-all duration-150 active-press 
-                  ${isMembersListOpen ? 'text-[var(--accent-primary)]' : 'text-[var(--text-muted)] hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)]'}`}
+                className={`bg-transparent border-none cursor-pointer p-1.5 rounded-md flex items-center transition-all duration-150 active-press 
+                  ${isMembersListOpen ? 'text-(--accent-primary)' : 'text-theme-muted hover:bg-theme-input hover:text-theme-primary'}`}
               >
                 <svg
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2"
-                  className="w-[18px] h-[18px]"
+                  className="w-4.5 h-4.5"
                 >
                   <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
                   <circle cx="9" cy="7" r="4" />
@@ -1161,15 +1161,15 @@ export const ChatArea = ({
               <div
                 ref={feedContainerRef}
                 onScroll={handleScroll}
-                className="flex-1 overflow-y-auto flex flex-col gap-3.5 p-5 bg-[var(--bg-chat)]"
+                className="flex-1 overflow-y-auto flex flex-col gap-3.5 p-5 bg-theme-chat"
               >
                 {isFetchingMore && (
                   <div className="flex justify-center py-2 shrink-0">
-                    <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin border-[var(--accent-primary)]" />
+                    <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin border-(--accent-primary)" />
                   </div>
                 )}
                 {activeMessages.length === 0 ? (
-                  <div className="flex-1 flex flex-col items-center justify-center gap-2.5 text-[13.5px] text-[var(--text-muted)]">
+                  <div className="flex-1 flex flex-col items-center justify-center gap-2.5 text-[13.5px] text-theme-muted">
                     <IconChat />
                     <span>No messages yet. Send a greeting to begin.</span>
                   </div>
@@ -1241,15 +1241,15 @@ export const ChatArea = ({
                                         ? senderColor
                                         : undefined,
                                   }}
-                                  className={`text-[13.5px] font-bold ${isOut ? 'text-[var(--accent-primary)]' : ''} ${!isOut && senderColor === 'inherit' ? 'text-[var(--text-primary)]' : ''}`}
+                                  className={`text-[13.5px] font-bold ${isOut ? 'text-(--accent-primary)' : ''} ${!isOut && senderColor === 'inherit' ? 'text-theme-primary' : ''}`}
                                 >
                                   {senderName}
                                 </span>
-                                <span className="text-[10.5px] text-[var(--text-muted)]">
+                                <span className="text-[10.5px] text-theme-muted">
                                   {formatMessageTimestamp(msg.createdAt)}
                                 </span>
                                 {msg.isEdited && (
-                                  <span className="text-[9.5px] text-[var(--text-muted)] opacity-85 select-none">
+                                  <span className="text-[9.5px] text-theme-muted opacity-85 select-none">
                                     (edited)
                                   </span>
                                 )}
@@ -1273,10 +1273,10 @@ export const ChatArea = ({
                                         setEditingContent('');
                                       }
                                     }}
-                                    className="w-full bg-[var(--bg-input)] text-[var(--text-primary)] border border-[var(--border-muted)] rounded-lg p-2 text-sm focus:outline-none focus:border-[var(--accent-primary)] resize-none"
+                                    className="w-full bg-theme-input text-theme-primary border border-theme rounded-lg p-2 text-sm focus:outline-none focus:border-(--accent-primary) resize-none"
                                     rows={2}
                                   />
-                                  <div className="flex gap-2 justify-start text-[11px] text-[var(--text-muted)]">
+                                  <div className="flex gap-2 justify-start text-[11px] text-theme-muted">
                                     <span>
                                       escape to{' '}
                                       <button
@@ -1284,7 +1284,7 @@ export const ChatArea = ({
                                           setEditingMessageId(null);
                                           setEditingContent('');
                                         }}
-                                        className="text-[var(--accent-primary)] hover:underline cursor-pointer bg-transparent border-none p-0"
+                                        className="text-(--accent-primary) hover:underline cursor-pointer bg-transparent border-none p-0"
                                       >
                                         cancel
                                       </button>
@@ -1294,7 +1294,7 @@ export const ChatArea = ({
                                       enter to{' '}
                                       <button
                                         onClick={() => handleSaveEdit(msg.id)}
-                                        className="text-[var(--accent-primary)] hover:underline cursor-pointer bg-transparent border-none p-0"
+                                        className="text-(--accent-primary) hover:underline cursor-pointer bg-transparent border-none p-0"
                                       >
                                         save
                                       </button>
@@ -1305,7 +1305,7 @@ export const ChatArea = ({
                                 <>
                                   {msg.content && (
                                     <div
-                                      className={`text-sm leading-relaxed text-[var(--text-primary)] break-all ${isOnlyEmojis(msg.content) ? 'text-[60px] leading-[60px]' : ''}`}
+                                      className={`text-sm leading-relaxed text-theme-primary break-all ${isOnlyEmojis(msg.content) ? 'text-[60px] leading-15' : ''}`}
                                     >
                                       {msg.content}
                                     </div>
@@ -1321,7 +1321,7 @@ export const ChatArea = ({
                                 {isOut && (
                                   <button
                                     onClick={() => handleStartEdit(msg)}
-                                    className="flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-[var(--bg-input)] text-[var(--text-secondary)] hover:text-[var(--accent-primary)] active-press"
+                                    className="flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-theme-input text-theme-secondary hover:text-(--accent-primary) active-press"
                                     title="Edit message"
                                   >
                                     <IconCompose />
@@ -1329,7 +1329,7 @@ export const ChatArea = ({
                                 )}
                                 <button
                                   onClick={() => handleDeleteMessage(msg.id)}
-                                  className="msg-delete-btn flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-[var(--danger-bg)] text-[var(--danger)] active-press"
+                                  className="msg-delete-btn flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-(--danger-bg) text-(--danger) active-press"
                                   title="Delete message"
                                 >
                                   <IconTrash />
@@ -1358,14 +1358,14 @@ export const ChatArea = ({
                           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 shrink-0 self-center">
                             <button
                               onClick={() => handleStartEdit(msg)}
-                              className="flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-[var(--bg-input)] text-[var(--text-secondary)] hover:text-[var(--accent-primary)] active-press"
+                              className="flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-theme-input text-theme-secondary hover:text-(--accent-primary) active-press"
                               title="Edit message"
                             >
                               <IconCompose />
                             </button>
                             <button
                               onClick={() => handleDeleteMessage(msg.id)}
-                              className="msg-delete-btn flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-[var(--danger-bg)] text-[var(--danger)] active-press"
+                              className="msg-delete-btn flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-(--danger-bg) text-(--danger) active-press"
                               title="Delete message"
                             >
                               <IconTrash />
@@ -1396,13 +1396,13 @@ export const ChatArea = ({
                                     ? senderColor
                                     : undefined,
                               }}
-                              className="text-[11.5px] font-bold mb-1 ml-1.5 text-[var(--text-secondary)]"
+                              className="text-[11.5px] font-bold mb-1 ml-1.5 text-theme-secondary"
                             >
                               {senderName}
                             </span>
                           )}
                           {editingMessageId === msg.id ? (
-                            <div className="flex flex-col gap-2 mt-1 w-[260px] sm:w-[350px]">
+                            <div className="flex flex-col gap-2 mt-1 w-65 sm:w-87.5">
                               <textarea
                                 autoFocus
                                 value={editingContent}
@@ -1420,10 +1420,10 @@ export const ChatArea = ({
                                     setEditingContent('');
                                   }
                                 }}
-                                className="w-full bg-[var(--bg-input)] text-[var(--text-primary)] border border-[var(--border-muted)] rounded-lg p-2 text-sm focus:outline-none focus:border-[var(--accent-primary)] resize-none"
+                                className="w-full bg-theme-input text-theme-primary border border-theme rounded-lg p-2 text-sm focus:outline-none focus:border-(--accent-primary) resize-none"
                                 rows={2}
                               />
-                              <div className="flex gap-2 justify-end text-[11px] text-[var(--text-muted)]">
+                              <div className="flex gap-2 justify-end text-[11px] text-theme-muted">
                                 <span>
                                   escape to{' '}
                                   <button
@@ -1431,7 +1431,7 @@ export const ChatArea = ({
                                       setEditingMessageId(null);
                                       setEditingContent('');
                                     }}
-                                    className="text-[var(--accent-primary)] hover:underline cursor-pointer bg-transparent border-none p-0"
+                                    className="text-(--accent-primary) hover:underline cursor-pointer bg-transparent border-none p-0"
                                   >
                                     cancel
                                   </button>
@@ -1441,7 +1441,7 @@ export const ChatArea = ({
                                   enter to{' '}
                                   <button
                                     onClick={() => handleSaveEdit(msg.id)}
-                                    className="text-[var(--accent-primary)] hover:underline cursor-pointer bg-transparent border-none p-0"
+                                    className="text-(--accent-primary) hover:underline cursor-pointer bg-transparent border-none p-0"
                                   >
                                     save
                                   </button>
@@ -1454,8 +1454,8 @@ export const ChatArea = ({
                                 <div
                                   className={
                                     isOnlyEmojis(msg.content)
-                                      ? `text-[60px] leading-[60px] break-words select-all ${isOut ? 'text-right' : 'text-left'}`
-                                      : `px-4 py-2.5 rounded-[18px] text-[14px] leading-relaxed break-words ${isOut ? 'msg-bubble-out' : 'msg-bubble-in'}`
+                                      ? `text-[60px] leading-15 wrap-break-word select-all ${isOut ? 'text-right' : 'text-left'}`
+                                      : `px-4 py-2.5 rounded-[18px] text-[14px] leading-relaxed wrap-break-word ${isOut ? 'msg-bubble-out' : 'msg-bubble-in'}`
                                   }
                                 >
                                   {msg.content}
@@ -1465,17 +1465,17 @@ export const ChatArea = ({
                           )}
                           {renderMessageMedia(msg, setActiveMediaItem)}
                           <div className="flex items-center gap-1.5 mt-1 px-1 select-none">
-                            <span className="text-[10px] text-[var(--text-muted)]">
+                            <span className="text-[10px] text-theme-muted">
                               {formatMessageTimestamp(msg.createdAt)}
                             </span>
                             {msg.isEdited && (
-                              <span className="text-[9.5px] text-[var(--text-muted)] opacity-85 select-none">
+                              <span className="text-[9.5px] text-theme-muted opacity-85 select-none">
                                 (edited)
                               </span>
                             )}
                             {isOut && !isChannelMode && (
                               <span
-                                className={`inline-flex items-center ${msg.isRead ? 'text-[var(--accent-primary)]' : 'text-[var(--text-muted)]'}`}
+                                className={`inline-flex items-center ${msg.isRead ? 'text-(--accent-primary)' : 'text-theme-muted'}`}
                                 title={msg.isRead ? 'Read' : 'Sent'}
                               >
                                 {msg.isRead ? (
@@ -1493,7 +1493,7 @@ export const ChatArea = ({
                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 shrink-0 self-center">
                               <button
                                 onClick={() => handleDeleteMessage(msg.id)}
-                                className="msg-delete-btn flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-[var(--danger-bg)] text-[var(--danger)] active-press"
+                                className="msg-delete-btn flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-(--danger-bg) text-(--danger) active-press"
                                 title="Delete message"
                               >
                                 <IconTrash />
@@ -1507,10 +1507,10 @@ export const ChatArea = ({
 
                 {/* Typing indicator */}
                 {isActiveTyping && (
-                  <div className="self-start flex items-center gap-2 px-4 py-2.5 rounded-[18px] animate-fade-in msg-bubble-in text-[13px] text-[var(--text-secondary)]">
+                  <div className="self-start flex items-center gap-2 px-4 py-2.5 rounded-[18px] animate-fade-in msg-bubble-in text-[13px] text-theme-secondary">
                     {isChannelMode ? (
                       <>
-                        <span className="font-semibold text-[var(--text-primary)]">
+                        <span className="font-semibold text-theme-primary">
                           {getTypingText()}
                         </span>
                         <div className="flex items-center gap-1 ml-1">
@@ -1563,13 +1563,13 @@ export const ChatArea = ({
               </div>
 
               {/* Input Area */}
-              <div className="px-4 py-3.5 border-t border-[var(--border-muted)] bg-[var(--bg-sidebar)] rounded-b-2xl">
+              <div className="px-4 py-3.5 border-t border-theme bg-theme-sidebar rounded-b-2xl">
                 {attachedFiles.length > 0 && (
                   <div className="flex flex-wrap gap-2 mb-2 max-w-full">
                     {attachedFiles.map((file, idx) => (
                       <div
                         key={file.url + idx}
-                        className="flex items-center gap-3 p-2 rounded-xl border border-[var(--border-muted)] bg-[var(--bg-input)] animate-fade-in text-[13px] relative max-w-[200px]"
+                        className="flex items-center gap-3 p-2 rounded-xl border border-theme bg-theme-input animate-fade-in text-[13px] relative max-w-50"
                       >
                         {file.type.startsWith('image/') ? (
                           <img
@@ -1578,15 +1578,15 @@ export const ChatArea = ({
                             className="w-10 h-10 object-cover rounded-lg shrink-0"
                           />
                         ) : (
-                          <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-[var(--accent-primary)] text-white text-[16px] shrink-0">
+                          <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-(--accent-primary) text-white text-[16px] shrink-0">
                             📄
                           </div>
                         )}
                         <div className="flex-1 min-w-0 pr-6">
-                          <div className="font-semibold truncate text-[var(--text-primary)] text-[12px]">
+                          <div className="font-semibold truncate text-theme-primary text-[12px]">
                             {file.name}
                           </div>
-                          <div className="text-[10px] text-[var(--text-muted)] mt-0.5">
+                          <div className="text-[10px] text-theme-muted mt-0.5">
                             {(file.size / 1024).toFixed(1)} KB
                           </div>
                         </div>
@@ -1601,7 +1601,7 @@ export const ChatArea = ({
                               prev.filter((f) => f.url !== file.url),
                             );
                           }}
-                          className="absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center bg-[var(--danger-bg)] text-[var(--danger)] border-none cursor-pointer hover:bg-[var(--danger)] hover:text-white transition-all duration-150 active-press shadow-sm"
+                          className="absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center bg-(--danger-bg) text-(--danger) border-none cursor-pointer hover:bg-(--danger) hover:text-white transition-all duration-150 active-press shadow-sm"
                           title="Remove attachment"
                         >
                           <IconX size={10} />
@@ -1622,7 +1622,7 @@ export const ChatArea = ({
                       type="button"
                       disabled={!canSendMessages}
                       onClick={() => setShowEmojiPicker((prev) => !prev)}
-                      className="w-[46px] h-[46px] rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-200 bg-[var(--bg-input)] text-[var(--text-muted)] hover:bg-[var(--theme-btn-hover)] hover:text-[var(--text-primary)] disabled:opacity-40 disabled:cursor-not-allowed active-press"
+                      className="w-11.5 h-11.5 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200 bg-theme-input text-theme-muted hover:bg-(--theme-btn-hover) hover:text-theme-primary disabled:opacity-40 disabled:cursor-not-allowed active-press"
                       title={
                         canSendMessages
                           ? 'Choose an emoji'
@@ -1633,7 +1633,7 @@ export const ChatArea = ({
                     </button>
 
                     {showEmojiPicker && (
-                      <div className="absolute bottom-[56px] left-0 z-50 shadow-[var(--glass-shadow)] rounded-[14px] overflow-hidden border border-[var(--border-muted)] bg-[var(--bg-sidebar)]">
+                      <div className="absolute bottom-14 left-0 z-50 shadow-(--glass-shadow) rounded-[14px] overflow-hidden border border-theme bg-theme-sidebar">
                         <EmojiPicker
                           onEmojiSelect={onEmojiSelect}
                           theme="auto"
@@ -1646,7 +1646,7 @@ export const ChatArea = ({
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploading || !canAttachFiles || !canSendMessages}
-                    className="w-[46px] h-[46px] rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-200 bg-[var(--bg-input)] text-[var(--text-muted)] hover:bg-[var(--theme-btn-hover)] hover:text-[var(--text-primary)] disabled:opacity-40 disabled:cursor-not-allowed active-press"
+                    className="w-11.5 h-11.5 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200 bg-theme-input text-theme-muted hover:bg-(--theme-btn-hover) hover:text-theme-primary disabled:opacity-40 disabled:cursor-not-allowed active-press"
                     title={
                       !canSendMessages
                         ? 'You do not have permission to send messages'
@@ -1656,14 +1656,14 @@ export const ChatArea = ({
                     }
                   >
                     {uploading ? (
-                      <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin border-[var(--text-primary)]" />
+                      <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin border-(--text-primary)" />
                     ) : (
                       <svg
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
                         strokeWidth="2.5"
-                        className="w-[18px] h-[18px]"
+                        className="w-4.5 h-4.5"
                       >
                         <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
                       </svg>
@@ -1678,12 +1678,12 @@ export const ChatArea = ({
                   />
                   <div className="relative flex-1 flex items-end">
                     {mentionQuery && emojiResults.length > 0 && (
-                      <div className="absolute bottom-full left-0 mb-2 w-[300px] max-h-[200px] overflow-y-auto bg-[var(--bg-sidebar)] border border-[var(--border-muted)] rounded-xl shadow-[var(--glass-shadow)] z-50 flex flex-col p-1">
+                      <div className="absolute bottom-full left-0 mb-2 w-75 max-h-50 overflow-y-auto bg-theme-sidebar border border-theme rounded-xl shadow-(--glass-shadow) z-50 flex flex-col p-1">
                         {emojiResults.map((emoji: any) => (
                           <button
                             key={emoji.id}
                             type="button"
-                            className="flex items-center gap-2 px-3 py-2 text-left rounded-lg hover:bg-[var(--bg-input)] active-press cursor-pointer border-none bg-transparent"
+                            className="flex items-center gap-2 px-3 py-2 text-left rounded-lg hover:bg-theme-input active-press cursor-pointer border-none bg-transparent"
                             onClick={() => {
                               const val = messageInput;
                               const newText =
@@ -1699,7 +1699,7 @@ export const ChatArea = ({
                             <span className="text-[20px] leading-none">
                               {emoji.skins[0].native}
                             </span>
-                            <span className="text-[13px] text-[var(--text-primary)]">
+                            <span className="text-[13px] text-theme-primary">
                               :{emoji.id}:
                             </span>
                           </button>
@@ -1709,7 +1709,7 @@ export const ChatArea = ({
                     <textarea
                       id="message-input"
                       disabled={!canSendMessages}
-                      className="input-base w-full block rounded-xl px-4 text-[14px] resize-none leading-normal max-h-30 bg-theme-input border-[1.5px] border-glass text-theme-primary focus:outline-none focus:border-(--accent-primary) focus:ring-[3px] focus:ring-[var(--accent-ring)] disabled:opacity-50 disabled:cursor-not-allowed box-border"
+                      className="input-base w-full block rounded-xl px-4 text-[14px] resize-none leading-normal max-h-30 bg-theme-input border-[1.5px] border-glass text-theme-primary focus:outline-none focus:border-(--accent-primary) focus:ring-[3px] focus:ring-(--accent-ring) disabled:opacity-50 disabled:cursor-not-allowed box-border"
                       style={{
                         minHeight: '46px',
                         paddingTop: '11px',
@@ -1760,7 +1760,7 @@ export const ChatArea = ({
                       (!messageInput.trim() && attachedFiles.length === 0) ||
                       !canSendMessages
                     }
-                    className="btn-send w-[46px] h-[46px] rounded-xl flex-shrink-0 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed hover:-translate-y-0.5 hover:shadow-[var(--btn-shadow)] active-press"
+                    className="btn-send w-11.5 h-11.5 rounded-xl shrink-0 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed hover:-translate-y-0.5 hover:shadow-(--btn-shadow) active-press"
                   >
                     <IconSend />
                   </button>
@@ -1771,20 +1771,24 @@ export const ChatArea = ({
         </>
       ) : (
         /* Empty state */
-        <div className="flex-1 flex flex-col items-center justify-center gap-4 bg-[var(--bg-chat)] rounded-2xl animate-fade-in">
-          <div className="w-16 h-16 rounded-full flex items-center justify-center animate-float border bg-[var(--theme-btn-active)] border-[var(--accent-primary)]">
-            <IconChat />
+        <div className="flex-1 flex flex-col items-center justify-center gap-4 bg-theme-chat rounded-2xl animate-fade-in">
+          <div className="w-20 h-20 rounded-2xl overflow-hidden animate-float border border-glass bg-theme-sidebar shadow-lg">
+            <img
+              src="/logo.png"
+              alt="RelayFlow Logo"
+              className="w-full h-full object-cover"
+            />
           </div>
-          <h2 className="text-[20px] font-bold tracking-tight text-[var(--text-primary)]">
+          <h2 className="text-[20px] font-bold tracking-tight text-theme-primary">
             RelayFlow Workspace
           </h2>
-          <p className="text-[13.5px] max-w-[290px] text-center leading-relaxed text-[var(--text-secondary)]">
+          <p className="text-[13.5px] max-w-72.5 text-center leading-relaxed text-theme-secondary">
             Select a conversation from the sidebar or search for a contact to
             start messaging.
           </p>
           <button
             id="empty-compose-btn"
-            className="mt-1 px-5 py-2.5 rounded-xl text-[13.5px] font-semibold text-white cursor-pointer transition-all duration-200 border-none btn-send hover:-translate-y-0.5 hover:shadow-[var(--btn-shadow)] active-press"
+            className="mt-1 px-5 py-2.5 rounded-xl text-[13.5px] font-semibold text-white cursor-pointer transition-all duration-200 border-none btn-send hover:-translate-y-0.5 hover:shadow-(--btn-shadow) active-press"
             onClick={() => setIsComposeOpen(true)}
           >
             Start a conversation
@@ -1832,7 +1836,7 @@ export const ChatArea = ({
               className="convo-context-menu-item group relative flex justify-between items-center cursor-pointer"
               role="menuitem"
             >
-              <div className="flex items-center gap-[10px]">
+              <div className="flex items-center gap-2.5">
                 <svg
                   viewBox="0 0 24 24"
                   fill="none"
@@ -1858,14 +1862,14 @@ export const ChatArea = ({
                 <polyline points="9 18 15 12 9 6" />
               </svg>
               <div
-                className="hidden group-hover:block absolute top-0 w-[160px] bg-[var(--dropdown-bg)] border border-[var(--glass-border)] rounded-[10px] p-1 shadow-[0_16px_40px_rgba(0,0,0,0.35),0_0_0_1px_var(--glass-border)] backdrop-blur-[16px] z-[10000] animate-[fadeIn_0.15s_ease-out_forwards]"
+                className="hidden group-hover:block absolute top-0 w-40 bg-(--dropdown-bg) border border-glass rounded-[10px] p-1 shadow-[0_16px_40px_rgba(0,0,0,0.35),0_0_0_1px_var(--glass-border)] backdrop-blur-lg z-10000 animate-[fadeIn_0.15s_ease-out_forwards]"
                 style={
                   contextMenu.x > window.innerWidth / 2
                     ? { right: '100%', left: 'auto', marginRight: '4px' }
                     : { left: '100%', right: 'auto', marginLeft: '4px' }
                 }
               >
-                <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)] border-b border-[var(--glass-border)] mb-1">
+                <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-theme-muted border-b border-glass mb-1">
                   Read By
                 </div>
                 <div style={{ maxHeight: '150px', overflowY: 'auto' }}>
@@ -1874,7 +1878,7 @@ export const ChatArea = ({
                     liveContextMenuMsg.readBy.map((reader) => (
                       <div
                         key={reader.userId}
-                        className="flex items-center px-3 py-1.5 rounded-[6px] text-[12px] font-medium text-[var(--text-primary)] break-all"
+                        className="flex items-center px-3 py-1.5 rounded-md text-[12px] font-medium text-theme-primary break-all"
                       >
                         <span className="whitespace-nowrap overflow-hidden text-ellipsis w-full">
                           {reader.name}
@@ -1882,7 +1886,7 @@ export const ChatArea = ({
                       </div>
                     ))
                   ) : (
-                    <div className="flex items-center px-3 py-1.5 rounded-[6px] text-[12px] font-medium text-[var(--text-muted)] italic break-all">
+                    <div className="flex items-center px-3 py-1.5 rounded-md text-[12px] font-medium text-theme-muted italic break-all">
                       <span className="whitespace-nowrap overflow-hidden text-ellipsis w-full">
                         No one yet
                       </span>
@@ -1908,7 +1912,7 @@ export const ChatArea = ({
       )}
       {activeMediaItem && (
         <div
-          className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/75 backdrop-blur-md transition-all duration-300 animate-fade-in animate-duration-150"
+          className="fixed inset-0 z-100 flex flex-col items-center justify-center bg-black/75 backdrop-blur-md transition-all duration-300 animate-fade-in animate-duration-150"
           onClick={() => setActiveMediaItem(null)}
         >
           <div
