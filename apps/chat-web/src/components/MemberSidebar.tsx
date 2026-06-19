@@ -357,7 +357,7 @@ export const MemberSidebar = ({
 
   return (
     <>
-      <div className="glass-panel h-full flex flex-col overflow-hidden w-60 min-w-60 fixed right-0 top-0 bottom-0 z-50 md:relative bg-[var(--bg-sidebar)] md:bg-transparent border-l border-[var(--border-muted)] md:border-none shadow-2xl md:shadow-none p-3.5 md:p-0">
+      <div className="glass-panel h-full flex flex-col overflow-hidden w-60 min-w-60 fixed right-0 top-0 bottom-0 z-50 md:relative bg-theme-sidebar md:bg-transparent border-l border-theme md:border-none shadow-2xl md:shadow-none p-3.5 md:p-0">
         {/* Title */}
         <div className="px-4 py-3.5 border-b-[1.5px] border-theme flex items-center justify-between text-theme-primary text-sm font-bold bg-theme-sidebar rounded-t-2xl">
           <div className="flex items-center gap-1.5">
@@ -545,7 +545,7 @@ export const MemberSidebar = ({
                           color: role.color,
                           borderColor: `${role.color}30`,
                         }}
-                        className="text-[10px] px-2 py-0.5 rounded-[4px] border font-bold"
+                        className="text-[10px] px-2 py-0.5 rounded-sm border font-bold"
                       >
                         {role.name}
                       </span>
@@ -561,11 +561,11 @@ export const MemberSidebar = ({
             hasGroupPermission(activeGroup, currentUser?.id, 'manage_roles')) &&
             activeGroup.roles &&
             activeGroup.roles.length > 0 && (
-              <div className="flex flex-col gap-1.5 text-[12px] mt-1 border-t border-[var(--border-muted)] pt-2.5">
+              <div className="flex flex-col gap-1.5 text-[12px] mt-1 border-t border-theme pt-2.5">
                 <span className="text-theme-muted font-bold block mb-1 uppercase tracking-wide text-[9.5px]">
                   Assign Roles
                 </span>
-                <div className="flex flex-wrap gap-1.5 max-h-[100px] overflow-y-auto pr-1">
+                <div className="flex flex-wrap gap-1.5 max-h-25 overflow-y-auto pr-1">
                   {activeGroup.roles.map((role) => {
                     const isAssigned = selectedMember.roleIds?.includes(
                       role.id,
@@ -614,7 +614,7 @@ export const MemberSidebar = ({
                             : 'transparent',
                           color: role.color,
                         }}
-                        className="px-2 py-1 rounded-[6px] border text-[10.5px] font-bold cursor-pointer hover:bg-black/10 transition-all select-none active-press"
+                        className="px-2 py-1 rounded-md border text-[10.5px] font-bold cursor-pointer hover:bg-black/10 transition-all select-none active-press"
                       >
                         {isAssigned ? '✓ ' : ''}
                         {role.name}
@@ -627,7 +627,7 @@ export const MemberSidebar = ({
 
           {/* Friendship Actions */}
           {selectedMember.id !== currentUser?.id && (
-            <div className="mt-1 flex flex-col gap-2 border-t border-[var(--border-muted)] pt-2.5">
+            <div className="mt-1 flex flex-col gap-2 border-t border-theme pt-2.5">
               {friends?.some((f) => f.id === selectedMember.id) ? (
                 <div className="flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-bold text-emerald-500 bg-[rgba(16,185,129,0.08)] border border-emerald-500/20">
                   <span>✓ Friends</span>

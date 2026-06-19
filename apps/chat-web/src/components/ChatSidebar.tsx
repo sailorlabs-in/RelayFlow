@@ -198,7 +198,7 @@ export const ChatSidebar = ({
   };
 
   if (!user) {
-    return <div className="w-[300px]" />;
+    return <div className="w-75" />;
   }
 
   // --- SVG icons for context menu ---
@@ -284,7 +284,7 @@ export const ChatSidebar = ({
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
-              className="w-[15px] h-[15px]"
+              className="w-3.75 h-3.75"
             >
               <rect x="3" y="3" width="18" height="18" rx="2" />
               <line x1="9" y1="3" x2="9" y2="21" />
@@ -389,7 +389,7 @@ export const ChatSidebar = ({
           <button
             id="compose-btn"
             title="New Direct Message"
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-[7px] text-[11px] font-semibold cursor-pointer border-none transition-all duration-200 bg-(--theme-btn-active) text-[var(--theme-btn-active-text)] hover:opacity-90 active-press"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-[7px] text-[11px] font-semibold cursor-pointer border-none transition-all duration-200 bg-(--theme-btn-active) text-(--theme-btn-active-text) hover:opacity-90 active-press"
             onClick={() => setIsComposeOpen(true)}
           >
             <IconCompose />
@@ -433,14 +433,14 @@ export const ChatSidebar = ({
                 <div
                   key={convo.id}
                   id={`convo-${convo.id}`}
-                  className={`relative flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl cursor-pointer transition-all duration-200 mb-0.5 border active-press fade-in-list ${isActive ? 'bg-[var(--theme-btn-active)] border-[var(--accent-primary)] shadow-[var(--btn-shadow)]' : 'bg-transparent border-transparent hover:bg-[var(--bg-input)] hover:border-[var(--glass-border)]'}`}
+                  className={`relative flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl cursor-pointer transition-all duration-200 mb-0.5 border active-press fade-in-list ${isActive ? 'bg-(--theme-btn-active) border-(--accent-primary) shadow-(--btn-shadow)' : 'bg-transparent border-transparent hover:bg-theme-input hover:border-glass'}`}
                   onClick={() => dispatch(setActiveConversation(convo.id))}
                   onContextMenu={(e) => handleContextMenu(e, convo.id)}
                 >
                   {/* Left active glow bar */}
                   <span
-                    className={`absolute left-0 w-[3.5px] rounded-r bg-[var(--accent-primary)] transition-all duration-200
-                    ${isActive ? 'h-7 top-[11.5px]' : 'h-0 top-[25px] opacity-0'}`}
+                    className={`absolute left-0 w-[3.5px] rounded-r bg-(--accent-primary) transition-all duration-200
+                    ${isActive ? 'h-7 top-[11.5px]' : 'h-0 top-6.25 opacity-0'}`}
                   />
                   <Avatar
                     letter={details.letter}
@@ -451,11 +451,11 @@ export const ChatSidebar = ({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-baseline justify-between mb-0.5">
                       <span
-                        className={`font-semibold text-[13px] truncate ${isActive ? 'text-[var(--theme-btn-active-text)]' : 'text-[var(--text-primary)]'} ${hasUnread ? 'font-bold text-[var(--text-primary)]' : ''}`}
+                        className={`font-semibold text-[13px] truncate ${isActive ? 'text-(--theme-btn-active-text)' : 'text-theme-primary'} ${hasUnread ? 'font-bold text-theme-primary' : ''}`}
                       >
                         {details.name}
                       </span>
-                      <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
+                      <div className="flex items-center gap-1.5 ml-2 shrink-0">
                         {/* Mute badge */}
                         {isMuted && (
                           <span
@@ -466,17 +466,17 @@ export const ChatSidebar = ({
                           </span>
                         )}
                         {hasUnread && (
-                          <span className="w-2 h-2 rounded-full bg-[var(--accent-primary)] animate-pulse shrink-0" />
+                          <span className="w-2 h-2 rounded-full bg-(--accent-primary) animate-pulse shrink-0" />
                         )}
                         {lastMsg && (
-                          <span className="text-[10px] text-[var(--text-muted)]">
+                          <span className="text-[10px] text-theme-muted">
                             {formatMessageTimestamp(lastMsg.createdAt)}
                           </span>
                         )}
                       </div>
                     </div>
                     {isTyping ? (
-                      <div className="flex items-center gap-1 text-[11.5px] font-medium text-[var(--accent-secondary)]">
+                      <div className="flex items-center gap-1 text-[11.5px] font-medium text-(--accent-secondary)">
                         <span>typing</span>
                         <span
                           className="typing-dot"
@@ -488,7 +488,7 @@ export const ChatSidebar = ({
                         />
                       </div>
                     ) : (
-                      <div className="text-[11.5px] truncate text-[var(--text-secondary)]">
+                      <div className="text-[11.5px] truncate text-theme-secondary">
                         {lastMsg
                           ? lastMsg.content ||
                             (lastMsg.media && lastMsg.media.length > 0

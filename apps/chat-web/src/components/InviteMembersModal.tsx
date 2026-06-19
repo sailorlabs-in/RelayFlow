@@ -134,55 +134,53 @@ export const InviteMembersModal = ({
 
   return (
     <div
-      className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-[rgba(4,6,12,0.65)] backdrop-blur-[4px]"
+      className="fixed inset-0 z-1100 flex items-center justify-center p-4 bg-[rgba(4,6,12,0.65)] backdrop-blur-xs"
       onClick={onClose}
     >
       <div
-        className="w-[480px] max-w-full h-[600px] max-h-[85vh] flex flex-col overflow-hidden bg-[var(--glass-bg)] border-[1.5px] border-[var(--glass-border)] backdrop-blur-[20px] rounded-[18px] shadow-[var(--glass-shadow)] animate-slide-up"
+        className="w-120 max-w-full h-150 max-h-[85vh] flex flex-col overflow-hidden bg-(--glass-bg) border-[1.5px] border-glass backdrop-blur-[20px] rounded-[18px] shadow-(--glass-shadow) animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-5 py-4 border-b border-[var(--border-muted)] flex items-center justify-between shrink-0">
+        <div className="px-5 py-4 border-b border-theme flex items-center justify-between shrink-0">
           <div>
-            <h2 className="m-0 text-[18px] font-bold text-[var(--text-primary)]">
+            <h2 className="m-0 text-[18px] font-bold text-theme-primary">
               Invite Members
             </h2>
-            <p className="m-1 text-[12.5px] text-[var(--text-muted)]">
+            <p className="m-1 text-[12.5px] text-theme-muted">
               Manage invites for{' '}
-              <strong className="text-[var(--text-secondary)]">
-                {group.name}
-              </strong>
+              <strong className="text-theme-secondary">{group.name}</strong>
             </p>
           </div>
           <button
             id="close-invite-modal"
             onClick={onClose}
-            className="bg-transparent border-none cursor-pointer text-[var(--text-muted)] p-1 rounded-md flex items-center active-press"
+            className="bg-transparent border-none cursor-pointer text-theme-muted p-1 rounded-md flex items-center active-press"
           >
             <IconX size={18} />
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-[var(--border-muted)] px-5 bg-[rgba(255,255,255,0.01)] shrink-0">
+        <div className="flex border-b border-theme px-5 bg-[rgba(255,255,255,0.01)] shrink-0">
           <button
             type="button"
             onClick={() => setActiveTab('add')}
-            className={`py-3 px-4 text-[13px] font-bold bg-transparent border-none cursor-pointer relative transition-all duration-150 ${activeTab === 'add' ? 'text-[var(--accent-primary)]' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'}`}
+            className={`py-3 px-4 text-[13px] font-bold bg-transparent border-none cursor-pointer relative transition-all duration-150 ${activeTab === 'add' ? 'text-(--accent-primary)' : 'text-theme-muted hover:text-theme-secondary'}`}
           >
             Add Friends
             {activeTab === 'add' && (
-              <div className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-[var(--accent-primary)] rounded-full animate-fade-in" />
+              <div className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-(--accent-primary) rounded-full animate-fade-in" />
             )}
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('links')}
-            className={`py-3 px-4 text-[13px] font-bold bg-transparent border-none cursor-pointer relative transition-all duration-150 ${activeTab === 'links' ? 'text-[var(--accent-primary)]' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'}`}
+            className={`py-3 px-4 text-[13px] font-bold bg-transparent border-none cursor-pointer relative transition-all duration-150 ${activeTab === 'links' ? 'text-(--accent-primary)' : 'text-theme-muted hover:text-theme-secondary'}`}
           >
             Invite Links
             {activeTab === 'links' && (
-              <div className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-[var(--accent-primary)] rounded-full animate-fade-in" />
+              <div className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-(--accent-primary) rounded-full animate-fade-in" />
             )}
           </button>
         </div>
@@ -191,11 +189,11 @@ export const InviteMembersModal = ({
         {activeTab === 'add' && (
           <>
             {/* Search */}
-            <div className="px-5 py-3 border-b border-[var(--border-muted)] shrink-0">
+            <div className="px-5 py-3 border-b border-theme shrink-0">
               <input
                 id="invite-search-input"
                 type="text"
-                className="input-base w-full px-3.5 py-2.5 rounded-[10px] bg-[var(--bg-input)] border-[1.5px] border-[var(--glass-border)] text-[var(--text-primary)] text-sm box-border focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[2.5px] focus:ring-[var(--accent-ring)]"
+                className="input-base w-full px-3.5 py-2.5 rounded-[10px] bg-theme-input border-[1.5px] border-glass text-theme-primary text-sm box-border focus:outline-none focus:border-(--accent-primary) focus:ring-[2.5px] focus:ring-(--accent-ring)"
                 placeholder="Search friends by name, username or email..."
                 value={searchQuery}
                 onChange={handleSearchChange}
@@ -206,7 +204,7 @@ export const InviteMembersModal = ({
             {/* User list */}
             <div className="flex-1 overflow-y-auto px-5 py-3">
               {filteredResults.length === 0 ? (
-                <div className="py-10 px-5 text-center text-[13.5px] text-[var(--text-muted)] flex flex-col items-center justify-center gap-2">
+                <div className="py-10 px-5 text-center text-[13.5px] text-theme-muted flex flex-col items-center justify-center gap-2">
                   <IconPeople />
                   <span>No eligible friends found.</span>
                 </div>
@@ -217,7 +215,7 @@ export const InviteMembersModal = ({
                     <div
                       key={u.id}
                       id={`invite-user-${u.id}`}
-                      className={`flex items-center gap-3 px-2.5 py-2.5 rounded-xl cursor-pointer mb-1 transition-all duration-150 border active-press fade-in-list ${isSelected ? 'bg-[var(--theme-btn-active)] border-[var(--accent-primary)]' : 'bg-transparent border-transparent hover:bg-[var(--bg-input)]'}`}
+                      className={`flex items-center gap-3 px-2.5 py-2.5 rounded-xl cursor-pointer mb-1 transition-all duration-150 border active-press fade-in-list ${isSelected ? 'bg-(--theme-btn-active) border-(--accent-primary)' : 'bg-transparent border-transparent hover:bg-theme-input'}`}
                       onClick={() => toggleSelectUser(u.id)}
                     >
                       <Avatar
@@ -230,14 +228,14 @@ export const InviteMembersModal = ({
                       />
                       <div className="flex-1 min-w-0">
                         <div
-                          className={`text-[13.5px] font-semibold truncate ${isSelected ? 'text-[var(--theme-btn-active-text)]' : 'text-[var(--text-primary)]'}`}
+                          className={`text-[13.5px] font-semibold truncate ${isSelected ? 'text-(--theme-btn-active-text)' : 'text-theme-primary'}`}
                         >
                           {u.username
                             ? `@${u.username}`
                             : u.displayName || u.email.split('@')[0]}
                         </div>
                         <div
-                          className={`text-[11px] truncate mt-0.5 ${isSelected ? 'text-[var(--theme-btn-active-text)] opacity-80' : 'text-[var(--text-muted)]'}`}
+                          className={`text-[11px] truncate mt-0.5 ${isSelected ? 'text-(--theme-btn-active-text) opacity-80' : 'text-theme-muted'}`}
                         >
                           {u.username && u.displayName
                             ? `${u.displayName} • `
@@ -247,7 +245,7 @@ export const InviteMembersModal = ({
                       </div>
                       {/* Checkbox */}
                       <div
-                        className={`w-[18px] h-[18px] rounded-[4px] border-[1.5px] flex items-center justify-center text-[11px] font-bold shrink-0 text-white ${isSelected ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]' : 'border-[var(--text-muted)] bg-transparent'}`}
+                        className={`w-4.5 h-4.5 rounded-sm border-[1.5px] flex items-center justify-center text-[11px] font-bold shrink-0 text-white ${isSelected ? 'border-(--accent-primary) bg-(--accent-primary)' : 'border-(--text-muted) bg-transparent'}`}
                       >
                         {isSelected && '✓'}
                       </div>
@@ -258,8 +256,8 @@ export const InviteMembersModal = ({
             </div>
 
             {/* Footer */}
-            <div className="px-5 py-4 border-t border-[var(--border-muted)] flex justify-between items-center shrink-0">
-              <div className="text-[13px] text-[var(--text-muted)]">
+            <div className="px-5 py-4 border-t border-theme flex justify-between items-center shrink-0">
+              <div className="text-[13px] text-theme-muted">
                 {selectedUserIds.length} friend
                 {selectedUserIds.length !== 1 ? 's' : ''} selected
               </div>
@@ -267,7 +265,7 @@ export const InviteMembersModal = ({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-5 py-2.5 rounded-[10px] border-[1.5px] border-[var(--glass-border)] bg-transparent text-[var(--text-secondary)] text-sm font-semibold cursor-pointer active-press"
+                  className="px-5 py-2.5 rounded-[10px] border-[1.5px] border-glass bg-transparent text-theme-secondary text-sm font-semibold cursor-pointer active-press"
                 >
                   Cancel
                 </button>
@@ -289,8 +287,8 @@ export const InviteMembersModal = ({
         {activeTab === 'links' && (
           <div className="flex-1 flex flex-col overflow-hidden p-5 gap-4">
             {/* Link Generator Box */}
-            <div className="p-4 rounded-xl border border-[var(--glass-border)] bg-[var(--theme-btn)] flex flex-col gap-3 shrink-0">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+            <div className="p-4 rounded-xl border border-glass bg-(--theme-btn) flex flex-col gap-3 shrink-0">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-theme-secondary">
                 Create Invite Link
               </label>
               <div className="flex gap-2.5">
@@ -298,41 +296,41 @@ export const InviteMembersModal = ({
                   <select
                     value={expiresIn}
                     onChange={(e) => setExpiresIn(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-[10px] bg-[var(--dropdown-bg)] border-[1.5px] border-[var(--glass-border)] text-[var(--text-primary)] text-sm box-border focus:outline-none focus:border-[var(--accent-primary)]"
+                    className="w-full px-3 py-2.5 rounded-[10px] bg-(--dropdown-bg) border-[1.5px] border-glass text-theme-primary text-sm box-border focus:outline-none focus:border-(--accent-primary)"
                   >
                     <option
                       value="1h"
-                      className="bg-[var(--dropdown-bg)] text-[var(--text-primary)]"
+                      className="bg-(--dropdown-bg) text-theme-primary"
                     >
                       Expires in 1 Hour
                     </option>
                     <option
                       value="2h"
-                      className="bg-[var(--dropdown-bg)] text-[var(--text-primary)]"
+                      className="bg-(--dropdown-bg) text-theme-primary"
                     >
                       Expires in 2 Hours
                     </option>
                     <option
                       value="24h"
-                      className="bg-[var(--dropdown-bg)] text-[var(--text-primary)]"
+                      className="bg-(--dropdown-bg) text-theme-primary"
                     >
                       Expires in 24 Hours
                     </option>
                     <option
                       value="7d"
-                      className="bg-[var(--dropdown-bg)] text-[var(--text-primary)]"
+                      className="bg-(--dropdown-bg) text-theme-primary"
                     >
                       Expires in 7 Days
                     </option>
                     <option
                       value="30d"
-                      className="bg-[var(--dropdown-bg)] text-[var(--text-primary)]"
+                      className="bg-(--dropdown-bg) text-theme-primary"
                     >
                       Expires in 30 Days
                     </option>
                     <option
                       value="never"
-                      className="bg-[var(--dropdown-bg)] text-[var(--text-primary)]"
+                      className="bg-(--dropdown-bg) text-theme-primary"
                     >
                       Never Expires
                     </option>
@@ -350,18 +348,18 @@ export const InviteMembersModal = ({
             </div>
 
             {/* Links List Header */}
-            <div className="text-[11.5px] font-bold uppercase tracking-wider text-[var(--text-secondary)] mt-1 shrink-0">
+            <div className="text-[11.5px] font-bold uppercase tracking-wider text-theme-secondary mt-1 shrink-0">
               Active Invite Links
             </div>
 
             {/* Links list scrollbox */}
             <div className="flex-1 overflow-y-auto pr-1">
               {isInvitesLoading ? (
-                <div className="py-10 text-center text-[13px] text-[var(--text-muted)]">
+                <div className="py-10 text-center text-[13px] text-theme-muted">
                   Loading invite links...
                 </div>
               ) : invites?.length === 0 ? (
-                <div className="py-10 text-center text-[13px] text-[var(--text-muted)]">
+                <div className="py-10 text-center text-[13px] text-theme-muted">
                   No active invite links. Generate one above!
                 </div>
               ) : (
@@ -375,10 +373,10 @@ export const InviteMembersModal = ({
                   return (
                     <div
                       key={invite.id}
-                      className="p-3.5 rounded-xl border border-[var(--glass-border)] bg-[rgba(255,255,255,0.015)] mb-2.5 flex flex-col gap-2 relative fade-in-list"
+                      className="p-3.5 rounded-xl border border-glass bg-[rgba(255,255,255,0.015)] mb-2.5 flex flex-col gap-2 relative fade-in-list"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-mono select-all truncate text-[var(--text-primary)] font-semibold flex-1">
+                        <span className="text-xs font-mono select-all truncate text-theme-primary font-semibold flex-1">
                           {inviteUrl}
                         </span>
                         <div className="flex items-center gap-1.5 shrink-0">
@@ -389,7 +387,7 @@ export const InviteMembersModal = ({
                               await navigator.clipboard.writeText(inviteUrl);
                               showToast.info('Link copied to clipboard!');
                             }}
-                            className="px-2.5 py-1.5 text-[11px] font-bold rounded-lg border border-[var(--glass-border)] bg-[var(--theme-btn)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer active-press"
+                            className="px-2.5 py-1.5 text-[11px] font-bold rounded-lg border border-glass bg-(--theme-btn) text-theme-secondary hover:text-theme-primary cursor-pointer active-press"
                           >
                             Copy
                           </button>
@@ -398,20 +396,18 @@ export const InviteMembersModal = ({
                             <button
                               type="button"
                               onClick={() => handleRevokeLink(invite.id)}
-                              className="px-2.5 py-1.5 text-[11px] font-bold rounded-lg border border-transparent bg-[rgba(239,68,68,0.1)] hover:bg-[rgba(239,68,68,0.2)] text-[var(--danger)] cursor-pointer active-press"
+                              className="px-2.5 py-1.5 text-[11px] font-bold rounded-lg border border-transparent bg-[rgba(239,68,68,0.1)] hover:bg-[rgba(239,68,68,0.2)] text-(--danger) cursor-pointer active-press"
                             >
                               Revoke
                             </button>
                           )}
                         </div>
                       </div>
-                      <div className="flex justify-between items-center text-[10.5px] text-[var(--text-muted)] border-t border-[rgba(255,255,255,0.04)] pt-2 mt-0.5 shrink-0">
+                      <div className="flex justify-between items-center text-[10.5px] text-theme-muted border-t border-[rgba(255,255,255,0.04)] pt-2 mt-0.5 shrink-0">
                         <span>
                           {invite.expiresAt ? (
                             isExpired ? (
-                              <span className="text-[var(--danger)]">
-                                Expired
-                              </span>
+                              <span className="text-(--danger)">Expired</span>
                             ) : (
                               `Expires: ${new Date(invite.expiresAt).toLocaleString()}`
                             )

@@ -524,11 +524,11 @@ function ChatDashboardContent() {
       {/* Profile Settings Modal */}
       {isProfileOpen && (
         <div
-          className="fixed inset-0 z-[1000] flex items-center justify-center p-4 animate-fade-in bg-[rgba(4,6,12,0.65)] backdrop-blur-[4px]"
+          className="fixed inset-0 z-1000 flex items-center justify-center p-4 animate-fade-in bg-[rgba(4,6,12,0.65)] backdrop-blur-xs"
           onClick={() => setIsProfileOpen(false)}
         >
           <div
-            className="w-[800px] max-w-full h-[85vh] flex flex-col overflow-hidden animate-slide-up bg-[var(--glass-bg)] border-[1.5px] border-[var(--glass-border)] backdrop-blur-[20px] rounded-[18px] shadow-[var(--glass-shadow)]"
+            className="w-200 max-w-full h-[85vh] flex flex-col overflow-hidden animate-slide-up bg-(--glass-bg) border-[1.5px] border-glass backdrop-blur-[20px] rounded-[18px] shadow-(--glass-shadow)"
             onClick={(e) => e.stopPropagation()}
           >
             <ProfileSettingsContent

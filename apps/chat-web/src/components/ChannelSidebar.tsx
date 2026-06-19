@@ -433,32 +433,32 @@ export const ChannelSidebar = ({
           onDrop={(e) => handleChannelDropOnChannel(e, channel)}
           className={`group/channel relative flex items-center justify-between w-full rounded-lg transition-all duration-150 pr-1.5 fade-in-list ${
             isActive
-              ? 'bg-[var(--theme-btn-active)]'
-              : 'bg-transparent hover:bg-[var(--bg-input)]'
-          } ${isOver ? 'border-t-2 border-[var(--accent-primary)]' : ''}`}
+              ? 'bg-(--theme-btn-active)'
+              : 'bg-transparent hover:bg-theme-input'
+          } ${isOver ? 'border-t-2 border-(--accent-primary)' : ''}`}
         >
           <span
-            className={`absolute left-0 w-[3px] rounded-r bg-[var(--accent-primary)] transition-all duration-200
+            className={`absolute left-0 w-0.75 rounded-r bg-(--accent-primary) transition-all duration-200
             ${isActive ? 'h-5 top-[7.5px]' : 'h-0 top-[17.5px] opacity-0'}`}
           />
           <button
             id={`channel-${channel.id}`}
             onClick={() => handleSelectChannel(channel)}
-            className={`flex-1 flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg border-none cursor-pointer text-left transition-all duration-150 bg-transparent text-sm min-w-0 outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-primary)] active-press ${
+            className={`flex-1 flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg border-none cursor-pointer text-left transition-all duration-150 bg-transparent text-sm min-w-0 outline-none focus-visible:ring-1 focus-visible:ring-(--accent-primary) active-press ${
               isActive
-                ? 'text-[var(--theme-btn-active-text)] font-semibold'
-                : 'text-[var(--text-secondary)] font-normal'
+                ? 'text-(--theme-btn-active-text) font-semibold'
+                : 'text-theme-secondary font-normal'
             }`}
           >
             <span
-              className={`flex-shrink-0 transition-opacity duration-150 ${
+              className={`shrink-0 transition-opacity duration-150 ${
                 isActive
                   ? 'opacity-100'
                   : 'opacity-60 group-hover/channel:opacity-80'
               }`}
             >
               {channel.layout === 'bubble' ? (
-                <span className="w-[15px] h-[15px] flex items-center justify-center text-[var(--text-secondary)]">
+                <span className="w-3.75 h-3.75 flex items-center justify-center text-theme-secondary">
                   <IconMessageDm />
                 </span>
               ) : channel.layout === 'voice' ? (
@@ -467,7 +467,7 @@ export const ChannelSidebar = ({
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2.2"
-                  className="w-[14px] h-[14px]"
+                  className="w-3.5 h-3.5"
                 >
                   <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
                   <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
@@ -479,7 +479,7 @@ export const ChannelSidebar = ({
             </span>
             <span className="truncate">{channel.name}</span>
             {hasUnread && channel.layout !== 'voice' && (
-              <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-primary)] animate-pulse shrink-0 ml-1.5" />
+              <span className="w-1.5 h-1.5 rounded-full bg-(--accent-primary) animate-pulse shrink-0 ml-1.5" />
             )}
           </button>
 
@@ -491,7 +491,7 @@ export const ChannelSidebar = ({
                   e.stopPropagation();
                   onEditChannel(channel);
                 }}
-                className="bg-transparent border-none cursor-pointer text-[var(--text-muted)] p-1 rounded hover:text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center transition-all duration-150 opacity-0 group-hover/channel:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-primary)] spin-hover active-press"
+                className="bg-transparent border-none cursor-pointer text-theme-muted p-1 rounded hover:text-theme-primary hover:bg-theme-input flex items-center transition-all duration-150 opacity-0 group-hover/channel:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-(--accent-primary) spin-hover active-press"
               >
                 <IconSettings />
               </button>
@@ -501,7 +501,7 @@ export const ChannelSidebar = ({
                   e.stopPropagation();
                   handleDeleteChannel(channel);
                 }}
-                className="bg-transparent border-none cursor-pointer text-[var(--danger)] p-1 rounded hover:bg-[var(--danger-bg)] flex items-center transition-all duration-150 opacity-0 group-hover/channel:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-primary)] active-press"
+                className="bg-transparent border-none cursor-pointer text-(--danger) p-1 rounded hover:bg-(--danger-bg) flex items-center transition-all duration-150 opacity-0 group-hover/channel:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-(--accent-primary) active-press"
               >
                 <IconTrash />
               </button>
@@ -533,13 +533,13 @@ export const ChannelSidebar = ({
                       url={profile.avatarThumbnailUrl || profile.avatarUrl}
                       size="xs"
                     />
-                    <span className="text-[12px] text-[var(--text-secondary)] truncate">
+                    <span className="text-[12px] text-theme-secondary truncate">
                       {profile.username
                         ? `@${profile.username}`
                         : profile.displayName || profile.email.split('@')[0]}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     {canDisconnect && vs.userId !== user?.id && (
                       <button
                         title="Disconnect from voice channel"
@@ -547,14 +547,14 @@ export const ChannelSidebar = ({
                           e.stopPropagation();
                           handleDisconnectParticipant(vs.userId);
                         }}
-                        className="bg-transparent border-none cursor-pointer text-[var(--danger)] hover:text-red-500 p-0.5 rounded flex items-center transition-colors focus:outline-none"
+                        className="bg-transparent border-none cursor-pointer text-(--danger) hover:text-red-500 p-0.5 rounded flex items-center transition-colors focus:outline-none"
                       >
                         <svg
                           viewBox="0 0 24 24"
                           fill="none"
                           stroke="currentColor"
                           strokeWidth="2.5"
-                          className="w-[12px] h-[12px]"
+                          className="w-3 h-3"
                         >
                           <line x1="18" y1="6" x2="6" y2="18" />
                           <line x1="6" y1="6" x2="18" y2="18" />
@@ -567,7 +567,7 @@ export const ChannelSidebar = ({
                         fill="none"
                         stroke="var(--danger)"
                         strokeWidth="2"
-                        className="w-[13px] h-[13px] opacity-80"
+                        className="w-3.25 h-3.25 opacity-80"
                       >
                         <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
                         <path d="M19 10v1a7 7 0 0 1-14 0v-1M12 19v3M8 22h8" />
@@ -587,7 +587,7 @@ export const ChannelSidebar = ({
                         fill="none"
                         stroke="var(--danger)"
                         strokeWidth="2"
-                        className="w-[13px] h-[13px] opacity-80"
+                        className="w-3.25 h-3.25 opacity-80"
                       >
                         <path d="M3 18v-6a9 9 0 0 1 18 0v6M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3" />
                         <line
@@ -620,7 +620,7 @@ export const ChannelSidebar = ({
     : [];
 
   return (
-    <div className="glass-panel w-60 min-w-[180px] max-w-[calc(100vw-130px)] md:w-60 md:min-w-60 h-full flex flex-col overflow-hidden select-none transition-all duration-300 ease-in-out">
+    <div className="glass-panel w-60 min-w-45 max-w-[calc(100vw-130px)] md:w-60 md:min-w-60 h-full flex flex-col overflow-hidden select-none transition-all duration-300 ease-in-out">
       {/* Group Header */}
       <div className="px-4 py-3.5 border-b-[1.5px] border-theme bg-theme-sidebar flex flex-col gap-2.5 shadow-sm">
         <div className="flex items-center justify-between gap-2">
@@ -630,11 +630,11 @@ export const ChannelSidebar = ({
               isRailCollapsed ? 'Show navigation rail' : 'Hide navigation rail'
             }
             onClick={onToggleRail}
-            className={`p-1 rounded-md flex items-center justify-center cursor-pointer transition-all duration-150 flex-shrink-0 mr-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] active-press
+            className={`p-1 rounded-md flex items-center justify-center cursor-pointer transition-all duration-150 shrink-0 mr-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-primary) active-press
               ${
                 isRailCollapsed
-                  ? 'bg-[var(--theme-btn-active)] text-[var(--theme-btn-active-text)]'
-                  : 'bg-transparent text-[var(--text-muted)] hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)]'
+                  ? 'bg-(--theme-btn-active) text-(--theme-btn-active-text)'
+                  : 'bg-transparent text-theme-muted hover:bg-theme-input hover:text-theme-primary'
               }`}
           >
             <svg
@@ -650,11 +650,11 @@ export const ChannelSidebar = ({
           </button>
 
           <div className="flex-1 min-w-0 pr-2">
-            <div className="font-bold text-[15px] text-[var(--text-primary)] truncate">
+            <div className="font-bold text-[15px] text-theme-primary truncate">
               {group.name}
             </div>
             {group.description && (
-              <div className="text-[11px] text-[var(--text-muted)] mt-0.5 truncate">
+              <div className="text-[11px] text-theme-muted mt-0.5 truncate">
                 {group.description}
               </div>
             )}
@@ -662,7 +662,7 @@ export const ChannelSidebar = ({
         </div>
 
         <div className="text-xs flex gap-3 items-center justify-between mt-1">
-          <div className="text-[11px] text-[var(--text-muted)] flex items-center gap-1.5">
+          <div className="text-[11px] text-theme-muted flex items-center gap-1.5">
             {canInvite && (
               <IconButton
                 title="Invite Members"
@@ -678,7 +678,7 @@ export const ChannelSidebar = ({
             </span>
           </div>
 
-          <div className="flex gap-1.5 flex-shrink-0 items-center">
+          <div className="flex gap-1.5 shrink-0 items-center">
             {canManage && (
               <IconButton
                 title="Create Category"
@@ -744,11 +744,11 @@ export const ChannelSidebar = ({
             onDrop={(e) => handleChannelDropOnSectionHeader(e, null)}
           >
             <div className="flex items-center justify-between py-1 px-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-theme-muted">
                 Uncategorized
               </span>
             </div>
-            <div className="flex flex-col gap-[2px] mt-0.5">
+            <div className="flex flex-col gap-0.5 mt-0.5">
               {uncategorizedChannels.map((channel) =>
                 renderChannelRow(channel),
               )}
@@ -771,7 +771,7 @@ export const ChannelSidebar = ({
               key={section.id}
               className={`flex flex-col gap-1 transition-all duration-150 rounded-lg p-1 ${
                 isOver
-                  ? 'bg-[rgba(114,137,218,0.08)] border-2 border-dashed border-[var(--accent-primary)]'
+                  ? 'bg-[rgba(114,137,218,0.08)] border-2 border-dashed border-(--accent-primary)'
                   : ''
               }`}
               onDragOver={(e) => handleSectionDragOver(e, section.id)}
@@ -789,17 +789,17 @@ export const ChannelSidebar = ({
                     [section.id]: !prev[section.id],
                   }))
                 }
-                className="flex items-center justify-between py-1 px-2 cursor-pointer rounded-md select-none transition-all duration-150 hover:bg-[var(--bg-input)]"
+                className="flex items-center justify-between py-1 px-2 cursor-pointer rounded-md select-none transition-all duration-150 hover:bg-theme-input"
               >
                 <div className="flex items-center gap-1 min-w-0 flex-1">
                   <span
-                    className={`flex transition-transform duration-200 text-[var(--text-muted)] ${
+                    className={`flex transition-transform duration-200 text-theme-muted ${
                       !isCollapsed ? 'rotate-0' : '-rotate-90'
                     }`}
                   >
                     <IconChevronDown />
                   </span>
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] truncate">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-theme-muted truncate">
                     {section.name}
                   </span>
                 </div>
@@ -812,21 +812,21 @@ export const ChannelSidebar = ({
                       <button
                         title="Create Channel"
                         onClick={() => onCreateChannel(section.id)}
-                        className="bg-transparent border-none cursor-pointer p-0.5 rounded flex items-center text-[var(--text-muted)] transition-colors duration-150 hover:text-[var(--text-primary)] focus:outline-none"
+                        className="bg-transparent border-none cursor-pointer p-0.5 rounded flex items-center text-theme-muted transition-colors duration-150 hover:text-theme-primary focus:outline-none"
                       >
                         <IconPlus size={13} />
                       </button>
                       <button
                         title="Category Settings"
                         onClick={() => onEditSection(section)}
-                        className="bg-transparent border-none cursor-pointer p-0.5 rounded flex items-center text-[var(--text-muted)] transition-colors duration-150 hover:text-[var(--text-primary)] focus:outline-none"
+                        className="bg-transparent border-none cursor-pointer p-0.5 rounded flex items-center text-theme-muted transition-colors duration-150 hover:text-theme-primary focus:outline-none"
                       >
                         <IconSettings />
                       </button>
                       <button
                         title="Delete Category"
                         onClick={() => handleDeleteSection(section)}
-                        className="bg-transparent border-none cursor-pointer p-0.5 rounded flex items-center text-[var(--danger)] transition-colors duration-150 hover:bg-[var(--danger-bg)] focus:outline-none"
+                        className="bg-transparent border-none cursor-pointer p-0.5 rounded flex items-center text-(--danger) transition-colors duration-150 hover:bg-(--danger-bg) focus:outline-none"
                       >
                         <IconTrash />
                       </button>
@@ -838,14 +838,14 @@ export const ChannelSidebar = ({
               {/* Collapsible Channels */}
               {!isCollapsed && (
                 <div
-                  className="flex flex-col gap-[2px] mt-0.5 pl-2 min-h-[10px]"
+                  className="flex flex-col gap-0.5 mt-0.5 pl-2 min-h-2.5"
                   onDragOver={handleChannelDragOver}
                   onDrop={(e) =>
                     handleChannelDropOnSectionHeader(e, section.id)
                   }
                 >
                   {sectionChannels.length === 0 ? (
-                    <div className="py-2 px-2 text-[11px] text-[var(--text-muted)] italic">
+                    <div className="py-2 px-2 text-[11px] text-theme-muted italic">
                       No channels inside.
                     </div>
                   ) : (
@@ -860,7 +860,7 @@ export const ChannelSidebar = ({
         {/* Empty state when no categories or uncategorized channels exist */}
         {sections.length === 0 && uncategorizedChannels.length === 0 && (
           <div className="py-8 px-4 text-center">
-            <p className="text-xs text-[var(--text-muted)] mb-3">
+            <p className="text-xs text-theme-muted mb-3">
               This group is empty. Create a category to get started.
             </p>
             {canManage && (
@@ -877,7 +877,7 @@ export const ChannelSidebar = ({
 
       {/* Bottom Voice Status Bar */}
       {activeVoiceChannelId && (
-        <div className="mx-2 mb-2 p-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--theme-btn-active)] backdrop-blur-md flex flex-col gap-2 shadow-md animate-fade-in text-[var(--theme-btn-active-text)]">
+        <div className="mx-2 mb-2 p-2.5 rounded-xl border border-glass bg-(--theme-btn-active) backdrop-blur-md flex flex-col gap-2 shadow-md animate-fade-in text-(--theme-btn-active-text)">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 min-w-0">
               <div className="relative flex h-2 w-2 shrink-0">
@@ -898,7 +898,7 @@ export const ChannelSidebar = ({
             <button
               title="Disconnect Call"
               onClick={handleDisconnectVoice}
-              className="p-1.5 rounded-lg border-none bg-[var(--danger)] text-white hover:bg-red-600 active:scale-95 transition-all cursor-pointer flex items-center justify-center shrink-0"
+              className="p-1.5 rounded-lg border-none bg-(--danger) text-white hover:bg-red-600 active:scale-95 transition-all cursor-pointer flex items-center justify-center shrink-0"
             >
               <svg
                 viewBox="0 0 24 24"
@@ -926,8 +926,8 @@ export const ChannelSidebar = ({
               className={`flex-1 flex items-center justify-center gap-1 py-1 rounded-lg border-none text-[11px] font-semibold cursor-pointer transition-all active:scale-95
                 ${
                   isSelfMuted
-                    ? 'bg-[var(--danger-bg)] text-[var(--danger)]'
-                    : 'bg-transparent text-[var(--theme-btn-active-text)] hover:bg-[rgba(255,255,255,0.05)] opacity-80 hover:opacity-100'
+                    ? 'bg-(--danger-bg) text-(--danger)'
+                    : 'bg-transparent text-(--theme-btn-active-text) hover:bg-[rgba(255,255,255,0.05)] opacity-80 hover:opacity-100'
                 }`}
             >
               {isSelfMuted ? (
@@ -974,8 +974,8 @@ export const ChannelSidebar = ({
               className={`flex-1 flex items-center justify-center gap-1 py-1 rounded-lg border-none text-[11px] font-semibold cursor-pointer transition-all active:scale-95
                 ${
                   isSelfDeafened
-                    ? 'bg-[var(--danger-bg)] text-[var(--danger)]'
-                    : 'bg-transparent text-[var(--theme-btn-active-text)] hover:bg-[rgba(255,255,255,0.05)] opacity-80 hover:opacity-100'
+                    ? 'bg-(--danger-bg) text-(--danger)'
+                    : 'bg-transparent text-(--theme-btn-active-text) hover:bg-[rgba(255,255,255,0.05)] opacity-80 hover:opacity-100'
                 }`}
             >
               {isSelfDeafened ? (
@@ -1030,12 +1030,12 @@ export const ChannelSidebar = ({
           size="sm"
         />
         <div className="flex-1 min-w-0">
-          <div className="text-[12.5px] font-semibold text-[var(--text-primary)] truncate">
+          <div className="text-[12.5px] font-semibold text-theme-primary truncate">
             {user?.username
               ? `@${user.username}`
               : user?.displayName || user?.email?.split('@')[0] || 'User'}
           </div>
-          <div className="text-[10.5px] text-[var(--text-muted)] capitalize">
+          <div className="text-[10.5px] text-theme-muted capitalize">
             {ownStatus}
           </div>
         </div>
@@ -1082,11 +1082,11 @@ const IconButton = ({
     id={id}
     title={title}
     onClick={onClick}
-    className={`p-1.5 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-150 border-none outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] active-press
+    className={`p-1.5 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-150 border-none outline-none focus-visible:ring-2 focus-visible:ring-(--accent-primary) active-press
       ${
         danger
-          ? 'text-[var(--danger)] hover:bg-[var(--danger-bg)]'
-          : 'text-[var(--text-muted)] hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)]'
+          ? 'text-(--danger) hover:bg-(--danger-bg)'
+          : 'text-theme-muted hover:bg-theme-input hover:text-theme-primary'
       } ${id.includes('settings') ? 'spin-hover' : ''}`}
   >
     {children}

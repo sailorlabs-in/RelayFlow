@@ -193,27 +193,27 @@ export const CreateGroupModal = ({
 
   return (
     <div
-      className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-[rgba(4,6,12,0.65)] backdrop-blur-[4px]"
+      className="fixed inset-0 z-1000 flex items-center justify-center p-4 bg-[rgba(4,6,12,0.65)] backdrop-blur-xs"
       onClick={onClose}
     >
       <div
-        className="w-[480px] max-w-full max-h-[90vh] flex flex-col overflow-hidden animate-slide-up bg-[var(--glass-bg)] border-[1.5px] border-[var(--glass-border)] backdrop-blur-[20px] rounded-[18px] shadow-[var(--glass-shadow)]"
+        className="w-120 max-w-full max-h-[90vh] flex flex-col overflow-hidden animate-slide-up bg-(--glass-bg) border-[1.5px] border-glass backdrop-blur-[20px] rounded-[18px] shadow-(--glass-shadow)"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-5 py-4 border-b border-[var(--border-muted)] flex items-start justify-between gap-3">
+        <div className="px-5 py-4 border-b border-theme flex items-start justify-between gap-3">
           <div>
-            <h2 className="m-0 text-[18px] font-bold text-[var(--text-primary)]">
+            <h2 className="m-0 text-[18px] font-bold text-theme-primary">
               Create a Group
             </h2>
-            <p className="m-1 text-[13px] text-[var(--text-muted)]">
+            <p className="m-1 text-[13px] text-theme-muted">
               Your group is where your friends hang out.
             </p>
           </div>
           <button
             id="close-create-group-modal"
             onClick={onClose}
-            className="bg-transparent border-none cursor-pointer text-[var(--text-muted)] p-1 rounded-md flex items-center shrink-0 active-press"
+            className="bg-transparent border-none cursor-pointer text-theme-muted p-1 rounded-md flex items-center shrink-0 active-press"
           >
             <IconX size={18} />
           </button>
@@ -225,7 +225,7 @@ export const CreateGroupModal = ({
           className="flex-1 overflow-y-auto px-5 py-5 flex flex-col gap-4"
         >
           {/* Avatar Upload */}
-          <div className="flex items-center gap-4 p-3.5 rounded-xl border border-[var(--glass-border)] bg-[rgba(0,0,0,0.015)] dark:bg-[rgba(255,255,255,0.01)] shadow-sm animate-fade-in">
+          <div className="flex items-center gap-4 p-3.5 rounded-xl border border-glass bg-[rgba(0,0,0,0.015)] dark:bg-[rgba(255,255,255,0.01)] shadow-sm animate-fade-in">
             <div className="relative shrink-0">
               <Avatar
                 letter={groupName[0]?.toUpperCase() || 'G'}
@@ -239,7 +239,7 @@ export const CreateGroupModal = ({
               )}
             </div>
             <div className="flex-1">
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2">
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-theme-muted mb-2">
                 Group Avatar
               </label>
               <div className="flex gap-2">
@@ -247,7 +247,7 @@ export const CreateGroupModal = ({
                   type="button"
                   disabled={uploading}
                   onClick={() => fileInputRef.current?.click()}
-                  className="px-3 py-1.5 rounded-[8px] text-[11.5px] font-semibold cursor-pointer border-none bg-[var(--theme-btn-active)] text-[var(--theme-btn-active-text)] hover:opacity-95 disabled:opacity-50 active-press"
+                  className="px-3 py-1.5 rounded-lg text-[11.5px] font-semibold cursor-pointer border-none bg-(--theme-btn-active) text-(--theme-btn-active-text) hover:opacity-95 disabled:opacity-50 active-press"
                 >
                   Upload Image
                 </button>
@@ -265,7 +265,7 @@ export const CreateGroupModal = ({
                       setAvatarUrl('');
                       setAvatarThumbnailUrl('');
                     }}
-                    className="px-3 py-1.5 rounded-[8px] text-[11.5px] font-semibold cursor-pointer border border-[var(--danger-border)] bg-[var(--danger-bg)] text-[var(--danger)] hover:bg-[var(--danger)] hover:text-white transition-all active-press"
+                    className="px-3 py-1.5 rounded-lg text-[11.5px] font-semibold cursor-pointer border border-(--danger-border) bg-(--danger-bg) text-(--danger) hover:bg-(--danger) hover:text-white transition-all active-press"
                   >
                     Remove
                   </button>
@@ -284,9 +284,9 @@ export const CreateGroupModal = ({
           <div>
             <label
               htmlFor="group-name-input"
-              className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2"
+              className="block text-[11px] font-bold uppercase tracking-wider text-theme-muted mb-2"
             >
-              Group Name <span className="text-[var(--danger)]">*</span>
+              Group Name <span className="text-(--danger)">*</span>
             </label>
             <input
               id="group-name-input"
@@ -296,7 +296,7 @@ export const CreateGroupModal = ({
               placeholder="e.g. The Squad, Dev Team…"
               maxLength={100}
               required
-              className="input-base w-full px-3.5 py-2.5 rounded-[10px] bg-[var(--bg-input)] border-[1.5px] border-[var(--glass-border)] text-[var(--text-primary)] text-sm box-border focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[2.5px] focus:ring-[var(--accent-ring)]"
+              className="input-base w-full px-3.5 py-2.5 rounded-[10px] bg-theme-input border-[1.5px] border-glass text-theme-primary text-sm box-border focus:outline-none focus:border-(--accent-primary) focus:ring-[2.5px] focus:ring-(--accent-ring)"
             />
           </div>
 
@@ -304,7 +304,7 @@ export const CreateGroupModal = ({
           <div>
             <label
               htmlFor="group-desc-input"
-              className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2"
+              className="block text-[11px] font-bold uppercase tracking-wider text-theme-muted mb-2"
             >
               Description{' '}
               <span className="text-xs text-normal normal-case tracking-none font-normal">
@@ -318,13 +318,13 @@ export const CreateGroupModal = ({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What's this group about?"
               maxLength={500}
-              className="input-base w-full px-3.5 py-2.5 rounded-[10px] bg-[var(--bg-input)] border-[1.5px] border-[var(--glass-border)] text-[var(--text-primary)] text-sm box-border focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[2.5px] focus:ring-[var(--accent-ring)]"
+              className="input-base w-full px-3.5 py-2.5 rounded-[10px] bg-theme-input border-[1.5px] border-glass text-theme-primary text-sm box-border focus:outline-none focus:border-(--accent-primary) focus:ring-[2.5px] focus:ring-(--accent-ring)"
             />
           </div>
 
           {/* Add Members */}
           <div>
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2">
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-theme-muted mb-2">
               Add Members{' '}
               <span className="text-xs text-normal normal-case tracking-none font-normal">
                 (optional)
@@ -337,7 +337,7 @@ export const CreateGroupModal = ({
                 {selectedUsers.map((u) => (
                   <div
                     key={u.id}
-                    className="flex items-center gap-1.5 py-1 pl-1.5 pr-2 rounded-full bg-[var(--theme-btn-active)] border border-[var(--accent-primary)]"
+                    className="flex items-center gap-1.5 py-1 pl-1.5 pr-2 rounded-full bg-(--theme-btn-active) border border-(--accent-primary)"
                   >
                     <Avatar
                       letter={(u.username ||
@@ -346,7 +346,7 @@ export const CreateGroupModal = ({
                       url={u.avatarThumbnailUrl || u.avatarUrl}
                       size="sm"
                     />
-                    <span className="text-xs font-semibold text-[var(--theme-btn-active-text)]">
+                    <span className="text-xs font-semibold text-(--theme-btn-active-text)">
                       {u.username
                         ? `@${u.username}`
                         : u.displayName || u.email.split('@')[0]}
@@ -354,7 +354,7 @@ export const CreateGroupModal = ({
                     <button
                       type="button"
                       onClick={() => handleRemoveUser(u.id)}
-                      className="bg-transparent border-none cursor-pointer p-0 flex items-center text-[var(--text-muted)] active-press"
+                      className="bg-transparent border-none cursor-pointer p-0 flex items-center text-theme-muted active-press"
                     >
                       <IconX size={12} />
                     </button>
@@ -365,7 +365,7 @@ export const CreateGroupModal = ({
 
             {/* Search input */}
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none flex">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-theme-muted pointer-events-none flex">
                 <IconSearch />
               </span>
               <input
@@ -376,13 +376,13 @@ export const CreateGroupModal = ({
                 onFocus={() => setIsSearchFocused(true)}
                 onBlur={() => setIsSearchFocused(false)}
                 placeholder="Search by name or email…"
-                className="input-base w-full py-2.5 pl-9 pr-3.5 rounded-[10px] bg-[var(--bg-input)] border-[1.5px] border-[var(--glass-border)] text-[var(--text-primary)] text-[13.5px] box-border focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[2.5px] focus:ring-[var(--accent-ring)]"
+                className="input-base w-full py-2.5 pl-9 pr-3.5 rounded-[10px] bg-theme-input border-[1.5px] border-glass text-theme-primary text-[13.5px] box-border focus:outline-none focus:border-(--accent-primary) focus:ring-[2.5px] focus:ring-(--accent-ring)"
               />
 
               {/* Search Dropdown */}
               {(isSearchFocused || searchQuery.trim() !== '') &&
                 filteredResults.length > 0 && (
-                  <div className="absolute top-[calc(100%+4px)] left-0 right-0 bg-[var(--glass-bg)] border-[1.5px] border-[var(--glass-border)] rounded-[10px] overflow-y-auto max-h-[180px] z-[100] shadow-[var(--glass-shadow)]">
+                  <div className="absolute top-[calc(100%+4px)] left-0 right-0 bg-(--glass-bg) border-[1.5px] border-glass rounded-[10px] overflow-y-auto max-h-45 z-100 shadow-(--glass-shadow)">
                     {filteredResults.map((u) => (
                       <div
                         key={u.id}
@@ -390,7 +390,7 @@ export const CreateGroupModal = ({
                           e.preventDefault(); // Prevents blur event
                           handleAddUser(u);
                         }}
-                        className="flex items-center gap-2.5 px-3.5 py-2.5 cursor-pointer border-b border-[var(--border-muted)] hover:bg-[var(--bg-input)] transition-colors duration-150 active-press fade-in-list"
+                        className="flex items-center gap-2.5 px-3.5 py-2.5 cursor-pointer border-b border-theme hover:bg-theme-input transition-colors duration-150 active-press fade-in-list"
                       >
                         <Avatar
                           letter={(u.username ||
@@ -400,19 +400,19 @@ export const CreateGroupModal = ({
                           size="sm"
                         />
                         <div>
-                          <div className="text-[13px] font-semibold text-[var(--text-primary)]">
+                          <div className="text-[13px] font-semibold text-theme-primary">
                             {u.username
                               ? `@${u.username}`
                               : u.displayName || u.email.split('@')[0]}
                           </div>
-                          <div className="text-[11px] text-[var(--text-muted)]">
+                          <div className="text-[11px] text-theme-muted">
                             {u.username && u.displayName
                               ? `${u.displayName} • `
                               : ''}
                             {u.email}
                           </div>
                         </div>
-                        <div className="ml-auto text-[var(--accent-primary)] flex">
+                        <div className="ml-auto text-(--accent-primary) flex">
                           <IconPlus size={14} />
                         </div>
                       </div>
@@ -424,11 +424,11 @@ export const CreateGroupModal = ({
         </form>
 
         {/* Footer */}
-        <div className="px-5 py-4 border-t border-[var(--border-muted)] flex justify-end gap-2.5">
+        <div className="px-5 py-4 border-t border-theme flex justify-end gap-2.5">
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2.5 rounded-[10px] border-[1.5px] border-[var(--glass-border)] bg-transparent text-[var(--text-secondary)] text-sm font-semibold cursor-pointer active-press"
+            className="px-5 py-2.5 rounded-[10px] border-[1.5px] border-glass bg-transparent text-theme-secondary text-sm font-semibold cursor-pointer active-press"
           >
             Cancel
           </button>

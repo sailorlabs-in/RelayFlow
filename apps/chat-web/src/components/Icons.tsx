@@ -14,7 +14,7 @@ export const IconSettings = (): React.JSX.Element => (
 );
 
 export const IconSend = (): React.JSX.Element => (
-  <svg viewBox="0 0 24 24" fill="currentColor" className="w-[18px] h-[18px]">
+  <svg viewBox="0 0 24 24" fill="currentColor" className="w-4.5 h-4.5">
     <path d="m21.426 11.095-17-8A1 1 0 0 0 3.03 4.542L7.38 12l-4.35 7.458a1 1 0 0 0 1.396 1.447l17-8a1 1 0 0 0 0-1.81zM5.92 6.069 17.522 11.5 10.9 8.272l-4.98-2.203zm4.98 9.659L17.522 12.5 5.92 17.931l4.98-2.203z" />
   </svg>
 );
@@ -52,7 +52,7 @@ export const IconTrash = (): React.JSX.Element => (
     fill="none"
     stroke="currentColor"
     strokeWidth="2"
-    className="w-[14px] h-[14px]"
+    className="w-3.5 h-3.5"
   >
     <polyline points="3 6 5 6 21 6" />
     <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
@@ -67,7 +67,7 @@ export const IconSearch = (): React.JSX.Element => (
     fill="none"
     stroke="currentColor"
     strokeWidth="2"
-    className="w-[14px] h-[14px]"
+    className="w-3.5 h-3.5"
   >
     <circle cx="11" cy="11" r="8" />
     <line x1="21" y1="21" x2="16.65" y2="16.65" />
@@ -80,7 +80,7 @@ export const IconChat = (): React.JSX.Element => (
     fill="none"
     stroke="currentColor"
     strokeWidth="1.5"
-    className="w-[30px] h-[30px]"
+    className="w-7.5 h-7.5"
   >
     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
   </svg>
@@ -92,7 +92,7 @@ export const IconAlertCircle = (): React.JSX.Element => (
     fill="none"
     stroke="currentColor"
     strokeWidth="2"
-    className="w-[15px] h-[15px] flex-shrink-0"
+    className="w-3.75 h-3.75 shrink-0"
   >
     <circle cx="12" cy="12" r="10" />
     <line x1="12" y1="8" x2="12" y2="12" />
@@ -106,7 +106,7 @@ export const IconBolt = (): React.JSX.Element => (
     fill="none"
     stroke="currentColor"
     strokeWidth="2"
-    className="w-[28px] h-[28px]"
+    className="w-7 h-7"
   >
     <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
   </svg>
@@ -118,7 +118,7 @@ export const IconShield = (): React.JSX.Element => (
     fill="none"
     stroke="currentColor"
     strokeWidth="2"
-    className="w-[14px] h-[14px]"
+    className="w-3.5 h-3.5"
   >
     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
   </svg>
@@ -130,7 +130,7 @@ export const IconZap = (): React.JSX.Element => (
     fill="none"
     stroke="currentColor"
     strokeWidth="2"
-    className="w-[14px] h-[14px]"
+    className="w-3.5 h-3.5"
   >
     <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
   </svg>
@@ -142,7 +142,7 @@ export const IconGlobe = (): React.JSX.Element => (
     fill="none"
     stroke="currentColor"
     strokeWidth="2"
-    className="w-[14px] h-[14px]"
+    className="w-3.5 h-3.5"
   >
     <circle cx="12" cy="12" r="10" />
     <line x1="2" y1="12" x2="22" y2="12" />
@@ -150,13 +150,14 @@ export const IconGlobe = (): React.JSX.Element => (
   </svg>
 );
 
+const newLocal = 'w-3.5 h-3.5';
 export const IconSun = (): React.JSX.Element => (
   <svg
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
     strokeWidth="2"
-    className="w-[14px] h-[14px]"
+    className={newLocal}
   >
     <circle cx="12" cy="12" r="5" />
     <line x1="12" y1="1" x2="12" y2="3" />
@@ -176,7 +177,7 @@ export const IconMoon = (): React.JSX.Element => (
     fill="none"
     stroke="currentColor"
     strokeWidth="2"
-    className="w-[14px] h-[14px]"
+    className="w-3.5 h-3.5"
   >
     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
   </svg>
@@ -188,7 +189,7 @@ export const IconMonitor = (): React.JSX.Element => (
     fill="none"
     stroke="currentColor"
     strokeWidth="2"
-    className="w-[14px] h-[14px]"
+    className="w-3.5 h-3.5"
   >
     <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
     <line x1="8" y1="21" x2="16" y2="21" />
@@ -202,7 +203,7 @@ export const IconEye = (): React.JSX.Element => (
     fill="none"
     stroke="currentColor"
     strokeWidth="2"
-    className="w-[18px] h-[18px]"
+    className="w-4.5 h-4.5"
   >
     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
     <circle cx="12" cy="12" r="3" />
@@ -215,7 +216,7 @@ export const IconEyeOff = (): React.JSX.Element => (
     fill="none"
     stroke="currentColor"
     strokeWidth="2"
-    className="w-[18px] h-[18px]"
+    className="w-4.5 h-4.5"
   >
     <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
     <line x1="1" y1="1" x2="23" y2="23" />
@@ -228,7 +229,7 @@ export const IconHash = (): React.JSX.Element => (
     fill="none"
     stroke="currentColor"
     strokeWidth="2"
-    className="w-[15px] h-[15px]"
+    className="w-3.75 h-3.75"
   >
     <line x1="4" y1="9" x2="20" y2="9" />
     <line x1="4" y1="15" x2="20" y2="15" />
@@ -260,7 +261,7 @@ export const IconPeople = (): React.JSX.Element => (
     fill="none"
     stroke="currentColor"
     strokeWidth="2"
-    className="w-[15px] h-[15px]"
+    className="w-3.75 h-3.75"
   >
     <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
     <circle cx="9" cy="7" r="4" />
@@ -275,7 +276,7 @@ export const IconCrown = (): React.JSX.Element => (
     fill="none"
     stroke="currentColor"
     strokeWidth="2"
-    className="w-[12px] h-[12px]"
+    className="w-3 h-3"
   >
     <path d="M2 20h20M4 20l2-8 6 4 6-4 2 8" />
     <circle cx="12" cy="6" r="2" />
@@ -290,7 +291,7 @@ export const IconMessageDm = (): React.JSX.Element => (
     fill="none"
     stroke="currentColor"
     strokeWidth="1.75"
-    className="w-[22px] h-[22px]"
+    className="w-5.5 h-5.5"
   >
     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
   </svg>
@@ -302,7 +303,7 @@ export const IconChevronDown = (): React.JSX.Element => (
     fill="none"
     stroke="currentColor"
     strokeWidth="2.5"
-    className="w-[13px] h-[13px]"
+    className="w-3.25 h-3.25"
   >
     <polyline points="6 9 12 15 18 9" />
   </svg>
@@ -327,7 +328,7 @@ export const IconServer = (): React.JSX.Element => (
     fill="none"
     stroke="currentColor"
     strokeWidth="2"
-    className="w-[22px] h-[22px]"
+    className="w-5.5 h-5.5"
   >
     <rect x="2" y="2" width="20" height="8" rx="2" ry="2" />
     <rect x="2" y="14" width="20" height="8" rx="2" ry="2" />
@@ -344,7 +345,7 @@ export const IconCheck = (): React.JSX.Element => (
     strokeWidth="2.5"
     strokeLinecap="round"
     strokeLinejoin="round"
-    className="w-[12px] h-[12px] inline"
+    className="w-3 h-3 inline"
   >
     <polyline points="20 6 9 17 4 12" />
   </svg>
@@ -358,7 +359,7 @@ export const IconDoubleCheck = (): React.JSX.Element => (
     strokeWidth="2.5"
     strokeLinecap="round"
     strokeLinejoin="round"
-    className="w-[14px] h-[14px] inline"
+    className="w-3.5 h-3.5 inline"
   >
     <path d="M17 6L8.5 14.5L5 11M22 6L13.5 14.5M10 11l-1 1" />
   </svg>

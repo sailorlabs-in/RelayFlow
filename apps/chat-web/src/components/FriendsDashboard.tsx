@@ -234,7 +234,7 @@ export const FriendsDashboard = ({
     return (
       <button
         onClick={() => handleSendRequest(targetUser)}
-        className="px-4 py-2 rounded-xl border-none cursor-pointer font-semibold text-white bg-[var(--accent-primary)] hover:opacity-95 transition-all duration-150 active-press"
+        className="px-4 py-2 rounded-xl border-none cursor-pointer font-semibold text-white bg-(--accent-primary) hover:opacity-95 transition-all duration-150 active-press"
       >
         Send Request
       </button>
@@ -243,22 +243,22 @@ export const FriendsDashboard = ({
 
   if (!user) {
     return (
-      <div className="flex-1 p-6 text-center text-[var(--text-muted)]">
+      <div className="flex-1 p-6 text-center text-theme-muted">
         Loading friends dashboard...
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full flex-1 bg-[var(--bg-chat)] rounded-2xl overflow-hidden animate-fade-in">
+    <div className="flex flex-col h-full flex-1 bg-theme-chat rounded-2xl overflow-hidden animate-fade-in">
       {/* Top Navigation Bar */}
-      <div className="flex items-center justify-between px-4 sm:px-6 py-4.5 border-b border-[var(--border-muted)] bg-[var(--bg-sidebar)]">
+      <div className="flex items-center justify-between px-4 sm:px-6 py-4.5 border-b border-theme bg-theme-sidebar">
         <div className="flex items-center gap-3 min-w-0 flex-1">
           {onMenuClick && (
             <button
               id="mobile-menu-btn"
               onClick={onMenuClick}
-              className="md:hidden flex items-center justify-center p-1.5 rounded-md text-[var(--text-muted)] hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)] cursor-pointer active-press focus:outline-none shrink-0"
+              className="md:hidden flex items-center justify-center p-1.5 rounded-md text-theme-muted hover:bg-theme-input hover:text-theme-primary cursor-pointer active-press focus:outline-none shrink-0"
               title="Open Navigation"
             >
               <svg
@@ -274,13 +274,13 @@ export const FriendsDashboard = ({
               </svg>
             </button>
           )}
-          <div className="text-[var(--text-primary)] flex shrink-0">
+          <div className="text-theme-primary flex shrink-0">
             <svg
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
               strokeWidth="2.5"
-              className="w-5 h-5 text-[var(--accent-primary)]"
+              className="w-5 h-5 text-(--accent-primary)"
             >
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
               <circle cx="9" cy="7" r="4" />
@@ -288,7 +288,7 @@ export const FriendsDashboard = ({
               <path d="M16 3.13a4 4 0 0 1 0 7.75" />
             </svg>
           </div>
-          <h2 className="text-[16px] font-bold text-[var(--text-primary)] mr-2 sm:mr-4 shrink-0">
+          <h2 className="text-[16px] font-bold text-theme-primary mr-2 sm:mr-4 shrink-0">
             Friends
           </h2>
 
@@ -320,16 +320,16 @@ export const FriendsDashboard = ({
                     ${
                       isActive
                         ? isAdd
-                          ? 'bg-[var(--accent-primary)] text-white shadow-sm'
-                          : 'bg-[var(--theme-btn-active)] text-[var(--theme-btn-active-text)] font-bold'
+                          ? 'bg-(--accent-primary) text-white shadow-sm'
+                          : 'bg-(--theme-btn-active) text-(--theme-btn-active-text) font-bold'
                         : isAdd
-                          ? 'bg-transparent text-[var(--accent-primary)] border border-[var(--accent-primary)] hover:bg-[rgba(56,189,248,0.1)]'
-                          : 'bg-transparent text-[var(--text-muted)] hover:bg-[var(--theme-btn-hover)] hover:text-[var(--text-primary)]'
+                          ? 'bg-transparent text-(--accent-primary) border border-(--accent-primary) hover:bg-[rgba(56,189,248,0.1)]'
+                          : 'bg-transparent text-theme-muted hover:bg-(--theme-btn-hover) hover:text-theme-primary'
                     }`}
                 >
                   {tab.label}
                   {tab.id === 'pending' && pendingCount > 0 && (
-                    <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-[var(--danger)] text-white text-[9.5px] font-bold">
+                    <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-(--danger) text-white text-[9.5px] font-bold">
                       {pendingCount}
                     </span>
                   )}
@@ -345,11 +345,11 @@ export const FriendsDashboard = ({
         {/* TAB: ONLINE */}
         {activeTab === 'online' && (
           <div className="space-y-2">
-            <h3 className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-3">
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-theme-muted mb-3">
               Online Friends ({onlineFriends.length})
             </h3>
             {onlineFriends.length === 0 ? (
-              <div className="py-24 text-center text-[13.5px] text-[var(--text-muted)] flex flex-col items-center gap-3 justify-center">
+              <div className="py-24 text-center text-[13.5px] text-theme-muted flex flex-col items-center gap-3 justify-center">
                 <svg
                   viewBox="0 0 24 24"
                   fill="none"
@@ -386,11 +386,11 @@ export const FriendsDashboard = ({
         {/* TAB: ALL */}
         {activeTab === 'all' && (
           <div className="space-y-2">
-            <h3 className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-3">
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-theme-muted mb-3">
               All Friends ({friends.length})
             </h3>
             {friends.length === 0 ? (
-              <div className="py-24 text-center text-[13.5px] text-[var(--text-muted)] flex flex-col items-center gap-3 justify-center">
+              <div className="py-24 text-center text-[13.5px] text-theme-muted flex flex-col items-center gap-3 justify-center">
                 <svg
                   viewBox="0 0 24 24"
                   fill="none"
@@ -432,11 +432,11 @@ export const FriendsDashboard = ({
           <div className="space-y-6">
             {/* Incoming Requests */}
             <div>
-              <h3 className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-3">
+              <h3 className="text-[11px] font-bold uppercase tracking-wider text-theme-muted mb-3">
                 Incoming Friend Requests ({incomingPending.length})
               </h3>
               {incomingPending.length === 0 ? (
-                <div className="py-6 px-4 rounded-xl border border-dashed border-[var(--glass-border)] text-center text-[12.5px] text-[var(--text-muted)] bg-[rgba(0,0,0,0.01)] dark:bg-[rgba(255,255,255,0.005)]">
+                <div className="py-6 px-4 rounded-xl border border-dashed border-glass text-center text-[12.5px] text-theme-muted bg-[rgba(0,0,0,0.01)] dark:bg-[rgba(255,255,255,0.005)]">
                   No pending incoming requests.
                 </div>
               ) : (
@@ -452,7 +452,7 @@ export const FriendsDashboard = ({
                   return (
                     <div
                       key={req.id}
-                      className="flex items-center justify-between p-3 rounded-xl bg-[var(--theme-btn)] border border-[var(--glass-border)] mb-2 animate-fade-in"
+                      className="flex items-center justify-between p-3 rounded-xl bg-(--theme-btn) border border-glass mb-2 animate-fade-in"
                     >
                       <div className="flex items-center gap-3">
                         <Avatar
@@ -465,10 +465,10 @@ export const FriendsDashboard = ({
                           size="md"
                         />
                         <div>
-                          <div className="font-semibold text-[13.5px] text-[var(--text-primary)]">
+                          <div className="font-semibold text-[13.5px] text-theme-primary">
                             {name}
                           </div>
-                          <div className="text-[11.5px] text-[var(--text-muted)]">
+                          <div className="text-[11.5px] text-theme-muted">
                             {requester.username && requester.displayName
                               ? `${requester.displayName} • `
                               : ''}
@@ -485,7 +485,7 @@ export const FriendsDashboard = ({
                         </button>
                         <button
                           onClick={() => handleDecline(req.id, 'declined')}
-                          className="px-3 py-1.5 rounded-lg border border-[var(--danger-border)] cursor-pointer font-semibold text-[12px] bg-[var(--danger-bg)] text-[var(--danger)] hover:bg-[var(--danger)] hover:text-white transition-all active-press"
+                          className="px-3 py-1.5 rounded-lg border border-(--danger-border) cursor-pointer font-semibold text-[12px] bg-(--danger-bg) text-(--danger) hover:bg-(--danger) hover:text-white transition-all active-press"
                         >
                           Decline
                         </button>
@@ -498,11 +498,11 @@ export const FriendsDashboard = ({
 
             {/* Outgoing Requests */}
             <div>
-              <h3 className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-3">
+              <h3 className="text-[11px] font-bold uppercase tracking-wider text-theme-muted mb-3">
                 Sent Friend Requests ({outgoingPending.length})
               </h3>
               {outgoingPending.length === 0 ? (
-                <div className="py-6 px-4 rounded-xl border border-dashed border-[var(--glass-border)] text-center text-[12.5px] text-[var(--text-muted)] bg-[rgba(0,0,0,0.01)] dark:bg-[rgba(255,255,255,0.005)]">
+                <div className="py-6 px-4 rounded-xl border border-dashed border-glass text-center text-[12.5px] text-theme-muted bg-[rgba(0,0,0,0.01)] dark:bg-[rgba(255,255,255,0.005)]">
                   No sent requests.
                 </div>
               ) : (
@@ -518,7 +518,7 @@ export const FriendsDashboard = ({
                   return (
                     <div
                       key={req.id}
-                      className="flex items-center justify-between p-3 rounded-xl bg-[var(--theme-btn)] border border-[var(--glass-border)] mb-2 animate-fade-in"
+                      className="flex items-center justify-between p-3 rounded-xl bg-(--theme-btn) border border-glass mb-2 animate-fade-in"
                     >
                       <div className="flex items-center gap-3">
                         <Avatar
@@ -531,10 +531,10 @@ export const FriendsDashboard = ({
                           size="md"
                         />
                         <div>
-                          <div className="font-semibold text-[13.5px] text-[var(--text-primary)]">
+                          <div className="font-semibold text-[13.5px] text-theme-primary">
                             {name}
                           </div>
-                          <div className="text-[11.5px] text-[var(--text-muted)]">
+                          <div className="text-[11.5px] text-theme-muted">
                             {addressee.username && addressee.displayName
                               ? `${addressee.displayName} • `
                               : ''}
@@ -544,7 +544,7 @@ export const FriendsDashboard = ({
                       </div>
                       <button
                         onClick={() => handleDecline(req.id, 'cancelled')}
-                        className="px-3 py-1.5 rounded-lg border border-[var(--glass-border)] cursor-pointer font-semibold text-[12.5px] text-[var(--text-muted)] hover:bg-[var(--danger-bg)] hover:text-[var(--danger)] hover:border-[var(--danger-border)] transition-all active-press"
+                        className="px-3 py-1.5 rounded-lg border border-glass cursor-pointer font-semibold text-[12.5px] text-theme-muted hover:bg-(--danger-bg) hover:text-(--danger) hover:border-(--danger-border) transition-all active-press"
                       >
                         Cancel Request
                       </button>
@@ -560,10 +560,10 @@ export const FriendsDashboard = ({
         {activeTab === 'add' && (
           <div className="space-y-6 max-w-xl animate-fade-in">
             <div>
-              <h3 className="text-[16px] font-bold text-[var(--text-primary)] mb-1">
+              <h3 className="text-[16px] font-bold text-theme-primary mb-1">
                 Add Friend
               </h3>
-              <p className="text-[12.5px] text-[var(--text-muted)]">
+              <p className="text-[12.5px] text-theme-muted">
                 You can add friends with their registered email address or
                 unique username. It's case-sensitive!
               </p>
@@ -575,7 +575,7 @@ export const FriendsDashboard = ({
             >
               <input
                 type="text"
-                className="input-base flex-1 rounded-xl px-4 py-3 text-[14px] bg-[var(--bg-input)] border-[1.5px] border-[var(--glass-border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[3px] focus:ring-[var(--accent-ring)]"
+                className="input-base flex-1 rounded-xl px-4 py-3 text-[14px] bg-theme-input border-[1.5px] border-glass text-theme-primary focus:outline-none focus:border-(--accent-primary) focus:ring-[3px] focus:ring-(--accent-ring)"
                 placeholder="Enter email or username (e.g. bob or bob@example.com)"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -584,24 +584,24 @@ export const FriendsDashboard = ({
               <button
                 type="submit"
                 disabled={searchLoading}
-                className="px-5 py-3 rounded-xl border-none cursor-pointer font-semibold text-white bg-[var(--accent-primary)] hover:opacity-90 disabled:opacity-50 transition-all duration-150 active-press"
+                className="px-5 py-3 rounded-xl border-none cursor-pointer font-semibold text-white bg-(--accent-primary) hover:opacity-90 disabled:opacity-50 transition-all duration-150 active-press"
               >
                 {searchLoading ? 'Searching...' : 'Search'}
               </button>
             </form>
 
             {searchError && (
-              <div className="p-3.5 rounded-xl border border-[var(--danger-border)] bg-[var(--danger-bg)] text-[var(--danger)] text-[13px] animate-fade-in">
+              <div className="p-3.5 rounded-xl border border-(--danger-border) bg-(--danger-bg) text-(--danger) text-[13px] animate-fade-in">
                 {searchError}
               </div>
             )}
 
             {foundUsers && foundUsers.length > 0 ? (
-              <div className="space-y-2.5 max-h-[400px] overflow-y-auto pr-1">
+              <div className="space-y-2.5 max-h-100 overflow-y-auto pr-1">
                 {foundUsers.map((foundUser) => (
                   <div
                     key={foundUser.id}
-                    className="p-4 rounded-xl border border-[var(--glass-border)] bg-[var(--theme-btn)] flex items-center justify-between animate-fade-in"
+                    className="p-4 rounded-xl border border-glass bg-(--theme-btn) flex items-center justify-between animate-fade-in"
                   >
                     <div className="flex items-center gap-3">
                       <Avatar
@@ -614,13 +614,13 @@ export const FriendsDashboard = ({
                         size="lg"
                       />
                       <div>
-                        <div className="font-bold text-[14.5px] text-[var(--text-primary)]">
+                        <div className="font-bold text-[14.5px] text-theme-primary">
                           {foundUser.username
                             ? `@${foundUser.username}`
                             : foundUser.displayName ||
                               foundUser.email.split('@')[0]}
                         </div>
-                        <div className="text-[12px] text-[var(--text-muted)] mt-0.5">
+                        <div className="text-[12px] text-theme-muted mt-0.5">
                           {foundUser.username && foundUser.displayName
                             ? `${foundUser.displayName} • `
                             : ''}
@@ -635,7 +635,7 @@ export const FriendsDashboard = ({
               </div>
             ) : (
               !searchLoading && (
-                <div className="py-12 text-center text-[13.5px] text-[var(--text-muted)] border border-dashed border-[var(--glass-border)] rounded-xl">
+                <div className="py-12 text-center text-[13.5px] text-theme-muted border border-dashed border-glass rounded-xl">
                   No users found.
                 </div>
               )
@@ -670,7 +670,7 @@ export const FriendsDashboard = ({
 
       {hoveredFriend && popoverPosition && (
         <div
-          className="fixed z-[9999] w-[260px] bg-[var(--glass-bg)] border-[1.5px] border-[var(--glass-border)] backdrop-blur-[20px] rounded-[16px] shadow-[var(--glass-shadow)] p-4 flex flex-col gap-3 animate-fade-in pointer-events-none text-left"
+          className="fixed z-9999 w-65 bg-(--glass-bg) border-[1.5px] border-glass backdrop-blur-[20px] rounded-2xl shadow-(--glass-shadow) p-4 flex flex-col gap-3 animate-fade-in pointer-events-none text-left"
           style={{
             top: `${popoverPosition.top}px`,
             left: `${popoverPosition.left}px`,
@@ -688,43 +688,43 @@ export const FriendsDashboard = ({
               size="md"
             />
             <div className="flex-1 min-w-0">
-              <h3 className="m-0 text-[14px] font-bold text-[var(--text-primary)] truncate">
+              <h3 className="m-0 text-[14px] font-bold text-theme-primary truncate">
                 {hoveredFriend.username
                   ? `@${hoveredFriend.username}`
                   : hoveredFriend.displayName ||
                     hoveredFriend.email.split('@')[0]}
               </h3>
-              <div className="text-[10.5px] text-[var(--text-muted)] mt-0.5 capitalize">
+              <div className="text-[10.5px] text-theme-muted mt-0.5 capitalize">
                 Friend
               </div>
             </div>
           </div>
 
-          <hr className="m-0 border-none h-[1px] bg-[var(--border-muted)]" />
+          <hr className="m-0 border-none h-px bg-(--border-muted)" />
 
           {/* Details */}
           <div className="flex flex-col gap-2.5 text-[12px]">
             <div>
-              <span className="text-[var(--text-muted)] font-bold block mb-0.5 uppercase tracking-wide text-[9.5px]">
+              <span className="text-theme-muted font-bold block mb-0.5 uppercase tracking-wide text-[9.5px]">
                 Username
               </span>
-              <span className="text-[var(--text-secondary)] font-medium font-mono">
+              <span className="text-theme-secondary font-medium font-mono">
                 {hoveredFriend.username ? `@${hoveredFriend.username}` : '@-'}
               </span>
             </div>
             <div>
-              <span className="text-[var(--text-muted)] font-bold block mb-0.5 uppercase tracking-wide text-[9.5px]">
+              <span className="text-theme-muted font-bold block mb-0.5 uppercase tracking-wide text-[9.5px]">
                 Email Address
               </span>
-              <span className="text-[var(--text-secondary)] font-medium break-all">
+              <span className="text-theme-secondary font-medium break-all">
                 {hoveredFriend.email || 'No email shared'}
               </span>
             </div>
             <div>
-              <span className="text-[var(--text-muted)] font-bold block mb-0.5 uppercase tracking-wide text-[9.5px]">
+              <span className="text-theme-muted font-bold block mb-0.5 uppercase tracking-wide text-[9.5px]">
                 Presence Status
               </span>
-              <span className="text-[var(--text-secondary)] font-medium flex items-center gap-1.5 capitalize">
+              <span className="text-theme-secondary font-medium flex items-center gap-1.5 capitalize">
                 <span
                   className="w-2 h-2 rounded-full inline-block animate-pulse"
                   style={{
@@ -774,7 +774,7 @@ const FriendRow = ({
 
   return (
     <div
-      className="group/friend flex items-center justify-between p-3 rounded-xl border border-transparent hover:bg-[var(--theme-btn-hover)] hover:border-[var(--glass-border)] transition-all duration-200 fade-in-list"
+      className="group/friend flex items-center justify-between p-3 rounded-xl border border-transparent hover:bg-(--theme-btn-hover) hover:border-glass transition-all duration-200 fade-in-list"
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
@@ -788,15 +788,15 @@ const FriendRow = ({
           size="md"
         />
         <div className="min-w-0">
-          <div className="font-semibold text-[13.5px] text-[var(--text-primary)] truncate flex items-center gap-1.5">
+          <div className="font-semibold text-[13.5px] text-theme-primary truncate flex items-center gap-1.5">
             <span>{name}</span>
             {friend.username && friend.displayName && (
-              <span className="text-[11.5px] font-normal text-[var(--text-muted)]">
+              <span className="text-[11.5px] font-normal text-theme-muted">
                 {friend.displayName}
               </span>
             )}
           </div>
-          <div className="text-[11.5px] text-[var(--text-muted)] truncate capitalize mt-0.5">
+          <div className="text-[11.5px] text-theme-muted truncate capitalize mt-0.5">
             {status === 'online'
               ? 'Active now'
               : status === 'away'
@@ -811,7 +811,7 @@ const FriendRow = ({
       <div className="flex gap-2">
         <button
           onClick={() => onChat(friend)}
-          className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer bg-[var(--theme-btn)] text-[var(--text-muted)] hover:bg-[var(--accent-primary)] hover:text-white border-none transition-all duration-200 active-press"
+          className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer bg-(--theme-btn) text-theme-muted hover:bg-(--accent-primary) hover:text-white border-none transition-all duration-200 active-press"
           title={`Message ${name}`}
         >
           <svg
@@ -819,14 +819,14 @@ const FriendRow = ({
             fill="none"
             stroke="currentColor"
             strokeWidth="2"
-            className="w-[15px] h-[15px]"
+            className="w-3.75 h-3.75"
           >
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
           </svg>
         </button>
         <button
           onClick={() => onRemove(friend.id, name)}
-          className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer bg-[var(--theme-btn)] text-[var(--text-muted)] hover:bg-[var(--danger-bg)] hover:text-[var(--danger)] border-none transition-all duration-200 active-press"
+          className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer bg-(--theme-btn) text-theme-muted hover:bg-(--danger-bg) hover:text-(--danger) border-none transition-all duration-200 active-press"
           title={`Remove ${name}`}
         >
           <svg
@@ -834,7 +834,7 @@ const FriendRow = ({
             fill="none"
             stroke="currentColor"
             strokeWidth="2"
-            className="w-[15px] h-[15px]"
+            className="w-3.75 h-3.75"
           >
             <polyline points="3 6 5 6 21 6" />
             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />

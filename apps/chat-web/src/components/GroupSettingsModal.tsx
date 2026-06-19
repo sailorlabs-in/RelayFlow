@@ -438,15 +438,15 @@ export const GroupSettingsModal = ({
 
   return (
     <div
-      className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-[rgba(4,6,12,0.65)] backdrop-blur-[4px]"
+      className="fixed inset-0 z-1100 flex items-center justify-center p-4 bg-[rgba(4,6,12,0.65)] backdrop-blur-xs"
       onClick={onClose}
     >
       <div
-        className="w-[440px] max-w-full bg-[var(--glass-bg)] border-[1.5px] border-[var(--glass-border)] backdrop-blur-[20px] rounded-[18px] shadow-[var(--glass-shadow)] overflow-hidden animate-slide-up"
+        className="w-110 max-w-full bg-(--glass-bg) border-[1.5px] border-glass backdrop-blur-[20px] rounded-[18px] shadow-(--glass-shadow) overflow-hidden animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-5 py-4 border-b border-[var(--border-muted)] flex items-center justify-between">
+        <div className="px-5 py-4 border-b border-theme flex items-center justify-between">
           <div>
             <h2
               onClick={() => {
@@ -456,18 +456,18 @@ export const GroupSettingsModal = ({
                   showToast.info('Advanced administrative settings unlocked.');
                 }
               }}
-              className="m-0 text-[18px] font-bold text-[var(--text-primary)] cursor-default select-none"
+              className="m-0 text-[18px] font-bold text-theme-primary cursor-default select-none"
             >
               Group Settings
             </h2>
-            <p className="m-1 text-[12.5px] text-[var(--text-muted)]">
+            <p className="m-1 text-[12.5px] text-theme-muted">
               Customize your server settings
             </p>
           </div>
           <button
             id="close-group-settings-modal"
             onClick={onClose}
-            className="bg-transparent border-none cursor-pointer text-[var(--text-muted)] p-1 rounded-md flex items-center active-press"
+            className="bg-transparent border-none cursor-pointer text-theme-muted p-1 rounded-md flex items-center active-press"
           >
             <IconX size={18} />
           </button>
@@ -475,13 +475,13 @@ export const GroupSettingsModal = ({
 
         {/* Tabs */}
         {canManageGroup && canManageRoles && (
-          <div className="px-5 border-b border-[var(--border-muted)] flex gap-4 bg-[rgba(0,0,0,0.02)]">
+          <div className="px-5 border-b border-theme flex gap-4 bg-[rgba(0,0,0,0.02)]">
             <button
               type="button"
               onClick={() => setActiveTab('overview')}
-              className={`py-2 px-1 text-xs font-bold uppercase tracking-wider border-b-2 border-transparent transition-all cursor-pointer bg-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)] ${
+              className={`py-2 px-1 text-xs font-bold uppercase tracking-wider border-b-2 border-transparent transition-all cursor-pointer bg-transparent text-theme-muted hover:text-theme-primary ${
                 activeTab === 'overview'
-                  ? '!border-[var(--accent-primary)] !text-[var(--accent-primary)]'
+                  ? 'border-(--accent-primary)! text-(--accent-primary)!'
                   : ''
               }`}
             >
@@ -490,9 +490,9 @@ export const GroupSettingsModal = ({
             <button
               type="button"
               onClick={() => setActiveTab('roles')}
-              className={`py-2 px-1 text-xs font-bold uppercase tracking-wider border-b-2 border-transparent transition-all cursor-pointer bg-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)] ${
+              className={`py-2 px-1 text-xs font-bold uppercase tracking-wider border-b-2 border-transparent transition-all cursor-pointer bg-transparent text-theme-muted hover:text-theme-primary ${
                 activeTab === 'roles'
-                  ? '!border-[var(--accent-primary)] !text-[var(--accent-primary)]'
+                  ? 'border-(--accent-primary)! text-(--accent-primary)!'
                   : ''
               }`}
             >
@@ -508,7 +508,7 @@ export const GroupSettingsModal = ({
             className="px-5 py-5 flex flex-col gap-4"
           >
             {/* Avatar Upload */}
-            <div className="flex items-center gap-4 p-3.5 rounded-xl border border-[var(--glass-border)] bg-[rgba(0,0,0,0.015)] dark:bg-[rgba(255,255,255,0.01)] shadow-sm mb-1 animate-fade-in">
+            <div className="flex items-center gap-4 p-3.5 rounded-xl border border-glass bg-[rgba(0,0,0,0.015)] dark:bg-[rgba(255,255,255,0.01)] shadow-sm mb-1 animate-fade-in">
               <div className="relative shrink-0">
                 <Avatar
                   letter={name[0]?.toUpperCase() || 'G'}
@@ -522,7 +522,7 @@ export const GroupSettingsModal = ({
                 )}
               </div>
               <div className="flex-1">
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-theme-muted mb-2">
                   Group Avatar
                 </label>
                 <div className="flex gap-2">
@@ -530,7 +530,7 @@ export const GroupSettingsModal = ({
                     type="button"
                     disabled={uploading}
                     onClick={() => fileInputRef.current?.click()}
-                    className="px-3 py-1.5 rounded-[8px] text-[11.5px] font-semibold cursor-pointer border-none bg-[var(--theme-btn-active)] text-[var(--theme-btn-active-text)] hover:opacity-95 disabled:opacity-50 active-press"
+                    className="px-3 py-1.5 rounded-lg text-[11.5px] font-semibold cursor-pointer border-none bg-(--theme-btn-active) text-(--theme-btn-active-text) hover:opacity-95 disabled:opacity-50 active-press"
                   >
                     Upload Image
                   </button>
@@ -548,7 +548,7 @@ export const GroupSettingsModal = ({
                         setAvatarUrl('');
                         setAvatarThumbnailUrl('');
                       }}
-                      className="px-3 py-1.5 rounded-[8px] text-[11.5px] font-semibold cursor-pointer border border-[var(--danger-border)] bg-[var(--danger-bg)] text-[var(--danger)] hover:bg-[var(--danger)] hover:text-white transition-all active-press"
+                      className="px-3 py-1.5 rounded-lg text-[11.5px] font-semibold cursor-pointer border border-(--danger-border) bg-(--danger-bg) text-(--danger) hover:bg-(--danger) hover:text-white transition-all active-press"
                     >
                       Remove
                     </button>
@@ -567,9 +567,9 @@ export const GroupSettingsModal = ({
             <div>
               <label
                 htmlFor="group-name-input"
-                className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2"
+                className="block text-[11px] font-bold uppercase tracking-wider text-theme-muted mb-2"
               >
-                Group Name <span className="text-[var(--danger)]">*</span>
+                Group Name <span className="text-(--danger)">*</span>
               </label>
               <input
                 id="group-name-input"
@@ -579,14 +579,14 @@ export const GroupSettingsModal = ({
                 placeholder="e.g. My Awesome Server"
                 maxLength={100}
                 required
-                className="input-base w-full px-3.5 py-2.5 rounded-[10px] bg-[var(--bg-input)] border-[1.5px] border-[var(--glass-border)] text-[var(--text-primary)] text-sm box-border focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[2.5px] focus:ring-[var(--accent-ring)]"
+                className="input-base w-full px-3.5 py-2.5 rounded-[10px] bg-theme-input border-[1.5px] border-glass text-theme-primary text-sm box-border focus:outline-none focus:border-(--accent-primary) focus:ring-[2.5px] focus:ring-(--accent-ring)"
               />
             </div>
 
             <div>
               <label
                 htmlFor="group-desc-input"
-                className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2"
+                className="block text-[11px] font-bold uppercase tracking-wider text-theme-muted mb-2"
               >
                 Description
               </label>
@@ -597,16 +597,16 @@ export const GroupSettingsModal = ({
                 placeholder="A brief description for your group..."
                 maxLength={300}
                 rows={3}
-                className="input-base w-full px-3.5 py-2.5 rounded-[10px] bg-[var(--bg-input)] border-[1.5px] border-[var(--glass-border)] text-[var(--text-primary)] text-sm box-border resize-none font-sans focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[2.5px] focus:ring-[var(--accent-ring)]"
+                className="input-base w-full px-3.5 py-2.5 rounded-[10px] bg-theme-input border-[1.5px] border-glass text-theme-primary text-sm box-border resize-none font-sans focus:outline-none focus:border-(--accent-primary) focus:ring-[2.5px] focus:ring-(--accent-ring)"
               />
             </div>
 
             {activeGroup?.ownerId === user?.id && titleClicks >= 5 && (
-              <div className="mt-6 pt-5 border-t border-[var(--border-muted)] flex flex-col gap-3">
-                <h4 className="m-0 text-xs font-bold text-[var(--danger)] uppercase tracking-wider">
+              <div className="mt-6 pt-5 border-t border-theme flex flex-col gap-3">
+                <h4 className="m-0 text-xs font-bold text-(--danger) uppercase tracking-wider">
                   Danger Zone
                 </h4>
-                <p className="m-0 text-[11px] leading-relaxed text-[var(--text-secondary)]">
+                <p className="m-0 text-[11px] leading-relaxed text-theme-secondary">
                   Transfer ownership of this server to another member. You will
                   lose owner permissions and control.
                 </p>
@@ -614,7 +614,7 @@ export const GroupSettingsModal = ({
                   <select
                     value={transferTargetUserId}
                     onChange={(e) => setTransferTargetUserId(e.target.value)}
-                    className="flex-1 input-base px-3 py-2 rounded-lg bg-[var(--bg-input)] border border-[var(--glass-border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)]"
+                    className="flex-1 input-base px-3 py-2 rounded-lg bg-theme-input border border-glass text-sm text-theme-primary focus:outline-none focus:border-(--accent-primary)"
                   >
                     <option value="">Select a member...</option>
                     {(activeGroup?.members || [])
@@ -635,7 +635,7 @@ export const GroupSettingsModal = ({
                     type="button"
                     disabled={!transferTargetUserId}
                     onClick={() => setTransferModalStep(1)}
-                    className="px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer border border-[var(--danger-border)] bg-[var(--danger-bg)] text-[var(--danger)] hover:bg-[var(--danger)] hover:text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed active-press"
+                    className="px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer border border-(--danger-border) bg-(--danger-bg) text-(--danger) hover:bg-(--danger) hover:text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed active-press"
                   >
                     Transfer
                   </button>
@@ -646,13 +646,13 @@ export const GroupSettingsModal = ({
         ) : (
           <div className="px-5 py-5 flex flex-col gap-5 max-h-[60vh] overflow-y-auto">
             {/* Create/Edit Form */}
-            <div className="p-3.5 rounded-xl border-[1.5px] border-[var(--glass-border)] bg-[rgba(255,255,255,0.02)] flex flex-col gap-3">
-              <span className="text-[12px] font-bold text-[var(--text-primary)]">
+            <div className="p-3.5 rounded-xl border-[1.5px] border-glass bg-[rgba(255,255,255,0.02)] flex flex-col gap-3">
+              <span className="text-[12px] font-bold text-theme-primary">
                 {editingRoleId ? 'Edit Role' : 'Create Role'}
               </span>
               <div className="flex gap-3 items-end">
                 <div className="flex-1">
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-1.5">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-theme-muted mb-1.5">
                     Role Name
                   </label>
                   <input
@@ -661,14 +661,14 @@ export const GroupSettingsModal = ({
                     onChange={(e) => setRoleName(e.target.value)}
                     placeholder="e.g. Staff"
                     maxLength={32}
-                    className="input-base w-full px-3 py-2 rounded-[8px] bg-[var(--bg-input)] border-[1.5px] border-[var(--glass-border)] text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--accent-primary)]"
+                    className="input-base w-full px-3 py-2 rounded-lg bg-theme-input border-[1.5px] border-glass text-theme-primary text-sm focus:outline-none focus:border-(--accent-primary)"
                   />
                 </div>
-                <div className="w-[80px]">
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-1.5">
+                <div className="w-20">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-theme-muted mb-1.5">
                     Color
                   </label>
-                  <div className="relative flex items-center h-[38px] rounded-[8px] border-[1.5px] border-[var(--glass-border)] bg-[var(--bg-input)] overflow-hidden">
+                  <div className="relative flex items-center h-9.5 rounded-lg border-[1.5px] border-glass bg-theme-input overflow-hidden">
                     <input
                       type="color"
                       value={roleColor}
@@ -679,16 +679,16 @@ export const GroupSettingsModal = ({
                 </div>
               </div>
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-1.5">
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-theme-muted mb-1.5">
                   Permissions
                 </label>
-                <div className="grid grid-cols-2 gap-2 max-h-[140px] overflow-y-auto pr-1 border border-[var(--glass-border)] p-2.5 rounded-lg bg-[var(--bg-input)]">
+                <div className="grid grid-cols-2 gap-2 max-h-35 overflow-y-auto pr-1 border border-glass p-2.5 rounded-lg bg-theme-input">
                   {visiblePermissions.map((perm) => {
                     const isChecked = selectedPermissions.includes(perm.value);
                     return (
                       <label
                         key={perm.value}
-                        className="flex items-center gap-2 text-xs text-[var(--text-secondary)] cursor-pointer hover:text-[var(--text-primary)] select-none"
+                        className="flex items-center gap-2 text-xs text-theme-secondary cursor-pointer hover:text-theme-primary select-none"
                       >
                         <input
                           type="checkbox"
@@ -707,7 +707,7 @@ export const GroupSettingsModal = ({
                               );
                             }
                           }}
-                          className="w-3.5 h-3.5 accent-[var(--accent-primary)] cursor-pointer"
+                          className="w-3.5 h-3.5 accent-(--accent-primary) cursor-pointer"
                         />
                         {perm.label}
                       </label>
@@ -725,7 +725,7 @@ export const GroupSettingsModal = ({
                       setRoleColor('#7289da');
                       setSelectedPermissions([]);
                     }}
-                    className="px-3 py-2 rounded-[8px] border-[1.5px] border-[var(--glass-border)] bg-transparent text-[var(--text-secondary)] text-xs font-semibold cursor-pointer active-press"
+                    className="px-3 py-2 rounded-lg border-[1.5px] border-glass bg-transparent text-theme-secondary text-xs font-semibold cursor-pointer active-press"
                   >
                     Cancel
                   </button>
@@ -734,7 +734,7 @@ export const GroupSettingsModal = ({
                   type="button"
                   onClick={editingRoleId ? handleUpdateRole : handleCreateRole}
                   disabled={isRoleLoading || !roleName.trim()}
-                  className="btn-send px-4 py-2 rounded-[8px] border-none text-xs font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed active-press"
+                  className="btn-send px-4 py-2 rounded-lg border-none text-xs font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed active-press"
                 >
                   {isRoleLoading
                     ? 'Saving...'
@@ -747,11 +747,11 @@ export const GroupSettingsModal = ({
 
             {/* List of Roles */}
             <div>
-              <span className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2.5">
+              <span className="block text-[10px] font-bold uppercase tracking-wider text-theme-muted mb-2.5">
                 Roles
               </span>
               {roles.length === 0 ? (
-                <p className="m-0 text-xs text-[var(--text-muted)] italic">
+                <p className="m-0 text-xs text-theme-muted italic">
                   No roles exist. Create one above to get started.
                 </p>
               ) : (
@@ -759,7 +759,7 @@ export const GroupSettingsModal = ({
                   {roles.map((role, idx) => (
                     <div
                       key={role.id}
-                      className="flex items-center justify-between p-2.5 rounded-[10px] border border-[var(--glass-border)] bg-[rgba(255,255,255,0.01)] hover:bg-[rgba(255,255,255,0.02)] transition-all"
+                      className="flex items-center justify-between p-2.5 rounded-[10px] border border-glass bg-[rgba(255,255,255,0.01)] hover:bg-[rgba(255,255,255,0.02)] transition-all"
                     >
                       <div className="flex items-center gap-3">
                         <div
@@ -780,7 +780,7 @@ export const GroupSettingsModal = ({
                               type="button"
                               disabled={idx === 0 || isRoleLoading}
                               onClick={() => handleReorderRole(role.id, 'up')}
-                              className="p-1.5 rounded-[6px] cursor-pointer border border-[var(--glass-border)] bg-[rgba(255,255,255,0.03)] text-[var(--text-secondary)] hover:bg-[rgba(255,255,255,0.06)] disabled:opacity-30 disabled:cursor-not-allowed active-press flex items-center justify-center"
+                              className="p-1.5 rounded-md cursor-pointer border border-glass bg-[rgba(255,255,255,0.03)] text-theme-secondary hover:bg-[rgba(255,255,255,0.06)] disabled:opacity-30 disabled:cursor-not-allowed active-press flex items-center justify-center"
                               title="Move Role Up (Higher Priority)"
                             >
                               <IconArrowUp size={14} />
@@ -791,7 +791,7 @@ export const GroupSettingsModal = ({
                                 idx === roles.length - 1 || isRoleLoading
                               }
                               onClick={() => handleReorderRole(role.id, 'down')}
-                              className="p-1.5 rounded-[6px] cursor-pointer border border-[var(--glass-border)] bg-[rgba(255,255,255,0.03)] text-[var(--text-secondary)] hover:bg-[rgba(255,255,255,0.06)] disabled:opacity-30 disabled:cursor-not-allowed active-press flex items-center justify-center"
+                              className="p-1.5 rounded-md cursor-pointer border border-glass bg-[rgba(255,255,255,0.03)] text-theme-secondary hover:bg-[rgba(255,255,255,0.06)] disabled:opacity-30 disabled:cursor-not-allowed active-press flex items-center justify-center"
                               title="Move Role Down (Lower Priority)"
                             >
                               <IconArrowDown size={14} />
@@ -806,14 +806,14 @@ export const GroupSettingsModal = ({
                             <button
                               type="button"
                               onClick={() => handleStartEdit(role)}
-                              className="px-2.5 py-1.5 rounded-[6px] text-[11px] font-bold cursor-pointer border border-[var(--glass-border)] bg-[rgba(255,255,255,0.03)] text-[var(--text-secondary)] hover:bg-[rgba(255,255,255,0.06)] active-press"
+                              className="px-2.5 py-1.5 rounded-md text-[11px] font-bold cursor-pointer border border-glass bg-[rgba(255,255,255,0.03)] text-theme-secondary hover:bg-[rgba(255,255,255,0.06)] active-press"
                             >
                               Edit
                             </button>
                             <button
                               type="button"
                               onClick={() => handleDeleteRole(role.id)}
-                              className="px-2.5 py-1.5 rounded-[6px] text-[11px] font-bold cursor-pointer border border-[var(--danger-border)] bg-[var(--danger-bg)] text-[var(--danger)] hover:bg-[var(--danger)] hover:text-white transition-all active-press"
+                              className="px-2.5 py-1.5 rounded-md text-[11px] font-bold cursor-pointer border border-(--danger-border) bg-(--danger-bg) text-(--danger) hover:bg-(--danger) hover:text-white transition-all active-press"
                             >
                               Delete
                             </button>
@@ -834,7 +834,7 @@ export const GroupSettingsModal = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 rounded-[10px] border-[1.5px] border-[var(--glass-border)] bg-transparent text-[var(--text-secondary)] text-sm font-semibold cursor-pointer active-press"
+              className="px-5 py-2.5 rounded-[10px] border-[1.5px] border-glass bg-transparent text-theme-secondary text-sm font-semibold cursor-pointer active-press"
             >
               Cancel
             </button>
@@ -853,7 +853,7 @@ export const GroupSettingsModal = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 rounded-[10px] border-[1.5px] border-[var(--glass-border)] bg-transparent text-[var(--text-secondary)] text-sm font-semibold cursor-pointer active-press"
+              className="px-5 py-2.5 rounded-[10px] border-[1.5px] border-glass bg-transparent text-theme-secondary text-sm font-semibold cursor-pointer active-press"
             >
               Close
             </button>
@@ -861,18 +861,18 @@ export const GroupSettingsModal = ({
         )}
 
         {transferModalStep !== null && (
-          <div className="fixed inset-0 z-[1200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in">
-            <div className="w-[400px] max-w-full bg-[var(--glass-bg)] border-[1.5px] border-[var(--glass-border)] rounded-[18px] p-6 shadow-2xl animate-scale-in flex flex-col gap-4 text-center">
-              <div className="w-12 h-12 rounded-full bg-[var(--danger-bg)] text-[var(--danger)] flex items-center justify-center mx-auto text-xl font-bold animate-pulse">
+          <div className="fixed inset-0 z-1200 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in">
+            <div className="w-100 max-w-full bg-(--glass-bg) border-[1.5px] border-glass rounded-[18px] p-6 shadow-2xl animate-scale-in flex flex-col gap-4 text-center">
+              <div className="w-12 h-12 rounded-full bg-(--danger-bg) text-(--danger) flex items-center justify-center mx-auto text-xl font-bold animate-pulse">
                 ⚠️
               </div>
 
               {transferModalStep === 1 && (
                 <>
-                  <h3 className="m-0 text-base font-bold text-[var(--text-primary)]">
+                  <h3 className="m-0 text-base font-bold text-theme-primary">
                     Transfer Ownership — Step 1 of 3
                   </h3>
-                  <p className="m-0 text-sm leading-relaxed text-[var(--text-secondary)]">
+                  <p className="m-0 text-sm leading-relaxed text-theme-secondary">
                     Are you absolutely sure you want to transfer ownership of{' '}
                     <strong>{group.name}</strong>? This is a critical action.
                   </p>
@@ -880,14 +880,14 @@ export const GroupSettingsModal = ({
                     <button
                       type="button"
                       onClick={() => setTransferModalStep(null)}
-                      className="flex-1 px-4 py-2.5 rounded-lg border border-[var(--glass-border)] bg-transparent text-[var(--text-secondary)] text-sm font-semibold cursor-pointer active-press"
+                      className="flex-1 px-4 py-2.5 rounded-lg border border-glass bg-transparent text-theme-secondary text-sm font-semibold cursor-pointer active-press"
                     >
                       Cancel
                     </button>
                     <button
                       type="button"
                       onClick={() => setTransferModalStep(2)}
-                      className="flex-1 px-4 py-2.5 rounded-lg border-none bg-[var(--danger)] text-white text-sm font-semibold cursor-pointer active-press"
+                      className="flex-1 px-4 py-2.5 rounded-lg border-none bg-(--danger) text-white text-sm font-semibold cursor-pointer active-press"
                     >
                       Continue
                     </button>
@@ -897,10 +897,10 @@ export const GroupSettingsModal = ({
 
               {transferModalStep === 2 && (
                 <>
-                  <h3 className="m-0 text-base font-bold text-[var(--text-primary)]">
+                  <h3 className="m-0 text-base font-bold text-theme-primary">
                     Confirm Transfer — Step 2 of 3
                   </h3>
-                  <p className="m-0 text-sm leading-relaxed text-[var(--text-secondary)]">
+                  <p className="m-0 text-sm leading-relaxed text-theme-secondary">
                     By transferring ownership, you will lose owner privileges.
                     You will no longer be able to delete this server or manage
                     its administrative settings. You will become a regular
@@ -910,14 +910,14 @@ export const GroupSettingsModal = ({
                     <button
                       type="button"
                       onClick={() => setTransferModalStep(1)}
-                      className="flex-1 px-4 py-2.5 rounded-lg border border-[var(--glass-border)] bg-transparent text-[var(--text-secondary)] text-sm font-semibold cursor-pointer active-press"
+                      className="flex-1 px-4 py-2.5 rounded-lg border border-glass bg-transparent text-theme-secondary text-sm font-semibold cursor-pointer active-press"
                     >
                       Back
                     </button>
                     <button
                       type="button"
                       onClick={() => setTransferModalStep(3)}
-                      className="flex-1 px-4 py-2.5 rounded-lg border-none bg-[var(--danger)] text-white text-sm font-semibold cursor-pointer active-press"
+                      className="flex-1 px-4 py-2.5 rounded-lg border-none bg-(--danger) text-white text-sm font-semibold cursor-pointer active-press"
                     >
                       I Agree
                     </button>
@@ -927,10 +927,10 @@ export const GroupSettingsModal = ({
 
               {transferModalStep === 3 && (
                 <>
-                  <h3 className="m-0 text-base font-bold text-[var(--text-primary)]">
+                  <h3 className="m-0 text-base font-bold text-theme-primary">
                     Final Step — Step 3 of 3
                   </h3>
-                  <p className="m-0 text-sm leading-relaxed text-[var(--text-secondary)]">
+                  <p className="m-0 text-sm leading-relaxed text-theme-secondary">
                     A confirmation link will be sent to the selected member's
                     registered email address. The ownership transfer will be
                     finalized ONLY once they accept it.
@@ -939,14 +939,14 @@ export const GroupSettingsModal = ({
                     <button
                       type="button"
                       onClick={() => setTransferModalStep(2)}
-                      className="flex-1 px-4 py-2.5 rounded-lg border border-[var(--glass-border)] bg-transparent text-[var(--text-secondary)] text-sm font-semibold cursor-pointer active-press"
+                      className="flex-1 px-4 py-2.5 rounded-lg border border-glass bg-transparent text-theme-secondary text-sm font-semibold cursor-pointer active-press"
                     >
                       Back
                     </button>
                     <button
                       type="button"
                       onClick={() => handleConfirmOwnershipTransfer()}
-                      className="flex-1 px-4 py-2.5 rounded-lg border-none bg-[var(--accent-primary)] text-white text-sm font-semibold cursor-pointer active-press"
+                      className="flex-1 px-4 py-2.5 rounded-lg border-none bg-(--accent-primary) text-white text-sm font-semibold cursor-pointer active-press"
                     >
                       Send Request Mail
                     </button>

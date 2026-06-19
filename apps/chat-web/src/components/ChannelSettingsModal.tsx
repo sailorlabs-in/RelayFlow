@@ -132,30 +132,28 @@ export const ChannelSettingsModal = ({
 
   return (
     <div
-      className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-[rgba(4,6,12,0.65)] backdrop-blur-[4px]"
+      className="fixed inset-0 z-1100 flex items-center justify-center p-4 bg-[rgba(4,6,12,0.65)] backdrop-blur-xs"
       onClick={onClose}
     >
       <div
-        className="w-[440px] max-w-full bg-[var(--glass-bg)] border-[1.5px] border-[var(--glass-border)] backdrop-blur-[20px] rounded-[18px] shadow-[var(--glass-shadow)] overflow-hidden animate-slide-up"
+        className="w-110 max-w-full bg-(--glass-bg) border-[1.5px] border-glass backdrop-blur-[20px] rounded-[18px] shadow-(--glass-shadow) overflow-hidden animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-5 py-4 border-b border-[var(--border-muted)] flex items-center justify-between">
+        <div className="px-5 py-4 border-b border-theme flex items-center justify-between">
           <div>
-            <h2 className="m-0 text-[18px] font-bold text-[var(--text-primary)]">
+            <h2 className="m-0 text-[18px] font-bold text-theme-primary">
               Channel Settings
             </h2>
-            <p className="m-1 text-[12.5px] text-[var(--text-muted)]">
+            <p className="m-1 text-[12.5px] text-theme-muted">
               Edit or remove{' '}
-              <strong className="text-[var(--text-secondary)]">
-                #{channel.name}
-              </strong>
+              <strong className="text-theme-secondary">#{channel.name}</strong>
             </p>
           </div>
           <button
             id="close-channel-settings-modal"
             onClick={onClose}
-            className="bg-transparent border-none cursor-pointer text-[var(--text-muted)] p-1 rounded-md flex items-center active-press"
+            className="bg-transparent border-none cursor-pointer text-theme-muted p-1 rounded-md flex items-center active-press"
           >
             <IconX size={18} />
           </button>
@@ -169,13 +167,13 @@ export const ChannelSettingsModal = ({
           <div>
             <label
               htmlFor="channel-name-input"
-              className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2"
+              className="block text-[11px] font-bold uppercase tracking-wider text-theme-muted mb-2"
             >
-              Channel Name <span className="text-[var(--danger)]">*</span>
+              Channel Name <span className="text-(--danger)">*</span>
             </label>
 
             <div className="relative flex items-center">
-              <span className="absolute left-3 text-[var(--text-muted)] pointer-events-none flex items-center">
+              <span className="absolute left-3 text-theme-muted pointer-events-none flex items-center">
                 <IconHash />
               </span>
               <input
@@ -187,20 +185,20 @@ export const ChannelSettingsModal = ({
                 maxLength={80}
                 required
                 disabled={channel.name === 'general'}
-                className="input-base w-full py-2.5 pl-9 pr-3.5 rounded-[10px] bg-[var(--bg-input)] border-[1.5px] border-[var(--glass-border)] text-[var(--text-primary)] text-sm box-border font-mono focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[2.5px] focus:ring-[var(--accent-ring)] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="input-base w-full py-2.5 pl-9 pr-3.5 rounded-[10px] bg-theme-input border-[1.5px] border-glass text-theme-primary text-sm box-border font-mono focus:outline-none focus:border-(--accent-primary) focus:ring-[2.5px] focus:ring-(--accent-ring) disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
           </div>
 
           {/* Private Channel Toggle */}
           {channel.name !== 'general' && (
-            <div className="p-3.5 rounded-xl border-[1.5px] border-[var(--glass-border)] bg-[rgba(255,255,255,0.02)] flex flex-col gap-3">
+            <div className="p-3.5 rounded-xl border-[1.5px] border-glass bg-[rgba(255,255,255,0.02)] flex flex-col gap-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="text-[13px] font-bold text-[var(--text-primary)]">
+                  <span className="text-[13px] font-bold text-theme-primary">
                     Private Channel
                   </span>
-                  <p className="m-0 mt-0.5 text-[11px] text-[var(--text-muted)]">
+                  <p className="m-0 mt-0.5 text-[11px] text-theme-muted">
                     Only selected roles will be able to view this channel
                   </p>
                 </div>
@@ -211,24 +209,24 @@ export const ChannelSettingsModal = ({
                     onChange={(e) => setIsPrivate(e.target.checked)}
                     className="sr-only peer"
                   />
-                  <div className="w-9 h-5 bg-[var(--bg-input)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--accent-primary)]"></div>
+                  <div className="w-9 h-5 bg-theme-input peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-(--accent-primary)"></div>
                 </label>
               </div>
 
               {isPrivate && (
-                <div className="flex flex-col gap-4 mt-2 border-t border-[var(--border-muted)] pt-3">
+                <div className="flex flex-col gap-4 mt-2 border-t border-theme pt-3">
                   {/* Read Access Roles */}
                   <div>
-                    <span className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] mb-2">
+                    <span className="block text-[11px] font-bold uppercase tracking-wider text-theme-secondary mb-2">
                       Who can read / view
                     </span>
                     {roles.length === 0 ? (
-                      <p className="m-0 text-xs text-[var(--text-muted)] italic">
+                      <p className="m-0 text-xs text-theme-muted italic">
                         No custom roles exist. Create roles in Server Settings
                         first.
                       </p>
                     ) : (
-                      <div className="flex flex-col gap-2 max-h-[100px] overflow-y-auto pr-1">
+                      <div className="flex flex-col gap-2 max-h-25 overflow-y-auto pr-1">
                         {roles.map((role) => (
                           <label
                             key={role.id}
@@ -255,11 +253,11 @@ export const ChannelSettingsModal = ({
                                   );
                                 }
                               }}
-                              className="rounded border-[var(--glass-border)] text-[var(--accent-primary)] focus:ring-[var(--accent-primary)]"
+                              className="rounded border-glass text-(--accent-primary) focus:ring-(--accent-primary)"
                             />
                             <span
                               style={{ color: role.color }}
-                              className="font-semibold text-[var(--text-primary)]"
+                              className="font-semibold text-theme-primary"
                             >
                               {role.name}
                             </span>
@@ -270,17 +268,17 @@ export const ChannelSettingsModal = ({
                   </div>
 
                   {/* Write Access Roles */}
-                  <div className="border-t border-[var(--border-muted)] pt-3">
-                    <span className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] mb-2">
+                  <div className="border-t border-theme pt-3">
+                    <span className="block text-[11px] font-bold uppercase tracking-wider text-theme-secondary mb-2">
                       Who can message / write
                     </span>
                     {roles.length === 0 ? (
-                      <p className="m-0 text-xs text-[var(--text-muted)] italic">
+                      <p className="m-0 text-xs text-theme-muted italic">
                         No custom roles exist. Create roles in Server Settings
                         first.
                       </p>
                     ) : (
-                      <div className="flex flex-col gap-2 max-h-[100px] overflow-y-auto pr-1">
+                      <div className="flex flex-col gap-2 max-h-25 overflow-y-auto pr-1">
                         {roles.map((role) => (
                           <label
                             key={role.id}
@@ -298,11 +296,11 @@ export const ChannelSettingsModal = ({
                                   );
                                 }
                               }}
-                              className="rounded border-[var(--glass-border)] text-[var(--accent-primary)] focus:ring-[var(--accent-primary)]"
+                              className="rounded border-glass text-(--accent-primary) focus:ring-(--accent-primary)"
                             />
                             <span
                               style={{ color: role.color }}
-                              className="font-semibold text-[var(--text-primary)]"
+                              className="font-semibold text-theme-primary"
                             >
                               {role.name}
                             </span>
@@ -313,8 +311,8 @@ export const ChannelSettingsModal = ({
                   </div>
 
                   {/* Hide Channel From */}
-                  <div className="border-t border-[var(--border-muted)] pt-3">
-                    <span className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] mb-2">
+                  <div className="border-t border-theme pt-3">
+                    <span className="block text-[11px] font-bold uppercase tracking-wider text-theme-secondary mb-2">
                       Hide channel from
                     </span>
                     <div className="mb-2">
@@ -323,15 +321,15 @@ export const ChannelSettingsModal = ({
                         placeholder="Search members..."
                         value={memberSearchQuery}
                         onChange={(e) => setMemberSearchQuery(e.target.value)}
-                        className="input-base w-full py-1.5 px-3 rounded-[8px] bg-[var(--bg-input)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs box-border focus:outline-none focus:border-[var(--accent-primary)]"
+                        className="input-base w-full py-1.5 px-3 rounded-lg bg-theme-input border border-glass text-theme-primary text-xs box-border focus:outline-none focus:border-(--accent-primary)"
                       />
                     </div>
                     {group?.members.length === 0 ? (
-                      <p className="m-0 text-xs text-[var(--text-muted)] italic">
+                      <p className="m-0 text-xs text-theme-muted italic">
                         No members exist in this server.
                       </p>
                     ) : (
-                      <div className="flex flex-col gap-2 max-h-[100px] overflow-y-auto pr-1">
+                      <div className="flex flex-col gap-2 max-h-25 overflow-y-auto pr-1">
                         {group?.members
                           .filter((m) => {
                             const name =
@@ -374,9 +372,9 @@ export const ChannelSettingsModal = ({
                                       );
                                     }
                                   }}
-                                  className="rounded border-[var(--glass-border)] text-[var(--accent-primary)] focus:ring-[var(--accent-primary)]"
+                                  className="rounded border-glass text-(--accent-primary) focus:ring-(--accent-primary)"
                                 />
-                                <span className="text-[var(--text-primary)] truncate">
+                                <span className="text-theme-primary truncate">
                                   {name}
                                 </span>
                               </label>
@@ -392,12 +390,12 @@ export const ChannelSettingsModal = ({
 
           {/* Delete Area */}
           {channel.name !== 'general' && (
-            <div className="p-3.5 rounded-xl border-[1.5px] border-dashed border-[var(--danger)] bg-[var(--danger-bg)] flex items-center justify-between gap-3">
+            <div className="p-3.5 rounded-xl border-[1.5px] border-dashed border-(--danger) bg-(--danger-bg) flex items-center justify-between gap-3">
               <div>
-                <div className="text-[13px] font-bold text-[var(--danger)]">
+                <div className="text-[13px] font-bold text-(--danger)">
                   Delete Channel
                 </div>
-                <div className="text-[11px] text-[var(--text-muted)] mt-0.5">
+                <div className="text-[11px] text-theme-muted mt-0.5">
                   This action is permanent.
                 </div>
               </div>
@@ -406,7 +404,7 @@ export const ChannelSettingsModal = ({
                 type="button"
                 onClick={handleDelete}
                 disabled={isDeleting}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border-none bg-[var(--danger)] text-white text-[12.5px] font-semibold cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 shadow-[0_2px_8px_rgba(239, 68, 68, 0.25)] hover:brightness-105 transition-all active-press"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border-none bg-(--danger) text-white text-[12.5px] font-semibold cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 shadow-[0_2px_8px_rgba(239, 68, 68, 0.25)] hover:brightness-105 transition-all active-press"
               >
                 <IconTrash />
                 <span>{isDeleting ? 'Deleting…' : 'Delete'}</span>
@@ -420,7 +418,7 @@ export const ChannelSettingsModal = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2.5 rounded-[10px] border-[1.5px] border-[var(--glass-border)] bg-transparent text-[var(--text-secondary)] text-sm font-semibold cursor-pointer active-press"
+            className="px-5 py-2.5 rounded-[10px] border-[1.5px] border-glass bg-transparent text-theme-secondary text-sm font-semibold cursor-pointer active-press"
           >
             Cancel
           </button>
