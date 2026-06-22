@@ -19,6 +19,7 @@ export interface User {
   notificationsFriendRequestEnabled?: boolean;
   isTwoFactorEnabled?: boolean;
   twoFactorOnlyNewDevice?: boolean;
+  loggedInDevices?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -105,7 +106,10 @@ export const loginUser = createAsyncThunk(
 // Async Thunk for Verifying Email OTP
 export const verifyEmailOtp = createAsyncThunk(
   'auth/verifyEmail',
-  async (payload: { email: string; otp: string }, { rejectWithValue }) => {
+  async (
+    payload: { email: string; otp: string; deviceId?: string },
+    { rejectWithValue },
+  ) => {
     try {
       const response = await ApiRequest(
         '/auth/verify-email',
@@ -296,6 +300,93 @@ export const fetchCurrentUser = createAsyncThunk(
         error.response?.data?.error?.message ||
         error.response?.data?.message ||
         'Failed to fetch user profile.';
+      return rejectWithValue(errorMsg);
+    }
+  },
+);
+
+// Async Thunks for device sessions
+export const fetchDevices = createAsyncThunk(
+  'auth/fetchDevices',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await ApiRequest('/users/devices', 'get', {}, true);
+      return response.data;
+    } catch (error: any) {
+      const errorMsg =
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        'Failed to fetch active devices.';
+      return rejectWithValue(errorMsg);
+    }
+  },
+);
+
+export const logoutDevice = createAsyncThunk(
+  'auth/logoutDevice',
+  async (deviceId: string, { rejectWithValue }) => {
+    try {
+      const response = await ApiRequest(
+        `/users/devices/${deviceId}/logout`,
+        'post',
+        {},
+        true,
+      );
+      return { deviceId, data: response.data };
+    } catch (error: any) {
+      const errorMsg =
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        'Failed to logout device.';
+      return rejectWithValue(errorMsg);
+    }
+  },
+);
+
+export const toggleDeviceNotification = createAsyncThunk(
+  'auth/toggleDeviceNotification',
+  async (
+    payload: { deviceId: string; enabled: boolean },
+    { rejectWithValue },
+  ) => {
+    try {
+      const response = await ApiRequest(
+        `/users/devices/${payload.deviceId}/notification`,
+        'patch',
+        { enabled: payload.enabled },
+        true,
+      );
+      return {
+        deviceId: payload.deviceId,
+        enabled: payload.enabled,
+        data: response.data,
+      };
+    } catch (error: any) {
+      const errorMsg =
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        'Failed to toggle device notification.';
+      return rejectWithValue(errorMsg);
+    }
+  },
+);
+
+export const sendTestNotification = createAsyncThunk(
+  'auth/sendTestNotification',
+  async (deviceId: string, { rejectWithValue }) => {
+    try {
+      const response = await ApiRequest(
+        `/users/devices/${deviceId}/test-notification`,
+        'post',
+        {},
+        true,
+      );
+      return response.data;
+    } catch (error: any) {
+      const errorMsg =
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        'Failed to send test notification.';
       return rejectWithValue(errorMsg);
     }
   },

@@ -61,6 +61,8 @@ export class AuthService {
     email: string,
     password: string,
     deviceId?: string,
+    userAgent?: string,
+    ip?: string,
   ): Promise<{
     accessToken?: string;
     user?: User;
@@ -146,7 +148,14 @@ export class AuthService {
     }
 
     // Normal successful login
-    const payload = { sub: user.id, email: user.email };
+    if (deviceId) {
+      await this.usersService.registerLoggedInDevice(user.id, {
+        deviceId,
+        userAgent: userAgent || 'Unknown',
+        ip: ip || 'Unknown',
+      });
+    }
+    const payload = { sub: user.id, email: user.email, deviceId };
     const accessToken = this.jwtService.sign(payload);
 
     return {
@@ -158,6 +167,9 @@ export class AuthService {
   async verifyEmail(
     email: string,
     otp: string,
+    deviceId?: string,
+    userAgent?: string,
+    ip?: string,
   ): Promise<{ accessToken: string; user: User }> {
     const user = await this.usersService.findByEmail(email);
     if (!user) {
@@ -166,7 +178,14 @@ export class AuthService {
 
     if (user.isVerified) {
       // Already verified, just log them in
-      const payload = { sub: user.id, email: user.email };
+      if (deviceId) {
+        await this.usersService.registerLoggedInDevice(user.id, {
+          deviceId,
+          userAgent: userAgent || 'Unknown',
+          ip: ip || 'Unknown',
+        });
+      }
+      const payload = { sub: user.id, email: user.email, deviceId };
       const accessToken = this.jwtService.sign(payload);
       return { accessToken, user };
     }
@@ -186,7 +205,18 @@ export class AuthService {
     }
 
     const verifiedUser = await this.usersService.verifyUserEmail(user.id);
-    const payload = { sub: verifiedUser.id, email: verifiedUser.email };
+    if (deviceId) {
+      await this.usersService.registerLoggedInDevice(verifiedUser.id, {
+        deviceId,
+        userAgent: userAgent || 'Unknown',
+        ip: ip || 'Unknown',
+      });
+    }
+    const payload = {
+      sub: verifiedUser.id,
+      email: verifiedUser.email,
+      deviceId,
+    };
     const accessToken = this.jwtService.sign(payload);
 
     return {
@@ -225,6 +255,8 @@ export class AuthService {
     otp: string,
     deviceId?: string,
     rememberDevice?: boolean,
+    userAgent?: string,
+    ip?: string,
   ): Promise<{ accessToken: string; user: User }> {
     const user = await this.usersService.findById(userId);
     if (!user) {
@@ -255,7 +287,15 @@ export class AuthService {
       );
     }
 
-    const payload = { sub: updatedUser.id, email: updatedUser.email };
+    if (deviceId) {
+      updatedUser = await this.usersService.registerLoggedInDevice(user.id, {
+        deviceId,
+        userAgent: userAgent || 'Unknown',
+        ip: ip || 'Unknown',
+      });
+    }
+
+    const payload = { sub: updatedUser.id, email: updatedUser.email, deviceId };
     const accessToken = this.jwtService.sign(payload);
 
     return {
@@ -315,12 +355,81 @@ export class AuthService {
 
   async validateToken(
     token: string,
-  ): Promise<{ userId: string; email: string }> {
+  ): Promise<{ userId: string; email: string; deviceId?: string }> {
     try {
       const payload = await this.jwtService.verifyAsync(token);
-      return { userId: payload.sub, email: payload.email };
+      return {
+        userId: payload.sub,
+        email: payload.email,
+        deviceId: payload.deviceId,
+      };
     } catch {
       throw new UnauthorizedException('❌ Invalid or expired token');
     }
+  }
+
+  async validateTokenAndSession(
+    token: string,
+    reqDeviceId?: string,
+    userAgent?: string,
+    ip?: string,
+  ): Promise<{ userId: string; email: string; deviceId?: string }> {
+    const payload = await this.validateToken(token);
+
+    if (!payload.deviceId) {
+      throw new UnauthorizedException(
+        '❌ Session token is missing device identification. Please log in again.',
+      );
+    }
+
+    const user = await this.usersService.findById(payload.userId);
+
+    let devices: any[] = [];
+    if (user.loggedInDevices) {
+      try {
+        devices = JSON.parse(user.loggedInDevices);
+        if (!Array.isArray(devices)) {
+          devices = [];
+        }
+      } catch {
+        devices = [];
+      }
+    }
+
+    const deviceExists = devices.some((d) => d.deviceId === payload.deviceId);
+    if (!deviceExists) {
+      throw new UnauthorizedException(
+        '❌ Device session has been logged out/revoked',
+      );
+    }
+
+    // Update last active time and IP/UA for token's device session
+    const currentDev = devices.find((d) => d.deviceId === payload.deviceId);
+    if (currentDev) {
+      let updated = false;
+      const nowStr = new Date().toISOString();
+      if (
+        Math.abs(
+          new Date(currentDev.lastActive).getTime() -
+            new Date(nowStr).getTime(),
+        ) > 30000
+      ) {
+        // update active time if > 30 seconds ago
+        currentDev.lastActive = nowStr;
+        updated = true;
+      }
+      if (ip && currentDev.ip !== ip) {
+        currentDev.ip = ip;
+        updated = true;
+      }
+      if (updated) {
+        user.loggedInDevices = JSON.stringify(devices);
+        await this.usersService.updateProfile(user.id, {
+          loggedInDevices: user.loggedInDevices,
+        } as any);
+      }
+    }
+
+    return payload;
   }
 }

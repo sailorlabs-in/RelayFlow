@@ -127,11 +127,17 @@ export class RealtimeGateway
       }
 
       const token = authHeader.split(' ')[1];
-      const payload = await this.authService.validateToken(token);
+      const payload = await this.authService.validateTokenAndSession(
+        token,
+        undefined,
+        socket.handshake.headers['user-agent'] as string,
+        socket.handshake.address,
+      );
 
       // Bind connection identity
       socket.data.userId = payload.userId;
       socket.data.email = payload.email;
+      socket.data.deviceId = payload.deviceId;
 
       // Join private user room (allows targeting all devices owned by user)
       const userRoom = `user:${payload.userId}`;
@@ -241,6 +247,25 @@ export class RealtimeGateway
     } catch (error) {
       this.logger.error(`❌ Socket authentication error`, error);
       socket.disconnect(true);
+    }
+  }
+
+  async disconnectDevice(userId: string, deviceId: string): Promise<void> {
+    try {
+      const sockets = await this.server.in(`user:${userId}`).fetchSockets();
+      for (const socket of sockets) {
+        if (socket.data.deviceId === deviceId) {
+          this.logger.log(
+            `🔌 Disconnecting revoked session for user ${userId} on device ${deviceId}`,
+          );
+          socket.disconnect(true);
+        }
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to disconnect sockets for user ${userId} device ${deviceId}`,
+        error,
+      );
     }
   }
 
@@ -649,13 +674,37 @@ export class RealtimeGateway
         try {
           const targetUser = await this.usersService.findById(memberId);
           if (targetUser.notificationsEnabled !== false) {
+            let shouldNotify = false;
             if (isDm && targetUser.notificationsDmEnabled !== false) {
-              recipientsToNotify.push(memberId);
+              shouldNotify = true;
             } else if (
               !isDm &&
               targetUser.notificationsGroupEnabled !== false
             ) {
-              recipientsToNotify.push(memberId);
+              shouldNotify = true;
+            }
+
+            if (shouldNotify) {
+              let devices: any[] = [];
+              if (targetUser.loggedInDevices) {
+                try {
+                  devices = JSON.parse(targetUser.loggedInDevices);
+                } catch {
+                  devices = [];
+                }
+              }
+
+              if (Array.isArray(devices) && devices.length > 0) {
+                const activeDevices = devices.filter(
+                  (d: any) => d.notificationsEnabled !== false,
+                );
+                for (const d of activeDevices) {
+                  recipientsToNotify.push(`${targetUser.id}:${d.deviceId}`);
+                }
+              } else {
+                // Fallback for backward compatibility
+                recipientsToNotify.push(targetUser.id);
+              }
             }
           }
         } catch (err) {

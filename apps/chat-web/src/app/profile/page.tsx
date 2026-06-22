@@ -16,6 +16,11 @@ import {
   setThemeSchema as setReduxThemeSchema,
   updateUserStatusOptimistic,
   checkUsernameAvailability,
+  fetchDevices,
+  logoutDevice,
+  toggleDeviceNotification,
+  sendTestNotification,
+  fetchCurrentUser,
 } from '../../store/slices/authSlice';
 import { socketUpdateUserStatus } from '../../store/slices/chatSlice';
 import { socketManager } from '../../store/socketManager';
@@ -330,6 +335,170 @@ export function ProfileSettingsContent({
     type: 'success' | 'error';
     text: string;
   } | null>(null);
+
+  // Device Sessions State
+  interface DeviceSession {
+    deviceId: string;
+    userAgent: string;
+    deviceInfo: string;
+    ip: string;
+    lastActive: string;
+    notificationsEnabled: boolean;
+  }
+  const [devices, setDevices] = useState<DeviceSession[]>([]);
+  const [loadingDevices, setLoadingDevices] = useState(false);
+
+  // Load devices when switching to notifications tab
+  useEffect(() => {
+    if (activeTab === 'notifications' && user) {
+      setLoadingDevices(true);
+      dispatch(fetchDevices())
+        .unwrap()
+        .then((data) => {
+          setDevices(data);
+        })
+        .catch((err) => {
+          console.error('Failed to load devices:', err);
+        })
+        .finally(() => {
+          setLoadingDevices(false);
+        });
+    }
+  }, [activeTab, user, dispatch]);
+
+  const handleToggleDeviceNotification = async (
+    deviceId: string,
+    enabled: boolean,
+  ) => {
+    const currentDeviceId =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('rf_device_id')
+        : null;
+    const isCurrent = deviceId === currentDeviceId;
+
+    if (isCurrent && enabled) {
+      // Current device being enabled: verify browser permissions
+      const permission =
+        'Notification' in window ? Notification.permission : 'default';
+
+      if (permission === 'denied') {
+        setMessage({
+          type: 'error',
+          text: '❌ Notification permission is blocked by your browser. Please allow notifications in your browser settings first.',
+        });
+        return;
+      }
+
+      let finalPermission: NotificationPermission = permission;
+      if (permission === 'default') {
+        try {
+          finalPermission = await Notification.requestPermission();
+        } catch (err) {
+          console.error('Error requesting permission:', err);
+          finalPermission = 'default';
+        }
+      }
+
+      if (finalPermission !== 'granted') {
+        setMessage({
+          type: 'error',
+          text: '❌ Notification permission was not granted. Cannot enable push notifications on this device.',
+        });
+        return;
+      }
+    }
+
+    try {
+      await dispatch(toggleDeviceNotification({ deviceId, enabled })).unwrap();
+      setDevices((prev) =>
+        prev.map((d) =>
+          d.deviceId === deviceId ? { ...d, notificationsEnabled: enabled } : d,
+        ),
+      );
+      dispatch(fetchCurrentUser());
+
+      // If it is the current device, register/unregister on Vibe client immediately if permission is granted
+      if (isCurrent) {
+        const permission =
+          'Notification' in window ? Notification.permission : 'default';
+        if (permission === 'granted') {
+          const client = getNotificationClient();
+          const compositeId = user ? `${user.id}:${deviceId}` : null;
+          if (client && compositeId) {
+            if (enabled) {
+              PrintLog(
+                'Registering current device immediately on toggle device ON...',
+              );
+              await client.registerDevice({
+                externalUserId: compositeId,
+                serviceWorkerPath: '/push-sw.js',
+                serviceWorkerScope: '/',
+              });
+            } else {
+              PrintLog(
+                'Unregistering current device immediately on toggle device OFF...',
+              );
+              await client.unregisterDevice(compositeId);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to toggle device notification:', err);
+      setMessage({
+        type: 'error',
+        text: '❌ Failed to update device notification preference.',
+      });
+    }
+  };
+
+  const handleSendTestNotification = async (deviceId: string) => {
+    try {
+      await dispatch(sendTestNotification(deviceId)).unwrap();
+      setMessage({
+        type: 'success',
+        text: '✔ Test notification queued successfully! Check your device.',
+      });
+      setTimeout(() => setMessage(null), 4000);
+    } catch (err) {
+      console.error('Failed to send test notification:', err);
+      setMessage({
+        type: 'error',
+        text: '❌ Failed to send test notification. Make sure notifications are allowed and enabled.',
+      });
+    }
+  };
+
+  const handleLogoutDevice = (deviceId: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Revoke Device Session',
+      message:
+        'Are you sure you want to log out of this device? The session will be invalidated immediately.',
+      confirmLabel: 'Revoke Session',
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          await dispatch(logoutDevice(deviceId)).unwrap();
+          setDevices((prev) => prev.filter((d) => d.deviceId !== deviceId));
+          dispatch(fetchCurrentUser());
+          setConfirmModal(null);
+          // If the user logs out the current device, force logout locally too
+          const currentId =
+            typeof window !== 'undefined'
+              ? localStorage.getItem('rf_device_id')
+              : null;
+          if (deviceId === currentId) {
+            socketManager.disconnect();
+            dispatch(logoutUser());
+          }
+        } catch (err) {
+          console.error('Failed to logout device:', err);
+          setConfirmModal(null);
+        }
+      },
+    });
+  };
 
   // Fix: use refs to track initialization and save status for stable preview
   const hasInitializedRef = useRef(false);
@@ -1562,6 +1731,14 @@ export function ProfileSettingsContent({
                           try {
                             const permission =
                               await Notification.requestPermission();
+                            const deviceId =
+                              typeof window !== 'undefined'
+                                ? localStorage.getItem('rf_device_id')
+                                : null;
+                            const compositeId =
+                              user && deviceId
+                                ? `${user.id}:${deviceId}`
+                                : user?.id;
                             if (permission !== 'granted') {
                               setMessage({
                                 type: 'error',
@@ -1571,12 +1748,12 @@ export function ProfileSettingsContent({
                             } else {
                               // Register device immediately to generate VAPID subscription
                               const client = getNotificationClient();
-                              if (client && user?.id) {
+                              if (client && compositeId) {
                                 PrintLog(
                                   'Registering device immediately on toggle ON...',
                                 );
                                 await client.registerDevice({
-                                  externalUserId: user.id,
+                                  externalUserId: compositeId,
                                   serviceWorkerPath: '/push-sw.js',
                                   serviceWorkerScope: '/',
                                 });
@@ -1594,15 +1771,29 @@ export function ProfileSettingsContent({
                         } else {
                           // Unregister device immediately on toggle OFF
                           try {
-                            const client = getNotificationClient();
-                            if (client && user?.id) {
-                              PrintLog(
-                                'Unregistering device immediately on toggle OFF...',
-                              );
-                              await client.unregisterDevice(user.id);
-                              PrintLog(
-                                'Device unregistered successfully on toggle OFF.',
-                              );
+                            const permission =
+                              'Notification' in window
+                                ? Notification.permission
+                                : 'default';
+                            if (permission === 'granted') {
+                              const deviceId =
+                                typeof window !== 'undefined'
+                                  ? localStorage.getItem('rf_device_id')
+                                  : null;
+                              const compositeId =
+                                user && deviceId
+                                  ? `${user.id}:${deviceId}`
+                                  : user?.id;
+                              const client = getNotificationClient();
+                              if (client && compositeId) {
+                                PrintLog(
+                                  'Unregistering device immediately on toggle OFF...',
+                                );
+                                await client.unregisterDevice(compositeId);
+                                PrintLog(
+                                  'Device unregistered successfully on toggle OFF.',
+                                );
+                              }
                             }
                           } catch (err) {
                             console.error(
@@ -1721,6 +1912,256 @@ export function ProfileSettingsContent({
                         />
                         <div className="w-11 h-6 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent-primary)]"></div>
                       </label>
+                    </div>
+
+                    {/* Active Devices List Section */}
+                    <div className="flex flex-col gap-4 border-t pt-4 border-[var(--border-muted)]">
+                      <div className="flex flex-col gap-0.5">
+                        <label className="text-[11.5px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                          Active Sessions & Devices
+                        </label>
+                        <span className="text-[11px] text-[var(--text-muted)]">
+                          Devices currently logged in to your account. You can
+                          toggle notifications for each device or revoke their
+                          session.
+                        </span>
+                      </div>
+
+                      {loadingDevices ? (
+                        <div className="text-center py-6 text-xs text-[var(--text-muted)] animate-pulse">
+                          Loading active devices...
+                        </div>
+                      ) : devices.length === 0 ? (
+                        <div className="text-center py-6 text-xs text-[var(--text-muted)]">
+                          No active devices logged in.
+                        </div>
+                      ) : (
+                        <div className="flex flex-col gap-3">
+                          {devices.map((dev) => {
+                            const isCurrent =
+                              typeof window !== 'undefined' &&
+                              dev.deviceId ===
+                                localStorage.getItem('rf_device_id');
+                            const isWindows = /windows/i.test(dev.userAgent);
+                            const isApple =
+                              /macintosh|mac os x|iphone|ipad|ipod/i.test(
+                                dev.userAgent,
+                              );
+                            const isAndroid = /android/i.test(dev.userAgent);
+
+                            return (
+                              <div
+                                key={dev.deviceId}
+                                className="flex items-center justify-between p-4 rounded-xl border border-[var(--glass-border)] bg-[var(--theme-btn)] shadow-xs relative"
+                                style={
+                                  isCurrent
+                                    ? {
+                                        borderColor: 'var(--accent-primary)',
+                                        background:
+                                          'color-mix(in srgb, var(--accent-primary) 3%, var(--theme-btn))',
+                                      }
+                                    : {}
+                                }
+                              >
+                                <div
+                                  className="flex items-center gap-3.5"
+                                  style={{ minWidth: 0 }}
+                                >
+                                  {/* OS Icon */}
+                                  <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-black/10 dark:bg-white/5 text-[var(--text-secondary)] flex-shrink-0">
+                                    {isWindows ? (
+                                      <svg
+                                        viewBox="0 0 24 24"
+                                        width="20"
+                                        height="20"
+                                        fill="currentColor"
+                                      >
+                                        <path d="M0 3.449L9.75 2.1v9.45H0V3.449zM0 12.45h9.75v9.45L0 20.551v-8.101zM10.95 1.95L24 0v11.55H10.95V1.95zM10.95 12.45H24v11.55l-13.05-1.95v-9.6z" />
+                                      </svg>
+                                    ) : isApple ? (
+                                      <svg
+                                        viewBox="0 0 24 24"
+                                        width="20"
+                                        height="20"
+                                        fill="currentColor"
+                                      >
+                                        <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 4.17c.66-.81 1.11-1.93.99-3.06-.96.04-2.13.64-2.82 1.45-.6.69-1.12 1.84-.98 2.94.1.08.2.1.28.1 1.05-.03 2.11-.62 2.53-1.43z" />
+                                      </svg>
+                                    ) : isAndroid ? (
+                                      <svg
+                                        viewBox="0 0 24 24"
+                                        width="20"
+                                        height="20"
+                                        fill="currentColor"
+                                      >
+                                        <path d="M17.5 12c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5m-11 0c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12m11.92-5.76l1.63-2.83a.5.5 0 0 0-.18-.68.5.5 0 0 0-.68.18l-1.66 2.88C14.93 5.3 13.5 5 12 5c-1.5 0-2.93.3-4.21.79L6.13 2.91a.5.5 0 0 0-.68-.18.5.5 0 0 0-.18.68l1.63 2.83C3.69 7.84 1.5 11.16 1.5 15h21c0-3.84-2.19-7.16-5.42-8.76" />
+                                      </svg>
+                                    ) : (
+                                      <svg
+                                        viewBox="0 0 24 24"
+                                        width="20"
+                                        height="20"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                      >
+                                        <rect
+                                          x="2"
+                                          y="3"
+                                          width="20"
+                                          height="14"
+                                          rx="2"
+                                          ry="2"
+                                        />
+                                        <line x1="8" y1="21" x2="16" y2="21" />
+                                        <line x1="12" y1="17" x2="12" y2="21" />
+                                      </svg>
+                                    )}
+                                  </div>
+
+                                  <div
+                                    className="flex flex-col gap-0.5"
+                                    style={{ minWidth: 0 }}
+                                  >
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="font-bold text-[13.5px] text-[var(--text-primary)] truncate">
+                                        {dev.deviceInfo || 'Unknown Device'}
+                                      </span>
+                                      {isCurrent && (
+                                        <span className="px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wider uppercase bg-[var(--accent-ring)] text-[var(--accent-primary)] flex-shrink-0">
+                                          This Device
+                                        </span>
+                                      )}
+                                      {isCurrent &&
+                                        typeof window !== 'undefined' &&
+                                        'Notification' in window &&
+                                        Notification.permission ===
+                                          'denied' && (
+                                          <span
+                                            className="px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wider uppercase bg-[var(--danger-bg)] text-[var(--danger)] border border-[var(--danger-border)] flex-shrink-0"
+                                            title="Notifications are blocked in your browser settings for this site"
+                                          >
+                                            Blocked by Browser
+                                          </span>
+                                        )}
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-[var(--text-muted)]">
+                                      <span>
+                                        IP:{' '}
+                                        {dev.ip === '::1' ||
+                                        dev.ip === '127.0.0.1' ||
+                                        dev.ip === '::ffff:127.0.0.1'
+                                          ? 'Localhost'
+                                          : dev.ip}
+                                      </span>
+                                      <span>•</span>
+                                      <span>
+                                        Active:{' '}
+                                        {new Date(
+                                          dev.lastActive,
+                                        ).toLocaleString()}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-4 flex-shrink-0">
+                                  {/* Notification toggle for this device */}
+                                  <div
+                                    className="flex items-center gap-1.5"
+                                    title="Toggle push notifications for this device"
+                                  >
+                                    <svg
+                                      viewBox="0 0 24 24"
+                                      width="14"
+                                      height="14"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth="2"
+                                      className="opacity-60"
+                                    >
+                                      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                                      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                                    </svg>
+                                    <label className="relative inline-flex items-center cursor-pointer select-none">
+                                      <input
+                                        type="checkbox"
+                                        checked={
+                                          dev.notificationsEnabled !== false
+                                        }
+                                        onChange={(e) =>
+                                          handleToggleDeviceNotification(
+                                            dev.deviceId,
+                                            e.target.checked,
+                                          )
+                                        }
+                                        className="sr-only peer"
+                                      />
+                                      <div className="w-9 h-5 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--accent-primary)]"></div>
+                                    </label>
+                                  </div>
+
+                                  {/* Test notification button */}
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleSendTestNotification(dev.deviceId)
+                                    }
+                                    disabled={
+                                      dev.notificationsEnabled === false
+                                    }
+                                    className="flex items-center justify-center p-2 rounded-lg cursor-pointer transition-all border border-transparent bg-black/5 dark:bg-white/5 text-[var(--text-muted)] hover:bg-[var(--accent-ring)] hover:text-[var(--accent-primary)] hover:border-[var(--accent-primary)] disabled:opacity-30 disabled:cursor-not-allowed active-press"
+                                    title={
+                                      dev.notificationsEnabled === false
+                                        ? 'Enable notifications on this device to send a test push'
+                                        : 'Send a test push notification to this device'
+                                    }
+                                  >
+                                    <svg
+                                      viewBox="0 0 24 24"
+                                      width="14"
+                                      height="14"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth="2"
+                                    >
+                                      <path d="M22 2L11 13" />
+                                      <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                                    </svg>
+                                  </button>
+
+                                  {/* Logout button (revoke session) */}
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleLogoutDevice(dev.deviceId)
+                                    }
+                                    className="flex items-center justify-center p-2 rounded-lg cursor-pointer transition-all border border-transparent bg-black/5 dark:bg-white/5 text-[var(--text-muted)] hover:bg-[var(--danger-bg)] hover:text-[var(--danger)] hover:border-[var(--danger-border)] active-press"
+                                    title={
+                                      isCurrent
+                                        ? 'Log out from this account'
+                                        : 'Revoke session for this device'
+                                    }
+                                  >
+                                    <svg
+                                      viewBox="0 0 24 24"
+                                      width="14"
+                                      height="14"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth="2"
+                                    >
+                                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                                      <polyline points="16 17 21 12 16 7" />
+                                      <line x1="21" y1="12" x2="9" y2="12" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

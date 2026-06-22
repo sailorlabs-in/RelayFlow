@@ -551,18 +551,82 @@ export function useNotificationClient(user: User | null) {
     }
 
     const register = async () => {
-      if (user && user.id && user.notificationsEnabled !== false) {
-        if (registeredUserIdRef.current === user.id) {
-          return;
+      if (typeof window === 'undefined') {
+        return;
+      }
+
+      const deviceId = localStorage.getItem('rf_device_id');
+
+      // Determine if platform notifications are enabled for this user + device
+      let platformNotificationsEnabled = true;
+      if (user) {
+        if (user.notificationsEnabled === false) {
+          platformNotificationsEnabled = false;
+        } else if (user.loggedInDevices && deviceId) {
+          try {
+            const devices = JSON.parse(user.loggedInDevices);
+            if (Array.isArray(devices)) {
+              const currentDevice = devices.find(
+                (d: any) => d.deviceId === deviceId,
+              );
+              if (
+                currentDevice &&
+                currentDevice.notificationsEnabled === false
+              ) {
+                platformNotificationsEnabled = false;
+              }
+            }
+          } catch {
+            // ignore
+          }
+        }
+      }
+
+      // Check browser permission status
+      const permission =
+        'Notification' in window ? Notification.permission : 'default';
+      const compositeId =
+        user && deviceId ? `${user.id}:${deviceId}` : user?.id;
+
+      // Handle logout / unregistration of previous session
+      if (!user || !user.id || !compositeId) {
+        const oldCompositeId = registeredUserIdRef.current;
+        if (oldCompositeId && permission === 'granted') {
+          try {
+            PrintLog(
+              `User logged out. Unregistering device: ${oldCompositeId}`,
+            );
+            await client.unregisterDevice(oldCompositeId);
+            registeredUserIdRef.current = null;
+          } catch (error) {
+            console.error('Failed to unregister device on logout:', error);
+          }
+        }
+        return;
+      }
+
+      // Case 3: Notification permission is denied
+      if (permission === 'denied') {
+        PrintLog(
+          'Push notifications browser permission is denied. Skipping Vibe Message API calls.',
+        );
+        registeredUserIdRef.current = null;
+        return;
+      }
+
+      // Case 1: Notifications enabled (both globally/device on platform AND browser permission granted)
+      if (platformNotificationsEnabled && permission === 'granted') {
+        if (registeredUserIdRef.current === compositeId) {
+          return; // Already registered
         }
         try {
-          PrintLog(`Registering device for user: ${user.id}`);
+          PrintLog(`Registering device for user composite ID: ${compositeId}`);
           await client.registerDevice({
-            externalUserId: user.id,
+            externalUserId: compositeId,
             serviceWorkerPath: '/push-sw.js',
             serviceWorkerScope: '/',
           });
-          registeredUserIdRef.current = user.id;
+          registeredUserIdRef.current = compositeId;
           PrintLog('Device registered successfully for notifications.');
         } catch (error) {
           console.error(
@@ -570,21 +634,30 @@ export function useNotificationClient(user: User | null) {
             error,
           );
         }
-      } else {
-        const oldUserId = registeredUserIdRef.current;
-        if (oldUserId) {
-          try {
-            PrintLog(`Unregistering device for user: ${oldUserId}`);
-            await client.unregisterDevice(oldUserId);
-            registeredUserIdRef.current = null;
-            PrintLog('Device unregistered successfully.');
-          } catch (error) {
-            console.error(
-              'Failed to unregister device for push notifications:',
-              error,
-            );
-          }
+      }
+      // Case 2: Notification permission is granted, but user manually turned off notifications on the platform
+      else if (!platformNotificationsEnabled && permission === 'granted') {
+        // If we were previously registered (or we want to make sure it's clean), unregister
+        try {
+          PrintLog(
+            `Platform notifications are disabled but permission is granted. Unregistering device: ${compositeId}`,
+          );
+          await client.unregisterDevice(compositeId);
+          registeredUserIdRef.current = null;
+          PrintLog('Device unregistered successfully.');
+        } catch (error) {
+          console.error(
+            'Failed to unregister device for push notifications:',
+            error,
+          );
         }
+      }
+      // Case 4: Permission is 'default' (not granted, not denied) - do not register, do not unregister
+      else {
+        PrintLog(
+          `Browser permission is 'default'. Skipping register/unregister.`,
+        );
+        registeredUserIdRef.current = null;
       }
     };
 

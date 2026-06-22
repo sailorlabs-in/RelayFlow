@@ -243,17 +243,40 @@ export class UsersController {
             requester?.email?.split('@')[0] ||
             'Someone';
 
-          await this.notificationsQueue.add('send-push', {
-            title: 'New Friend Request',
-            body: `${senderName} sent you a friend request!`,
-            recipients: [friendship.addresseeId],
-            metadata: {
-              type: 'friend_request',
-              requestId: friendship.id,
-              senderId: friendship.requesterId,
-              senderName,
-            },
-          });
+          let devices: any[] = [];
+          if (addressee.loggedInDevices) {
+            try {
+              devices = JSON.parse(addressee.loggedInDevices);
+            } catch {
+              devices = [];
+            }
+          }
+
+          const recipientsToNotify: string[] = [];
+          if (Array.isArray(devices) && devices.length > 0) {
+            const activeDevices = devices.filter(
+              (d: any) => d.notificationsEnabled !== false,
+            );
+            for (const d of activeDevices) {
+              recipientsToNotify.push(`${addressee.id}:${d.deviceId}`);
+            }
+          } else {
+            recipientsToNotify.push(friendship.addresseeId);
+          }
+
+          if (recipientsToNotify.length > 0) {
+            await this.notificationsQueue.add('send-push', {
+              title: 'New Friend Request',
+              body: `${senderName} sent you a friend request!`,
+              recipients: recipientsToNotify,
+              metadata: {
+                type: 'friend_request',
+                requestId: friendship.id,
+                senderId: friendship.requesterId,
+                senderName,
+              },
+            });
+          }
         }
       } catch (err) {
         this.logger.error('Failed to queue friend request notification', err);
@@ -345,6 +368,91 @@ export class UsersController {
       .to(`user:${friendId}`)
       .emit('friend.removed', { friendId: currentUser.userId });
 
+    return { success: true };
+  }
+
+  @Get('devices')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get list of logged-in devices' })
+  async getDevices(
+    @CurrentUser() currentUser: { userId: string },
+  ): Promise<any[]> {
+    const user = await this.usersService.findById(currentUser.userId);
+    if (!user.loggedInDevices) {
+      return [];
+    }
+    try {
+      const parsed = JSON.parse(user.loggedInDevices);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
+  @Post('devices/:deviceId/logout')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Log out from a specific device' })
+  async logoutDevice(
+    @CurrentUser() currentUser: { userId: string },
+    @Param('deviceId') deviceId: string,
+  ): Promise<any> {
+    await this.usersService.logoutDevice(currentUser.userId, deviceId);
+    await this.realtimeGateway.disconnectDevice(currentUser.userId, deviceId);
+    return { success: true };
+  }
+
+  @Patch('devices/:deviceId/notification')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Toggle notification settings for a specific device',
+  })
+  async toggleDeviceNotification(
+    @CurrentUser() currentUser: { userId: string },
+    @Param('deviceId') deviceId: string,
+    @Body('enabled') enabled: boolean,
+  ): Promise<any> {
+    await this.usersService.toggleDeviceNotification(
+      currentUser.userId,
+      deviceId,
+      enabled,
+    );
+    return { success: true };
+  }
+
+  @Post('devices/:deviceId/test-notification')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Send a test push notification to a specific device',
+  })
+  async sendTestNotification(
+    @CurrentUser() currentUser: { userId: string },
+    @Param('deviceId') deviceId: string,
+  ): Promise<any> {
+    const user = await this.usersService.findById(currentUser.userId);
+    let devices: any[] = [];
+    if (user.loggedInDevices) {
+      try {
+        devices = JSON.parse(user.loggedInDevices);
+      } catch {
+        devices = [];
+      }
+    }
+    const device = devices.find((d: any) => d.deviceId === deviceId);
+    const deviceInfo = device?.deviceInfo || 'This Device';
+
+    await this.notificationsQueue.add('send-push', {
+      title: 'Test Notification',
+      body: `Hello! This is a test notification for your device: ${deviceInfo}`,
+      recipients: [`${currentUser.userId}:${deviceId}`],
+      metadata: {
+        type: 'test_notification',
+        deviceId,
+      },
+    });
     return { success: true };
   }
 

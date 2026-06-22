@@ -68,6 +68,9 @@ export class User {
   @Column({ name: 'remembered_devices', type: 'text', nullable: true })
   rememberedDevices?: string;
 
+  @Column({ name: 'logged_in_devices', type: 'text', nullable: true })
+  loggedInDevices?: string;
+
   @Column({ name: 'reset_password_token', nullable: true })
   resetPasswordToken?: string;
 
