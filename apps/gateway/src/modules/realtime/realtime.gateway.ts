@@ -277,29 +277,19 @@ export class RealtimeGateway
         `✔ Socket disconnected: User ${userId} left room ${userRoom}`,
       );
 
-      // Update presence status to away on disconnect (not fully offline - could be a tab refresh)
+      // Check if user still has other active connections open
+      const sockets = await this.server.in(userRoom).fetchSockets();
+      const activeSockets = sockets.filter((s) => s.id !== socket.id);
+      if (activeSockets.length > 0) {
+        this.logger.log(
+          `🔄 User ${userId} disconnected a socket, but has ${activeSockets.length} active sockets remaining. Skipping presence/voice cleanup.`,
+        );
+        return;
+      }
+
       const redisClient = this.redisService.getClient();
-      await redisClient.hset(
-        'presence:status',
-        userId,
-        JSON.stringify({
-          userId,
-          status: 'away',
-          autoStatus: 'away',
-          lastSeen: new Date().toISOString(),
-        }),
-      );
 
-      // Broadcast status change
-      this.server.emit('user.status.changed', {
-        userId,
-        status: 'away',
-        autoStatus: 'away',
-      });
-      // Legacy backward-compat event
-      this.server.emit('user.offline', { userId });
-
-      // Check if user was in a voice channel
+      // Clean up voice state immediately if no active connections remain
       const voiceRaw = await redisClient.hget('voice_states', userId);
       if (voiceRaw) {
         try {
@@ -320,6 +310,89 @@ export class RealtimeGateway
           );
         }
       }
+
+      // Update presence status to away immediately (if they reconnect, it will go back to online; if they don't, it will become offline after 10s)
+      await redisClient.hset(
+        'presence:status',
+        userId,
+        JSON.stringify({
+          userId,
+          status: 'away',
+          autoStatus: 'away',
+          lastSeen: new Date().toISOString(),
+        }),
+      );
+
+      // Broadcast status change
+      this.server.emit('user.status.changed', {
+        userId,
+        status: 'away',
+        autoStatus: 'away',
+      });
+      // Legacy backward-compat event
+      this.server.emit('user.offline', { userId });
+
+      // Debounce checking if they reconnect within 10 seconds before marking fully offline
+      setTimeout(async () => {
+        try {
+          const checkSockets = await this.server.in(userRoom).fetchSockets();
+          const remainingSockets = checkSockets.filter(
+            (s) => s.id !== socket.id,
+          );
+          if (remainingSockets.length === 0) {
+            const redisCheck = this.redisService.getClient();
+            const existingRaw = await redisCheck.hget(
+              'presence:status',
+              userId,
+            );
+            let currentStatus = 'offline';
+            const currentAutoStatus = 'offline';
+
+            if (existingRaw) {
+              try {
+                const existing = JSON.parse(existingRaw);
+                // Keep manual status like 'dnd' if they set it
+                if (existing.status === 'dnd') {
+                  currentStatus = 'dnd';
+                }
+              } catch {
+                //error
+              }
+            }
+
+            await redisCheck.hset(
+              'presence:status',
+              userId,
+              JSON.stringify({
+                userId,
+                status: currentStatus,
+                autoStatus: currentAutoStatus,
+                lastSeen: new Date().toISOString(),
+              }),
+            );
+
+            this.server.emit('user.status.changed', {
+              userId,
+              status: currentStatus,
+              autoStatus: currentAutoStatus,
+            });
+            this.server.emit('user.offline', { userId });
+
+            this.logger.log(
+              `🔄 User ${userId} did not reconnect within 10s. Marked ${currentStatus}.`,
+            );
+          } else {
+            this.logger.log(
+              `🔄 User ${userId} reconnected within 10s (${remainingSockets.length} sockets active). Keeping status online.`,
+            );
+          }
+        } catch (error) {
+          this.logger.error(
+            `Error in handleDisconnect delayed offline check for user ${userId}`,
+            error,
+          );
+        }
+      }, 10000); // 10 seconds delay
     }
   }
 

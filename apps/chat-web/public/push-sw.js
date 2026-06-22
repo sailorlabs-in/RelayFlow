@@ -71,15 +71,16 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
   const urlToOpen = event.notification.data?.click_action || '/';
+  // Resolve relative URLs to absolute URLs using the service worker's origin
+  const absoluteUrl = new URL(urlToOpen, self.location.origin).href;
 
   event.waitUntil(
     self.clients
       .matchAll({ type: 'window', includeUncontrolled: true })
       .then((clientList) => {
-        // Check if there's already a window open with this URL
+        // 1. Try to find a client tab that is already on the exact target URL
         for (const client of clientList) {
-          if (client.url === urlToOpen && 'focus' in client) {
-            // Send background message callback
+          if (client.url === absoluteUrl && 'focus' in client) {
             client.postMessage({
               type: 'BACKGROUND_MESSAGE',
               payload: event.notification.data,
@@ -88,11 +89,26 @@ self.addEventListener('notificationclick', (event) => {
           }
         }
 
-        // If not, open a new window
+        // 2. Otherwise, find any client tab belonging to our origin/site
+        for (const client of clientList) {
+          if (
+            client.url.startsWith(self.location.origin) &&
+            'focus' in client &&
+            'navigate' in client
+          ) {
+            client.postMessage({
+              type: 'BACKGROUND_MESSAGE',
+              payload: event.notification.data,
+            });
+            client.focus();
+            return client.navigate(absoluteUrl);
+          }
+        }
+
+        // 3. If no client tab exists at all under our origin, open a new window
         if (self.clients.openWindow) {
-          return self.clients.openWindow(urlToOpen).then((client) => {
+          return self.clients.openWindow(absoluteUrl).then((client) => {
             if (client) {
-              // Send background message to new window
               client.postMessage({
                 type: 'BACKGROUND_MESSAGE',
                 payload: event.notification.data,

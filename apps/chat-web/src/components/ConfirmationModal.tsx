@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { IconX } from './Icons';
 
 interface ConfirmationModalProps {
@@ -22,13 +23,19 @@ export const ConfirmationModal = ({
   onConfirm,
   onCancel,
 }: ConfirmationModalProps): React.JSX.Element | null => {
-  if (!isOpen) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || !isOpen) {
     return null;
   }
 
   const isDanger = type === 'danger';
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-1200 flex items-center justify-center p-4 bg-[rgba(4,6,12,0.65)] backdrop-blur-xs animate-fade-in"
       onClick={onCancel}
@@ -107,6 +114,7 @@ export const ConfirmationModal = ({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };
