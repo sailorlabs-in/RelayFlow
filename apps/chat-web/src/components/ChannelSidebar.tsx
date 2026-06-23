@@ -437,10 +437,6 @@ export const ChannelSidebar = ({
               : 'bg-transparent hover:bg-theme-input'
           } ${isOver ? 'border-t-2 border-(--accent-primary)' : ''}`}
         >
-          <span
-            className={`absolute left-0 w-0.75 rounded-r bg-(--accent-primary) transition-all duration-200
-            ${isActive ? 'h-5 top-[7.5px]' : 'h-0 top-[17.5px] opacity-0'}`}
-          />
           <button
             id={`channel-${channel.id}`}
             onClick={() => handleSelectChannel(channel)}

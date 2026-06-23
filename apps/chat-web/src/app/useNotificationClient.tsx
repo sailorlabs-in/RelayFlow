@@ -265,7 +265,10 @@ export function getNotificationClient() {
   }
 }
 
-export function useNotificationClient(user: User | null) {
+export function useNotificationClient(
+  user: User | null,
+  setIsDMMode?: (val: boolean) => void,
+) {
   const [client, setClient] = useState<any>(null);
   const registeredUserIdRef = useRef<string | null>(null);
   const dispatch = useAppDispatch();
@@ -536,6 +539,27 @@ export function useNotificationClient(user: User | null) {
 
       c.onBackgroundMessage((payload: any) => {
         PrintLog('Vibe Message Background click payload:', payload);
+        if (payload) {
+          const msgConvoId = payload.conversationId;
+          const msgGroupId = payload.groupId || '';
+          const isDm = payload.isDm === 'true' || payload.isDm === true;
+
+          if (msgConvoId) {
+            if (isDm) {
+              if (setIsDMMode) {
+                setIsDMMode(true);
+              }
+              dispatchRef.current(setActiveGroup(null));
+              dispatchRef.current(setActiveConversation(msgConvoId));
+            } else {
+              if (setIsDMMode) {
+                setIsDMMode(false);
+              }
+              dispatchRef.current(setActiveGroup(msgGroupId));
+              dispatchRef.current(setActiveChannel(msgConvoId));
+            }
+          }
+        }
       });
 
       c.onSilentMessage((data: any) => {
@@ -663,4 +687,41 @@ export function useNotificationClient(user: User | null) {
 
     register();
   }, [client, user]);
+
+  // Handle URL redirection query params from push notifications on mount/hydration
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const searchParams = new URLSearchParams(window.location.search);
+    const convoId = searchParams.get('notificationConvoId');
+    const groupId = searchParams.get('notificationGroupId');
+    const isDm = searchParams.get('isDm') === 'true';
+
+    if (convoId) {
+      PrintLog('Redirecting via query params:', { convoId, groupId, isDm });
+
+      if (isDm) {
+        if (setIsDMMode) {
+          setIsDMMode(true);
+        }
+        dispatch(setActiveGroup(null));
+        dispatch(setActiveConversation(convoId));
+      } else if (groupId) {
+        if (setIsDMMode) {
+          setIsDMMode(false);
+        }
+        dispatch(setActiveGroup(groupId));
+        dispatch(setActiveChannel(convoId));
+      }
+
+      // Clean up search parameters from URL so they don't trigger again on refresh
+      const url = new URL(window.location.href);
+      url.searchParams.delete('notificationConvoId');
+      url.searchParams.delete('notificationGroupId');
+      url.searchParams.delete('isDm');
+      window.history.replaceState({}, '', url.pathname + url.search);
+    }
+  }, [dispatch, setIsDMMode]);
 }

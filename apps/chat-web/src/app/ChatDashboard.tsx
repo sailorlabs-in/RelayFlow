@@ -46,7 +46,6 @@ function ChatDashboardContent() {
   const dispatch = useAppDispatch();
 
   const { user, accessToken } = useAppSelector((s) => s.auth);
-  useNotificationClient(user);
   const { activeConversationId } = useAppSelector((s) => s.chat);
   const {
     groups: rawGroups,
@@ -91,6 +90,8 @@ function ChatDashboardContent() {
   const [autoStatus, setAutoStatus] = useState<'online' | 'away' | 'offline'>(
     'online',
   );
+
+  useNotificationClient(user, setIsDMMode);
 
   const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
   const awayToOfflineTimerRef = useRef<NodeJS.Timeout | null>(null);

@@ -319,11 +319,6 @@ export const ChatSidebar = ({
             }`}
             onClick={() => dispatch(setActiveConversation('friends'))}
           >
-            {/* Left active glow bar */}
-            <span
-              className={`absolute left-0 w-0.75 rounded-r bg-(--accent-primary) transition-all duration-200
-              ${activeConversationId === 'friends' ? 'h-5 top-[7.5px]' : 'h-0 top-[17.5px] opacity-0'}`}
-            />
             <div className="w-7.5 h-7.5 rounded-lg flex items-center justify-center bg-(--theme-btn) text-(--accent-primary) shrink-0">
               <svg
                 viewBox="0 0 24 24"
@@ -400,11 +395,6 @@ export const ChatSidebar = ({
                   onClick={() => dispatch(setActiveConversation(convo.id))}
                   onContextMenu={(e) => handleContextMenu(e, convo.id)}
                 >
-                  {/* Left active glow bar */}
-                  <span
-                    className={`absolute left-0 w-0.75 rounded-r bg-(--accent-primary) transition-all duration-200
-                    ${isActive ? 'h-5 top-[7.5px]' : 'h-0 top-[17.5px] opacity-0'}`}
-                  />
                   <Avatar
                     letter={details.letter}
                     url={details.avatarThumbnailUrl || details.avatarUrl}

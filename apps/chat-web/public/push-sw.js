@@ -79,7 +79,29 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
-  const urlToOpen = event.notification.data?.click_action || '/';
+  const data = event.notification.data || {};
+  let urlToOpen = data.click_action || '/';
+
+  // Append query params if it's a message/channel notification to ensure cold-starts/navigation can pick up routing
+  if (data.conversationId) {
+    try {
+      const urlObj = new URL(urlToOpen, self.location.origin);
+      urlObj.searchParams.set('notificationConvoId', data.conversationId);
+      if (data.groupId) {
+        urlObj.searchParams.set('notificationGroupId', data.groupId);
+      }
+      if (data.isDm !== undefined) {
+        urlObj.searchParams.set('isDm', data.isDm.toString());
+      }
+      urlToOpen = urlObj.pathname + urlObj.search;
+    } catch (err) {
+      console.error(
+        'Failed to construct redirection URL in service worker:',
+        err,
+      );
+    }
+  }
+
   // Resolve relative URLs to absolute URLs using the service worker's origin
   const absoluteUrl = new URL(urlToOpen, self.location.origin).href;
 
@@ -92,7 +114,7 @@ self.addEventListener('notificationclick', (event) => {
           if (client.url === absoluteUrl && 'focus' in client) {
             client.postMessage({
               type: 'BACKGROUND_MESSAGE',
-              payload: event.notification.data,
+              payload: data,
             });
             return client.focus();
           }
@@ -102,15 +124,27 @@ self.addEventListener('notificationclick', (event) => {
         for (const client of clientList) {
           if (
             client.url.startsWith(self.location.origin) &&
-            'focus' in client &&
-            'navigate' in client
+            'focus' in client
           ) {
             client.postMessage({
               type: 'BACKGROUND_MESSAGE',
-              payload: event.notification.data,
+              payload: data,
             });
             client.focus();
-            return client.navigate(absoluteUrl);
+
+            // If the client is already on the home page, do not force navigate (causing full reload)
+            // since the foreground postMessage handler can switch channels instantly in memory
+            try {
+              const clientUrl = new URL(client.url);
+              if (clientUrl.pathname === '/') {
+                return; // already on home page, in-memory route suffices
+              }
+            } catch {}
+
+            if ('navigate' in client) {
+              return client.navigate(absoluteUrl);
+            }
+            return;
           }
         }
 
@@ -120,7 +154,7 @@ self.addEventListener('notificationclick', (event) => {
             if (client) {
               client.postMessage({
                 type: 'BACKGROUND_MESSAGE',
-                payload: event.notification.data,
+                payload: data,
               });
             }
           });

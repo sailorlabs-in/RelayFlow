@@ -23,8 +23,28 @@ export const GroupRail = ({
 }: GroupRailProps): React.JSX.Element => {
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((s) => s.auth);
-  const { groups: rawGroups, activeGroupId } = useAppSelector((s) => s.groups);
+  const {
+    groups: rawGroups,
+    activeGroupId,
+    activeChannelId,
+  } = useAppSelector((s) => s.groups);
   const groups = Array.isArray(rawGroups) ? rawGroups : [];
+  const { conversations, messages, activeConversationId } = useAppSelector(
+    (s) => s.chat,
+  );
+
+  // Compute if any DM conversation has an unread message
+  const dmHasUnread = React.useMemo(() => {
+    return conversations.some((convo) => {
+      // If we are currently in DM mode and this conversation is active, it's not unread
+      if (isDMMode && convo.id === activeConversationId) {
+        return false;
+      }
+      const convoMsgs = messages[convo.id] || [];
+      const lastMsg = convoMsgs[convoMsgs.length - 1] ?? convo.lastMessage;
+      return lastMsg && lastMsg.senderId !== user?.id && !lastMsg.isRead;
+    });
+  }, [conversations, messages, isDMMode, activeConversationId, user?.id]);
 
   const [tooltip, setTooltip] = useState<{ text: string; id: string } | null>(
     null,
@@ -138,6 +158,7 @@ export const GroupRail = ({
       <RailButton
         id="rail-dm-btn"
         isActive={isDMMode}
+        hasUnread={dmHasUnread}
         tooltip="Direct Messages"
         onClick={onShowDMs}
         tooltip_state={tooltip}
@@ -161,6 +182,19 @@ export const GroupRail = ({
           const isDragOver = dragOverIndex === index;
           const isDragged = draggedIndex === index;
 
+          const groupHasUnread = group.channels?.some((channel) => {
+            if (
+              group.id === activeGroupId &&
+              channel.id === activeChannelId &&
+              !isDMMode
+            ) {
+              return false;
+            }
+            const channelMsgs = messages[channel.id] || [];
+            const lastMsg = channelMsgs[channelMsgs.length - 1];
+            return lastMsg && lastMsg.senderId !== user?.id && !lastMsg.isRead;
+          });
+
           return (
             <div
               key={group.id}
@@ -177,6 +211,7 @@ export const GroupRail = ({
               <RailButton
                 id={`rail-group-${group.id}`}
                 isActive={isActive}
+                hasUnread={groupHasUnread}
                 tooltip={group.name}
                 onClick={() => handleSelectGroup(group.id)}
                 tooltip_state={tooltip}
@@ -222,6 +257,7 @@ interface RailButtonProps {
   id: string;
   isActive: boolean;
   isCreate?: boolean;
+  hasUnread?: boolean;
   tooltip: string;
   onClick: () => void;
   children: React.ReactNode;
@@ -233,6 +269,7 @@ const RailButton = ({
   id,
   isActive,
   isCreate,
+  hasUnread,
   tooltip,
   onClick,
   children,
@@ -246,7 +283,7 @@ const RailButton = ({
       {/* Discord-style left indicator pill */}
       <span
         className={`absolute -left-2.75 w-1 rounded-r bg-(--accent-primary) transition-all duration-200 ease-in-out origin-left
-          ${isActive ? 'h-6 top-2.5' : showTooltip ? 'h-3 top-[16.5px] opacity-70' : 'h-0 top-5.75 opacity-0'}`}
+          ${isActive ? 'h-6 top-2.5' : hasUnread ? 'h-2 top-[19px] opacity-100' : showTooltip ? 'h-3 top-[16.5px] opacity-70' : 'h-0 top-5.75 opacity-0'}`}
       />
 
       <button
