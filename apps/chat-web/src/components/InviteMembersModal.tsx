@@ -133,10 +133,7 @@ export const InviteMembersModal = ({
   );
 
   return (
-    <div
-      className="fixed inset-0 z-1100 flex items-center justify-center p-4 bg-[rgba(4,6,12,0.65)] backdrop-blur-xs"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-1100 flex items-center justify-center p-4 bg-[rgba(4,6,12,0.65)] backdrop-blur-xs">
       <div
         className="w-120 max-w-full h-150 max-h-[85vh] flex flex-col overflow-hidden bg-(--glass-bg) border-[1.5px] border-glass backdrop-blur-[20px] rounded-[18px] shadow-(--glass-shadow) animate-slide-up"
         onClick={(e) => e.stopPropagation()}

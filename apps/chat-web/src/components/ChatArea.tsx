@@ -58,6 +58,7 @@ import {
   fetchMessages,
   deleteConversation,
   fetchUserProfile,
+  setActiveConversation,
 } from '../store/slices/chatSlice';
 import { socketManager } from '../store/socketManager';
 import { generateImageThumbnail, generateVideoThumbnail } from '../utils/media';
@@ -242,6 +243,33 @@ export const ChatArea = ({
   const feedEndRef = useRef<HTMLDivElement>(null);
 
   const { user } = useAppSelector((s) => s.auth);
+
+  const [timeStr, setTimeStr] = useState('');
+  const [greeting, setGreeting] = useState('');
+
+  useEffect(() => {
+    const updateTimeAndGreeting = () => {
+      const now = new Date();
+      setTimeStr(
+        now.toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+      );
+
+      const hr = now.getHours();
+      if (hr < 12) {
+        setGreeting('Good morning');
+      } else if (hr < 17) {
+        setGreeting('Good afternoon');
+      } else {
+        setGreeting('Good evening');
+      }
+    };
+    updateTimeAndGreeting();
+    const interval = setInterval(updateTimeAndGreeting, 1000);
+    return () => clearInterval(interval);
+  }, []);
   const {
     conversations,
     messages,
@@ -993,7 +1021,7 @@ export const ChatArea = ({
       {activeConversationId && (activeDetails || isChannelMode) ? (
         <>
           {/* Chat Header */}
-          <div className="flex items-center gap-3 px-5 py-3.5 border-b border-theme bg-theme-sidebar rounded-t-2xl">
+          <div className="flex items-center gap-3 px-5 py-3.5 border-b border-theme bg-theme-sidebar/40 backdrop-blur-md rounded-t-2xl shrink-0">
             {isChannelMode ? (
               /* Channel mode header */
               <div className="flex-1 min-w-0 flex items-center gap-2">
@@ -1563,236 +1591,378 @@ export const ChatArea = ({
               </div>
 
               {/* Input Area */}
-              <div className="px-4 py-3.5 border-t border-theme bg-theme-sidebar rounded-b-2xl">
-                {attachedFiles.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-2 max-w-full">
-                    {attachedFiles.map((file, idx) => (
-                      <div
-                        key={file.url + idx}
-                        className="flex items-center gap-3 p-2 rounded-xl border border-theme bg-theme-input animate-fade-in text-[13px] relative max-w-50"
-                      >
-                        {file.type.startsWith('image/') ? (
-                          <img
-                            src={file.url}
-                            alt="Preview"
-                            className="w-10 h-10 object-cover rounded-lg shrink-0"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-(--accent-primary) text-white text-[16px] shrink-0">
-                            📄
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0 pr-6">
-                          <div className="font-semibold truncate text-theme-primary text-[12px]">
-                            {file.name}
-                          </div>
-                          <div className="text-[10px] text-theme-muted mt-0.5">
-                            {(file.size / 1024).toFixed(1)} KB
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            deleteUploadedFile(file.url);
-                            if (file.thumbnailUrl) {
-                              deleteUploadedFile(file.thumbnailUrl);
-                            }
-                            setAttachedFiles((prev) =>
-                              prev.filter((f) => f.url !== file.url),
-                            );
-                          }}
-                          className="absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center bg-(--danger-bg) text-(--danger) border-none cursor-pointer hover:bg-(--danger) hover:text-white transition-all duration-150 active-press shadow-sm"
-                          title="Remove attachment"
+              <div className="p-2 bg-transparent shrink-0">
+                <div className="glass-panel p-2.5 border-glass bg-theme-sidebar/35 shadow-[0_10px_35px_rgba(0,0,0,0.15)] rounded-2xl">
+                  {attachedFiles.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-2.5 max-w-full">
+                      {attachedFiles.map((file, idx) => (
+                        <div
+                          key={file.url + idx}
+                          className="flex items-center gap-3 p-2 rounded-xl border border-glass bg-theme-input/80 backdrop-blur-md animate-fade-in text-[13px] relative max-w-50 shadow-sm"
                         >
-                          <IconX size={10} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <form
-                  className="flex gap-2.5 items-end"
-                  onSubmit={handleSendMessage}
-                >
-                  <div
-                    className="relative hidden md:block"
-                    ref={emojiPickerRef}
+                          {file.type.startsWith('image/') ? (
+                            <img
+                              src={file.url}
+                              alt="Preview"
+                              className="w-10 h-10 object-cover rounded-lg shrink-0"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-(--accent-primary) text-white text-[16px] shrink-0">
+                              📄
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0 pr-6">
+                            <div className="font-semibold truncate text-theme-primary text-[12px]">
+                              {file.name}
+                            </div>
+                            <div className="text-[10px] text-theme-muted mt-0.5">
+                              {(file.size / 1024).toFixed(1)} KB
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              deleteUploadedFile(file.url);
+                              if (file.thumbnailUrl) {
+                                deleteUploadedFile(file.thumbnailUrl);
+                              }
+                              setAttachedFiles((prev) =>
+                                prev.filter((f) => f.url !== file.url),
+                              );
+                            }}
+                            className="absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center bg-(--danger-bg) text-(--danger) border-none cursor-pointer hover:bg-(--danger) hover:text-white transition-all duration-150 active-press shadow-sm"
+                            title="Remove attachment"
+                          >
+                            <IconX size={10} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <form
+                    className="flex gap-2.5 items-end"
+                    onSubmit={handleSendMessage}
                   >
+                    <div
+                      className="relative hidden md:block"
+                      ref={emojiPickerRef}
+                    >
+                      <button
+                        type="button"
+                        disabled={!canSendMessages}
+                        onClick={() => setShowEmojiPicker((prev) => !prev)}
+                        className="w-11.5 h-11.5 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200 bg-theme-input text-theme-muted hover:bg-(--theme-btn-hover) hover:text-theme-primary disabled:opacity-40 disabled:cursor-not-allowed active-press border border-glass"
+                        title={
+                          canSendMessages
+                            ? 'Choose an emoji'
+                            : 'You do not have permission to send messages'
+                        }
+                      >
+                        <IconEmoji size={20} />
+                      </button>
+
+                      {showEmojiPicker && (
+                        <div className="absolute bottom-14 left-0 z-50 shadow-(--glass-shadow) rounded-[14px] overflow-hidden border border-theme bg-theme-sidebar">
+                          <EmojiPicker
+                            onEmojiSelect={onEmojiSelect}
+                            theme="auto"
+                            previewPosition="none"
+                          />
+                        </div>
+                      )}
+                    </div>
                     <button
                       type="button"
-                      disabled={!canSendMessages}
-                      onClick={() => setShowEmojiPicker((prev) => !prev)}
-                      className="w-11.5 h-11.5 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200 bg-theme-input text-theme-muted hover:bg-(--theme-btn-hover) hover:text-theme-primary disabled:opacity-40 disabled:cursor-not-allowed active-press"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={
+                        uploading || !canAttachFiles || !canSendMessages
+                      }
+                      className="w-11.5 h-11.5 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200 bg-theme-input text-theme-muted hover:bg-(--theme-btn-hover) hover:text-theme-primary disabled:opacity-40 disabled:cursor-not-allowed active-press border border-glass"
                       title={
-                        canSendMessages
-                          ? 'Choose an emoji'
-                          : 'You do not have permission to send messages'
+                        !canSendMessages
+                          ? 'You do not have permission to send messages'
+                          : !canAttachFiles
+                            ? 'You do not have permission to attach files'
+                            : 'Attach a file'
                       }
                     >
-                      <IconEmoji size={20} />
+                      {uploading ? (
+                        <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin border-(--text-primary)" />
+                      ) : (
+                        <svg
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          className="w-4.5 h-4.5"
+                        >
+                          <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                        </svg>
+                      )}
                     </button>
-
-                    {showEmojiPicker && (
-                      <div className="absolute bottom-14 left-0 z-50 shadow-(--glass-shadow) rounded-[14px] overflow-hidden border border-theme bg-theme-sidebar">
-                        <EmojiPicker
-                          onEmojiSelect={onEmojiSelect}
-                          theme="auto"
-                          previewPosition="none"
-                        />
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploading || !canAttachFiles || !canSendMessages}
-                    className="w-11.5 h-11.5 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200 bg-theme-input text-theme-muted hover:bg-(--theme-btn-hover) hover:text-theme-primary disabled:opacity-40 disabled:cursor-not-allowed active-press"
-                    title={
-                      !canSendMessages
-                        ? 'You do not have permission to send messages'
-                        : !canAttachFiles
-                          ? 'You do not have permission to attach files'
-                          : 'Attach a file'
-                    }
-                  >
-                    {uploading ? (
-                      <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin border-(--text-primary)" />
-                    ) : (
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        className="w-4.5 h-4.5"
-                      >
-                        <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-                      </svg>
-                    )}
-                  </button>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileSelect}
-                    className="hidden"
-                    multiple
-                  />
-                  <div className="relative flex-1 flex items-end">
-                    {mentionQuery && emojiResults.length > 0 && (
-                      <div className="absolute bottom-full left-0 mb-2 w-75 max-h-50 overflow-y-auto bg-theme-sidebar border border-theme rounded-xl shadow-(--glass-shadow) z-50 flex flex-col p-1">
-                        {emojiResults.map((emoji: any) => (
-                          <button
-                            key={emoji.id}
-                            type="button"
-                            className="flex items-center gap-2 px-3 py-2 text-left rounded-lg hover:bg-theme-input active-press cursor-pointer border-none bg-transparent"
-                            onClick={() => {
-                              const val = messageInput;
-                              const newText =
-                                val.slice(0, mentionQuery.start) +
-                                emoji.skins[0].native +
-                                val.slice(mentionQuery.end);
-                              setMessageInput(newText);
-                              setMentionQuery(null);
-                              setEmojiResults([]);
-                              document.getElementById('message-input')?.focus();
-                            }}
-                          >
-                            <span className="text-[20px] leading-none">
-                              {emoji.skins[0].native}
-                            </span>
-                            <span className="text-[13px] text-theme-primary">
-                              :{emoji.id}:
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    <textarea
-                      id="message-input"
-                      disabled={!canSendMessages}
-                      className="input-base w-full block rounded-xl px-4 text-[14px] resize-none leading-normal max-h-30 bg-theme-input border-[1.5px] border-glass text-theme-primary focus:outline-none focus:border-(--accent-primary) focus:ring-[3px] focus:ring-(--accent-ring) disabled:opacity-50 disabled:cursor-not-allowed box-border"
-                      style={{
-                        minHeight: '46px',
-                        paddingTop: '11px',
-                        paddingBottom: '11px',
-                      }}
-                      placeholder={
-                        canSendMessages
-                          ? isMobileScreen
-                            ? 'Type a message…'
-                            : 'Type a message… (Enter to send)'
-                          : 'You do not have permission to send messages in this group.'
-                      }
-                      rows={1}
-                      value={messageInput}
-                      onChange={handleInputChange}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          if (canSendMessages) {
-                            handleSendMessage(e);
-                          }
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileSelect}
+                      className="hidden"
+                      multiple
+                    />
+                    <div className="relative flex-1 flex items-end">
+                      {mentionQuery && emojiResults.length > 0 && (
+                        <div className="absolute bottom-full left-0 mb-2 w-75 max-h-50 overflow-y-auto bg-theme-sidebar border border-theme rounded-xl shadow-(--glass-shadow) z-50 flex flex-col p-1">
+                          {emojiResults.map((emoji: any) => (
+                            <button
+                              key={emoji.id}
+                              type="button"
+                              className="flex items-center gap-2 px-3 py-2 text-left rounded-lg hover:bg-theme-input active-press cursor-pointer border-none bg-transparent"
+                              onClick={() => {
+                                const val = messageInput;
+                                const newText =
+                                  val.slice(0, mentionQuery.start) +
+                                  emoji.skins[0].native +
+                                  val.slice(mentionQuery.end);
+                                setMessageInput(newText);
+                                setMentionQuery(null);
+                                setEmojiResults([]);
+                                document
+                                  .getElementById('message-input')
+                                  ?.focus();
+                              }}
+                            >
+                              <span className="text-[20px] leading-none">
+                                {emoji.skins[0].native}
+                              </span>
+                              <span className="text-[13px] text-theme-primary">
+                                :{emoji.id}:
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      <textarea
+                        id="message-input"
+                        disabled={!canSendMessages}
+                        className="input-base w-full block rounded-xl px-4 text-[14px] resize-none leading-normal max-h-30 bg-theme-input/40 border-[1.5px] border-glass text-theme-primary focus:outline-none focus:border-(--accent-primary) focus:ring-[3px] focus:ring-(--accent-ring) disabled:opacity-50 disabled:cursor-not-allowed box-border"
+                        style={{
+                          minHeight: '46px',
+                          paddingTop: '11px',
+                          paddingBottom: '11px',
+                        }}
+                        placeholder={
+                          canSendMessages
+                            ? isMobileScreen
+                              ? 'Type a message…'
+                              : 'Type a message… (Enter to send)'
+                            : 'You do not have permission to send messages in this group.'
                         }
-                      }}
-                      onPaste={(e) => {
-                        const items = e.clipboardData?.items;
-                        if (items) {
-                          const filesToPaste: File[] = [];
-                          for (let i = 0; i < items.length; i++) {
-                            if (items[i].kind === 'file') {
-                              const file = items[i].getAsFile();
-                              if (file) {
-                                filesToPaste.push(file);
-                              }
+                        rows={1}
+                        value={messageInput}
+                        onChange={handleInputChange}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            if (canSendMessages) {
+                              handleSendMessage(e);
                             }
                           }
-                          if (filesToPaste.length > 0) {
-                            e.preventDefault();
-                            processFiles(filesToPaste);
+                        }}
+                        onPaste={(e) => {
+                          const items = e.clipboardData?.items;
+                          if (items) {
+                            const filesToPaste: File[] = [];
+                            for (let i = 0; i < items.length; i++) {
+                              if (items[i].kind === 'file') {
+                                const file = items[i].getAsFile();
+                                if (file) {
+                                  filesToPaste.push(file);
+                                }
+                              }
+                            }
+                            if (filesToPaste.length > 0) {
+                              e.preventDefault();
+                              processFiles(filesToPaste);
+                            }
                           }
-                        }
-                      }}
-                    />
-                  </div>
-                  <button
-                    id="send-message-btn"
-                    type="submit"
-                    disabled={
-                      (!messageInput.trim() && attachedFiles.length === 0) ||
-                      !canSendMessages
-                    }
-                    className="btn-send w-11.5 h-11.5 rounded-xl shrink-0 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed hover:-translate-y-0.5 hover:shadow-(--btn-shadow) active-press"
-                  >
-                    <IconSend />
-                  </button>
-                </form>
+                        }}
+                      />
+                    </div>
+                    <button
+                      id="send-message-btn"
+                      type="submit"
+                      disabled={
+                        (!messageInput.trim() && attachedFiles.length === 0) ||
+                        !canSendMessages
+                      }
+                      className="btn-send w-11.5 h-11.5 rounded-xl shrink-0 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed hover:-translate-y-0.5 hover:shadow-(--btn-shadow) active-press"
+                    >
+                      <IconSend />
+                    </button>
+                  </form>
+                </div>
               </div>
             </>
           )}
         </>
       ) : (
-        /* Empty state */
-        <div className="flex-1 flex flex-col items-center justify-center gap-4 bg-theme-chat rounded-2xl animate-fade-in">
-          <div className="w-20 h-20 rounded-2xl overflow-hidden animate-float border border-glass bg-theme-sidebar shadow-lg">
-            <img
-              src="/logo.png"
-              alt="RelayFlow Logo"
-              className="w-full h-full object-cover"
-            />
+        /* Empty state - Beautiful Welcome Dashboard Hub */
+        <div className="flex-1 flex flex-col p-6 md:p-8 bg-theme-chat rounded-2xl overflow-y-auto animate-fade-in relative">
+          {/* Decorative Glowing Orbs in Background */}
+          <div className="absolute top-10 right-10 w-64 h-64 bg-(--bg-glow-1) rounded-full blur-3xl pointer-events-none opacity-40 animate-pulse" />
+          <div className="absolute bottom-10 left-10 w-64 h-64 bg-(--bg-glow-2) rounded-full blur-3xl pointer-events-none opacity-40 animate-pulse" />
+
+          {/* Top Widget: Live Clock & Date */}
+          <div className="self-end glass-panel px-4 py-2 flex items-center gap-3 text-sm font-semibold shrink-0 mb-8 border-glass bg-theme-sidebar/30">
+            <span className="text-theme-secondary font-mono tracking-wider">
+              {timeStr}
+            </span>
+            <div className="w-1 h-3 rounded bg-theme-muted" />
+            <span className="text-theme-muted">
+              {new Date().toLocaleDateString([], {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric',
+              })}
+            </span>
           </div>
-          <h2 className="text-[20px] font-bold tracking-tight text-theme-primary">
-            RelayFlow Workspace
-          </h2>
-          <p className="text-[13.5px] max-w-72.5 text-center leading-relaxed text-theme-secondary">
-            Select a conversation from the sidebar or search for a contact to
-            start messaging.
-          </p>
-          <button
-            id="empty-compose-btn"
-            className="mt-1 px-5 py-2.5 rounded-xl text-[13.5px] font-semibold text-white cursor-pointer transition-all duration-200 border-none btn-send hover:-translate-y-0.5 hover:shadow-(--btn-shadow) active-press"
-            onClick={() => setIsComposeOpen(true)}
-          >
-            Start a conversation
-          </button>
+
+          {/* Hero Welcome Banner */}
+          <div className="flex-1 flex flex-col items-center justify-center text-center my-6 max-w-2xl mx-auto shrink-0">
+            <div className="w-20 h-20 rounded-2xl overflow-hidden animate-float border border-glass bg-theme-sidebar shadow-lg">
+              <img
+                src="/logo.png"
+                alt="RelayFlow Logo"
+                className="w-full h-full object-contain"
+              />
+            </div>
+
+            <h1 className="text-[28px] md:text-[34px] font-extrabold tracking-tight text-theme-primary leading-tight">
+              {greeting},{' '}
+              <span className="gradient-text font-black">
+                {user?.displayName || `@${user?.username}`}
+              </span>
+            </h1>
+
+            <p className="text-[14.5px] mt-3.5 text-theme-secondary leading-relaxed max-w-md opacity-85">
+              Welcome to your RelayFlow Workspace. Chat with team members,
+              connect over voice rooms, and stay organized.
+            </p>
+          </div>
+
+          {/* Grid of Interactive Quick Action Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto w-full mb-6 shrink-0">
+            <div
+              onClick={() => setIsComposeOpen(true)}
+              className="glass-panel p-4.5 border-glass bg-theme-sidebar/20 hover:bg-theme-sidebar/40 hover:border-(--accent-primary) cursor-pointer hover:shadow-lg transition-all duration-300 group flex items-start gap-4 active-press"
+            >
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-(--accent-primary)/10 text-(--accent-primary) group-hover:bg-(--accent-primary) group-hover:text-white transition-all duration-300">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  className="w-5 h-5"
+                >
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="font-bold text-[14px] text-theme-primary mb-1">
+                  New Message
+                </h4>
+                <p className="text-[12.5px] text-theme-muted leading-snug">
+                  Start a direct messaging thread with any colleague.
+                </p>
+              </div>
+            </div>
+
+            <div
+              onClick={() => dispatch(setActiveConversation('friends'))}
+              className="glass-panel p-4.5 border-glass bg-theme-sidebar/20 hover:bg-theme-sidebar/40 hover:border-(--accent-primary) cursor-pointer hover:shadow-lg transition-all duration-300 group flex items-start gap-4 active-press"
+            >
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-(--accent-primary)/10 text-(--accent-primary) group-hover:bg-(--accent-primary) group-hover:text-white transition-all duration-300">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  className="w-5 h-5"
+                >
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="font-bold text-[14px] text-theme-primary mb-1">
+                  Friends Dashboard
+                </h4>
+                <p className="text-[12.5px] text-theme-muted leading-snug">
+                  See who is online, send requests, and add connections.
+                </p>
+              </div>
+            </div>
+
+            <div
+              onClick={() => {
+                document.getElementById('rail-create-group-btn')?.click();
+              }}
+              className="glass-panel p-4.5 border-glass bg-theme-sidebar/20 hover:bg-theme-sidebar/40 hover:border-(--accent-primary) cursor-pointer hover:shadow-lg transition-all duration-300 group flex items-start gap-4 active-press"
+            >
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-(--accent-primary)/10 text-(--accent-primary) group-hover:bg-(--accent-primary) group-hover:text-white transition-all duration-300">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  className="w-5 h-5"
+                >
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <line x1="12" y1="8" x2="12" y2="16" />
+                  <line x1="8" y1="12" x2="16" y2="12" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="font-bold text-[14px] text-theme-primary mb-1">
+                  Create a Group
+                </h4>
+                <p className="text-[12.5px] text-theme-muted leading-snug">
+                  Set up a new space for team collaboration and discussion.
+                </p>
+              </div>
+            </div>
+
+            <div
+              onClick={() => {
+                const btn =
+                  document.getElementById('profile-settings-btn') ||
+                  document.getElementById('channel-sidebar-settings-btn');
+                if (btn) {
+                  btn.click();
+                }
+              }}
+              className="glass-panel p-4.5 border-glass bg-theme-sidebar/20 hover:bg-theme-sidebar/40 hover:border-(--accent-primary) cursor-pointer hover:shadow-lg transition-all duration-300 group flex items-start gap-4 active-press"
+            >
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-(--accent-primary)/10 text-(--accent-primary) group-hover:bg-(--accent-primary) group-hover:text-white transition-all duration-300">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  className="w-5 h-5"
+                >
+                  <path d="M12 22C17.52 22 22 17.52 22 12S17.52 2 12 2 2 6.48 2 12s4.48 10 10 10z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="font-bold text-[14px] text-theme-primary mb-1">
+                  Theme & Profile
+                </h4>
+                <p className="text-[12.5px] text-theme-muted leading-snug">
+                  Change color skins, set statuses, and adjust configurations.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       )}
       {contextMenu &&

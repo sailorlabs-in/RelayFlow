@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 import { useAppDispatch, useAppSelector } from '../store';
 import { setActiveGroup } from '../store/slices/groupsSlice';
+import { updateUserProfile } from '../store/slices/authSlice';
 
 import { IconPlus } from './Icons';
 
@@ -21,15 +22,109 @@ export const GroupRail = ({
   isCollapsed,
 }: GroupRailProps): React.JSX.Element => {
   const dispatch = useAppDispatch();
+  const { user } = useAppSelector((s) => s.auth);
   const { groups: rawGroups, activeGroupId } = useAppSelector((s) => s.groups);
   const groups = Array.isArray(rawGroups) ? rawGroups : [];
+
   const [tooltip, setTooltip] = useState<{ text: string; id: string } | null>(
     null,
   );
 
+  // Reordering local state
+  const [groupOrder, setGroupOrder] = useState<string[]>([]);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+  // Load custom order from user profile OR localStorage fallback
+  useEffect(() => {
+    if (user?.groupOrder) {
+      try {
+        setGroupOrder(JSON.parse(user.groupOrder));
+      } catch (e) {
+        console.error('Failed to parse group order from user profile:', e);
+      }
+    } else if (user?.id) {
+      const stored = localStorage.getItem(`relayflow_group_order_${user.id}`);
+      if (stored) {
+        try {
+          setGroupOrder(JSON.parse(stored));
+        } catch (e) {
+          console.error('Failed to parse group order from localStorage:', e);
+        }
+      }
+    }
+  }, [user?.id, user?.groupOrder]);
+
+  // Sort groups based on groupOrder
+  const orderedGroups = React.useMemo(() => {
+    if (!groups.length) {
+      return [];
+    }
+    if (!groupOrder.length) {
+      return groups;
+    }
+
+    const orderMap = new Map<string, number>();
+    groupOrder.forEach((id, idx) => orderMap.set(id, idx));
+
+    return [...groups].sort((a, b) => {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const indexA = orderMap.has(a.id) ? orderMap.get(a.id)! : Infinity;
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const indexB = orderMap.has(b.id) ? orderMap.get(b.id)! : Infinity;
+      return indexA - indexB;
+    });
+  }, [groups, groupOrder]);
+
   const handleSelectGroup = (groupId: string) => {
     dispatch(setActiveGroup(groupId));
     onSelectGroup(groupId);
+  };
+
+  // Drag and Drop Handlers
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedIndex !== null && draggedIndex !== index) {
+      setDragOverIndex(index);
+    }
+  };
+
+  const handleDragLeave = () => {
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === targetIndex) {
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+
+    const reordered = Array.from(orderedGroups);
+    const [removed] = reordered.splice(draggedIndex, 1);
+    reordered.splice(targetIndex, 0, removed);
+
+    const newOrderIds = reordered.map((g) => g.id);
+    const orderStr = JSON.stringify(newOrderIds);
+    setGroupOrder(newOrderIds);
+    if (user?.id) {
+      localStorage.setItem(`relayflow_group_order_${user.id}`, orderStr);
+      dispatch(updateUserProfile({ groupOrder: orderStr }));
+    }
+
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
   };
 
   // Completely hidden — parent renders toggle in sidebar header
@@ -59,34 +154,49 @@ export const GroupRail = ({
       <div className="w-8 h-0.5 rounded-[1px] bg-(--border-muted) my-0.5 shrink-0" />
 
       {/* Scrollable Groups Container */}
-      <div className="flex-1 w-full flex flex-col items-center gap-1.5 overflow-y-auto overflow-x-hidden pr-0 mr-0 custom-scrollbar">
+      <div className="flex-1 w-full flex flex-col items-center gap-1.5 overflow-y-auto overflow-x-hidden pr-0 mr-0 custom-scrollbar select-none">
         {/* Group Buttons */}
-        {groups.map((group) => {
+        {orderedGroups.map((group, index) => {
           const isActive = group.id === activeGroupId && !isDMMode;
+          const isDragOver = dragOverIndex === index;
+          const isDragged = draggedIndex === index;
+
           return (
-            <RailButton
+            <div
               key={group.id}
-              id={`rail-group-${group.id}`}
-              isActive={isActive}
-              tooltip={group.name}
-              onClick={() => handleSelectGroup(group.id)}
-              tooltip_state={tooltip}
-              setTooltip={setTooltip}
+              draggable
+              onDragStart={(e) => handleDragStart(e, index)}
+              onDragOver={(e) => handleDragOver(e, index)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, index)}
+              onDragEnd={handleDragEnd}
+              className={`w-full flex justify-center transition-all duration-150 cursor-grab active:cursor-grabbing
+                ${isDragOver ? 'border-t-2 border-(--accent-primary) pt-1.5' : ''}
+                ${isDragged ? 'opacity-40 scale-95' : ''}`}
             >
-              {group.avatarThumbnailUrl || group.avatarUrl ? (
-                <img
-                  src={group.avatarThumbnailUrl || group.avatarUrl}
-                  alt={group.name}
-                  className="w-full h-full object-cover rounded-[inherit]"
-                />
-              ) : (
-                <span
-                  className={`text-[17px] font-bold leading-none tracking-[-0.5px] ${isActive ? 'text-white' : 'text-theme-primary'}`}
-                >
-                  {group.iconLetter}
-                </span>
-              )}
-            </RailButton>
+              <RailButton
+                id={`rail-group-${group.id}`}
+                isActive={isActive}
+                tooltip={group.name}
+                onClick={() => handleSelectGroup(group.id)}
+                tooltip_state={tooltip}
+                setTooltip={setTooltip}
+              >
+                {group.avatarThumbnailUrl || group.avatarUrl ? (
+                  <img
+                    src={group.avatarThumbnailUrl || group.avatarUrl}
+                    alt={group.name}
+                    className="w-full h-full object-cover rounded-[inherit]"
+                  />
+                ) : (
+                  <span
+                    className={`text-[17px] font-bold leading-none tracking-[-0.5px] ${isActive ? 'text-white' : 'text-theme-primary'}`}
+                  >
+                    {group.iconLetter}
+                  </span>
+                )}
+              </RailButton>
+            </div>
           );
         })}
 

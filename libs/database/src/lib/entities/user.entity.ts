@@ -71,6 +71,12 @@ export class User {
   @Column({ name: 'logged_in_devices', type: 'text', nullable: true })
   loggedInDevices?: string;
 
+  @Column({ name: 'group_order', type: 'text', nullable: true })
+  groupOrder?: string;
+
+  @Column({ name: 'custom_themes', type: 'text', nullable: true })
+  customThemes?: string;
+
   @Column({ name: 'reset_password_token', nullable: true })
   resetPasswordToken?: string;
 

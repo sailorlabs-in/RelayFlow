@@ -14,6 +14,7 @@ import {
   logoutUser,
   setThemeMode as setReduxThemeMode,
   setThemeSchema as setReduxThemeSchema,
+  setLocalCustomThemes,
   updateUserStatusOptimistic,
   checkUsernameAvailability,
   fetchDevices,
@@ -27,6 +28,13 @@ import { socketManager } from '../../store/socketManager';
 import StoreProvider from '../../store/StoreProvider';
 import { Avatar } from '../../components/Avatar';
 import { generateAvatarThumbnail, compressImage } from '../../utils/media';
+import {
+  rgbToHex,
+  deriveLightFromDark,
+  applyCustomColors,
+  clearCustomColors,
+} from '../../utils/theme';
+import type { ThemeColorSet } from '../../utils/theme';
 
 /* ── SVGs for icons ────────────────────────────────────────── */
 
@@ -132,6 +140,34 @@ const IconX = ({ size = 16 }: { size?: number }): React.JSX.Element => (
   >
     <line x1="18" y1="6" x2="6" y2="18" />
     <line x1="6" y1="6" x2="18" y2="18" />
+  </svg>
+);
+
+const IconPencil = (): React.JSX.Element => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.5"
+    className="w-[13px] h-[13px]"
+  >
+    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+    <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+  </svg>
+);
+
+const IconTrash = (): React.JSX.Element => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.5"
+    className="w-[13px] h-[13px]"
+  >
+    <polyline points="3 6 5 6 21 6" />
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    <line x1="10" y1="11" x2="10" y2="17" />
+    <line x1="14" y1="11" x2="14" y2="17" />
   </svg>
 );
 
@@ -309,6 +345,37 @@ export function ProfileSettingsContent({
   // Theme State
   const [themeMode, setThemeMode] = useState('system');
   const [themeSchema, setThemeSchema] = useState('arctic_glass');
+  const [customThemes, setCustomThemes] = useState<any[]>([]);
+  const [showThemeForm, setShowThemeForm] = useState(false);
+  const [editingThemeId, setEditingThemeId] = useState<string | null>(null);
+
+  // Custom Theme Form fields
+  const [customThemeName, setCustomThemeName] = useState('');
+  const [customColorTab, setCustomColorTab] = useState<'dark' | 'light'>(
+    'dark',
+  );
+  const [customSyncMode, setCustomSyncMode] = useState(true);
+
+  // Dark mode colors
+  const [customDarkAccentPrimary, setCustomDarkAccentPrimary] =
+    useState('#38bdf8');
+  const [customDarkAccentSecondary, setCustomDarkAccentSecondary] =
+    useState('#7dd3fc');
+  const [customDarkBgPrimary, setCustomDarkBgPrimary] = useState('#0d1829');
+  const [customDarkBgSidebar, setCustomDarkBgSidebar] = useState('#16233e');
+  const [customDarkTextPrimary, setCustomDarkTextPrimary] = useState('#f8fafc');
+  const [customDarkTextMuted, setCustomDarkTextMuted] = useState('#64748b');
+
+  // Light mode colors
+  const [customLightAccentPrimary, setCustomLightAccentPrimary] =
+    useState('#0284c7');
+  const [customLightAccentSecondary, setCustomLightAccentSecondary] =
+    useState('#38bdf8');
+  const [customLightBgPrimary, setCustomLightBgPrimary] = useState('#f8fbff');
+  const [customLightBgSidebar, setCustomLightBgSidebar] = useState('#eef4fa');
+  const [customLightTextPrimary, setCustomLightTextPrimary] =
+    useState('#1e1e1e');
+  const [customLightTextMuted, setCustomLightTextMuted] = useState('#64748b');
 
   // Status & Visibility State
   const [userStatus, setUserStatus] = useState('online');
@@ -531,6 +598,17 @@ export function ProfileSettingsContent({
       setTwoFactorOnlyNewDevice(user.twoFactorOnlyNewDevice ?? false);
       setAvatarUrl(user.avatarUrl || '');
       setAvatarThumbnailUrl(user.avatarThumbnailUrl || '');
+
+      let parsedThemes: any[] = [];
+      if (user.customThemes) {
+        try {
+          parsedThemes = JSON.parse(user.customThemes);
+        } catch (e) {
+          // ignore
+        }
+      }
+      setCustomThemes(parsedThemes);
+
       hasInitializedRef.current = true;
     }
   }, [user, accessToken, router, isModal]);
@@ -647,6 +725,7 @@ export function ProfileSettingsContent({
         twoFactorOnlyNewDevice,
         avatarUrl,
         avatarThumbnailUrl,
+        customThemes: JSON.stringify(customThemes),
       };
 
       if (password) {
@@ -712,6 +791,236 @@ export function ProfileSettingsContent({
       </div>
     );
   }
+
+  const applyThemePreview = (schemaId: string, currentCustomThemes: any[]) => {
+    const activeCustom = currentCustomThemes.find((t) => t.id === schemaId);
+    if (activeCustom && (activeCustom.darkColors || activeCustom.colors)) {
+      const currentMode =
+        document.documentElement.getAttribute('data-theme') || 'dark';
+      const resolvedMode =
+        currentMode === 'system'
+          ? window.matchMedia('(prefers-color-scheme: light)').matches
+            ? 'light'
+            : 'dark'
+          : currentMode;
+
+      let colors: ThemeColorSet;
+      if (activeCustom.darkColors) {
+        colors =
+          resolvedMode === 'light'
+            ? activeCustom.lightColors
+            : activeCustom.darkColors;
+      } else {
+        colors = activeCustom.colors;
+      }
+
+      applyCustomColors(colors, resolvedMode === 'dark');
+    } else {
+      clearCustomColors();
+    }
+  };
+
+  const applyThemePreviewForTab = (tab: 'dark' | 'light') => {
+    const isDark = tab === 'dark';
+    const colors: ThemeColorSet = isDark
+      ? {
+          accentPrimary: customDarkAccentPrimary,
+          accentSecondary: customDarkAccentSecondary,
+          bgPrimary: customDarkBgPrimary,
+          bgSidebar: customDarkBgSidebar,
+          textPrimary: customDarkTextPrimary,
+          textMuted: customDarkTextMuted,
+        }
+      : {
+          accentPrimary: customLightAccentPrimary,
+          accentSecondary: customLightAccentSecondary,
+          bgPrimary: customLightBgPrimary,
+          bgSidebar: customLightBgSidebar,
+          textPrimary: customLightTextPrimary,
+          textMuted: customLightTextMuted,
+        };
+    applyCustomColors(colors, isDark);
+  };
+
+  const updateLivePreviewColor = (colorKey: string, val: string) => {
+    const isDark = customColorTab === 'dark';
+    const colors: ThemeColorSet = {
+      accentPrimary:
+        colorKey === 'accentPrimary'
+          ? val
+          : isDark
+            ? customDarkAccentPrimary
+            : customLightAccentPrimary,
+      accentSecondary:
+        colorKey === 'accentSecondary'
+          ? val
+          : isDark
+            ? customDarkAccentSecondary
+            : customLightAccentSecondary,
+      bgPrimary:
+        colorKey === 'bgPrimary'
+          ? val
+          : isDark
+            ? customDarkBgPrimary
+            : customLightBgPrimary,
+      bgSidebar:
+        colorKey === 'bgSidebar'
+          ? val
+          : isDark
+            ? customDarkBgSidebar
+            : customLightBgSidebar,
+      textPrimary:
+        colorKey === 'textPrimary'
+          ? val
+          : isDark
+            ? customDarkTextPrimary
+            : customLightTextPrimary,
+      textMuted:
+        colorKey === 'textMuted'
+          ? val
+          : isDark
+            ? customDarkTextMuted
+            : customLightTextMuted,
+    };
+    applyCustomColors(colors, isDark);
+  };
+
+  const prefillColorsFromActiveTheme = () => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    const style = window.getComputedStyle(document.documentElement);
+    const getVal = (v: string, fallback: string) => {
+      const val = style.getPropertyValue(v).trim();
+      if (!val) {
+        return fallback;
+      }
+      if (val.startsWith('#')) {
+        return val;
+      }
+      if (val.startsWith('rgb')) {
+        return rgbToHex(val);
+      }
+      return fallback;
+    };
+
+    setCustomThemeName('');
+    setCustomSyncMode(true);
+    setCustomColorTab('dark');
+
+    const darkAcc = getVal('--accent-primary', '#38bdf8');
+    const darkAccSec = getVal('--accent-secondary', '#7dd3fc');
+    const darkBg = getVal('--bg-primary', '#0d1829');
+    const darkSidebar = getVal('--dropdown-bg', '#16233e');
+    const darkText = getVal('--text-primary', '#f8fafc');
+    const darkMuted = getVal('--text-muted', '#64748b');
+
+    setCustomDarkAccentPrimary(darkAcc);
+    setCustomDarkAccentSecondary(darkAccSec);
+    setCustomDarkBgPrimary(darkBg);
+    setCustomDarkBgSidebar(darkSidebar);
+    setCustomDarkTextPrimary(darkText);
+    setCustomDarkTextMuted(darkMuted);
+
+    setCustomLightAccentPrimary('#0284c7');
+    setCustomLightAccentSecondary('#38bdf8');
+    setCustomLightBgPrimary('#f8fbff');
+    setCustomLightBgSidebar('#eef4fa');
+    setCustomLightTextPrimary('#1e1e1e');
+    setCustomLightTextMuted('#64748b');
+  };
+
+  const handleSaveCustomTheme = () => {
+    if (!customThemeName.trim()) {
+      return;
+    }
+
+    const themeId = editingThemeId || `custom_${Date.now()}`;
+
+    const darkColors: ThemeColorSet = {
+      accentPrimary: customDarkAccentPrimary,
+      accentSecondary: customDarkAccentSecondary,
+      bgPrimary: customDarkBgPrimary,
+      bgSidebar: customDarkBgSidebar,
+      textPrimary: customDarkTextPrimary,
+      textMuted: customDarkTextMuted,
+    };
+
+    let lightColors: ThemeColorSet;
+    if (customSyncMode) {
+      lightColors = deriveLightFromDark(darkColors);
+    } else {
+      lightColors = {
+        accentPrimary: customLightAccentPrimary,
+        accentSecondary: customLightAccentSecondary,
+        bgPrimary: customLightBgPrimary,
+        bgSidebar: customLightBgSidebar,
+        textPrimary: customLightTextPrimary,
+        textMuted: customLightTextMuted,
+      };
+    }
+
+    const newTheme = {
+      id: themeId,
+      name: customThemeName.trim(),
+      syncMode: customSyncMode,
+      darkColors,
+      lightColors,
+    };
+
+    let updatedThemes = [];
+    if (editingThemeId) {
+      updatedThemes = customThemes.map((t) =>
+        t.id === editingThemeId ? newTheme : t,
+      );
+    } else {
+      updatedThemes = [...customThemes, newTheme];
+    }
+
+    setCustomThemes(updatedThemes);
+    dispatch(setLocalCustomThemes(JSON.stringify(updatedThemes)));
+    setThemeSchema(themeId);
+    dispatch(setReduxThemeSchema(themeId));
+
+    // Restore original theme mode attribute
+    document.documentElement.setAttribute('data-theme', themeMode);
+
+    // Close the form
+    setShowThemeForm(false);
+    setEditingThemeId(null);
+  };
+
+  const handleCancelCustomTheme = () => {
+    document.documentElement.setAttribute('data-theme', themeMode);
+    setShowThemeForm(false);
+    setEditingThemeId(null);
+    applyThemePreview(themeSchema, customThemes);
+  };
+
+  const handleDeleteCustomTheme = (themeId: string, themeName: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Custom Theme',
+      message: `Are you sure you want to delete "${themeName}"? This action cannot be undone.`,
+      confirmLabel: 'Delete Theme',
+      type: 'danger',
+      onConfirm: () => {
+        const updatedThemes = customThemes.filter((t) => t.id !== themeId);
+        setCustomThemes(updatedThemes);
+        dispatch(setLocalCustomThemes(JSON.stringify(updatedThemes)));
+
+        let nextSchema = themeSchema;
+        if (themeSchema === themeId) {
+          nextSchema = 'arctic_glass';
+          setThemeSchema(nextSchema);
+          dispatch(setReduxThemeSchema(nextSchema));
+          applyThemePreview(nextSchema, updatedThemes);
+        }
+
+        setConfirmModal(null);
+      },
+    });
+  };
 
   // Schema choices — ordered by hue (cyan → teal → green → blue → indigo → violet → red → orange → brown → amber → gold)
   const schemaOptions = [
@@ -1493,6 +1802,695 @@ export function ProfileSettingsContent({
                         </div>
                       </button>
                     ))}
+                  </div>
+                </div>
+
+                {/* Section 3: Custom Themes (Group 3) */}
+                <div
+                  className="flex flex-col gap-3 border-t pt-4"
+                  style={{ borderColor: 'var(--border-muted)' }}
+                >
+                  <div className="flex items-center justify-between">
+                    <label
+                      className="text-[11.5px] font-bold uppercase tracking-wider"
+                      style={{ color: 'var(--text-secondary)' }}
+                    >
+                      Group 3: Custom Themes
+                    </label>
+                    {!showThemeForm && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          prefillColorsFromActiveTheme();
+                          setShowThemeForm(true);
+                          setEditingThemeId(null);
+                        }}
+                        className="text-[11.5px] font-bold px-3 py-1.5 rounded-lg cursor-pointer transition-all duration-200"
+                        style={{
+                          background: 'var(--theme-btn)',
+                          color: 'var(--accent-primary)',
+                          border: 'none',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background =
+                            'var(--theme-btn-hover)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'var(--theme-btn)';
+                        }}
+                      >
+                        + Create Theme
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Inline Form to Create / Edit Custom Theme */}
+                  {showThemeForm && (
+                    <div
+                      className="p-4 rounded-xl border flex flex-col gap-4.5 animate-slide-down animate-fade-in"
+                      style={{
+                        background: 'rgba(0, 0, 0, 0.15)',
+                        borderColor: 'var(--glass-border)',
+                      }}
+                    >
+                      <div
+                        className="flex items-center justify-between border-b pb-2"
+                        style={{ borderColor: 'var(--border-muted)' }}
+                      >
+                        <span
+                          className="text-[13.5px] font-bold"
+                          style={{ color: 'var(--text-primary)' }}
+                        >
+                          {editingThemeId
+                            ? 'Edit Custom Theme'
+                            : 'Create Custom Theme'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleCancelCustomTheme}
+                          className="text-[11.5px] font-semibold cursor-pointer border-none bg-transparent"
+                          style={{ color: 'var(--text-muted)' }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+
+                      {/* Theme Name input */}
+                      <div className="flex flex-col gap-1.5">
+                        <span
+                          className="text-[11px] font-semibold uppercase tracking-wide"
+                          style={{ color: 'var(--text-muted)' }}
+                        >
+                          Theme Name
+                        </span>
+                        <input
+                          type="text"
+                          required
+                          value={customThemeName}
+                          onChange={(e) => setCustomThemeName(e.target.value)}
+                          placeholder="e.g. Neon Sunset"
+                          className="w-full bg-[var(--bg-input)] hover:bg-[var(--bg-input-focus)] focus:bg-[var(--bg-input-focus)] outline-none border border-[var(--glass-border)] focus:border-[var(--accent-primary)] rounded-xl px-3 py-2 text-[13.5px] transition-all duration-200"
+                          style={{ color: 'var(--text-primary)' }}
+                        />
+                      </div>
+
+                      {/* Sync Toggle */}
+                      <div
+                        className="flex items-center justify-between p-3 rounded-xl border"
+                        style={{
+                          borderColor: 'var(--glass-border)',
+                          background: 'var(--bg-input)',
+                        }}
+                      >
+                        <div className="flex flex-col gap-0.5">
+                          <span
+                            className="text-[12px] font-bold"
+                            style={{ color: 'var(--text-primary)' }}
+                          >
+                            Auto-Sync Modes
+                          </span>
+                          <span
+                            className="text-[10.5px]"
+                            style={{ color: 'var(--text-muted)' }}
+                          >
+                            {customSyncMode
+                              ? 'Light mode colors are auto-generated from your dark mode palette'
+                              : 'Manually configure both dark and light mode colors'}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setCustomSyncMode(!customSyncMode)}
+                          className="relative w-10 h-[22px] rounded-full cursor-pointer border-none transition-all duration-300 shrink-0"
+                          style={{
+                            background: customSyncMode
+                              ? 'var(--accent-primary)'
+                              : 'var(--glass-border)',
+                          }}
+                        >
+                          <span
+                            className="absolute top-[3px] w-4 h-4 rounded-full transition-all duration-300"
+                            style={{
+                              background: '#fff',
+                              left: customSyncMode ? '22px' : '3px',
+                              boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                            }}
+                          />
+                        </button>
+                      </div>
+
+                      {/* Dark / Light Tab Switcher */}
+                      <div
+                        className="flex rounded-xl overflow-hidden border"
+                        style={{ borderColor: 'var(--glass-border)' }}
+                      >
+                        {(['dark', 'light'] as const).map((tab) => {
+                          const isActive = customColorTab === tab;
+                          const isDisabled = customSyncMode && tab === 'light';
+                          return (
+                            <button
+                              key={tab}
+                              type="button"
+                              disabled={isDisabled}
+                              onClick={() => {
+                                setCustomColorTab(tab);
+                                document.documentElement.setAttribute(
+                                  'data-theme',
+                                  tab,
+                                );
+                                applyThemePreviewForTab(tab);
+                              }}
+                              className="flex-1 py-2 text-[12px] font-bold uppercase tracking-wider cursor-pointer border-none transition-all duration-200 flex items-center justify-center gap-1.5"
+                              style={{
+                                background: isActive
+                                  ? 'var(--accent-primary)'
+                                  : 'transparent',
+                                color: isActive
+                                  ? 'var(--bg-primary)'
+                                  : isDisabled
+                                    ? 'var(--glass-border)'
+                                    : 'var(--text-muted)',
+                                opacity: isDisabled ? 0.5 : 1,
+                                cursor: isDisabled ? 'not-allowed' : 'pointer',
+                              }}
+                            >
+                              {tab === 'dark' ? (
+                                <svg
+                                  width="14"
+                                  height="14"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                >
+                                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                                </svg>
+                              ) : (
+                                <svg
+                                  width="14"
+                                  height="14"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                >
+                                  <circle cx="12" cy="12" r="5" />
+                                  <line x1="12" y1="1" x2="12" y2="3" />
+                                  <line x1="12" y1="21" x2="12" y2="23" />
+                                  <line
+                                    x1="4.22"
+                                    y1="4.22"
+                                    x2="5.64"
+                                    y2="5.64"
+                                  />
+                                  <line
+                                    x1="18.36"
+                                    y1="18.36"
+                                    x2="19.78"
+                                    y2="19.78"
+                                  />
+                                  <line x1="1" y1="12" x2="3" y2="12" />
+                                  <line x1="21" y1="12" x2="23" y2="12" />
+                                  <line
+                                    x1="4.22"
+                                    y1="19.78"
+                                    x2="5.64"
+                                    y2="18.36"
+                                  />
+                                  <line
+                                    x1="18.36"
+                                    y1="5.64"
+                                    x2="19.78"
+                                    y2="4.22"
+                                  />
+                                </svg>
+                              )}
+                              {tab} Mode
+                              {isDisabled && (
+                                <svg
+                                  width="11"
+                                  height="11"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2.5"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                >
+                                  <rect
+                                    x="3"
+                                    y="11"
+                                    width="18"
+                                    height="11"
+                                    rx="2"
+                                    ry="2"
+                                  />
+                                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                                </svg>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Synced light preview hint */}
+                      {customSyncMode && customColorTab === 'dark' && (
+                        <div
+                          className="flex items-center gap-2 px-3 py-2 rounded-lg text-[10.5px]"
+                          style={{
+                            background: 'var(--theme-btn)',
+                            color: 'var(--accent-primary)',
+                            border: '1px solid var(--accent-ring)',
+                          }}
+                        >
+                          <svg
+                            width="13"
+                            height="13"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <polyline points="17 1 21 5 17 9" />
+                            <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+                            <polyline points="7 23 3 19 7 15" />
+                            <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+                          </svg>
+                          Light mode will auto-generate from these colors
+                        </div>
+                      )}
+
+                      {/* Theme Color pickers grid */}
+                      <div className="grid grid-cols-2 gap-4">
+                        {(() => {
+                          const isDark = customColorTab === 'dark';
+                          const pickers = isDark
+                            ? [
+                                {
+                                  key: 'bgPrimary',
+                                  label: 'App Background',
+                                  val: customDarkBgPrimary,
+                                  setter: setCustomDarkBgPrimary,
+                                },
+                                {
+                                  key: 'bgSidebar',
+                                  label: 'Sidebar Background',
+                                  val: customDarkBgSidebar,
+                                  setter: setCustomDarkBgSidebar,
+                                },
+                                {
+                                  key: 'accentPrimary',
+                                  label: 'Primary Accent',
+                                  val: customDarkAccentPrimary,
+                                  setter: setCustomDarkAccentPrimary,
+                                },
+                                {
+                                  key: 'accentSecondary',
+                                  label: 'Secondary Accent',
+                                  val: customDarkAccentSecondary,
+                                  setter: setCustomDarkAccentSecondary,
+                                },
+                                {
+                                  key: 'textPrimary',
+                                  label: 'Main Text',
+                                  val: customDarkTextPrimary,
+                                  setter: setCustomDarkTextPrimary,
+                                },
+                                {
+                                  key: 'textMuted',
+                                  label: 'Muted Text',
+                                  val: customDarkTextMuted,
+                                  setter: setCustomDarkTextMuted,
+                                },
+                              ]
+                            : [
+                                {
+                                  key: 'bgPrimary',
+                                  label: 'App Background',
+                                  val: customLightBgPrimary,
+                                  setter: setCustomLightBgPrimary,
+                                },
+                                {
+                                  key: 'bgSidebar',
+                                  label: 'Sidebar Background',
+                                  val: customLightBgSidebar,
+                                  setter: setCustomLightBgSidebar,
+                                },
+                                {
+                                  key: 'accentPrimary',
+                                  label: 'Primary Accent',
+                                  val: customLightAccentPrimary,
+                                  setter: setCustomLightAccentPrimary,
+                                },
+                                {
+                                  key: 'accentSecondary',
+                                  label: 'Secondary Accent',
+                                  val: customLightAccentSecondary,
+                                  setter: setCustomLightAccentSecondary,
+                                },
+                                {
+                                  key: 'textPrimary',
+                                  label: 'Main Text',
+                                  val: customLightTextPrimary,
+                                  setter: setCustomLightTextPrimary,
+                                },
+                                {
+                                  key: 'textMuted',
+                                  label: 'Muted Text',
+                                  val: customLightTextMuted,
+                                  setter: setCustomLightTextMuted,
+                                },
+                              ];
+                          return pickers.map((picker) => (
+                            <div
+                              key={picker.key}
+                              className="flex items-center gap-3 bg-[var(--bg-input)] p-2.5 rounded-xl border border-[var(--glass-border)]"
+                            >
+                              <input
+                                type="color"
+                                value={picker.val}
+                                onChange={(e) => {
+                                  picker.setter(e.target.value);
+                                  updateLivePreviewColor(
+                                    picker.key,
+                                    e.target.value,
+                                  );
+                                }}
+                                className="w-8 h-8 rounded-lg cursor-pointer border-none bg-transparent shrink-0"
+                              />
+                              <div className="flex flex-col overflow-hidden">
+                                <span
+                                  className="text-[11.5px] font-bold truncate"
+                                  style={{ color: 'var(--text-primary)' }}
+                                >
+                                  {picker.label}
+                                </span>
+                                <span
+                                  className="text-[10px] uppercase font-mono tracking-wider truncate"
+                                  style={{ color: 'var(--text-muted)' }}
+                                >
+                                  {picker.val}
+                                </span>
+                              </div>
+                            </div>
+                          ));
+                        })()}
+                      </div>
+
+                      <div className="flex gap-2 justify-end mt-2">
+                        <button
+                          type="button"
+                          onClick={handleCancelCustomTheme}
+                          className="text-[12.5px] font-semibold px-4 py-2 rounded-lg cursor-pointer transition-all duration-200 border-none bg-transparent"
+                          style={{ color: 'var(--text-muted)' }}
+                        >
+                          Discard
+                        </button>
+                        <button
+                          type="button"
+                          disabled={!customThemeName.trim()}
+                          onClick={handleSaveCustomTheme}
+                          className="text-[12.5px] font-bold px-5 py-2 rounded-lg cursor-pointer transition-all duration-200 border-none select-none disabled:opacity-50"
+                          style={{
+                            background: 'var(--accent-primary)',
+                            color: 'var(--bg-primary)',
+                          }}
+                        >
+                          {editingThemeId ? 'Update Theme' : 'Save Theme'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* List of Custom Themes */}
+                  <div className="flex flex-col gap-3">
+                    {customThemes.length === 0 ? (
+                      <div
+                        className="text-center py-6 px-4 rounded-xl border border-dashed text-[12px]"
+                        style={{
+                          borderColor: 'var(--glass-border)',
+                          color: 'var(--text-muted)',
+                          background: 'rgba(0,0,0,0.05)',
+                        }}
+                      >
+                        No custom themes created yet. Click "+ Create Theme" to
+                        build one!
+                      </div>
+                    ) : (
+                      customThemes.map((theme) => (
+                        <div
+                          key={theme.id}
+                          onClick={() => {
+                            setThemeSchema(theme.id);
+                            dispatch(setReduxThemeSchema(theme.id));
+                            applyThemePreview(theme.id, customThemes);
+                          }}
+                          className={`flex items-center justify-between p-4 rounded-xl cursor-pointer text-left transition-all duration-200 border ${
+                            themeSchema === theme.id
+                              ? 'border-[var(--accent-primary)] bg-[var(--theme-btn-active)]'
+                              : 'border-[var(--glass-border)] bg-[var(--theme-btn)]'
+                          }`}
+                          onMouseEnter={(e) => {
+                            if (themeSchema !== theme.id) {
+                              e.currentTarget.style.background =
+                                'var(--theme-btn-hover)';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (themeSchema !== theme.id) {
+                              e.currentTarget.style.background =
+                                'var(--theme-btn)';
+                            }
+                          }}
+                        >
+                          <div className="flex-1 pr-4">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className="font-bold text-[13.5px]"
+                                style={{
+                                  color:
+                                    themeSchema === theme.id
+                                      ? 'var(--theme-btn-active-text)'
+                                      : 'var(--text-primary)',
+                                }}
+                              >
+                                {theme.name}
+                              </span>
+                              {themeSchema === theme.id && (
+                                <span
+                                  style={{
+                                    color: 'var(--theme-btn-active-text)',
+                                  }}
+                                >
+                                  <IconCheck />
+                                </span>
+                              )}
+                              <span
+                                className="text-[9.5px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider bg-black/20 dark:bg-white/10"
+                                style={{ color: 'var(--text-muted)' }}
+                              >
+                                Custom
+                              </span>
+                            </div>
+                            <span
+                              className="text-[10.5px] block mt-0.5"
+                              style={{ color: 'var(--text-muted)' }}
+                            >
+                              Hex codes:{' '}
+                              {(theme.darkColors || theme.colors).bgPrimary} •{' '}
+                              {(theme.darkColors || theme.colors).accentPrimary}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-3">
+                            {/* Colors preview pills */}
+                            <div className="flex gap-1.5 bg-black/10 dark:bg-white/5 p-1.5 rounded-lg">
+                              {[
+                                {
+                                  c: (theme.darkColors || theme.colors)
+                                    .bgPrimary,
+                                  l: 'Background',
+                                },
+                                {
+                                  c: (theme.darkColors || theme.colors)
+                                    .bgSidebar,
+                                  l: 'Sidebar',
+                                },
+                                {
+                                  c: (theme.darkColors || theme.colors)
+                                    .accentPrimary,
+                                  l: 'Accent Primary',
+                                },
+                                {
+                                  c: (theme.darkColors || theme.colors)
+                                    .accentSecondary,
+                                  l: 'Accent Secondary',
+                                },
+                              ].map((item, idx) => (
+                                <div
+                                  key={idx}
+                                  className="w-4 h-4 rounded-full border border-black/10 dark:border-white/10"
+                                  style={{ backgroundColor: item.c }}
+                                  title={item.l}
+                                />
+                              ))}
+                            </div>
+
+                            {/* Actions: Edit & Delete */}
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingThemeId(theme.id);
+                                  setCustomThemeName(theme.name);
+                                  setCustomSyncMode(theme.syncMode ?? false);
+                                  setCustomColorTab('dark');
+
+                                  // Support both new dual-mode and legacy single-mode themes
+                                  if (theme.darkColors) {
+                                    setCustomDarkBgPrimary(
+                                      theme.darkColors.bgPrimary,
+                                    );
+                                    setCustomDarkBgSidebar(
+                                      theme.darkColors.bgSidebar,
+                                    );
+                                    setCustomDarkAccentPrimary(
+                                      theme.darkColors.accentPrimary,
+                                    );
+                                    setCustomDarkAccentSecondary(
+                                      theme.darkColors.accentSecondary,
+                                    );
+                                    setCustomDarkTextPrimary(
+                                      theme.darkColors.textPrimary,
+                                    );
+                                    setCustomDarkTextMuted(
+                                      theme.darkColors.textMuted,
+                                    );
+
+                                    setCustomLightBgPrimary(
+                                      theme.lightColors.bgPrimary,
+                                    );
+                                    setCustomLightBgSidebar(
+                                      theme.lightColors.bgSidebar,
+                                    );
+                                    setCustomLightAccentPrimary(
+                                      theme.lightColors.accentPrimary,
+                                    );
+                                    setCustomLightAccentSecondary(
+                                      theme.lightColors.accentSecondary,
+                                    );
+                                    setCustomLightTextPrimary(
+                                      theme.lightColors.textPrimary,
+                                    );
+                                    setCustomLightTextMuted(
+                                      theme.lightColors.textMuted,
+                                    );
+                                  } else if (theme.colors) {
+                                    setCustomDarkBgPrimary(
+                                      theme.colors.bgPrimary,
+                                    );
+                                    setCustomDarkBgSidebar(
+                                      theme.colors.bgSidebar,
+                                    );
+                                    setCustomDarkAccentPrimary(
+                                      theme.colors.accentPrimary,
+                                    );
+                                    setCustomDarkAccentSecondary(
+                                      theme.colors.accentSecondary,
+                                    );
+                                    setCustomDarkTextPrimary(
+                                      theme.colors.textPrimary,
+                                    );
+                                    setCustomDarkTextMuted(
+                                      theme.colors.textMuted,
+                                    );
+                                    const derived = deriveLightFromDark(
+                                      theme.colors,
+                                    );
+                                    setCustomLightBgPrimary(derived.bgPrimary);
+                                    setCustomLightBgSidebar(derived.bgSidebar);
+                                    setCustomLightAccentPrimary(
+                                      derived.accentPrimary,
+                                    );
+                                    setCustomLightAccentSecondary(
+                                      derived.accentSecondary,
+                                    );
+                                    setCustomLightTextPrimary(
+                                      derived.textPrimary,
+                                    );
+                                    setCustomLightTextMuted(derived.textMuted);
+                                  }
+
+                                  document.documentElement.setAttribute(
+                                    'data-theme',
+                                    'dark',
+                                  );
+                                  if (theme.darkColors) {
+                                    applyCustomColors(theme.darkColors, true);
+                                  } else if (theme.colors) {
+                                    applyCustomColors(theme.colors, true);
+                                  }
+                                  setShowThemeForm(true);
+                                }}
+                                className="w-8 h-8 rounded-lg cursor-pointer flex items-center justify-center border-none transition-all duration-200"
+                                style={{
+                                  background: 'var(--theme-btn)',
+                                  color: 'var(--text-muted)',
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.background =
+                                    'var(--theme-btn-hover)';
+                                  e.currentTarget.style.color =
+                                    'var(--text-primary)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.background =
+                                    'var(--theme-btn)';
+                                  e.currentTarget.style.color =
+                                    'var(--text-muted)';
+                                }}
+                                title="Edit Theme"
+                              >
+                                <IconPencil />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteCustomTheme(theme.id, theme.name);
+                                }}
+                                className="w-8 h-8 rounded-lg cursor-pointer flex items-center justify-center border-none transition-all duration-200"
+                                style={{
+                                  background: 'var(--theme-btn)',
+                                  color: 'var(--text-muted)',
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.background =
+                                    'var(--danger-bg)';
+                                  e.currentTarget.style.color = 'var(--danger)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.background =
+                                    'var(--theme-btn)';
+                                  e.currentTarget.style.color =
+                                    'var(--text-muted)';
+                                }}
+                                title="Delete Theme"
+                              >
+                                <IconTrash />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
               </div>

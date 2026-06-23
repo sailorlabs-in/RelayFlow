@@ -20,6 +20,8 @@ export interface User {
   isTwoFactorEnabled?: boolean;
   twoFactorOnlyNewDevice?: boolean;
   loggedInDevices?: string;
+  groupOrder?: string;
+  customThemes?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -267,6 +269,8 @@ export const updateUserProfile = createAsyncThunk(
       twoFactorOnlyNewDevice?: boolean;
       avatarUrl?: string;
       avatarThumbnailUrl?: string;
+      groupOrder?: string;
+      customThemes?: string;
     },
     { rejectWithValue },
   ) => {
@@ -453,6 +457,14 @@ const authSlice = createSlice({
       state.themeSchema = action.payload;
       if (isBrowser) {
         localStorage.setItem('rf-theme-schema', action.payload);
+      }
+    },
+    setLocalCustomThemes: (state, action) => {
+      if (state.user) {
+        state.user.customThemes = action.payload;
+        if (isBrowser) {
+          localStorage.setItem('chat_user', JSON.stringify(state.user));
+        }
       }
     },
     updateUserStatusOptimistic: (state, action) => {
@@ -655,6 +667,7 @@ export const {
   cancelVerification,
   setThemeMode,
   setThemeSchema,
+  setLocalCustomThemes,
   updateUserStatusOptimistic,
   restoreSession,
 } = authSlice.actions;

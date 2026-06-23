@@ -159,6 +159,8 @@ export class UsersService {
       twoFactorOnlyNewDevice?: boolean;
       avatarUrl?: string;
       avatarThumbnailUrl?: string;
+      groupOrder?: string;
+      customThemes?: string;
     },
   ): Promise<User> {
     const user = await this.findById(id);
@@ -233,6 +235,14 @@ export class UsersService {
 
     if (data.avatarThumbnailUrl !== undefined) {
       user.avatarThumbnailUrl = data.avatarThumbnailUrl;
+    }
+
+    if (data.groupOrder !== undefined) {
+      user.groupOrder = data.groupOrder;
+    }
+
+    if (data.customThemes !== undefined) {
+      user.customThemes = data.customThemes;
     }
 
     const updatedUser = await this.userRepository.save(user);

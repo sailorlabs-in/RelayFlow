@@ -37,6 +37,7 @@ const IconAddFriend = (): React.JSX.Element => (
 interface MemberSidebarProps {
   group: Group;
   onInviteClick?: () => void;
+  isOpen: boolean;
 }
 
 type PresenceStatus = 'online' | 'away' | 'dnd' | 'offline';
@@ -44,6 +45,7 @@ type PresenceStatus = 'online' | 'away' | 'dnd' | 'offline';
 export const MemberSidebar = ({
   group,
   onInviteClick,
+  isOpen,
 }: MemberSidebarProps): React.JSX.Element => {
   const dispatch = useAppDispatch();
   const {
@@ -357,7 +359,16 @@ export const MemberSidebar = ({
 
   return (
     <>
-      <div className="glass-panel h-full flex flex-col overflow-hidden w-60 min-w-60 fixed right-0 top-0 bottom-0 z-50 md:relative bg-theme-sidebar md:bg-transparent border-l border-theme md:border-none shadow-2xl md:shadow-none p-3.5 md:p-0">
+      <div
+        className={`glass-panel h-full flex flex-col overflow-hidden select-none transition-all duration-300 ease-in-out
+          fixed right-0 top-0 bottom-0 z-50 bg-theme-sidebar shadow-2xl p-3.5
+          md:relative md:right-auto md:top-auto md:bottom-auto md:z-auto md:bg-transparent md:shadow-none md:p-0
+          ${
+            isOpen
+              ? 'translate-x-0 opacity-100 w-60 min-w-60 border-[1.5px]'
+              : 'translate-x-full opacity-0 pointer-events-none w-0 min-w-0 md:translate-x-0 border-0'
+          }`}
+      >
         {/* Title */}
         <div className="px-4 py-3.5 border-b-[1.5px] border-theme flex items-center justify-between text-theme-primary text-sm font-bold bg-theme-sidebar rounded-t-2xl">
           <div className="flex items-center gap-1.5">

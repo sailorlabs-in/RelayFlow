@@ -74,10 +74,7 @@ export const CreateSectionModal = ({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-1100 flex items-center justify-center p-4 bg-[rgba(4,6,12,0.65)] backdrop-blur-xs"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-1100 flex items-center justify-center p-4 bg-[rgba(4,6,12,0.65)] backdrop-blur-xs">
       <div
         className="w-110 max-w-full bg-(--glass-bg) border-[1.5px] border-glass backdrop-blur-[20px] rounded-[18px] shadow-(--glass-shadow) overflow-hidden animate-slide-up"
         onClick={(e) => e.stopPropagation()}

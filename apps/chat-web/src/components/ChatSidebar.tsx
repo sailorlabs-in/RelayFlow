@@ -266,87 +266,63 @@ export const ChatSidebar = ({
 
   return (
     <>
-      <div className="glass-panel flex flex-col overflow-hidden h-full w-75 max-w-[calc(100vw-130px)] md:max-w-none shrink-0">
-        {/* Profile Card */}
-        <div className="flex items-center gap-2.5 p-3.5 border-b border-theme">
-          {/* Rail toggle — always first, acts like a nav handle */}
-          <button
-            id="rail-toggle-btn"
-            title={
-              isRailCollapsed ? 'Show navigation rail' : 'Hide navigation rail'
-            }
-            onClick={onToggleRail}
-            className={`w-7.5 h-7.5 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 shrink-0 border-none active-press ${isRailCollapsed ? 'bg-(--theme-btn-active) text-(--theme-btn-active-text)' : 'bg-transparent text-theme-muted hover:bg-(--theme-btn-hover) hover:text-theme-primary'}`}
-          >
-            {/* Sidebar panels icon — two vertical bars */}
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              className="w-3.75 h-3.75"
+      <div className="glass-panel w-60 min-w-45 max-w-[calc(100vw-130px)] md:w-60 md:min-w-60 lg:w-80 lg:min-w-80 h-full flex flex-col overflow-hidden select-none transition-all duration-300 ease-in-out">
+        {/* Sidebar Header */}
+        <div className="px-4 py-3.5 border-b-[1.5px] border-theme bg-theme-sidebar flex items-center justify-between gap-3.5 shrink-0 shadow-sm">
+          <div className="flex items-center gap-2">
+            {/* Rail toggle — always first, acts like a nav handle */}
+            <button
+              id="rail-toggle-btn"
+              title={
+                isRailCollapsed
+                  ? 'Show navigation rail'
+                  : 'Hide navigation rail'
+              }
+              onClick={onToggleRail}
+              className={`w-7.5 h-7.5 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 shrink-0 border-none active-press ${isRailCollapsed ? 'bg-(--theme-btn-active) text-(--theme-btn-active-text)' : 'bg-transparent text-theme-muted hover:bg-(--theme-btn-hover) hover:text-theme-primary'}`}
             >
-              <rect x="3" y="3" width="18" height="18" rx="2" />
-              <line x1="9" y1="3" x2="9" y2="21" />
-            </svg>
-          </button>
-
-          <Avatar
-            letter={(user.username ||
-              user.displayName ||
-              user.email)[0].toUpperCase()}
-            url={user.avatarThumbnailUrl || user.avatarUrl}
-            status={ownStatus}
-            size="md"
-          />
-          <div className="flex-1 min-w-0">
-            <div className="font-semibold text-[13.5px] truncate text-theme-primary">
-              {user.username
-                ? `@${user.username}`
-                : user.displayName || 'Active User'}
-            </div>
-            <div className="text-[11px] truncate mt-0.5 text-theme-muted">
-              {user.email}
-            </div>
+              {/* Sidebar panels icon — two vertical bars */}
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                className="w-3.75 h-3.75"
+              >
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <line x1="9" y1="3" x2="9" y2="21" />
+              </svg>
+            </button>
+            <span className="font-bold text-[14px] tracking-tight text-theme-primary">
+              Direct Messages
+            </span>
           </div>
 
-          {/* Profile settings */}
           <button
-            type="button"
-            onClick={() => setIsProfileOpen(true)}
-            id="profile-settings-btn"
-            title="Profile Settings"
-            className="w-7.5 h-7.5 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 shrink-0 border-none bg-transparent text-theme-muted hover:bg-(--theme-btn-hover) hover:text-theme-primary spin-hover active-press"
+            id="compose-btn"
+            title="New Direct Message"
+            className="w-7.5 h-7.5 rounded-lg flex items-center justify-center cursor-pointer border-none transition-all duration-200 bg-(--theme-btn-active) text-(--theme-btn-active-text) hover:opacity-90 active-press"
+            onClick={() => setIsComposeOpen(true)}
           >
-            <IconSettings />
-          </button>
-
-          {/* Logout */}
-          <button
-            id="logout-btn"
-            title="Sign out"
-            className="w-7.5 h-7.5 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 shrink-0 border-none bg-transparent text-theme-muted hover:bg-(--danger-bg) hover:text-(--danger) active-press"
-            onClick={handleLogout}
-          >
-            <IconLogout />
+            <IconCompose />
           </button>
         </div>
 
         {/* Permanent Friends Navigation Item */}
-        <div className="px-1.5 pt-2 shrink-0">
+        <div className="px-2 pt-3 shrink-0">
           <div
             id="sidebar-friends-tab"
-            className={`relative flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl cursor-pointer transition-all duration-200 mb-1 border active-press ${
+            className={`relative flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer transition-all duration-150 mb-0.5 active-press ${
               activeConversationId === 'friends'
-                ? 'bg-(--theme-btn-active) border-(--accent-primary) shadow-(--btn-shadow)'
-                : 'bg-transparent border-transparent hover:bg-theme-input hover:border-glass'
+                ? 'bg-(--theme-btn-active) text-(--theme-btn-active-text)'
+                : 'bg-transparent text-theme-primary hover:bg-theme-input'
             }`}
             onClick={() => dispatch(setActiveConversation('friends'))}
           >
             {/* Left active glow bar */}
             <span
-              className={`absolute left-0 w-[3.5px] rounded-r bg-(--accent-primary) transition-all duration-200
-              ${activeConversationId === 'friends' ? 'h-7 top-[7.5px]' : 'h-0 top-5.25 opacity-0'}`}
+              className={`absolute left-0 w-0.75 rounded-r bg-(--accent-primary) transition-all duration-200
+              ${activeConversationId === 'friends' ? 'h-5 top-[7.5px]' : 'h-0 top-[17.5px] opacity-0'}`}
             />
             <div className="w-7.5 h-7.5 rounded-lg flex items-center justify-center bg-(--theme-btn) text-(--accent-primary) shrink-0">
               <svg
@@ -363,15 +339,7 @@ export const ChatSidebar = ({
               </svg>
             </div>
             <div className="flex-1 min-w-0">
-              <span
-                className={`font-semibold text-[13px] ${
-                  activeConversationId === 'friends'
-                    ? 'text-(--theme-btn-active-text)'
-                    : 'text-theme-primary'
-                }`}
-              >
-                Friends
-              </span>
+              <span className="font-semibold text-[13px]">Friends</span>
             </div>
             {pendingRequests?.incoming?.length > 0 && (
               <span className="bg-(--danger) text-white text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 animate-pulse">
@@ -381,32 +349,22 @@ export const ChatSidebar = ({
           </div>
         </div>
 
-        {/* Direct Messages Label + New DM button */}
-        <div className="flex items-center justify-between px-3.5 pt-2 pb-1.5">
-          <span className="text-[10.5px] font-bold uppercase tracking-widest text-theme-muted">
-            Direct Messages
+        {/* DM List Label */}
+        <div className="flex items-center justify-between px-3.5 pt-3 pb-1 shrink-0">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-theme-muted">
+            Recent Chats
           </span>
-          <button
-            id="compose-btn"
-            title="New Direct Message"
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-[7px] text-[11px] font-semibold cursor-pointer border-none transition-all duration-200 bg-(--theme-btn-active) text-(--theme-btn-active-text) hover:opacity-90 active-press"
-            onClick={() => setIsComposeOpen(true)}
-          >
-            <IconCompose />
-            <span>New DM</span>
-          </button>
         </div>
 
         {/* Conversation List */}
-        <div className="flex-1 overflow-y-auto px-1.5 pb-2">
+        <div className="flex-1 overflow-y-auto px-2 pb-3 custom-scrollbar">
           {conversations.length === 0 ? (
-            <div className="py-10 px-5 text-center text-[13px] leading-relaxed text-theme-muted flex items-center justify-center flex-col h-full">
+            <div className="py-10 px-5 text-center text-[13px] leading-relaxed text-theme-muted flex items-center justify-center flex-col h-full opacity-60">
               <IconChat />
               <p className="mt-3">
                 No conversations yet.
                 <br />
-                Click &quot;New DM&quot; to start one.
-                <br />
+                Create a DM to start chatting!
               </p>
             </div>
           ) : (
@@ -433,14 +391,19 @@ export const ChatSidebar = ({
                 <div
                   key={convo.id}
                   id={`convo-${convo.id}`}
-                  className={`relative flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl cursor-pointer transition-all duration-200 mb-0.5 border active-press fade-in-list ${isActive ? 'bg-(--theme-btn-active) border-(--accent-primary) shadow-(--btn-shadow)' : 'bg-transparent border-transparent hover:bg-theme-input hover:border-glass'}`}
+                  className={`relative flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer transition-all duration-150 mb-0.5 active-press fade-in-list
+                    ${
+                      isActive
+                        ? 'bg-(--theme-btn-active)'
+                        : 'bg-transparent hover:bg-theme-input'
+                    }`}
                   onClick={() => dispatch(setActiveConversation(convo.id))}
                   onContextMenu={(e) => handleContextMenu(e, convo.id)}
                 >
                   {/* Left active glow bar */}
                   <span
-                    className={`absolute left-0 w-[3.5px] rounded-r bg-(--accent-primary) transition-all duration-200
-                    ${isActive ? 'h-7 top-[11.5px]' : 'h-0 top-6.25 opacity-0'}`}
+                    className={`absolute left-0 w-0.75 rounded-r bg-(--accent-primary) transition-all duration-200
+                    ${isActive ? 'h-5 top-[7.5px]' : 'h-0 top-[17.5px] opacity-0'}`}
                   />
                   <Avatar
                     letter={details.letter}
@@ -506,6 +469,51 @@ export const ChatSidebar = ({
               );
             })
           )}
+        </div>
+
+        {/* Bottom Profile Card */}
+        <div className="p-3 border-t-[1.5px] border-theme flex items-center gap-2 bg-[rgba(0,0,0,0.05)] dark:bg-[rgba(255,255,255,0.015)] shadow-inner shrink-0">
+          <Avatar
+            letter={(user.username ||
+              user.displayName ||
+              user.email)[0].toUpperCase()}
+            url={user.avatarThumbnailUrl || user.avatarUrl}
+            status={ownStatus}
+            size="md"
+          />
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold text-[13px] truncate text-theme-primary leading-tight">
+              {user.username
+                ? `@${user.username}`
+                : user.displayName || 'Active User'}
+            </div>
+            <div className="text-[10px] truncate text-theme-muted mt-0.5 leading-none">
+              {user.email}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-0.5 shrink-0">
+            {/* Profile settings */}
+            <button
+              type="button"
+              onClick={() => setIsProfileOpen(true)}
+              id="profile-settings-btn"
+              title="Profile Settings"
+              className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 border-none bg-transparent text-theme-muted hover:bg-(--theme-btn-hover) hover:text-theme-primary spin-hover active-press"
+            >
+              <IconSettings />
+            </button>
+
+            {/* Logout */}
+            <button
+              id="logout-btn"
+              title="Sign out"
+              className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 border-none bg-transparent text-theme-muted hover:bg-(--danger-bg) hover:text-(--danger) active-press"
+              onClick={handleLogout}
+            >
+              <IconLogout />
+            </button>
+          </div>
         </div>
       </div>
 

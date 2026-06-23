@@ -133,6 +133,17 @@ function ChatDashboardContent() {
     setIsHydrated(true);
   }, [dispatch]);
 
+  // Disable default browser context menu globally
+  useEffect(() => {
+    const handleGlobalContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+    };
+    document.addEventListener('contextmenu', handleGlobalContextMenu);
+    return () => {
+      document.removeEventListener('contextmenu', handleGlobalContextMenu);
+    };
+  }, []);
+
   const handleLogout = useCallback(() => {
     setConfirmModal({
       isOpen: true,
@@ -441,17 +452,19 @@ function ChatDashboardContent() {
       })()}
 
       {/* Backdrop for mobile member sidebar */}
-      {!isDMMode && activeGroup && isMembersListOpen && (
+      {!isDMMode && activeGroup && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden transition-opacity duration-300 animate-fade-in"
+          className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden transition-opacity duration-300
+            ${isMembersListOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
           onClick={() => setIsMembersListOpen(false)}
         />
       )}
 
       {/* ── Collapsible Group Member Sidebar ─────────────────────── */}
-      {!isDMMode && activeGroup && isMembersListOpen && (
+      {!isDMMode && activeGroup && (
         <MemberSidebar
           group={activeGroup}
+          isOpen={isMembersListOpen}
           onInviteClick={() => setIsInviteMembersOpen(true)}
         />
       )}

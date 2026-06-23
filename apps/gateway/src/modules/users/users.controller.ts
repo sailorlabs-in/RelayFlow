@@ -126,6 +126,14 @@ export class UsersController {
           example:
             'https://bucket.umangsailor.com/storage/profiles/avatar_thumb.png',
         },
+        groupOrder: {
+          type: 'string',
+          example: '["group-id-1", "group-id-2"]',
+        },
+        customThemes: {
+          type: 'string',
+          example: '[]',
+        },
       },
     },
   })
@@ -154,6 +162,8 @@ export class UsersController {
       twoFactorOnlyNewDevice?: boolean;
       avatarUrl?: string;
       avatarThumbnailUrl?: string;
+      groupOrder?: string;
+      customThemes?: string;
     },
   ): Promise<User> {
     return this.usersService.updateProfile(currentUser.userId, body);
