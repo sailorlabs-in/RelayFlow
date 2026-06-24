@@ -115,6 +115,43 @@ const isOnlyEmojis = (str: string): boolean => {
   return true;
 };
 
+const getContrastColor = (color: string): string => {
+  if (!color || color === 'inherit') {
+    return '#ffffff';
+  }
+  let hex = color;
+  if (color.startsWith('var(')) {
+    if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+      const varName = color.match(/var\(([^)]+)\)/)?.[1];
+      if (varName) {
+        hex = getComputedStyle(document.documentElement)
+          .getPropertyValue(varName)
+          .trim();
+      }
+    }
+  }
+  if (!hex || hex.startsWith('var(')) {
+    return '#ffffff';
+  }
+  const cleanHex = hex.replace('#', '');
+  let r = 0,
+    g = 0,
+    b = 0;
+  if (cleanHex.length === 3) {
+    r = parseInt(cleanHex[0] + cleanHex[0], 16);
+    g = parseInt(cleanHex[1] + cleanHex[1], 16);
+    b = parseInt(cleanHex[2] + cleanHex[2], 16);
+  } else if (cleanHex.length === 6) {
+    r = parseInt(cleanHex.slice(0, 2), 16);
+    g = parseInt(cleanHex.slice(2, 4), 16);
+    b = parseInt(cleanHex.slice(4, 6), 16);
+  } else {
+    return '#ffffff';
+  }
+  const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+  return brightness > 128 ? '#000000' : '#ffffff';
+};
+
 const renderMessageMedia = (
   msg: Message,
   onMediaClick: (item: MessageMediaItem) => void,
@@ -328,7 +365,19 @@ export const ChatArea = ({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
+  const emojiPickerContainerRef = useRef<HTMLDivElement>(null);
   const reactionPickerRef = useRef<HTMLDivElement>(null);
+  const [emojiPickerStyle, setEmojiPickerStyle] = useState<React.CSSProperties>(
+    {
+      opacity: 0,
+      pointerEvents: 'none',
+    },
+  );
+  const [reactionPickerStyle, setReactionPickerStyle] =
+    useState<React.CSSProperties>({
+      opacity: 0,
+      pointerEvents: 'none',
+    });
 
   const [mentionQuery, setMentionQuery] = useState<{
     text: string;
@@ -505,41 +554,98 @@ export const ChatArea = ({
 
     return parts.map((part, idx) => {
       if (part === '@everyone') {
+        const textColor = getContrastColor('var(--accent-primary)');
+        const borderColor =
+          textColor === '#ffffff'
+            ? 'rgba(255, 255, 255, 0.35)'
+            : 'rgba(0, 0, 0, 0.18)';
         return (
           <span
             key={idx}
-            className="bg-[var(--accent-ring)] text-[var(--accent-primary)] font-semibold px-1.5 py-0.5 rounded text-[13px] border border-glass/40 shadow-sm"
-            style={{ display: 'inline-block', margin: '0 2px' }}
+            className="font-semibold px-1.5 py-0.5 rounded text-[13px] shadow-sm"
+            style={{
+              display: 'inline-block',
+              margin: '0 2px',
+              backgroundColor: 'var(--accent-primary)',
+              color: textColor,
+              border: `1.5px solid ${borderColor}`,
+            }}
           >
             @everyone
           </span>
         );
       } else if (part.startsWith('@')) {
+        const cleanName = part.slice(1);
+        const resolvedUser = findUserByName(cleanName);
+
+        let roleColor = 'var(--accent-primary)';
+        if (resolvedUser?.id) {
+          const member = activeGroup?.members?.find(
+            (m) => m.userId === resolvedUser.id,
+          );
+          const memberRoleIds = member?.roleIds || [];
+          const groupRoles = activeGroup?.roles || [];
+          const matchingRoles = groupRoles.filter((r) =>
+            memberRoleIds.includes(r.id),
+          );
+          const isOwner = activeGroup?.ownerId === resolvedUser.id;
+          const color = matchingRoles[0]?.color || (isOwner ? '#eab308' : null);
+          if (color && color !== 'inherit') {
+            roleColor = color;
+          }
+        }
+
         const isMe =
           currentUserTag && part.toLowerCase() === currentUserTag.toLowerCase();
 
-        // Custom color highlights for current user tags (using a distinct warning style)
-        const highlightClass = isMe
-          ? 'bg-amber-500/10 text-amber-500 border-amber-500/35 dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/30'
-          : 'bg-[var(--accent-ring)] text-[var(--accent-primary)] border-glass/40';
-
-        return (
-          <span
-            key={idx}
-            onClick={(e) => {
-              e.stopPropagation();
-              const cleanName = part.slice(1);
-              const resolvedUser = findUserByName(cleanName);
-              if (resolvedUser?.id) {
-                handleOpenProfile(e, resolvedUser.id);
-              }
-            }}
-            className={`font-semibold px-1.5 py-0.5 rounded text-[13px] border shadow-sm cursor-pointer hover:opacity-90 active:scale-95 transition-all ${highlightClass}`}
-            style={{ display: 'inline-block', margin: '0 2px' }}
-          >
-            {part}
-          </span>
-        );
+        if (isMe) {
+          const textColor = getContrastColor(roleColor);
+          const borderColor =
+            textColor === '#ffffff'
+              ? 'rgba(255, 255, 255, 0.35)'
+              : 'rgba(0, 0, 0, 0.18)';
+          return (
+            <span
+              key={idx}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (resolvedUser?.id) {
+                  handleOpenProfile(e, resolvedUser.id);
+                }
+              }}
+              className="font-semibold px-1.5 py-0.5 rounded text-[13px] shadow-sm cursor-pointer hover:opacity-90 active:scale-95 transition-all"
+              style={{
+                display: 'inline-block',
+                margin: '0 2px',
+                backgroundColor: roleColor,
+                color: textColor,
+                border: `1.5px solid ${borderColor}`,
+              }}
+            >
+              {part}
+            </span>
+          );
+        } else {
+          return (
+            <span
+              key={idx}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (resolvedUser?.id) {
+                  handleOpenProfile(e, resolvedUser.id);
+                }
+              }}
+              className="font-semibold cursor-pointer hover:underline transition-all"
+              style={{
+                display: 'inline-block',
+                margin: '0 1px',
+                color: roleColor,
+              }}
+            >
+              {part}
+            </span>
+          );
+        }
       }
       return part;
     });
@@ -549,7 +655,9 @@ export const ChatArea = ({
     const handleClickOutside = (event: Event) => {
       if (
         emojiPickerRef.current &&
-        !emojiPickerRef.current.contains(event.target as Node)
+        !emojiPickerRef.current.contains(event.target as Node) &&
+        (!emojiPickerContainerRef.current ||
+          !emojiPickerContainerRef.current.contains(event.target as Node))
       ) {
         setShowEmojiPicker(false);
       }
@@ -776,6 +884,11 @@ export const ChatArea = ({
   const [contextMenu, setContextMenu] =
     useState<MessageContextMenuState | null>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
+  const [adjustedContextMenu, setAdjustedContextMenu] = useState<{
+    x: number;
+    y: number;
+    subMenuLeft: boolean;
+  } | null>(null);
 
   // --- Pagination & Scroll UX state ---
   const isFetchingMoreRef = useRef(false);
@@ -1180,6 +1293,136 @@ export const ChatArea = ({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [contextMenu]);
+
+  useLayoutEffect(() => {
+    if (contextMenu && contextMenuRef.current) {
+      const menu = contextMenuRef.current;
+      const rect = menu.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+
+      let adjustX = contextMenu.x;
+      let adjustY = contextMenu.y;
+
+      // Adjust X (left/right bounds)
+      if (contextMenu.x + rect.width > viewportWidth) {
+        adjustX = viewportWidth - rect.width - 16;
+      }
+      if (adjustX < 16) {
+        adjustX = 16;
+      }
+
+      // Adjust Y (top/bottom bounds)
+      if (contextMenu.y + rect.height > viewportHeight) {
+        adjustY = viewportHeight - rect.height - 16;
+      }
+      if (adjustY < 16) {
+        adjustY = 16;
+      }
+
+      // Submenu check: Submenu is 160px wide (w-40).
+      // If we put the submenu on the right of the context menu, it will start at (adjustX + rect.width)
+      // and end at (adjustX + rect.width + 160).
+      // If that ends up exceeding the viewport, we position the submenu on the left instead!
+      const subMenuLeft = adjustX + rect.width + 160 + 16 > viewportWidth;
+
+      setAdjustedContextMenu({
+        x: adjustX,
+        y: adjustY,
+        subMenuLeft,
+      });
+    } else {
+      setAdjustedContextMenu(null);
+    }
+  }, [contextMenu]);
+
+  useLayoutEffect(() => {
+    if (
+      showEmojiPicker &&
+      emojiPickerRef.current &&
+      emojiPickerContainerRef.current
+    ) {
+      const picker = emojiPickerContainerRef.current;
+      const rect = picker.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+
+      const trigger = emojiPickerRef.current;
+      const triggerRect = trigger.getBoundingClientRect();
+
+      let top = -rect.height - 8; // Position above the trigger button
+      if (triggerRect.top - rect.height - 8 < 16) {
+        // Position below trigger
+        top = triggerRect.height + 8;
+        if (triggerRect.bottom + rect.height + 8 > viewportHeight - 16) {
+          top = viewportHeight - triggerRect.top - rect.height - 16;
+        }
+      }
+
+      let left = 0;
+      if (triggerRect.left + rect.width > viewportWidth - 16) {
+        left = viewportWidth - triggerRect.left - rect.width - 16;
+      }
+      if (triggerRect.left + left < 16) {
+        left = 16 - triggerRect.left;
+      }
+
+      setEmojiPickerStyle({
+        top: `${top}px`,
+        left: `${left}px`,
+        opacity: 1,
+        pointerEvents: 'auto',
+      });
+    } else {
+      setEmojiPickerStyle({
+        opacity: 0,
+        pointerEvents: 'none',
+      });
+    }
+  }, [showEmojiPicker]);
+
+  useLayoutEffect(() => {
+    if (activeReactionMessageId && reactionPickerRef.current) {
+      const picker = reactionPickerRef.current;
+      const rect = picker.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+
+      const parent = picker.parentElement;
+      if (!parent) {
+        return;
+      }
+      const parentRect = parent.getBoundingClientRect();
+
+      let top = -rect.height - 8;
+      if (parentRect.top - rect.height - 8 < 16) {
+        top = parentRect.height + 8;
+        if (parentRect.bottom + rect.height + 8 > viewportHeight - 16) {
+          top = viewportHeight - parentRect.top - rect.height - 16;
+        }
+      }
+
+      let left = 0;
+      if (parentRect.left + rect.width > viewportWidth - 16) {
+        left = viewportWidth - parentRect.left - rect.width - 16;
+      }
+      if (parentRect.left + left < 16) {
+        left = 16 - parentRect.left;
+      }
+
+      setReactionPickerStyle({
+        top: `${top}px`,
+        left: `${left}px`,
+        opacity: 1,
+        pointerEvents: 'auto',
+      });
+    } else {
+      setReactionPickerStyle({
+        opacity: 0,
+        pointerEvents: 'none',
+      });
+    }
+  }, [activeReactionMessageId]);
 
   // ---- Conversation display name helper ----
   const getConversationDetails = (convo: any) => {
@@ -1776,8 +2019,10 @@ export const ChatArea = ({
                                 {activeReactionMessageId === msg.id && (
                                   <div
                                     ref={reactionPickerRef}
-                                    className="absolute bottom-full mb-2 z-[9999]"
-                                    style={isOut ? { right: 0 } : { left: 0 }}
+                                    className="absolute z-[9999] transition-opacity duration-150 ease-out"
+                                    style={{
+                                      ...reactionPickerStyle,
+                                    }}
                                   >
                                     <EmojiPicker
                                       onEmojiSelect={(emoji: any) => {
@@ -1891,7 +2136,10 @@ export const ChatArea = ({
                               {activeReactionMessageId === msg.id && (
                                 <div
                                   ref={reactionPickerRef}
-                                  className="absolute bottom-full mb-2 z-[9999] right-0"
+                                  className="absolute z-[9999] transition-opacity duration-150 ease-out"
+                                  style={{
+                                    ...reactionPickerStyle,
+                                  }}
                                 >
                                   <EmojiPicker
                                     onEmojiSelect={(emoji: any) => {
@@ -2201,7 +2449,10 @@ export const ChatArea = ({
                               {activeReactionMessageId === msg.id && (
                                 <div
                                   ref={reactionPickerRef}
-                                  className="absolute bottom-full mb-2 z-[9999] left-0"
+                                  className="absolute z-[9999] transition-opacity duration-150 ease-out"
+                                  style={{
+                                    ...reactionPickerStyle,
+                                  }}
                                 >
                                   <EmojiPicker
                                     onEmojiSelect={(emoji: any) => {
@@ -2405,7 +2656,13 @@ export const ChatArea = ({
                       </button>
 
                       {showEmojiPicker && (
-                        <div className="absolute bottom-14 left-0 z-50 shadow-(--glass-shadow) rounded-[14px] overflow-hidden border border-theme bg-theme-sidebar">
+                        <div
+                          ref={emojiPickerContainerRef}
+                          className="absolute z-50 shadow-(--glass-shadow) rounded-[14px] overflow-hidden border border-theme bg-theme-sidebar transition-opacity duration-150 ease-out"
+                          style={{
+                            ...emojiPickerStyle,
+                          }}
+                        >
                           <EmojiPicker
                             onEmojiSelect={onEmojiSelect}
                             theme="auto"
@@ -2809,7 +3066,15 @@ export const ChatArea = ({
           <div
             ref={contextMenuRef}
             className="convo-context-menu message-context-menu"
-            style={{ top: contextMenu.y, left: contextMenu.x }}
+            style={{
+              top: adjustedContextMenu
+                ? `${adjustedContextMenu.y}px`
+                : `${contextMenu.y}px`,
+              left: adjustedContextMenu
+                ? `${adjustedContextMenu.x}px`
+                : `${contextMenu.x}px`,
+              opacity: adjustedContextMenu ? 1 : 0,
+            }}
             role="menu"
             aria-label="Message options"
           >
@@ -2893,7 +3158,7 @@ export const ChatArea = ({
               <div
                 className="hidden group-hover:block absolute top-0 w-40 bg-(--dropdown-bg) border border-glass rounded-[10px] p-1 shadow-[0_16px_40px_rgba(0,0,0,0.35),0_0_0_1px_var(--glass-border)] backdrop-blur-lg z-10000 animate-[fadeIn_0.15s_ease-out_forwards]"
                 style={
-                  contextMenu.x > window.innerWidth / 2
+                  adjustedContextMenu?.subMenuLeft
                     ? { right: '100%', left: 'auto', marginRight: '4px' }
                     : { left: '100%', right: 'auto', marginLeft: '4px' }
                 }
