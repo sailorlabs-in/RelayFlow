@@ -1172,18 +1172,17 @@ export class GroupsService {
           'You do not have permission to assign roles',
         );
       }
-      if (targetUserId === requesterId) {
-        throw new ForbiddenException('You cannot modify your own roles');
-      }
-      const targetRank = await this.getMemberHighestManageRank(
-        groupId,
-        targetUserId,
-        target,
-      );
-      if (targetRank <= requesterRank) {
-        throw new ForbiddenException(
-          'You cannot modify roles of a member with equal or higher permissions than your own',
+      if (targetUserId !== requesterId) {
+        const targetRank = await this.getMemberHighestManageRank(
+          groupId,
+          targetUserId,
+          target,
         );
+        if (targetRank <= requesterRank) {
+          throw new ForbiddenException(
+            'You cannot modify roles of a member with equal or higher permissions than your own',
+          );
+        }
       }
 
       // Verify roles being added/removed

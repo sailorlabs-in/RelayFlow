@@ -91,6 +91,34 @@ export const MemberProfilePopover = ({
   );
   const currentUserRole = currentUserMember?.role || 'member';
 
+  const isOwner =
+    currentUserRole === 'owner' || activeGroup?.ownerId === currentUser?.id;
+
+  const currentUserHighestPriority = isOwner
+    ? Infinity
+    : Math.max(
+        0,
+        ...(currentUserMember?.roleIds || []).map(
+          (id) => activeGroup?.roles?.find((r) => r.id === id)?.priority || 0,
+        ),
+      );
+
+  const selectedMemberHighestPriority =
+    selectedMember.role === 'owner' ||
+    activeGroup?.ownerId === selectedMember.id
+      ? Infinity
+      : Math.max(
+          0,
+          ...(selectedMember.roleIds || []).map(
+            (id) => activeGroup?.roles?.find((r) => r.id === id)?.priority || 0,
+          ),
+        );
+
+  const canManageThisMember =
+    isOwner ||
+    selectedMember.id === currentUser?.id ||
+    currentUserHighestPriority > selectedMemberHighestPriority;
+
   const handleSendFriendRequest = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
@@ -266,12 +294,21 @@ export const MemberProfilePopover = ({
             <div className="flex flex-wrap gap-1.5 max-h-25 overflow-y-auto pr-1">
               {activeGroup.roles.map((role) => {
                 const isAssigned = selectedMember.roleIds?.includes(role.id);
+                const rolePriority = role.priority || 0;
+                const canInteractWithRole =
+                  isOwner || rolePriority < currentUserHighestPriority;
+                const isDisabled = !canInteractWithRole || !canManageThisMember;
+
                 return (
                   <button
                     key={role.id}
                     type="button"
+                    disabled={isDisabled}
                     onClick={async (e) => {
                       e.stopPropagation();
+                      if (isDisabled) {
+                        return;
+                      }
                       const newRoleIds = isAssigned
                         ? (selectedMember.roleIds || []).filter(
                             (id: string) => id !== role.id,
@@ -315,8 +352,10 @@ export const MemberProfilePopover = ({
                         ? `${role.color}15`
                         : 'transparent',
                       color: role.color,
+                      opacity: isDisabled ? 0.5 : 1,
+                      cursor: isDisabled ? 'not-allowed' : 'pointer',
                     }}
-                    className="px-2 py-1 rounded-md border text-[10.5px] font-bold cursor-pointer hover:bg-black/10 transition-all select-none active-press"
+                    className={`px-2 py-1 rounded-md border text-[10.5px] font-bold transition-all select-none ${isDisabled ? '' : 'hover:bg-black/10 active-press'}`}
                   >
                     {isAssigned ? '✓ ' : ''}
                     {role.name}
