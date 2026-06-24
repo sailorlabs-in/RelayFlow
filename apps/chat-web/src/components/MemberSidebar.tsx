@@ -103,7 +103,7 @@ export const MemberSidebar = ({
       targetUserId === currentUser?.id
         ? (currentUser?.status as PresenceStatus) || 'online'
         : (onlineUsers[targetUserId] as PresenceStatus) || 'offline';
-    const isOwner = activeGroup.ownerId === targetUserId;
+    const isOwner = m.role === 'owner' || activeGroup.ownerId === targetUserId;
     const isTyping = activeConversationId
       ? !!typingUsers[activeConversationId]?.[targetUserId]
       : false;
@@ -121,7 +121,8 @@ export const MemberSidebar = ({
     const matchingRoles = groupRoles.filter((r) =>
       memberRoleIds.includes(r.id),
     );
-    const color = matchingRoles[0]?.color || (isOwner ? '#eab308' : 'inherit');
+    // Owner color always wins over any role color
+    const color = isOwner ? '#eab308' : matchingRoles[0]?.color || 'inherit';
 
     return {
       id: targetUserId,
@@ -212,12 +213,15 @@ export const MemberSidebar = ({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1">
               <span
-                style={{ color: m.color !== 'inherit' ? m.color : undefined }}
-                className={`text-[13px] font-semibold truncate ${
-                  m.presence === 'offline' && m.color === 'inherit'
-                    ? 'text-theme-muted'
-                    : ''
-                } ${m.color === 'inherit' && m.presence !== 'offline' ? 'text-theme-primary' : ''}`}
+                className={`text-[13px] font-semibold truncate ${m.color === 'inherit' ? (m.presence !== 'offline' ? 'text-theme-primary' : '') : ''}`}
+                style={{
+                  color:
+                    m.color !== 'inherit'
+                      ? m.color
+                      : m.presence === 'offline'
+                        ? '#6b7280'
+                        : undefined,
+                }}
               >
                 {primaryName}
               </span>

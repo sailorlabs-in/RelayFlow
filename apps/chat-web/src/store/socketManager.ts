@@ -321,10 +321,18 @@ class SocketManager {
       },
     );
 
-    this.socket.on('group.member.removed', (data: { groupId: string }) => {
-      PrintLog('👤 Socket group.member.removed:', data.groupId);
-      store.dispatch(socketGroupMemberRemoved(data));
-    });
+    this.socket.on(
+      'group.member.removed',
+      (data: { groupId: string; groupName?: string; kickerRole?: string }) => {
+        PrintLog('👤 Socket group.member.removed:', data.groupId);
+        if (data.groupName && data.kickerRole) {
+          showToast.error(
+            `${data.kickerRole} kicked you out from ${data.groupName}`,
+          );
+        }
+        store.dispatch(socketGroupMemberRemoved(data));
+      },
+    );
 
     this.socket.on(
       'group.channel.created',

@@ -340,7 +340,7 @@ export class GroupsController {
     @Param('userId') targetUserId: string,
     @CurrentUser() currentUser: { userId: string },
   ) {
-    await this.groupsService.removeMember(
+    const { groupName, kickerRole } = await this.groupsService.removeMember(
       groupId,
       currentUser.userId,
       targetUserId,
@@ -349,7 +349,7 @@ export class GroupsController {
     // Notify the removed user
     this.realtimeGateway.server
       .to(`user:${targetUserId}`)
-      .emit('group.member.removed', { groupId });
+      .emit('group.member.removed', { groupId, groupName, kickerRole });
   }
 
   // ─── Create a channel inside a group ─────────────────────────────────────────

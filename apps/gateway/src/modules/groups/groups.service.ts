@@ -366,7 +366,7 @@ export class GroupsService {
     groupId: string,
     requesterId: string,
     targetUserId: string,
-  ): Promise<void> {
+  ): Promise<{ groupName: string; kickerRole: string }> {
     const group = await this.groupRepo.findOne({ where: { id: groupId } });
     if (!group) {
       throw new NotFoundException('Group not found');
@@ -375,6 +375,8 @@ export class GroupsService {
     if (targetUserId === group.ownerId) {
       throw new ForbiddenException('Cannot remove the group owner');
     }
+
+    let kickerRole = 'Member';
 
     if (requesterId !== targetUserId) {
       // It is a kick action
@@ -417,6 +419,25 @@ export class GroupsService {
           'Only the group owner can remove admins or owners',
         );
       }
+
+      // Determine kicker's highest role label
+      if (requesterMembership.role === GroupMemberRole.OWNER) {
+        kickerRole = 'Owner';
+      } else if (requesterMembership.role === GroupMemberRole.ADMIN) {
+        kickerRole = 'Admin';
+      } else {
+        // Check custom roles
+        const requesterRoleIds: string[] =
+          (requesterMembership as any).roleIds || [];
+        if (requesterRoleIds.length > 0) {
+          const topCustomRole = await this.groupRoleRepo.findOne({
+            where: { id: requesterRoleIds[0], groupId },
+          });
+          if (topCustomRole) {
+            kickerRole = topCustomRole.name;
+          }
+        }
+      }
     }
 
     await this.groupMemberRepo.delete({ groupId, userId: targetUserId });
@@ -431,6 +452,8 @@ export class GroupsService {
         userId: targetUserId,
       });
     }
+
+    return { groupName: group.name, kickerRole };
   }
 
   // ─── Create a new channel inside a group ─────────────────────────────────────

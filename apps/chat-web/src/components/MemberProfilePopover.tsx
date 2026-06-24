@@ -286,16 +286,19 @@ export const MemberProfilePopover = ({
                           }),
                         ).unwrap();
 
+                        const updatedMatchingRoles =
+                          activeGroup.roles?.filter((r) =>
+                            newRoleIds.includes(r.id),
+                          ) || [];
+                        const isThisOwner =
+                          activeGroup.ownerId === selectedMember.id;
                         const updated = {
                           ...selectedMember,
                           roleIds: newRoleIds,
-                          matchingRoles: activeGroup.roles?.filter((r) =>
-                            newRoleIds.includes(r.id),
-                          ),
-                          color:
-                            activeGroup.roles?.filter((r) =>
-                              newRoleIds.includes(r.id),
-                            )[0]?.color || 'inherit',
+                          matchingRoles: updatedMatchingRoles,
+                          color: isThisOwner
+                            ? '#eab308'
+                            : updatedMatchingRoles[0]?.color || 'inherit',
                         };
 
                         if (onUpdate) {

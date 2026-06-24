@@ -472,7 +472,7 @@ export const ChatArea = ({
     const matchingRoles = groupRoles.filter((r) =>
       memberRoleIds.includes(r.id),
     );
-    const color = matchingRoles[0]?.color || (isOwner ? '#eab308' : 'inherit');
+    const color = isOwner ? '#eab308' : matchingRoles[0]?.color || 'inherit';
 
     return {
       id: userId,
@@ -613,8 +613,11 @@ export const ChatArea = ({
           const matchingRoles = groupRoles.filter((r) =>
             memberRoleIds.includes(r.id),
           );
-          const isOwner = activeGroup?.ownerId === resolvedUser.id;
-          const color = matchingRoles[0]?.color || (isOwner ? '#eab308' : null);
+          const isOwner =
+            member?.role === 'owner' ||
+            activeGroup?.ownerId === resolvedUser.id;
+          // Owner color always wins — check it first, before any role color
+          const color = isOwner ? '#eab308' : matchingRoles[0]?.color || null;
           if (color && color !== 'inherit') {
             roleColor = color;
           }
@@ -907,6 +910,7 @@ export const ChatArea = ({
     x: number;
     y: number;
     subMenuLeft: boolean;
+    subMenuUp: boolean;
   } | null>(null);
 
   // --- Pagination & Scroll UX state ---
@@ -1345,10 +1349,16 @@ export const ChatArea = ({
       // If that ends up exceeding the viewport, we position the submenu on the left instead!
       const subMenuLeft = adjustX + rect.width + 160 + 16 > viewportWidth;
 
+      // Vertical submenu check: submenu max height is ~220px (header + 150px list + padding)
+      // The submenu opens at the row's y offset within the context menu.
+      // Approximate: if context menu bottom is less than 220px from the bottom, open submenu upward.
+      const subMenuUp = adjustY + rect.height + 220 > viewportHeight;
+
       setAdjustedContextMenu({
         x: adjustX,
         y: adjustY,
         subMenuLeft,
+        subMenuUp,
       });
     } else {
       setAdjustedContextMenu(null);
@@ -1701,15 +1711,20 @@ export const ChatArea = ({
                         (mem) => mem.userId === msg.senderId,
                       );
                       if (member) {
-                        const memberRoleIds = member.roleIds || [];
-                        const matchingRole = activeGroup.roles?.find((r) =>
-                          memberRoleIds.includes(r.id),
-                        );
-                        senderColor =
-                          matchingRole?.color ||
-                          (msg.senderId === activeGroup.ownerId
-                            ? '#eab308'
-                            : 'inherit');
+                        // Use member.role for reliable owner detection
+                        const isOwnerSender =
+                          member.role === 'owner' ||
+                          msg.senderId === activeGroup.ownerId;
+                        if (isOwnerSender) {
+                          // Owner color always wins over any role color
+                          senderColor = '#eab308';
+                        } else {
+                          const memberRoleIds = member.roleIds || [];
+                          const matchingRole = activeGroup.roles?.find((r) =>
+                            memberRoleIds.includes(r.id),
+                          );
+                          senderColor = matchingRole?.color || 'inherit';
+                        }
                       }
                     }
 
@@ -2710,6 +2725,18 @@ export const ChatArea = ({
                                 'Member';
                               const letter =
                                 memberName[0]?.toUpperCase() || 'U';
+
+                              // Determine member color (owner wins over role)
+                              const isOwnerMember =
+                                activeGroup.ownerId === member.userId;
+                              const memberRoleIds = member.roleIds || [];
+                              const topRole = activeGroup.roles?.find((r) =>
+                                memberRoleIds.includes(r.id),
+                              );
+                              const memberColor = isOwnerMember
+                                ? '#eab308'
+                                : topRole?.color || undefined;
+
                               return (
                                 <button
                                   key={member.id}
@@ -2737,7 +2764,14 @@ export const ChatArea = ({
                                     size="xs"
                                   />
                                   <div className="flex flex-col">
-                                    <span className="text-[13px] font-bold text-theme-primary">
+                                    <span
+                                      className={`text-[13px] font-bold ${!memberColor ? 'text-theme-primary' : ''}`}
+                                      style={
+                                        memberColor
+                                          ? { color: memberColor }
+                                          : undefined
+                                      }
+                                    >
                                       @{memberName}
                                     </span>
                                     {member.user?.displayName && (
@@ -3074,12 +3108,15 @@ export const ChatArea = ({
                 <polyline points="9 18 15 12 9 6" />
               </svg>
               <div
-                className="hidden group-hover:block absolute top-0 w-40 bg-(--dropdown-bg) border border-glass rounded-[10px] p-1 shadow-[0_16px_40px_rgba(0,0,0,0.35),0_0_0_1px_var(--glass-border)] backdrop-blur-lg z-10000 animate-[fadeIn_0.15s_ease-out_forwards]"
-                style={
-                  adjustedContextMenu?.subMenuLeft
+                className="hidden group-hover:block absolute w-40 bg-(--dropdown-bg) border border-glass rounded-[10px] p-1 shadow-[0_16px_40px_rgba(0,0,0,0.35),0_0_0_1px_var(--glass-border)] backdrop-blur-lg z-10000 animate-[fadeIn_0.15s_ease-out_forwards]"
+                style={{
+                  ...(adjustedContextMenu?.subMenuLeft
                     ? { right: '100%', left: 'auto', marginRight: '4px' }
-                    : { left: '100%', right: 'auto', marginLeft: '4px' }
-                }
+                    : { left: '100%', right: 'auto', marginLeft: '4px' }),
+                  ...(adjustedContextMenu?.subMenuUp
+                    ? { bottom: 0, top: 'auto' }
+                    : { top: 0, bottom: 'auto' }),
+                }}
               >
                 <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-theme-muted border-b border-glass mb-1">
                   Read By
