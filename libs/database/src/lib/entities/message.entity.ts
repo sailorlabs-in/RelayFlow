@@ -51,6 +51,16 @@ export class Message {
     size: number;
   }[];
 
+  @Column({ name: 'parent_id', type: 'uuid', nullable: true })
+  parentId?: string | null;
+
+  @ManyToOne(() => Message, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'parent_id' })
+  parentMessage?: Message | null;
+
+  @Column({ name: 'reactions', type: 'jsonb', nullable: true })
+  reactions?: { emoji: string; userIds: string[] }[] | null;
+
   readBy?: { userId: string; name: string }[];
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })

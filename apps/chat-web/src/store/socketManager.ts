@@ -668,17 +668,20 @@ class SocketManager {
       name: string;
       size: number;
     }[],
+    parentId?: string,
   ) {
     if (this.socket?.connected) {
       PrintLog(
         `📡 Emitting send.message for room ${conversationId}:`,
         content,
         media,
+        parentId,
       );
       this.socket.emit('send.message', {
         conversationId,
         content,
         media,
+        parentId,
       });
     } else {
       console.error('❌ Cannot send message: Socket is not connected');
@@ -716,6 +719,15 @@ class SocketManager {
         `📡 Emitting edit.message for messageId=${messageId} in conversationId=${conversationId}`,
       );
       this.socket.emit('edit.message', { messageId, conversationId, content });
+    }
+  }
+
+  toggleReaction(messageId: string, conversationId: string, emoji: string) {
+    if (this.socket?.connected) {
+      PrintLog(
+        `📡 Emitting toggle.reaction for messageId=${messageId} in conversationId=${conversationId} with emoji=${emoji}`,
+      );
+      this.socket.emit('toggle.reaction', { messageId, conversationId, emoji });
     }
   }
 

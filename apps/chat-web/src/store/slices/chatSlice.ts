@@ -34,6 +34,9 @@ export interface Message {
   updatedAt: string;
   media?: MessageMediaItem[];
   readBy?: { userId: string; name: string }[];
+  parentId?: string | null;
+  parentMessage?: Message | null;
+  reactions?: { emoji: string; userIds: string[] }[] | null;
 }
 
 export interface ChatState {

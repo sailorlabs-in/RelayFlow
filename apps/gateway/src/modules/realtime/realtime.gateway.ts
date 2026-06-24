@@ -556,6 +556,7 @@ export class RealtimeGateway
     body: {
       conversationId: string;
       content: string;
+      parentId?: string;
       media?: {
         name: string;
         thumbnailName?: string;
@@ -568,9 +569,9 @@ export class RealtimeGateway
     @ConnectedSocket() socket: Socket,
   ): Promise<void> {
     const userId = socket.data.userId as string;
-    const { conversationId, content, media } = body;
+    const { conversationId, content, media, parentId } = body;
     this.logger.log(
-      `📥 Received send.message for: ${conversationId} from user ${userId}`,
+      `📥 Received send.message for: ${conversationId} from user ${userId} (parentId: ${parentId})`,
     );
 
     const mediaItems = media || undefined;
@@ -698,6 +699,7 @@ export class RealtimeGateway
       isRead,
       mediaItems,
       readReceiptUserIds,
+      parentId,
     );
     for (const member of members) {
       const memberRoom = `user:${member.userId}`;
@@ -1054,6 +1056,48 @@ export class RealtimeGateway
     }
     this.logger.log(
       `✔ Broadcasted updated message ${messageId} in conversation ${conversationId} to ${members.length} members`,
+    );
+  }
+
+  @SubscribeMessage('toggle.reaction')
+  async handleToggleReaction(
+    @MessageBody()
+    body: { messageId: string; conversationId: string; emoji: string },
+    @ConnectedSocket() socket: Socket,
+  ): Promise<void> {
+    const userId = socket.data.userId as string;
+    const { messageId, conversationId, emoji } = body;
+
+    if (!emoji) {
+      throw new BadRequestException('Emoji cannot be empty');
+    }
+
+    const message = await this.chatService.getMessage(messageId);
+    if (!message) {
+      throw new NotFoundException('Message not found');
+    }
+
+    if (message.conversationId !== conversationId) {
+      throw new BadRequestException(
+        'Message does not belong to this conversation',
+      );
+    }
+
+    const updatedMessage = await this.chatService.toggleMessageReaction(
+      messageId,
+      userId,
+      emoji,
+    );
+
+    // Broadcast to all conversation members
+    const members =
+      await this.chatService.getConversationMembers(conversationId);
+    for (const member of members) {
+      const memberRoom = `user:${member.userId}`;
+      this.server.to(memberRoom).emit('message.updated', updatedMessage);
+    }
+    this.logger.log(
+      `✔ Broadcasted updated reactions on message ${messageId} in conversation ${conversationId} to ${members.length} members`,
     );
   }
 

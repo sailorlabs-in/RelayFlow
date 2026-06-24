@@ -230,6 +230,7 @@ export class ChatService {
     isRead = false,
     media?: any[],
     readReceiptUserIds: string[] = [],
+    parentId?: string,
   ): Promise<Message> {
     const isMember = await this.memberRepository.findOne({
       where: { conversationId, userId: senderId },
@@ -246,9 +247,20 @@ export class ChatService {
       content,
       isRead,
       media,
+      parentId: parentId || undefined,
     });
 
     const savedMessage = await this.messageRepository.save(message);
+
+    if (parentId) {
+      const reloaded = await this.messageRepository.findOne({
+        where: { id: savedMessage.id },
+        relations: ['parentMessage'],
+      });
+      if (reloaded) {
+        savedMessage.parentMessage = reloaded.parentMessage;
+      }
+    }
 
     // Save initial read receipts if any
     const readBy: { userId: string; name: string }[] = [];
@@ -330,6 +342,7 @@ export class ChatService {
     const messages = await this.messageRepository.find({
       where: { conversationId },
       order: { createdAt: 'DESC' },
+      relations: ['parentMessage'],
       take: limit,
       skip: offset,
     });
@@ -372,6 +385,7 @@ export class ChatService {
   async getMessage(messageId: string): Promise<Message | null> {
     const message = await this.messageRepository.findOne({
       where: { id: messageId },
+      relations: ['parentMessage'],
     });
     if (!message) {
       return null;
@@ -416,6 +430,41 @@ export class ChatService {
     message.isEdited = true;
     message.editedAt = new Date();
 
+    return this.messageRepository.save(message);
+  }
+
+  async toggleMessageReaction(
+    messageId: string,
+    userId: string,
+    emoji: string,
+  ): Promise<Message> {
+    const message = await this.getMessage(messageId);
+    if (!message) {
+      throw new NotFoundException('Message not found');
+    }
+
+    let reactions = message.reactions || [];
+    if (!Array.isArray(reactions)) {
+      reactions = [];
+    }
+
+    const idx = reactions.findIndex((r) => r.emoji === emoji);
+    if (idx > -1) {
+      const r = reactions[idx];
+      const uIdx = r.userIds.indexOf(userId);
+      if (uIdx > -1) {
+        r.userIds.splice(uIdx, 1);
+      } else {
+        r.userIds.push(userId);
+      }
+      if (r.userIds.length === 0) {
+        reactions.splice(idx, 1);
+      }
+    } else {
+      reactions.push({ emoji, userIds: [userId] });
+    }
+
+    message.reactions = reactions;
     return this.messageRepository.save(message);
   }
 

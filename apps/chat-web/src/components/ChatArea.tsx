@@ -66,6 +66,7 @@ import { hasGroupPermission } from '../utils/permissions';
 import { formatMessageTimestamp } from '../utils/date';
 
 import { Avatar } from './Avatar';
+import { MemberProfilePopover } from './MemberProfilePopover';
 import { ConfirmationModal } from './ConfirmationModal';
 import { FriendsDashboard } from './FriendsDashboard';
 import {
@@ -278,6 +279,7 @@ export const ChatArea = ({
     userProfiles,
     convoRecipients,
     hasMoreMessages,
+    friends,
   } = useAppSelector((s) => s.chat);
 
   const { groups, activeGroupId } = useAppSelector((s) => s.groups);
@@ -326,6 +328,7 @@ export const ChatArea = ({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
+  const reactionPickerRef = useRef<HTMLDivElement>(null);
 
   const [mentionQuery, setMentionQuery] = useState<{
     text: string;
@@ -333,6 +336,214 @@ export const ChatArea = ({
     end: number;
   } | null>(null);
   const [emojiResults, setEmojiResults] = useState<any[]>([]);
+  const [replyingToMessage, setReplyingToMessage] = useState<Message | null>(
+    null,
+  );
+  const [atMentionQuery, setAtMentionQuery] = useState<{
+    text: string;
+    start: number;
+    end: number;
+  } | null>(null);
+  const [activeReactionMessageId, setActiveReactionMessageId] = useState<
+    string | null
+  >(null);
+  const [profileCardUserId, setProfileCardUserId] = useState<string | null>(
+    null,
+  );
+  const [profilePopoverPosition, setProfilePopoverPosition] = useState<{
+    top: number;
+    right?: number;
+    left?: number;
+  } | null>(null);
+
+  const findUserByName = (name: string) => {
+    const clean = name.toLowerCase().replace(/^@/, '');
+    if (!clean) {
+      return null;
+    }
+
+    if (
+      user?.username?.toLowerCase() === clean ||
+      user?.displayName?.toLowerCase() === clean
+    ) {
+      return user;
+    }
+
+    if (activeGroup?.members) {
+      const member = activeGroup.members.find(
+        (m) =>
+          m.user?.username?.toLowerCase() === clean ||
+          m.user?.displayName?.toLowerCase() === clean,
+      );
+      if (member?.user) {
+        return member.user;
+      }
+    }
+
+    const cachedProfile = Object.values(userProfiles).find(
+      (p) =>
+        p?.username?.toLowerCase() === clean ||
+        p?.displayName?.toLowerCase() === clean,
+    );
+    if (cachedProfile) {
+      return cachedProfile;
+    }
+
+    const friend = friends.find(
+      (f) =>
+        f?.username?.toLowerCase() === clean ||
+        f?.displayName?.toLowerCase() === clean,
+    );
+    if (friend) {
+      return friend;
+    }
+
+    return null;
+  };
+
+  const getMemberDetailsForPopover = (userId: string) => {
+    const member = activeGroup?.members?.find((m) => m.userId === userId);
+    const userObj =
+      userId === user?.id
+        ? user
+        : userProfiles[userId] ||
+          member?.user ||
+          friends.find((f) => f.id === userId) ||
+          null;
+
+    const displayName =
+      userObj?.displayName ||
+      userObj?.username ||
+      userObj?.email?.split('@')[0] ||
+      'User';
+    const email = userObj?.email || '';
+    const username = userObj?.username || '';
+    const presence =
+      userId === user?.id
+        ? (user?.status as any) || 'online'
+        : (onlineUsers[userId] as any) || 'offline';
+    const isOwner = activeGroup?.ownerId === userId;
+    const memberRoleIds = member?.roleIds || [];
+    const groupRoles = activeGroup?.roles || [];
+    const matchingRoles = groupRoles.filter((r) =>
+      memberRoleIds.includes(r.id),
+    );
+    const color = matchingRoles[0]?.color || (isOwner ? '#eab308' : 'inherit');
+
+    return {
+      id: userId,
+      displayName,
+      email,
+      username,
+      avatarUrl: userObj?.avatarUrl,
+      avatarThumbnailUrl: userObj?.avatarThumbnailUrl,
+      presence,
+      isOwner,
+      role: member?.role || 'member',
+      roleIds: memberRoleIds,
+      matchingRoles,
+      color,
+    };
+  };
+
+  const handleOpenProfile = (e: React.MouseEvent, userId: string) => {
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const isRightSide = rect.left > window.innerWidth / 2;
+    setProfilePopoverPosition({
+      top: rect.top + rect.height / 2,
+      right: isRightSide ? window.innerWidth - rect.left + 8 : undefined,
+      left: !isRightSide ? rect.right + 8 : undefined,
+    });
+    setProfileCardUserId(userId);
+    if (userId !== user?.id && !userProfiles[userId]) {
+      dispatch(fetchUserProfile(userId));
+    }
+  };
+
+  const getReactingUserNames = (userIds: string[]) => {
+    return userIds.map((uid) => {
+      if (uid === user?.id) {
+        return 'You';
+      }
+      const profile = userProfiles[uid];
+      if (profile?.username) {
+        return `@${profile.username}`;
+      }
+      if (profile?.displayName) {
+        return profile.displayName;
+      }
+      const groupMem = activeGroup?.members?.find(
+        (m) => m.userId === uid,
+      )?.user;
+      if (groupMem?.username) {
+        return `@${groupMem.username}`;
+      }
+      if (groupMem?.displayName) {
+        return groupMem.displayName;
+      }
+      const friend = friends.find((f) => f.id === uid);
+      if (friend?.username) {
+        return `@${friend.username}`;
+      }
+      if (friend?.displayName) {
+        return friend.displayName;
+      }
+      return 'Someone';
+    });
+  };
+
+  const renderMessageContent = (content: string) => {
+    if (!content) {
+      return null;
+    }
+    if (!isChannelMode) {
+      return content;
+    }
+    const parts = content.split(/(@everyone|@[a-zA-Z0-9_.-]+)/g);
+    const currentUserTag = user?.username ? `@${user.username}` : '';
+
+    return parts.map((part, idx) => {
+      if (part === '@everyone') {
+        return (
+          <span
+            key={idx}
+            className="bg-[var(--accent-ring)] text-[var(--accent-primary)] font-semibold px-1.5 py-0.5 rounded text-[13px] border border-glass/40 shadow-sm"
+            style={{ display: 'inline-block', margin: '0 2px' }}
+          >
+            @everyone
+          </span>
+        );
+      } else if (part.startsWith('@')) {
+        const isMe =
+          currentUserTag && part.toLowerCase() === currentUserTag.toLowerCase();
+
+        // Custom color highlights for current user tags (using a distinct warning style)
+        const highlightClass = isMe
+          ? 'bg-amber-500/10 text-amber-500 border-amber-500/35 dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/30'
+          : 'bg-[var(--accent-ring)] text-[var(--accent-primary)] border-glass/40';
+
+        return (
+          <span
+            key={idx}
+            onClick={(e) => {
+              e.stopPropagation();
+              const cleanName = part.slice(1);
+              const resolvedUser = findUserByName(cleanName);
+              if (resolvedUser?.id) {
+                handleOpenProfile(e, resolvedUser.id);
+              }
+            }}
+            className={`font-semibold px-1.5 py-0.5 rounded text-[13px] border shadow-sm cursor-pointer hover:opacity-90 active:scale-95 transition-all ${highlightClass}`}
+            style={{ display: 'inline-block', margin: '0 2px' }}
+          >
+            {part}
+          </span>
+        );
+      }
+      return part;
+    });
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: Event) => {
@@ -341,6 +552,12 @@ export const ChatArea = ({
         !emojiPickerRef.current.contains(event.target as Node)
       ) {
         setShowEmojiPicker(false);
+      }
+      if (
+        reactionPickerRef.current &&
+        !reactionPickerRef.current.contains(event.target as Node)
+      ) {
+        setActiveReactionMessageId(null);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -749,7 +966,7 @@ export const ChatArea = ({
     [isFetchingMore, hasMore, loadMoreMessages],
   );
 
-  // ---- Resolve sender profiles ----
+  // ---- Resolve sender profiles and reaction user profiles ----
   useEffect(() => {
     if (
       activeConversationId &&
@@ -759,6 +976,15 @@ export const ChatArea = ({
       messages[activeConversationId].forEach((msg) => {
         if (user && msg.senderId !== user.id && !userProfiles[msg.senderId]) {
           dispatch(fetchUserProfile(msg.senderId));
+        }
+        if (msg.reactions) {
+          msg.reactions.forEach((react) => {
+            react.userIds.forEach((uid) => {
+              if (user && uid !== user.id && !userProfiles[uid]) {
+                dispatch(fetchUserProfile(uid));
+              }
+            });
+          });
         }
       });
     }
@@ -787,12 +1013,14 @@ export const ChatArea = ({
         activeConversationId,
         messageInput.trim(),
         media,
+        replyingToMessage?.id || undefined,
       );
     } else {
       socketManager.sendMessage(
         activeConversationId,
         messageInput.trim(),
         undefined,
+        replyingToMessage?.id || undefined,
       );
     }
 
@@ -804,7 +1032,42 @@ export const ChatArea = ({
     setMessageInput('');
     setAttachedFiles([]);
     setShowEmojiPicker(false);
+    setReplyingToMessage(null);
   };
+
+  const checkAutocomplete = useCallback(
+    async (val: string, cursor: number) => {
+      const textBeforeCursor = val.slice(0, cursor);
+      const match = textBeforeCursor.match(/:([a-zA-Z0-9_-]{2,})$/);
+      const atMatch = textBeforeCursor.match(/@([a-zA-Z0-9_.-]*)$/);
+
+      if (match) {
+        const query = match[1];
+        setMentionQuery({
+          text: query,
+          start: match.index as number,
+          end: cursor,
+        });
+        const results = await searchEmojis(query);
+        setEmojiResults(results);
+      } else {
+        setMentionQuery(null);
+        setEmojiResults([]);
+      }
+
+      if (atMatch && isChannelMode) {
+        const query = atMatch[1];
+        setAtMentionQuery({
+          text: query,
+          start: atMatch.index as number,
+          end: cursor,
+        });
+      } else {
+        setAtMentionQuery(null);
+      }
+    },
+    [isChannelMode],
+  );
 
   const handleInputChange = async (
     e: React.ChangeEvent<HTMLTextAreaElement>,
@@ -813,21 +1076,7 @@ export const ChatArea = ({
     setMessageInput(val);
 
     const cursor = e.target.selectionStart;
-    const textBeforeCursor = val.slice(0, cursor);
-    const match = textBeforeCursor.match(/:([a-zA-Z0-9_-]{2,})$/);
-    if (match) {
-      const query = match[1];
-      setMentionQuery({
-        text: query,
-        start: match.index as number,
-        end: cursor,
-      });
-      const results = await searchEmojis(query);
-      setEmojiResults(results);
-    } else {
-      setMentionQuery(null);
-      setEmojiResults([]);
-    }
+    await checkAutocomplete(val, cursor);
 
     if (!activeConversationId) {
       return;
@@ -843,6 +1092,13 @@ export const ChatArea = ({
       socketManager.stopTyping(activeConversationId);
       setIsTypingState(false);
     }, 1500);
+  };
+
+  const handleTextareaSelect = (
+    e: React.SyntheticEvent<HTMLTextAreaElement>,
+  ) => {
+    const target = e.currentTarget;
+    checkAutocomplete(target.value, target.selectionStart);
   };
 
   // ---- Delete conversation ----
@@ -1104,39 +1360,48 @@ export const ChatArea = ({
                     </svg>
                   </button>
                 )}
-                <Avatar
-                  letter={activeDetails?.letter || ''}
-                  url={
-                    activeDetails?.avatarThumbnailUrl ||
-                    activeDetails?.avatarUrl
-                  }
-                  status={activeStatus}
-                  size="md"
-                />
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-[16px] font-bold tracking-tight truncate text-theme-primary">
-                    {activeDetails?.name || ''}
-                  </h3>
-                  {isActiveTyping ? (
-                    <span className="text-[11.5px] font-medium text-(--accent-primary)">
-                      typing…
-                    </span>
-                  ) : (
-                    <div className="flex items-center gap-1.5 text-[11.5px] mt-0.5">
-                      <PresenceDot status={activeStatus} size={7} />
-                      <span
-                        style={{
-                          color:
-                            PRESENCE_DOT_COLORS[
-                              activeStatus as PresenceStatus
-                            ] || 'var(--text-muted)',
-                        }}
-                      >
-                        {STATUS_TEXTS[activeStatus as PresenceStatus] ||
-                          'Offline'}
+                <div
+                  onClick={(e) => {
+                    if (activeDetails?.id) {
+                      handleOpenProfile(e, activeDetails.id);
+                    }
+                  }}
+                  className="flex items-center gap-3 cursor-pointer hover:opacity-90 active:scale-95 transition-all"
+                >
+                  <Avatar
+                    letter={activeDetails?.letter || ''}
+                    url={
+                      activeDetails?.avatarThumbnailUrl ||
+                      activeDetails?.avatarUrl
+                    }
+                    status={activeStatus}
+                    size="md"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-[16px] font-bold tracking-tight truncate text-theme-primary">
+                      {activeDetails?.name || ''}
+                    </h3>
+                    {isActiveTyping ? (
+                      <span className="text-[11.5px] font-medium text-(--accent-primary)">
+                        typing…
                       </span>
-                    </div>
-                  )}
+                    ) : (
+                      <div className="flex items-center gap-1.5 text-[11.5px] mt-0.5">
+                        <PresenceDot status={activeStatus} size={7} />
+                        <span
+                          style={{
+                            color:
+                              PRESENCE_DOT_COLORS[
+                                activeStatus as PresenceStatus
+                              ] || 'var(--text-muted)',
+                          }}
+                        >
+                          {STATUS_TEXTS[activeStatus as PresenceStatus] ||
+                            'Offline'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </>
             )}
@@ -1244,32 +1509,93 @@ export const ChatArea = ({
                         : onlineUsers[msg.senderId] || 'offline';
                       return (
                         <div
+                          id={`msg-${msg.id}`}
                           key={msg.id}
                           onContextMenu={(e) => handleContextMenu(e, msg)}
                           className="flex items-start gap-3 animate-fade-in group justify-between hover:bg-[rgba(0,0,0,0.015)] dark:hover:bg-[rgba(255,255,255,0.01)] rounded-xl px-2 py-1.5 transition-colors duration-150 -mx-2"
                         >
                           <div className="flex items-start gap-3 flex-1 min-w-0">
-                            <Avatar
-                              letter={letter}
-                              url={
-                                isOut
-                                  ? user.avatarThumbnailUrl || user.avatarUrl
-                                  : senderProfile?.avatarThumbnailUrl ||
-                                    senderProfile?.avatarUrl
+                            <div
+                              onClick={(e) =>
+                                handleOpenProfile(e, msg.senderId)
                               }
-                              status={presenceStatus}
-                              size="sm"
-                            />
+                              className="cursor-pointer active-press hover:scale-105 transition-all"
+                            >
+                              <Avatar
+                                letter={letter}
+                                url={
+                                  isOut
+                                    ? user.avatarThumbnailUrl || user.avatarUrl
+                                    : senderProfile?.avatarThumbnailUrl ||
+                                      senderProfile?.avatarUrl
+                                }
+                                status={presenceStatus}
+                                size="sm"
+                              />
+                            </div>
                             <div className="flex-1 min-w-0">
+                              {msg.parentMessage && (
+                                <div
+                                  onClick={() => {
+                                    const el = document.getElementById(
+                                      `msg-${msg.parentId}`,
+                                    );
+                                    if (el) {
+                                      el.scrollIntoView({
+                                        behavior: 'smooth',
+                                        block: 'center',
+                                      });
+                                      el.classList.add('highlight-flash');
+                                      setTimeout(
+                                        () =>
+                                          el.classList.remove(
+                                            'highlight-flash',
+                                          ),
+                                        2000,
+                                      );
+                                    }
+                                  }}
+                                  className="flex items-center gap-1.5 text-[11px] text-theme-secondary bg-theme-input/50 border border-glass/30 rounded-lg px-2 py-1 mb-1.5 w-fit cursor-pointer hover:bg-theme-input transition-colors max-w-full"
+                                  title="Click to jump to message"
+                                >
+                                  <svg
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2.5"
+                                    className="w-3 h-3 text-[var(--accent-primary)] shrink-0"
+                                  >
+                                    <polyline points="9 17 4 12 9 7" />
+                                    <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
+                                  </svg>
+                                  <span className="font-bold text-theme-primary shrink-0">
+                                    {userProfiles[msg.parentMessage.senderId]
+                                      ?.displayName ||
+                                      (userProfiles[msg.parentMessage.senderId]
+                                        ?.username
+                                        ? `@${userProfiles[msg.parentMessage.senderId].username}`
+                                        : null) ||
+                                      (msg.parentMessage.senderId === user?.id
+                                        ? 'You'
+                                        : 'User')}
+                                  </span>
+                                  <span className="truncate opacity-80">
+                                    {msg.parentMessage.content}
+                                  </span>
+                                </div>
+                              )}
                               <div className="flex items-baseline gap-2 mb-1">
                                 <span
+                                  onClick={(e) =>
+                                    handleOpenProfile(e, msg.senderId)
+                                  }
                                   style={{
                                     color:
                                       senderColor !== 'inherit'
                                         ? senderColor
                                         : undefined,
                                   }}
-                                  className={`text-[13.5px] font-bold ${isOut ? 'text-(--accent-primary)' : ''} ${!isOut && senderColor === 'inherit' ? 'text-theme-primary' : ''}`}
+                                  className={`text-[13.5px] font-bold cursor-pointer hover:underline ${isOut ? 'text-(--accent-primary)' : ''} ${!isOut && senderColor === 'inherit' ? 'text-theme-primary' : ''}`}
                                 >
                                   {senderName}
                                 </span>
@@ -1335,35 +1661,162 @@ export const ChatArea = ({
                                     <div
                                       className={`text-sm leading-relaxed text-theme-primary break-all ${isOnlyEmojis(msg.content) ? 'text-[60px] leading-15' : ''}`}
                                     >
-                                      {msg.content}
+                                      {isOnlyEmojis(msg.content)
+                                        ? msg.content
+                                        : renderMessageContent(msg.content)}
                                     </div>
                                   )}
                                 </>
                               )}
                               {renderMessageMedia(msg, setActiveMediaItem)}
+
+                              {msg.reactions && msg.reactions.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-1.5 select-none">
+                                  {msg.reactions.map((react, rIdx) => {
+                                    const hasReacted = react.userIds.includes(
+                                      user?.id || '',
+                                    );
+                                    return (
+                                      <button
+                                        key={react.emoji + rIdx}
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (activeConversationId) {
+                                            socketManager.toggleReaction(
+                                              msg.id,
+                                              activeConversationId,
+                                              react.emoji,
+                                            );
+                                          }
+                                        }}
+                                        className={`relative group/reaction flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11.5px] border cursor-pointer transition-all duration-150 active-press ${
+                                          hasReacted
+                                            ? 'bg-[var(--accent-ring)] border-[var(--accent-primary)] text-[var(--accent-primary)] font-semibold'
+                                            : 'bg-theme-input/40 border-glass/30 text-theme-secondary hover:bg-theme-input hover:border-glass'
+                                        }`}
+                                      >
+                                        <span className="leading-none text-[13px]">
+                                          {react.emoji}
+                                        </span>
+                                        <span>{react.userIds.length}</span>
+                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/reaction:flex flex-col items-center pointer-events-none z-[9999] animate-fade-in">
+                                          <div className="bg-black/90 dark:bg-zinc-900/95 backdrop-blur-md text-white text-[10.5px] font-medium py-1.5 px-3 rounded-xl whitespace-nowrap border border-white/10 dark:border-zinc-800 shadow-xl text-center leading-normal">
+                                            <span className="font-bold text-[var(--accent-primary)] mb-0.5 block">
+                                              {react.emoji} Reacted by
+                                            </span>
+                                            <span className="opacity-90">
+                                              {getReactingUserNames(
+                                                react.userIds,
+                                              ).join(', ')}
+                                            </span>
+                                          </div>
+                                          <div className="w-2.5 h-2.5 bg-black/90 dark:bg-zinc-900/95 border-r border-b border-white/10 dark:border-zinc-800 rotate-45 -mt-1.25" />
+                                        </div>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
                             </div>
                           </div>
-                          {(isOut || canDeleteOthers) &&
-                            editingMessageId !== msg.id && (
-                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 shrink-0">
-                                {isOut && (
-                                  <button
-                                    onClick={() => handleStartEdit(msg)}
-                                    className="flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-theme-input text-theme-secondary hover:text-(--accent-primary) active-press"
-                                    title="Edit message"
+
+                          {editingMessageId !== msg.id && (
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 shrink-0 self-center">
+                              <button
+                                onClick={() => setReplyingToMessage(msg)}
+                                className="flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-theme-input text-theme-secondary hover:text-[var(--accent-primary)] active-press"
+                                title="Reply to message"
+                              >
+                                <svg
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2.5"
+                                  className="w-4 h-4"
+                                >
+                                  <polyline points="9 17 4 12 9 7" />
+                                  <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
+                                </svg>
+                              </button>
+
+                              <div className="relative">
+                                <button
+                                  onClick={() =>
+                                    setActiveReactionMessageId(msg.id)
+                                  }
+                                  className="flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-theme-input text-theme-secondary hover:text-[var(--accent-primary)] active-press"
+                                  title="Add reaction"
+                                >
+                                  <svg
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2.2"
+                                    className="w-4 h-4"
                                   >
-                                    <IconCompose />
-                                  </button>
+                                    <circle cx="12" cy="12" r="10" />
+                                    <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+                                    <line
+                                      x1="9"
+                                      y1="9"
+                                      x2="9.01"
+                                      y2="9"
+                                      strokeWidth="2.5"
+                                    />
+                                    <line
+                                      x1="15"
+                                      y1="9"
+                                      x2="15.01"
+                                      y2="9"
+                                      strokeWidth="2.5"
+                                    />
+                                  </svg>
+                                </button>
+                                {activeReactionMessageId === msg.id && (
+                                  <div
+                                    ref={reactionPickerRef}
+                                    className="absolute bottom-full mb-2 z-[9999]"
+                                    style={isOut ? { right: 0 } : { left: 0 }}
+                                  >
+                                    <EmojiPicker
+                                      onEmojiSelect={(emoji: any) => {
+                                        if (activeConversationId) {
+                                          socketManager.toggleReaction(
+                                            msg.id,
+                                            activeConversationId,
+                                            emoji.native,
+                                          );
+                                        }
+                                        setActiveReactionMessageId(null);
+                                      }}
+                                      theme="auto"
+                                      previewPosition="none"
+                                    />
+                                  </div>
                                 )}
+                              </div>
+
+                              {isOut && (
+                                <button
+                                  onClick={() => handleStartEdit(msg)}
+                                  className="flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-theme-input text-theme-secondary hover:text-[var(--accent-primary)] active-press"
+                                  title="Edit message"
+                                >
+                                  <IconCompose />
+                                </button>
+                              )}
+                              {(isOut || canDeleteOthers) && (
                                 <button
                                   onClick={() => handleDeleteMessage(msg.id)}
-                                  className="msg-delete-btn flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-(--danger-bg) text-(--danger) active-press"
+                                  className="msg-delete-btn flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-[var(--danger-bg)] text-[var(--danger)] active-press"
                                   title="Delete message"
                                 >
                                   <IconTrash />
                                 </button>
-                              </div>
-                            )}
+                              )}
+                            </div>
+                          )}
                         </div>
                       );
                     }
@@ -1378,6 +1831,7 @@ export const ChatArea = ({
 
                     return (
                       <div
+                        id={`msg-${msg.id}`}
                         key={msg.id}
                         onContextMenu={(e) => handleContextMenu(e, msg)}
                         className={`flex items-start gap-2.5 group max-w-[72%] animate-fade-in ${isOut ? 'self-end' : 'self-start'}`}
@@ -1385,15 +1839,87 @@ export const ChatArea = ({
                         {isOut && editingMessageId !== msg.id && (
                           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 shrink-0 self-center">
                             <button
+                              onClick={() => setReplyingToMessage(msg)}
+                              className="flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-theme-input text-theme-secondary hover:text-[var(--accent-primary)] active-press"
+                              title="Reply to message"
+                            >
+                              <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2.5"
+                                className="w-4 h-4"
+                              >
+                                <polyline points="9 17 4 12 9 7" />
+                                <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
+                              </svg>
+                            </button>
+
+                            <div className="relative">
+                              <button
+                                onClick={() =>
+                                  setActiveReactionMessageId(msg.id)
+                                }
+                                className="flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-theme-input text-theme-secondary hover:text-[var(--accent-primary)] active-press"
+                                title="Add reaction"
+                              >
+                                <svg
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2.2"
+                                  className="w-4 h-4"
+                                >
+                                  <circle cx="12" cy="12" r="10" />
+                                  <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+                                  <line
+                                    x1="9"
+                                    y1="9"
+                                    x2="9.01"
+                                    y2="9"
+                                    strokeWidth="2.5"
+                                  />
+                                  <line
+                                    x1="15"
+                                    y1="9"
+                                    x2="15.01"
+                                    y2="9"
+                                    strokeWidth="2.5"
+                                  />
+                                </svg>
+                              </button>
+                              {activeReactionMessageId === msg.id && (
+                                <div
+                                  ref={reactionPickerRef}
+                                  className="absolute bottom-full mb-2 z-[9999] right-0"
+                                >
+                                  <EmojiPicker
+                                    onEmojiSelect={(emoji: any) => {
+                                      if (activeConversationId) {
+                                        socketManager.toggleReaction(
+                                          msg.id,
+                                          activeConversationId,
+                                          emoji.native,
+                                        );
+                                      }
+                                      setActiveReactionMessageId(null);
+                                    }}
+                                    theme="auto"
+                                    previewPosition="none"
+                                  />
+                                </div>
+                              )}
+                            </div>
+                            <button
                               onClick={() => handleStartEdit(msg)}
-                              className="flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-theme-input text-theme-secondary hover:text-(--accent-primary) active-press"
+                              className="flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-theme-input text-theme-secondary hover:text-[var(--accent-primary)] active-press"
                               title="Edit message"
                             >
                               <IconCompose />
                             </button>
                             <button
                               onClick={() => handleDeleteMessage(msg.id)}
-                              className="msg-delete-btn flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-(--danger-bg) text-(--danger) active-press"
+                              className="msg-delete-btn flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-[var(--danger-bg)] text-[var(--danger)] active-press"
                               title="Delete message"
                             >
                               <IconTrash />
@@ -1401,7 +1927,10 @@ export const ChatArea = ({
                           </div>
                         )}
                         {!isOut && isChannelMode && (
-                          <div className="shrink-0 mt-0.5">
+                          <div
+                            onClick={(e) => handleOpenProfile(e, msg.senderId)}
+                            className="shrink-0 mt-0.5 cursor-pointer active-press hover:scale-105 transition-all"
+                          >
                             <Avatar
                               letter={letter}
                               url={
@@ -1418,16 +1947,67 @@ export const ChatArea = ({
                         >
                           {!isOut && isChannelMode && (
                             <span
+                              onClick={(e) =>
+                                handleOpenProfile(e, msg.senderId)
+                              }
                               style={{
                                 color:
                                   senderColor !== 'inherit'
                                     ? senderColor
                                     : undefined,
                               }}
-                              className="text-[11.5px] font-bold mb-1 ml-1.5 text-theme-secondary"
+                              className="text-[11.5px] font-bold mb-1 ml-1.5 text-theme-secondary cursor-pointer hover:underline"
                             >
                               {senderName}
                             </span>
+                          )}
+                          {msg.parentMessage && (
+                            <div
+                              onClick={() => {
+                                const el = document.getElementById(
+                                  `msg-${msg.parentId}`,
+                                );
+                                if (el) {
+                                  el.scrollIntoView({
+                                    behavior: 'smooth',
+                                    block: 'center',
+                                  });
+                                  el.classList.add('highlight-flash');
+                                  setTimeout(
+                                    () =>
+                                      el.classList.remove('highlight-flash'),
+                                    2000,
+                                  );
+                                }
+                              }}
+                              className="flex items-center gap-1.5 text-[11px] text-theme-secondary bg-theme-input/50 border border-glass/30 rounded-lg px-2 py-1 mb-1 w-fit cursor-pointer hover:bg-theme-input transition-colors max-w-full"
+                              title="Click to jump to message"
+                            >
+                              <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2.5"
+                                className="w-3 h-3 text-[var(--accent-primary)] shrink-0"
+                              >
+                                <polyline points="9 17 4 12 9 7" />
+                                <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
+                              </svg>
+                              <span className="font-bold text-theme-primary shrink-0">
+                                {userProfiles[msg.parentMessage.senderId]
+                                  ?.displayName ||
+                                  (userProfiles[msg.parentMessage.senderId]
+                                    ?.username
+                                    ? `@${userProfiles[msg.parentMessage.senderId].username}`
+                                    : null) ||
+                                  (msg.parentMessage.senderId === user?.id
+                                    ? 'You'
+                                    : 'User')}
+                              </span>
+                              <span className="truncate opacity-80">
+                                {msg.parentMessage.content}
+                              </span>
+                            </div>
                           )}
                           {editingMessageId === msg.id ? (
                             <div className="flex flex-col gap-2 mt-1 w-65 sm:w-87.5">
@@ -1486,12 +2066,64 @@ export const ChatArea = ({
                                       : `px-4 py-2.5 rounded-[18px] text-[14px] leading-relaxed wrap-break-word ${isOut ? 'msg-bubble-out' : 'msg-bubble-in'}`
                                   }
                                 >
-                                  {msg.content}
+                                  {isOnlyEmojis(msg.content)
+                                    ? msg.content
+                                    : renderMessageContent(msg.content)}
                                 </div>
                               )}
                             </>
                           )}
                           {renderMessageMedia(msg, setActiveMediaItem)}
+
+                          {msg.reactions && msg.reactions.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1.5 select-none">
+                              {msg.reactions.map((react, rIdx) => {
+                                const hasReacted = react.userIds.includes(
+                                  user?.id || '',
+                                );
+                                return (
+                                  <button
+                                    key={react.emoji + rIdx}
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (activeConversationId) {
+                                        socketManager.toggleReaction(
+                                          msg.id,
+                                          activeConversationId,
+                                          react.emoji,
+                                        );
+                                      }
+                                    }}
+                                    className={`relative group/reaction flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11.5px] border cursor-pointer transition-all duration-150 active-press ${
+                                      hasReacted
+                                        ? 'bg-[var(--accent-ring)] border-[var(--accent-primary)] text-[var(--accent-primary)] font-semibold'
+                                        : 'bg-theme-input/40 border-glass/30 text-theme-secondary hover:bg-theme-input hover:border-glass'
+                                    }`}
+                                  >
+                                    <span className="leading-none text-[13px]">
+                                      {react.emoji}
+                                    </span>
+                                    <span>{react.userIds.length}</span>
+                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/reaction:flex flex-col items-center pointer-events-none z-[9999] animate-fade-in">
+                                      <div className="bg-black/90 dark:bg-zinc-900/95 backdrop-blur-md text-white text-[10.5px] font-medium py-1.5 px-3 rounded-xl whitespace-nowrap border border-white/10 dark:border-zinc-800 shadow-xl text-center leading-normal">
+                                        <span className="font-bold text-[var(--accent-primary)] mb-0.5 block">
+                                          {react.emoji} Reacted by
+                                        </span>
+                                        <span className="opacity-90">
+                                          {getReactingUserNames(
+                                            react.userIds,
+                                          ).join(', ')}
+                                        </span>
+                                      </div>
+                                      <div className="w-2.5 h-2.5 bg-black/90 dark:bg-zinc-900/95 border-r border-b border-white/10 dark:border-zinc-800 rotate-45 -mt-1.25" />
+                                    </div>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+
                           <div className="flex items-center gap-1.5 mt-1 px-1 select-none">
                             <span className="text-[10px] text-theme-muted">
                               {formatMessageTimestamp(msg.createdAt)}
@@ -1515,19 +2147,90 @@ export const ChatArea = ({
                             )}
                           </div>
                         </div>
-                        {!isOut &&
-                          canDeleteOthers &&
-                          editingMessageId !== msg.id && (
-                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 shrink-0 self-center">
+                        {!isOut && editingMessageId !== msg.id && (
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 shrink-0 self-center">
+                            <button
+                              onClick={() => setReplyingToMessage(msg)}
+                              className="flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-theme-input text-theme-secondary hover:text-[var(--accent-primary)] active-press"
+                              title="Reply to message"
+                            >
+                              <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2.5"
+                                className="w-4 h-4"
+                              >
+                                <polyline points="9 17 4 12 9 7" />
+                                <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
+                              </svg>
+                            </button>
+                            <div className="relative">
+                              <button
+                                onClick={() =>
+                                  setActiveReactionMessageId(msg.id)
+                                }
+                                className="flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-theme-input text-theme-secondary hover:text-[var(--accent-primary)] active-press"
+                                title="Add reaction"
+                              >
+                                <svg
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2.2"
+                                  className="w-4 h-4"
+                                >
+                                  <circle cx="12" cy="12" r="10" />
+                                  <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+                                  <line
+                                    x1="9"
+                                    y1="9"
+                                    x2="9.01"
+                                    y2="9"
+                                    strokeWidth="2.5"
+                                  />
+                                  <line
+                                    x1="15"
+                                    y1="9"
+                                    x2="15.01"
+                                    y2="9"
+                                    strokeWidth="2.5"
+                                  />
+                                </svg>
+                              </button>
+                              {activeReactionMessageId === msg.id && (
+                                <div
+                                  ref={reactionPickerRef}
+                                  className="absolute bottom-full mb-2 z-[9999] left-0"
+                                >
+                                  <EmojiPicker
+                                    onEmojiSelect={(emoji: any) => {
+                                      if (activeConversationId) {
+                                        socketManager.toggleReaction(
+                                          msg.id,
+                                          activeConversationId,
+                                          emoji.native,
+                                        );
+                                      }
+                                      setActiveReactionMessageId(null);
+                                    }}
+                                    theme="auto"
+                                    previewPosition="none"
+                                  />
+                                </div>
+                              )}
+                            </div>
+                            {canDeleteOthers && (
                               <button
                                 onClick={() => handleDeleteMessage(msg.id)}
-                                className="msg-delete-btn flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-(--danger-bg) text-(--danger) active-press"
+                                className="msg-delete-btn flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-[var(--danger-bg)] text-[var(--danger)] active-press"
                                 title="Delete message"
                               >
                                 <IconTrash />
                               </button>
-                            </div>
-                          )}
+                            )}
+                          </div>
+                        )}
                       </div>
                     );
                   })
@@ -1593,6 +2296,46 @@ export const ChatArea = ({
               {/* Input Area */}
               <div className="p-2 bg-transparent shrink-0">
                 <div className="glass-panel p-2.5 border-glass bg-theme-sidebar/35 shadow-[0_10px_35px_rgba(0,0,0,0.15)] rounded-2xl">
+                  {replyingToMessage && (
+                    <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-theme-input border border-glass mb-2.5 animate-fade-in">
+                      <div className="flex items-center gap-2 text-[12.5px] min-w-0">
+                        <span className="text-[var(--accent-primary)] font-semibold flex items-center gap-1">
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            className="w-3.5 h-3.5"
+                          >
+                            <polyline points="9 17 4 12 9 7" />
+                            <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
+                          </svg>
+                          Replying to
+                        </span>
+                        <span className="font-bold text-theme-primary truncate">
+                          {userProfiles[replyingToMessage.senderId]
+                            ?.displayName ||
+                            (userProfiles[replyingToMessage.senderId]?.username
+                              ? `@${userProfiles[replyingToMessage.senderId].username}`
+                              : null) ||
+                            (replyingToMessage.senderId === user?.id
+                              ? 'You'
+                              : 'User')}
+                        </span>
+                        <span className="text-theme-secondary opacity-75 truncate max-w-md italic">
+                          "{replyingToMessage.content}"
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setReplyingToMessage(null)}
+                        className="p-1 rounded-full flex items-center justify-center bg-transparent border-none cursor-pointer text-theme-secondary hover:text-theme-primary hover:bg-theme-input/50 transition-colors active-press"
+                        title="Cancel reply"
+                      >
+                        <IconX size={12} />
+                      </button>
+                    </div>
+                  )}
                   {attachedFiles.length > 0 && (
                     <div className="flex flex-wrap gap-2 mb-2.5 max-w-full">
                       {attachedFiles.map((file, idx) => (
@@ -1739,6 +2482,100 @@ export const ChatArea = ({
                           ))}
                         </div>
                       )}
+                      {atMentionQuery && isChannelMode && activeGroup && (
+                        <div className="absolute bottom-full left-0 mb-2 w-75 max-h-50 overflow-y-auto bg-theme-sidebar border border-theme rounded-xl shadow-(--glass-shadow) z-50 flex flex-col p-1">
+                          {('everyone'.startsWith(
+                            atMentionQuery.text.toLowerCase(),
+                          ) ||
+                            atMentionQuery.text === '') && (
+                            <button
+                              type="button"
+                              className="flex items-center gap-2.5 px-3 py-2 text-left rounded-lg hover:bg-theme-input active-press cursor-pointer border-none bg-transparent"
+                              onClick={() => {
+                                const val = messageInput;
+                                const newText =
+                                  val.slice(0, atMentionQuery.start) +
+                                  '@everyone ' +
+                                  val.slice(atMentionQuery.end);
+                                setMessageInput(newText);
+                                setAtMentionQuery(null);
+                                document
+                                  .getElementById('message-input')
+                                  ?.focus();
+                              }}
+                            >
+                              <div className="w-8 h-8 rounded-full flex items-center justify-center bg-(--accent-primary) text-white text-[12px] font-bold">
+                                📢
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-[13px] font-bold text-theme-primary">
+                                  @everyone
+                                </span>
+                                <span className="text-[10.5px] text-theme-muted">
+                                  Notify all members
+                                </span>
+                              </div>
+                            </button>
+                          )}
+                          {activeGroup.members
+                            .filter((m) => {
+                              const username =
+                                m.user?.username?.toLowerCase() || '';
+                              const displayName =
+                                m.user?.displayName?.toLowerCase() || '';
+                              const q = atMentionQuery.text.toLowerCase();
+                              return (
+                                username.includes(q) || displayName.includes(q)
+                              );
+                            })
+                            .map((member) => {
+                              const memberName =
+                                member.user?.username ||
+                                member.user?.displayName ||
+                                'Member';
+                              const letter =
+                                memberName[0]?.toUpperCase() || 'U';
+                              return (
+                                <button
+                                  key={member.id}
+                                  type="button"
+                                  className="flex items-center gap-2.5 px-3 py-2 text-left rounded-lg hover:bg-theme-input active-press cursor-pointer border-none bg-transparent"
+                                  onClick={() => {
+                                    const val = messageInput;
+                                    const newText =
+                                      val.slice(0, atMentionQuery.start) +
+                                      `@${memberName} ` +
+                                      val.slice(atMentionQuery.end);
+                                    setMessageInput(newText);
+                                    setAtMentionQuery(null);
+                                    document
+                                      .getElementById('message-input')
+                                      ?.focus();
+                                  }}
+                                >
+                                  <Avatar
+                                    letter={letter}
+                                    url={
+                                      member.user?.avatarThumbnailUrl ||
+                                      member.user?.avatarUrl
+                                    }
+                                    size="xs"
+                                  />
+                                  <div className="flex flex-col">
+                                    <span className="text-[13px] font-bold text-theme-primary">
+                                      @{memberName}
+                                    </span>
+                                    {member.user?.displayName && (
+                                      <span className="text-[10px] text-theme-muted">
+                                        {member.user.displayName}
+                                      </span>
+                                    )}
+                                  </div>
+                                </button>
+                              );
+                            })}
+                        </div>
+                      )}
                       <textarea
                         id="message-input"
                         disabled={!canSendMessages}
@@ -1758,6 +2595,7 @@ export const ChatArea = ({
                         rows={1}
                         value={messageInput}
                         onChange={handleInputChange}
+                        onSelect={handleTextareaSelect}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' && !e.shiftKey) {
                             e.preventDefault();
@@ -2001,6 +2839,27 @@ export const ChatArea = ({
                 <span>Delete Message</span>
               </button>
             )}
+            <button
+              className="convo-context-menu-item"
+              role="menuitem"
+              onClick={() => {
+                setReplyingToMessage(contextMenu.message);
+                setContextMenu(null);
+              }}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                width="15"
+                height="15"
+              >
+                <polyline points="9 17 4 12 9 7" />
+                <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
+              </svg>
+              <span>Reply to Message</span>
+            </button>
             <div className="convo-context-menu-separator" />
             <div
               className="convo-context-menu-item group relative flex justify-between items-center cursor-pointer"
@@ -2125,6 +2984,27 @@ export const ChatArea = ({
             </div>
           </div>
         </div>
+      )}
+
+      {profileCardUserId && (
+        <div
+          className="fixed inset-0 z-9998 bg-transparent cursor-default"
+          onClick={() => {
+            setProfileCardUserId(null);
+            setProfilePopoverPosition(null);
+          }}
+        />
+      )}
+      {profileCardUserId && profilePopoverPosition && (
+        <MemberProfilePopover
+          selectedMember={getMemberDetailsForPopover(profileCardUserId)}
+          popoverPosition={profilePopoverPosition}
+          onClose={() => {
+            setProfileCardUserId(null);
+            setProfilePopoverPosition(null);
+          }}
+          groupId={activeGroup?.id}
+        />
       )}
     </div>
   );
