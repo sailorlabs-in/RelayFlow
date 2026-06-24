@@ -163,7 +163,7 @@ function ChatDashboardContent() {
   // ---- Socket + conversations + groups fetch on login ----
   useEffect(() => {
     if (accessToken && user) {
-      dispatch(fetchConversations(user.id));
+      dispatch(fetchConversations());
       dispatch(fetchGroups());
       dispatch(fetchFriends());
       dispatch(fetchPendingRequests());

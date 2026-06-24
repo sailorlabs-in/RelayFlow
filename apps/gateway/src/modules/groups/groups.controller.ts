@@ -18,7 +18,6 @@ import {
   ApiResponse,
   ApiBody,
   ApiParam,
-  ApiQuery,
   ApiBearerAuth,
 } from '@nestjs/swagger';
 
@@ -226,7 +225,6 @@ export class GroupsController {
   // ─── Get all groups for the current user ──────────────────────────────────────
   @Get()
   @ApiOperation({ summary: 'Get all groups the current user belongs to' })
-  @ApiQuery({ name: 'userId', required: false })
   @ApiResponse({ status: 200, description: 'List of groups.' })
   async getGroups(@CurrentUser() currentUser: { userId: string }) {
     const groups = await this.groupsService.getGroupsForUser(

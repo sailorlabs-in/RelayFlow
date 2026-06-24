@@ -165,7 +165,7 @@ class SocketManager {
           (c: any) => c.id === message.conversationId,
         );
         if (!exists) {
-          store.dispatch(fetchConversations(state.auth.user.id));
+          store.dispatch(fetchConversations());
         }
       }
     });
