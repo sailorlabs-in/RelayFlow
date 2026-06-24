@@ -49,7 +49,8 @@ export const MemberSidebar = ({
   const [selectedMember, setSelectedMember] = useState<any | null>(null);
   const [popoverPosition, setPopoverPosition] = useState<{
     top: number;
-    right: number;
+    right?: number;
+    left?: number;
   } | null>(null);
 
   const handleMemberClick = (
@@ -62,10 +63,19 @@ export const MemberSidebar = ({
       setPopoverPosition(null);
     } else {
       const rect = e.currentTarget.getBoundingClientRect();
-      setPopoverPosition({
-        top: rect.top + rect.height / 2,
-        right: window.innerWidth - rect.left + 8,
-      });
+      const popoverWidth = 260; // w-65 is 260px
+      const fitsOnLeft = rect.left - 8 - popoverWidth >= 16;
+      if (fitsOnLeft) {
+        setPopoverPosition({
+          top: rect.top + rect.height / 2,
+          right: window.innerWidth - rect.left + 8,
+        });
+      } else {
+        setPopoverPosition({
+          top: rect.top + rect.height / 2,
+          left: rect.right + 8,
+        });
+      }
       setSelectedMember(member);
     }
   };

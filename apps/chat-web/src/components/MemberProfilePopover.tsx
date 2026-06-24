@@ -173,7 +173,7 @@ export const MemberProfilePopover = ({
           >
             {selectedMember.displayName}
           </h3>
-          {activeGroup && (
+          {activeGroup && selectedMember.role?.toLowerCase() === 'owner' && (
             <div className="text-[10.5px] text-theme-muted mt-0.5 capitalize">
               {selectedMember.role}
             </div>

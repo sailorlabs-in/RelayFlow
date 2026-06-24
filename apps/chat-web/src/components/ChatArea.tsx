@@ -366,18 +366,13 @@ export const ChatArea = ({
   }, []);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   const emojiPickerContainerRef = useRef<HTMLDivElement>(null);
-  const reactionPickerRef = useRef<HTMLDivElement>(null);
+
   const [emojiPickerStyle, setEmojiPickerStyle] = useState<React.CSSProperties>(
     {
       opacity: 0,
       pointerEvents: 'none',
     },
   );
-  const [reactionPickerStyle, setReactionPickerStyle] =
-    useState<React.CSSProperties>({
-      opacity: 0,
-      pointerEvents: 'none',
-    });
 
   const [mentionQuery, setMentionQuery] = useState<{
     text: string;
@@ -498,12 +493,42 @@ export const ChatArea = ({
   const handleOpenProfile = (e: React.MouseEvent, userId: string) => {
     e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();
-    const isRightSide = rect.left > window.innerWidth / 2;
-    setProfilePopoverPosition({
-      top: rect.top + rect.height / 2,
-      right: isRightSide ? window.innerWidth - rect.left + 8 : undefined,
-      left: !isRightSide ? rect.right + 8 : undefined,
-    });
+    const popoverWidth = 260; // w-65 is 260px
+    const viewportWidth = window.innerWidth;
+
+    const isRightSide = rect.left > viewportWidth / 2;
+
+    let position: { top: number; right?: number; left?: number };
+
+    if (isRightSide) {
+      const fitsOnLeft = rect.left - 8 - popoverWidth >= 16;
+      if (fitsOnLeft) {
+        position = {
+          top: rect.top + rect.height / 2,
+          right: viewportWidth - rect.left + 8,
+        };
+      } else {
+        position = {
+          top: rect.top + rect.height / 2,
+          left: rect.right + 8,
+        };
+      }
+    } else {
+      const fitsOnRight = rect.right + 8 + popoverWidth <= viewportWidth - 16;
+      if (fitsOnRight) {
+        position = {
+          top: rect.top + rect.height / 2,
+          left: rect.right + 8,
+        };
+      } else {
+        position = {
+          top: rect.top + rect.height / 2,
+          right: viewportWidth - rect.left + 8,
+        };
+      }
+    }
+
+    setProfilePopoverPosition(position);
     setProfileCardUserId(userId);
     if (userId !== user?.id && !userProfiles[userId]) {
       dispatch(fetchUserProfile(userId));
@@ -660,12 +685,6 @@ export const ChatArea = ({
           !emojiPickerContainerRef.current.contains(event.target as Node))
       ) {
         setShowEmojiPicker(false);
-      }
-      if (
-        reactionPickerRef.current &&
-        !reactionPickerRef.current.contains(event.target as Node)
-      ) {
-        setActiveReactionMessageId(null);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -1336,35 +1355,32 @@ export const ChatArea = ({
     }
   }, [contextMenu]);
 
-  useLayoutEffect(() => {
-    if (
-      showEmojiPicker &&
-      emojiPickerRef.current &&
-      emojiPickerContainerRef.current
-    ) {
-      const picker = emojiPickerContainerRef.current;
-      const rect = picker.getBoundingClientRect();
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
+  // Emoji picker: calculate position at click time using known emoji-mart dimensions.
+  // Using known dimensions avoids web-component async render timing issues.
+  const handleEmojiPickerToggle = () => {
+    if (!showEmojiPicker && emojiPickerRef.current) {
+      const rect = emojiPickerRef.current.getBoundingClientRect();
+      const PW = 352;
+      const PH = 440;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
 
-      const trigger = emojiPickerRef.current;
-      const triggerRect = trigger.getBoundingClientRect();
-
-      let top = -rect.height - 8; // Position above the trigger button
-      if (triggerRect.top - rect.height - 8 < 16) {
-        // Position below trigger
-        top = triggerRect.height + 8;
-        if (triggerRect.bottom + rect.height + 8 > viewportHeight - 16) {
-          top = viewportHeight - triggerRect.top - rect.height - 16;
+      // Prefer above the button; flip below if not enough space
+      let top = -PH - 8;
+      if (rect.top + top < 16) {
+        top = rect.height + 8;
+        if (rect.bottom + PH + 8 > vh - 16) {
+          top = 16 - rect.top;
         }
       }
 
+      // Left-align; shift left if it overflows right edge
       let left = 0;
-      if (triggerRect.left + rect.width > viewportWidth - 16) {
-        left = viewportWidth - triggerRect.left - rect.width - 16;
+      if (rect.left + PW > vw - 16) {
+        left = vw - 16 - PW - rect.left;
       }
-      if (triggerRect.left + left < 16) {
-        left = 16 - triggerRect.left;
+      if (rect.left + left < 16) {
+        left = 16 - rect.left;
       }
 
       setEmojiPickerStyle({
@@ -1374,55 +1390,10 @@ export const ChatArea = ({
         pointerEvents: 'auto',
       });
     } else {
-      setEmojiPickerStyle({
-        opacity: 0,
-        pointerEvents: 'none',
-      });
+      setEmojiPickerStyle({ opacity: 0, pointerEvents: 'none' });
     }
-  }, [showEmojiPicker]);
-
-  useLayoutEffect(() => {
-    if (activeReactionMessageId && reactionPickerRef.current) {
-      const picker = reactionPickerRef.current;
-      const rect = picker.getBoundingClientRect();
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
-
-      const parent = picker.parentElement;
-      if (!parent) {
-        return;
-      }
-      const parentRect = parent.getBoundingClientRect();
-
-      let top = -rect.height - 8;
-      if (parentRect.top - rect.height - 8 < 16) {
-        top = parentRect.height + 8;
-        if (parentRect.bottom + rect.height + 8 > viewportHeight - 16) {
-          top = viewportHeight - parentRect.top - rect.height - 16;
-        }
-      }
-
-      let left = 0;
-      if (parentRect.left + rect.width > viewportWidth - 16) {
-        left = viewportWidth - parentRect.left - rect.width - 16;
-      }
-      if (parentRect.left + left < 16) {
-        left = 16 - parentRect.left;
-      }
-
-      setReactionPickerStyle({
-        top: `${top}px`,
-        left: `${left}px`,
-        opacity: 1,
-        pointerEvents: 'auto',
-      });
-    } else {
-      setReactionPickerStyle({
-        opacity: 0,
-        pointerEvents: 'none',
-      });
-    }
-  }, [activeReactionMessageId]);
+    setShowEmojiPicker((prev) => !prev);
+  };
 
   // ---- Conversation display name helper ----
   const getConversationDetails = (convo: any) => {
@@ -1965,7 +1936,13 @@ export const ChatArea = ({
                           </div>
 
                           {editingMessageId !== msg.id && (
-                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 shrink-0 self-center">
+                            <div
+                              className={`flex items-center gap-1 transition-opacity duration-150 shrink-0 self-center ${
+                                activeReactionMessageId === msg.id
+                                  ? 'opacity-100 pointer-events-auto'
+                                  : 'opacity-0 group-hover:opacity-100'
+                              }`}
+                            >
                               <button
                                 onClick={() => setReplyingToMessage(msg)}
                                 className="flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-theme-input text-theme-secondary hover:text-[var(--accent-primary)] active-press"
@@ -2016,30 +1993,7 @@ export const ChatArea = ({
                                     />
                                   </svg>
                                 </button>
-                                {activeReactionMessageId === msg.id && (
-                                  <div
-                                    ref={reactionPickerRef}
-                                    className="absolute z-[9999] transition-opacity duration-150 ease-out"
-                                    style={{
-                                      ...reactionPickerStyle,
-                                    }}
-                                  >
-                                    <EmojiPicker
-                                      onEmojiSelect={(emoji: any) => {
-                                        if (activeConversationId) {
-                                          socketManager.toggleReaction(
-                                            msg.id,
-                                            activeConversationId,
-                                            emoji.native,
-                                          );
-                                        }
-                                        setActiveReactionMessageId(null);
-                                      }}
-                                      theme="auto"
-                                      previewPosition="none"
-                                    />
-                                  </div>
-                                )}
+                                {/* Reaction picker is now a centered modal — rendered at component root */}
                               </div>
 
                               {isOut && (
@@ -2082,7 +2036,13 @@ export const ChatArea = ({
                         className={`flex items-start gap-2.5 group max-w-[72%] animate-fade-in ${isOut ? 'self-end' : 'self-start'}`}
                       >
                         {isOut && editingMessageId !== msg.id && (
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 shrink-0 self-center">
+                          <div
+                            className={`flex items-center gap-1 transition-opacity duration-150 shrink-0 self-center ${
+                              activeReactionMessageId === msg.id
+                                ? 'opacity-100 pointer-events-auto'
+                                : 'opacity-0 group-hover:opacity-100'
+                            }`}
+                          >
                             <button
                               onClick={() => setReplyingToMessage(msg)}
                               className="flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-theme-input text-theme-secondary hover:text-[var(--accent-primary)] active-press"
@@ -2133,30 +2093,7 @@ export const ChatArea = ({
                                   />
                                 </svg>
                               </button>
-                              {activeReactionMessageId === msg.id && (
-                                <div
-                                  ref={reactionPickerRef}
-                                  className="absolute z-[9999] transition-opacity duration-150 ease-out"
-                                  style={{
-                                    ...reactionPickerStyle,
-                                  }}
-                                >
-                                  <EmojiPicker
-                                    onEmojiSelect={(emoji: any) => {
-                                      if (activeConversationId) {
-                                        socketManager.toggleReaction(
-                                          msg.id,
-                                          activeConversationId,
-                                          emoji.native,
-                                        );
-                                      }
-                                      setActiveReactionMessageId(null);
-                                    }}
-                                    theme="auto"
-                                    previewPosition="none"
-                                  />
-                                </div>
-                              )}
+                              {/* Reaction picker is now a centered modal — rendered at component root */}
                             </div>
                             <button
                               onClick={() => handleStartEdit(msg)}
@@ -2396,7 +2333,13 @@ export const ChatArea = ({
                           </div>
                         </div>
                         {!isOut && editingMessageId !== msg.id && (
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 shrink-0 self-center">
+                          <div
+                            className={`flex items-center gap-1 transition-opacity duration-150 shrink-0 self-center ${
+                              activeReactionMessageId === msg.id
+                                ? 'opacity-100 pointer-events-auto'
+                                : 'opacity-0 group-hover:opacity-100'
+                            }`}
+                          >
                             <button
                               onClick={() => setReplyingToMessage(msg)}
                               className="flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-theme-input text-theme-secondary hover:text-[var(--accent-primary)] active-press"
@@ -2446,30 +2389,7 @@ export const ChatArea = ({
                                   />
                                 </svg>
                               </button>
-                              {activeReactionMessageId === msg.id && (
-                                <div
-                                  ref={reactionPickerRef}
-                                  className="absolute z-[9999] transition-opacity duration-150 ease-out"
-                                  style={{
-                                    ...reactionPickerStyle,
-                                  }}
-                                >
-                                  <EmojiPicker
-                                    onEmojiSelect={(emoji: any) => {
-                                      if (activeConversationId) {
-                                        socketManager.toggleReaction(
-                                          msg.id,
-                                          activeConversationId,
-                                          emoji.native,
-                                        );
-                                      }
-                                      setActiveReactionMessageId(null);
-                                    }}
-                                    theme="auto"
-                                    previewPosition="none"
-                                  />
-                                </div>
-                              )}
+                              {/* Reaction picker is now a centered modal — rendered at component root */}
                             </div>
                             {canDeleteOthers && (
                               <button
@@ -2644,7 +2564,7 @@ export const ChatArea = ({
                       <button
                         type="button"
                         disabled={!canSendMessages}
-                        onClick={() => setShowEmojiPicker((prev) => !prev)}
+                        onClick={handleEmojiPickerToggle}
                         className="w-11.5 h-11.5 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200 bg-theme-input text-theme-muted hover:bg-(--theme-btn-hover) hover:text-theme-primary disabled:opacity-40 disabled:cursor-not-allowed active-press border border-glass"
                         title={
                           canSendMessages
@@ -2658,10 +2578,8 @@ export const ChatArea = ({
                       {showEmojiPicker && (
                         <div
                           ref={emojiPickerContainerRef}
-                          className="absolute z-50 shadow-(--glass-shadow) rounded-[14px] overflow-hidden border border-theme bg-theme-sidebar transition-opacity duration-150 ease-out"
-                          style={{
-                            ...emojiPickerStyle,
-                          }}
+                          className="absolute z-50 shadow-(--glass-shadow) rounded-2xl overflow-hidden border-[1.5px] border-glass bg-(--glass-bg) backdrop-blur-[20px] transition-opacity duration-150 ease-out"
+                          style={{ ...emojiPickerStyle }}
                         >
                           <EmojiPicker
                             onEmojiSelect={onEmojiSelect}
@@ -3270,6 +3188,42 @@ export const ChatArea = ({
           }}
           groupId={activeGroup?.id}
         />
+      )}
+      {/* Reaction picker — single centered modal shared across all messages */}
+      {activeReactionMessageId && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center"
+          onClick={() => setActiveReactionMessageId(null)}
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div
+            className="relative z-10 shadow-(--glass-shadow) rounded-2xl overflow-hidden border-[1.5px] border-glass bg-(--glass-bg) backdrop-blur-[20px] animate-fade-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setActiveReactionMessageId(null)}
+              className="absolute top-2 right-2 z-20 w-7 h-7 rounded-lg flex items-center justify-center bg-(--glass-bg) border border-glass text-theme-muted hover:text-theme-primary hover:bg-(--theme-btn-hover) transition-all duration-150"
+              title="Close"
+            >
+              <IconX size={14} />
+            </button>
+            <EmojiPicker
+              onEmojiSelect={(emoji: any) => {
+                if (activeConversationId && activeReactionMessageId) {
+                  socketManager.toggleReaction(
+                    activeReactionMessageId,
+                    activeConversationId,
+                    emoji.native,
+                  );
+                }
+                setActiveReactionMessageId(null);
+              }}
+              theme="auto"
+              previewPosition="none"
+            />
+          </div>
+        </div>
       )}
     </div>
   );
