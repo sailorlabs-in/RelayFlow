@@ -30,6 +30,7 @@ import { ChatService } from './chat.service';
 
 @ApiTags('Chat & Conversations')
 @ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
 @Controller('chat')
 export class ChatController {
   constructor(

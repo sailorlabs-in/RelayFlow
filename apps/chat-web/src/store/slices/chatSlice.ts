@@ -98,7 +98,7 @@ const initialState: ChatState = {
 // Thunk to fetch conversations a user participates in
 export const fetchConversations = createAsyncThunk(
   'chat/fetchConversations',
-  async (_, { rejectWithValue }) => {
+  async (_userId: string, { rejectWithValue }) => {
     try {
       const response = await ApiRequest(`/chat/conversations`, 'get', {}, true);
       return response.data;
