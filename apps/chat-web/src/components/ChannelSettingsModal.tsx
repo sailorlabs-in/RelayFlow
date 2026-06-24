@@ -434,17 +434,17 @@ export const ChannelSettingsModal = ({
                     !!channel.writeRoleIds?.length ||
                     !!channel.hiddenFromUserIds?.length) ||
                 (isPrivate &&
-                  (JSON.stringify(allowedRoleIds.sort()) !==
+                  (JSON.stringify([...allowedRoleIds].sort()) !==
                     JSON.stringify(
                       [...(channel.allowedRoleIds || [])].sort(),
                     ) ||
-                    JSON.stringify(readRoleIds.sort()) !==
+                    JSON.stringify([...readRoleIds].sort()) !==
                       JSON.stringify([...(channel.readRoleIds || [])].sort()) ||
-                    JSON.stringify(writeRoleIds.sort()) !==
+                    JSON.stringify([...writeRoleIds].sort()) !==
                       JSON.stringify(
                         [...(channel.writeRoleIds || [])].sort(),
                       ) ||
-                    JSON.stringify(hiddenFromUserIds.sort()) !==
+                    JSON.stringify([...hiddenFromUserIds].sort()) !==
                       JSON.stringify(
                         [...(channel.hiddenFromUserIds || [])].sort(),
                       )))
