@@ -8,6 +8,8 @@ import React, {
   useLayoutEffect,
 } from 'react';
 import ReactDOM from 'react-dom';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 import dynamic from 'next/dynamic';
 
@@ -78,6 +80,14 @@ import {
   IconX,
   IconEmoji,
   IconCompose,
+  IconBold,
+  IconItalic,
+  IconStrikethrough,
+  IconCode,
+  IconLink,
+  IconList,
+  IconQuote,
+  IconEye,
 } from './Icons';
 import { PresenceDot } from './PresenceDot';
 import { showToast } from './toast';
@@ -348,6 +358,8 @@ export const ChatArea = ({
 
   // --- Local state ---
   const [messageInput, setMessageInput] = useState('');
+  const [isMdMode, setIsMdMode] = useState(false);
+  const [mdTab, setMdTab] = useState<'write' | 'preview'>('write');
   const [isTypingState, setIsTypingState] = useState(false);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -570,6 +582,13 @@ export const ChatArea = ({
   const renderMessageContent = (content: string) => {
     if (!content) {
       return null;
+    }
+    if (isMdMode) {
+      return (
+        <div className="markdown-body prose prose-sm dark:prose-invert max-w-none break-words">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+        </div>
+      );
     }
     if (!isChannelMode) {
       return content;
@@ -923,10 +942,13 @@ export const ChatArea = ({
   const prevMessagesLengthRef = useRef(0);
   const isFirstRenderForConvoRef = useRef(true);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // ---- Messages on conversation change ----
   useEffect(() => {
     setMessageInput('');
+    setIsMdMode(false);
+    setMdTab('write');
     setIsTypingState(false);
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
@@ -1205,10 +1227,56 @@ export const ChatArea = ({
     [isChannelMode],
   );
 
+  const applyFormat = (prefix: string, suffix = '') => {
+    if (!textareaRef.current) {
+      return;
+    }
+    const start = textareaRef.current.selectionStart;
+    const end = textareaRef.current.selectionEnd;
+    const text = messageInput;
+    const selectedText = text.substring(start, end);
+
+    if (!suffix) {
+      const before = text.substring(0, start);
+      const after = text.substring(end);
+      const newText = before + prefix + selectedText + after;
+      setMessageInput(newText);
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+          textareaRef.current.setSelectionRange(
+            start + prefix.length,
+            end + prefix.length,
+          );
+        }
+      }, 0);
+      return;
+    }
+
+    const before = text.substring(0, start);
+    const after = text.substring(end);
+    const newText = before + prefix + selectedText + suffix + after;
+    setMessageInput(newText);
+
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        textareaRef.current.setSelectionRange(
+          start + prefix.length,
+          end + prefix.length,
+        );
+      }
+    }, 0);
+  };
+
   const handleInputChange = async (
     e: React.ChangeEvent<HTMLTextAreaElement>,
   ) => {
-    const val = e.target.value;
+    let val = e.target.value;
+    if (val === '/md ') {
+      setIsMdMode(true);
+      val = '';
+    }
     setMessageInput(val);
 
     const cursor = e.target.selectionStart;
@@ -2640,7 +2708,7 @@ export const ChatArea = ({
                       className="hidden"
                       multiple
                     />
-                    <div className="relative flex-1 flex items-end">
+                    <div className="relative flex-1 flex flex-col justify-end">
                       {mentionQuery && emojiResults.length > 0 && (
                         <div className="absolute bottom-full left-0 mb-2 w-75 max-h-50 overflow-y-auto bg-theme-sidebar border border-theme rounded-xl shadow-(--glass-shadow) z-50 flex flex-col p-1">
                           {emojiResults.map((emoji: any) => (
@@ -2785,53 +2853,202 @@ export const ChatArea = ({
                             })}
                         </div>
                       )}
-                      <textarea
-                        id="message-input"
-                        disabled={!canSendMessages}
-                        className="input-base w-full block rounded-xl px-4 text-[14px] resize-none leading-normal max-h-30 bg-theme-input/40 border-[1.5px] border-glass text-theme-primary focus:outline-none focus:border-(--accent-primary) focus:ring-[3px] focus:ring-(--accent-ring) disabled:opacity-50 disabled:cursor-not-allowed box-border"
-                        style={{
-                          minHeight: '46px',
-                          paddingTop: '11px',
-                          paddingBottom: '11px',
-                        }}
-                        placeholder={
-                          canSendMessages
-                            ? isMobileScreen
-                              ? 'Type a message…'
-                              : 'Type a message… (Enter to send)'
-                            : 'You do not have permission to send messages in this group.'
-                        }
-                        rows={1}
-                        value={messageInput}
-                        onChange={handleInputChange}
-                        onSelect={handleTextareaSelect}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            if (canSendMessages) {
-                              handleSendMessage(e);
+                      {isMdMode && (
+                        <div className="flex items-center justify-between mb-2 px-2">
+                          {/* Toggle Icon Button */}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setMdTab(mdTab === 'write' ? 'preview' : 'write')
                             }
+                            className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-(--accent-primary) transition-colors flex items-center gap-1.5"
+                            title={mdTab === 'write' ? 'Preview' : 'Edit'}
+                          >
+                            {mdTab === 'write' ? <IconEye /> : <IconCompose />}
+                            <span className="text-[12px] font-semibold">
+                              {mdTab === 'write' ? 'Preview' : 'Edit'}
+                            </span>
+                          </button>
+
+                          {/* Formatting Buttons */}
+                          {mdTab === 'write' && (
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => applyFormat('# ')}
+                                className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors flex items-center justify-center min-w-[24px]"
+                                title="Heading 1"
+                              >
+                                <span className="font-bold text-[11px]">
+                                  H1
+                                </span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => applyFormat('## ')}
+                                className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors flex items-center justify-center min-w-[24px]"
+                                title="Heading 2"
+                              >
+                                <span className="font-bold text-[11px]">
+                                  H2
+                                </span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => applyFormat('### ')}
+                                className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors flex items-center justify-center min-w-[24px]"
+                                title="Heading 3"
+                              >
+                                <span className="font-bold text-[11px]">
+                                  H3
+                                </span>
+                              </button>
+                              <div className="w-px h-4 bg-theme/20 mx-1" />
+                              <button
+                                type="button"
+                                onClick={() => applyFormat('**', '**')}
+                                className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors"
+                                title="Bold"
+                              >
+                                <IconBold />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => applyFormat('*', '*')}
+                                className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors"
+                                title="Italic"
+                              >
+                                <IconItalic />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => applyFormat('~~', '~~')}
+                                className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors"
+                                title="Strikethrough"
+                              >
+                                <IconStrikethrough />
+                              </button>
+                              <div className="w-px h-4 bg-theme/20 mx-1" />
+                              <button
+                                type="button"
+                                onClick={() => applyFormat('`', '`')}
+                                className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors"
+                                title="Code"
+                              >
+                                <IconCode />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => applyFormat('```\n', '\n```')}
+                                className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors flex items-center justify-center w-6 h-6"
+                                title="Code Block"
+                              >
+                                <span className="text-[10px] font-bold mt-0.5">
+                                  {'</>'}
+                                </span>
+                              </button>
+                              <div className="w-px h-4 bg-theme/20 mx-1" />
+                              <button
+                                type="button"
+                                onClick={() => applyFormat('[', '](url)')}
+                                className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors"
+                                title="Link"
+                              >
+                                <IconLink />
+                              </button>
+                              <div className="w-px h-4 bg-theme/20 mx-1" />
+                              <button
+                                type="button"
+                                onClick={() => applyFormat('- ')}
+                                className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors"
+                                title="List"
+                              >
+                                <IconList />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => applyFormat('> ')}
+                                className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors"
+                                title="Quote"
+                              >
+                                <IconQuote />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {(!isMdMode || mdTab === 'write') && (
+                        <textarea
+                          ref={textareaRef}
+                          id="message-input"
+                          disabled={!canSendMessages}
+                          className={`input-base w-full block rounded-xl px-4 text-[14px] resize-none leading-normal bg-theme-input/40 border-[1.5px] border-glass text-theme-primary focus:outline-none focus:border-(--accent-primary) focus:ring-[3px] focus:ring-(--accent-ring) disabled:opacity-50 disabled:cursor-not-allowed box-border ${isMdMode ? 'max-h-64' : 'max-h-30'}`}
+                          style={{
+                            minHeight: isMdMode ? '100px' : '46px',
+                            paddingTop: '11px',
+                            paddingBottom: '11px',
+                          }}
+                          placeholder={
+                            isMdMode
+                              ? 'Markdown Mode...'
+                              : canSendMessages
+                                ? isMobileScreen
+                                  ? 'Type a message…'
+                                  : 'Type a message… (Enter to send)'
+                                : 'You do not have permission to send messages in this group.'
                           }
-                        }}
-                        onPaste={(e) => {
-                          const items = e.clipboardData?.items;
-                          if (items) {
-                            const filesToPaste: File[] = [];
-                            for (let i = 0; i < items.length; i++) {
-                              if (items[i].kind === 'file') {
-                                const file = items[i].getAsFile();
-                                if (file) {
-                                  filesToPaste.push(file);
-                                }
+                          rows={isMdMode ? 4 : 1}
+                          value={messageInput}
+                          onChange={handleInputChange}
+                          onSelect={handleTextareaSelect}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey && !isMdMode) {
+                              e.preventDefault();
+                              if (canSendMessages) {
+                                handleSendMessage(e);
                               }
                             }
-                            if (filesToPaste.length > 0) {
-                              e.preventDefault();
-                              processFiles(filesToPaste);
+                          }}
+                          onPaste={(e) => {
+                            const items = e.clipboardData?.items;
+                            if (items) {
+                              const filesToPaste: File[] = [];
+                              for (let i = 0; i < items.length; i++) {
+                                if (items[i].kind === 'file') {
+                                  const file = items[i].getAsFile();
+                                  if (file) {
+                                    filesToPaste.push(file);
+                                  }
+                                }
+                              }
+                              if (filesToPaste.length > 0) {
+                                e.preventDefault();
+                                processFiles(filesToPaste);
+                              }
                             }
-                          }
-                        }}
-                      />
+                          }}
+                        />
+                      )}
+                      {isMdMode && mdTab === 'preview' && (
+                        <div
+                          className="input-base w-full block rounded-xl px-4 text-[14px] leading-normal bg-theme-input/40 border-[1.5px] border-glass text-theme-primary box-border overflow-y-auto max-h-64 markdown-body"
+                          style={{
+                            minHeight: '100px',
+                            paddingTop: '11px',
+                            paddingBottom: '11px',
+                          }}
+                        >
+                          {messageInput.trim() ? (
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                              {messageInput}
+                            </ReactMarkdown>
+                          ) : (
+                            <span className="text-theme-muted italic">
+                              Nothing to preview
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <button
                       id="send-message-btn"
