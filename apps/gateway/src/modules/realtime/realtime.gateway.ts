@@ -565,11 +565,12 @@ export class RealtimeGateway
         type: string;
         size: number;
       }[];
+      isMarkdown?: boolean;
     },
     @ConnectedSocket() socket: Socket,
   ): Promise<void> {
     const userId = socket.data.userId as string;
-    const { conversationId, content, media, parentId } = body;
+    const { conversationId, content, media, parentId, isMarkdown } = body;
     this.logger.log(
       `📥 Received send.message for: ${conversationId} from user ${userId} (parentId: ${parentId})`,
     );
@@ -700,6 +701,7 @@ export class RealtimeGateway
       mediaItems,
       readReceiptUserIds,
       parentId,
+      isMarkdown,
     );
     for (const member of members) {
       const memberRoom = `user:${member.userId}`;

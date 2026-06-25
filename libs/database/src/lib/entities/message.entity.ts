@@ -35,6 +35,9 @@ export class Message {
   @Column({ name: 'is_read', type: 'boolean', default: false })
   isRead!: boolean;
 
+  @Column({ name: 'is_markdown', type: 'boolean', default: false })
+  isMarkdown!: boolean;
+
   @Column({ name: 'is_edited', type: 'boolean', default: false })
   isEdited!: boolean;
 

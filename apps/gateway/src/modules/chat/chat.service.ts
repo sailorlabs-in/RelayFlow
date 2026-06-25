@@ -231,6 +231,7 @@ export class ChatService {
     media?: any[],
     readReceiptUserIds: string[] = [],
     parentId?: string,
+    isMarkdown = false,
   ): Promise<Message> {
     const isMember = await this.memberRepository.findOne({
       where: { conversationId, userId: senderId },
@@ -248,6 +249,7 @@ export class ChatService {
       isRead,
       media,
       parentId: parentId || undefined,
+      isMarkdown,
     });
 
     const savedMessage = await this.messageRepository.save(message);

@@ -37,6 +37,7 @@ export interface Message {
   parentId?: string | null;
   parentMessage?: Message | null;
   reactions?: { emoji: string; userIds: string[] }[] | null;
+  isMarkdown?: boolean;
 }
 
 export interface ChatState {

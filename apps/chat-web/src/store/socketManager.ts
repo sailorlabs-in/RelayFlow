@@ -677,6 +677,7 @@ class SocketManager {
       size: number;
     }[],
     parentId?: string,
+    isMarkdown?: boolean,
   ) {
     if (this.socket?.connected) {
       PrintLog(
@@ -684,12 +685,14 @@ class SocketManager {
         content,
         media,
         parentId,
+        isMarkdown,
       );
       this.socket.emit('send.message', {
         conversationId,
         content,
         media,
         parentId,
+        isMarkdown,
       });
     } else {
       console.error('❌ Cannot send message: Socket is not connected');

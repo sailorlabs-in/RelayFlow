@@ -579,11 +579,11 @@ export const ChatArea = ({
     });
   };
 
-  const renderMessageContent = (content: string) => {
+  const renderMessageContent = (content: string, isMarkdownMsg?: boolean) => {
     if (!content) {
       return null;
     }
-    if (isMdMode) {
+    if (isMarkdownMsg || isMdMode) {
       return (
         <div className="markdown-body prose prose-sm dark:prose-invert max-w-none break-words">
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
@@ -1172,6 +1172,7 @@ export const ChatArea = ({
         messageInput.trim(),
         media,
         replyingToMessage?.id || undefined,
+        isMdMode,
       );
     } else {
       socketManager.sendMessage(
@@ -1179,6 +1180,7 @@ export const ChatArea = ({
         messageInput.trim(),
         undefined,
         replyingToMessage?.id || undefined,
+        isMdMode,
       );
     }
 
@@ -1960,7 +1962,10 @@ export const ChatArea = ({
                                     >
                                       {isOnlyEmojis(msg.content)
                                         ? msg.content
-                                        : renderMessageContent(msg.content)}
+                                        : renderMessageContent(
+                                            msg.content,
+                                            msg.isMarkdown,
+                                          )}
                                     </div>
                                   )}
                                 </>
@@ -2336,7 +2341,10 @@ export const ChatArea = ({
                                 >
                                   {isOnlyEmojis(msg.content)
                                     ? msg.content
-                                    : renderMessageContent(msg.content)}
+                                    : renderMessageContent(
+                                        msg.content,
+                                        msg.isMarkdown,
+                                      )}
                                 </div>
                               )}
                             </>
