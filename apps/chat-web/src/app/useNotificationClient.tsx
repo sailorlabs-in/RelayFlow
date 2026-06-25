@@ -411,6 +411,10 @@ export function useNotificationClient(
 
         const msgConvoId = meta.conversationId || payload.data?.conversationId;
         const msgGroupId = meta.groupId || '';
+        // isMention: backend sets this true when the push is for a direct @mention.
+        // We never suppress @mention pushes even if the channel is active — the user
+        // should always be alerted when someone pings them.
+        const isMention = meta.isMention === true || meta.isMention === 'true';
 
         // ── Mute Check — suppress if this thread is muted by the local user ──
         if (
@@ -422,19 +426,30 @@ export function useNotificationClient(
         }
 
         // Suppress if user is currently viewing this DM conversation
-        if (msgConvoId && msgConvoId === activeConversationIdRef.current) {
+        // (never suppress @mention pings)
+        if (
+          !isMention &&
+          msgConvoId &&
+          msgConvoId === activeConversationIdRef.current
+        ) {
           PrintLog('Suppressed: user is viewing DM conversation', msgConvoId);
           return;
         }
 
         // Suppress if user is currently viewing this group channel
-        if (msgConvoId && msgConvoId === activeChannelIdRef.current) {
+        // (never suppress @mention pings — user should always see when mentioned)
+        if (
+          !isMention &&
+          msgConvoId &&
+          msgConvoId === activeChannelIdRef.current
+        ) {
           PrintLog('Suppressed: user is viewing group channel', msgConvoId);
           return;
         }
 
         // Suppress if user is in the same group and channel matches
         if (
+          !isMention &&
           msgGroupId &&
           msgGroupId === activeGroupIdRef.current &&
           msgConvoId === activeChannelIdRef.current

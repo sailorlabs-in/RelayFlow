@@ -30,6 +30,10 @@ export const CreateChannelModal = ({
   const [channelName, setChannelName] = useState('');
   const [layout, setLayout] = useState<'text' | 'bubble' | 'voice'>('text');
   const [isPrivate, setIsPrivate] = useState(false);
+  const [isReadOnly, setIsReadOnly] = useState(false);
+  const [notificationSetting, setNotificationSetting] = useState<
+    'all' | 'mention' | 'none'
+  >('all');
   const [allowedRoleIds, setAllowedRoleIds] = useState<string[]>([]);
   const [readRoleIds, setReadRoleIds] = useState<string[]>([]);
   const [writeRoleIds, setWriteRoleIds] = useState<string[]>([]);
@@ -63,9 +67,11 @@ export const CreateChannelModal = ({
           layout,
           allowedRoleIds: isPrivate ? allowedRoleIds : [],
           readRoleIds: isPrivate ? readRoleIds : [],
-          writeRoleIds: isPrivate ? writeRoleIds : [],
+          writeRoleIds: isPrivate || isReadOnly ? writeRoleIds : [],
           hiddenFromUserIds: isPrivate ? hiddenFromUserIds : [],
           sectionId,
+          isReadOnly,
+          notificationSetting,
         }),
       ).unwrap();
       showToast.success(`Channel #${name} created!`);
@@ -272,49 +278,6 @@ export const CreateChannelModal = ({
                   )}
                 </div>
 
-                {/* Write Access Roles */}
-                <div className="border-t border-theme pt-3">
-                  <span className="block text-[11px] font-bold uppercase tracking-wider text-theme-secondary mb-2">
-                    Who can message / write
-                  </span>
-                  {roles.length === 0 ? (
-                    <p className="m-0 text-xs text-theme-muted italic">
-                      No custom roles exist. Create roles in Server Settings
-                      first.
-                    </p>
-                  ) : (
-                    <div className="flex flex-col gap-2 max-h-25 overflow-y-auto pr-1">
-                      {roles.map((role) => (
-                        <label
-                          key={role.id}
-                          className="flex items-center gap-2.5 text-sm cursor-pointer select-none"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={writeRoleIds.includes(role.id)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setWriteRoleIds([...writeRoleIds, role.id]);
-                              } else {
-                                setWriteRoleIds(
-                                  writeRoleIds.filter((id) => id !== role.id),
-                                );
-                              }
-                            }}
-                            className="rounded border-glass text-(--accent-primary) focus:ring-(--accent-primary)"
-                          />
-                          <span
-                            style={{ color: role.color }}
-                            className="font-semibold text-theme-primary"
-                          >
-                            {role.name}
-                          </span>
-                        </label>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
                 {/* Hide Channel From */}
                 <div className="border-t border-theme pt-3">
                   <span className="block text-[11px] font-bold uppercase tracking-wider text-theme-secondary mb-2">
@@ -390,6 +353,130 @@ export const CreateChannelModal = ({
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Read-Only Channel Toggle */}
+          <div className="mb-4 p-3 rounded-[10px] border-[1.5px] border-glass bg-[rgba(255,255,255,0.02)]">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-sm font-semibold text-theme-primary">
+                  Read-Only Channel
+                </span>
+                <p className="m-0 mt-0.5 text-xs text-theme-muted">
+                  Anyone in the group can read, but only selected roles can send
+                  messages
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isReadOnly}
+                  onChange={(e) => setIsReadOnly(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-9 h-5 bg-theme-input peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-(--accent-primary)"></div>
+              </label>
+            </div>
+
+            {(isPrivate || isReadOnly) && (
+              <div className="flex flex-col gap-4 mt-4 border-t border-theme pt-3">
+                {/* Write Access Roles */}
+                <div>
+                  <span className="block text-[11px] font-bold uppercase tracking-wider text-theme-secondary mb-2">
+                    Who can message / write
+                  </span>
+                  {roles.length === 0 ? (
+                    <p className="m-0 text-xs text-theme-muted italic">
+                      No custom roles exist. Create roles in Server Settings
+                      first.
+                    </p>
+                  ) : (
+                    <div className="flex flex-col gap-2 max-h-25 overflow-y-auto pr-1">
+                      {roles.map((role) => (
+                        <label
+                          key={role.id}
+                          className="flex items-center gap-2.5 text-sm cursor-pointer select-none"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={writeRoleIds.includes(role.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setWriteRoleIds([...writeRoleIds, role.id]);
+                              } else {
+                                setWriteRoleIds(
+                                  writeRoleIds.filter((id) => id !== role.id),
+                                );
+                              }
+                            }}
+                            className="rounded border-glass text-(--accent-primary) focus:ring-(--accent-primary)"
+                          />
+                          <span
+                            style={{ color: role.color }}
+                            className="font-semibold text-theme-primary"
+                          >
+                            {role.name}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Channel-wise Notification Preference */}
+          <div className="mb-4 p-3 rounded-[10px] border-[1.5px] border-glass bg-[rgba(255,255,255,0.02)] flex flex-col gap-2.5">
+            <span className="text-sm font-semibold text-theme-primary">
+              Channel Notification Setting
+            </span>
+            <p className="m-0 text-xs text-theme-muted">
+              Choose the default notification behavior for messages sent in this
+              channel
+            </p>
+            <select
+              value={notificationSetting}
+              onChange={(e) =>
+                setNotificationSetting(
+                  e.target.value as 'all' | 'mention' | 'none',
+                )
+              }
+              style={{
+                background: 'var(--bg-input)',
+                borderColor: 'var(--glass-border)',
+                color: 'var(--text-primary)',
+              }}
+              className="w-full py-2 px-3 rounded-lg border text-sm focus:outline-none focus:border-[var(--accent-primary)]"
+            >
+              <option
+                value="all"
+                style={{
+                  background: 'var(--dropdown-bg)',
+                  color: 'var(--text-primary)',
+                }}
+              >
+                All Notifications
+              </option>
+              <option
+                value="mention"
+                style={{
+                  background: 'var(--dropdown-bg)',
+                  color: 'var(--text-primary)',
+                }}
+              >
+                Only Mentions
+              </option>
+              <option
+                value="none"
+                style={{
+                  background: 'var(--dropdown-bg)',
+                  color: 'var(--text-primary)',
+                }}
+              >
+                None
+              </option>
+            </select>
           </div>
         </form>
 

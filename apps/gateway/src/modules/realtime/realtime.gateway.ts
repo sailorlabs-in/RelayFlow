@@ -28,6 +28,38 @@ import { ChatService } from '../chat/chat.service';
 import { UsersService } from '../users/users.service';
 import { GroupsService } from '../groups/groups.service';
 
+function isUserMentioned(content: string, user: any): boolean {
+  if (!content) {
+    return false;
+  }
+  const lowerContent = content.toLowerCase();
+
+  if (lowerContent.includes('@everyone')) {
+    return true;
+  }
+
+  if (
+    user.username &&
+    lowerContent.includes(`@${user.username.toLowerCase()}`)
+  ) {
+    return true;
+  }
+
+  if (
+    user.displayName &&
+    lowerContent.includes(`@${user.displayName.toLowerCase()}`)
+  ) {
+    return true;
+  }
+
+  const emailPrefix = user.email.split('@')[0].toLowerCase();
+  if (lowerContent.includes(`@${emailPrefix}`)) {
+    return true;
+  }
+
+  return false;
+}
+
 @WebSocketGateway({
   cors: { origin: '*' },
   namespace: 'chat',
@@ -704,6 +736,16 @@ export class RealtimeGateway
       isMarkdown,
     );
     for (const member of members) {
+      if (conversation && conversation.groupId) {
+        const hasAccess = await this.groupsService.canUserAccessChannel(
+          conversation.groupId,
+          conversationId,
+          member.userId,
+        );
+        if (!hasAccess) {
+          continue;
+        }
+      }
       const memberRoom = `user:${member.userId}`;
       this.server.to(memberRoom).emit('message.new', message);
     }
@@ -747,41 +789,100 @@ export class RealtimeGateway
         : true;
 
       const recipientsToNotify: string[] = [];
+      // Track whether each recipient was notified due to a direct @mention
+      // so the frontend can surface the notification even if the channel is active
+      let notificationIsMention = false;
       for (const memberId of otherMemberIds) {
         try {
           const targetUser = await this.usersService.findById(memberId);
-          if (targetUser.notificationsEnabled !== false) {
-            let shouldNotify = false;
-            if (isDm && targetUser.notificationsDmEnabled !== false) {
-              shouldNotify = true;
-            } else if (
-              !isDm &&
-              targetUser.notificationsGroupEnabled !== false
-            ) {
+          if (targetUser.notificationsEnabled === false) {
+            continue;
+          }
+
+          let shouldNotify = false;
+          let wasMentioned = false;
+          if (isDm) {
+            if (targetUser.notificationsDmEnabled !== false) {
               shouldNotify = true;
             }
+          } else if (conversation && conversation.groupId) {
+            // 1. Channel read access check
+            const hasAccess = await this.groupsService.canUserAccessChannel(
+              conversation.groupId,
+              conversation.id,
+              memberId,
+            );
+            if (!hasAccess) {
+              continue;
+            }
 
-            if (shouldNotify) {
-              let devices: any[] = [];
-              if (targetUser.loggedInDevices) {
-                try {
-                  devices = JSON.parse(targetUser.loggedInDevices);
-                } catch {
-                  devices = [];
-                }
-              }
+            // 2. Channel notification preference permission
+            const channelSetting = conversation.notificationSetting || 'all';
+            if (channelSetting === 'none') {
+              continue;
+            }
 
-              if (Array.isArray(devices) && devices.length > 0) {
-                const activeDevices = devices.filter(
-                  (d: any) => d.notificationsEnabled !== false,
-                );
-                for (const d of activeDevices) {
-                  recipientsToNotify.push(`${targetUser.id}:${d.deviceId}`);
-                }
-              } else {
-                // Fallback for backward compatibility
-                recipientsToNotify.push(targetUser.id);
+            // 3. Group notification setting check
+            const groupMember = await this.groupsService.getGroupMember(
+              conversation.groupId,
+              memberId,
+            );
+            const groupPref = groupMember?.notificationPref || 'all';
+            if (groupPref === 'none') {
+              continue;
+            }
+
+            // 4. User overall group notification enablement check
+            if (targetUser.notificationsGroupEnabled === false) {
+              continue;
+            }
+
+            // 5. User overall group notification preference check
+            const userPref = targetUser.groupNotificationPref || 'all';
+            if (userPref === 'none') {
+              continue;
+            }
+
+            // Decide notification based on preferences
+            const isMentionOnly =
+              channelSetting === 'mention' ||
+              groupPref === 'mention' ||
+              userPref === 'mention';
+            if (isMentionOnly) {
+              if (isUserMentioned(content, targetUser)) {
+                shouldNotify = true;
+                wasMentioned = true;
               }
+            } else {
+              // Still flag if the content happens to mention them even in 'all' mode
+              wasMentioned = isUserMentioned(content, targetUser);
+              shouldNotify = true;
+            }
+          }
+
+          if (shouldNotify) {
+            if (wasMentioned) {
+              notificationIsMention = true;
+            }
+            let devices: any[] = [];
+            if (targetUser.loggedInDevices) {
+              try {
+                devices = JSON.parse(targetUser.loggedInDevices);
+              } catch {
+                devices = [];
+              }
+            }
+
+            if (Array.isArray(devices) && devices.length > 0) {
+              const activeDevices = devices.filter(
+                (d: any) => d.notificationsEnabled !== false,
+              );
+              for (const d of activeDevices) {
+                recipientsToNotify.push(`${targetUser.id}:${d.deviceId}`);
+              }
+            } else {
+              // Fallback for backward compatibility
+              recipientsToNotify.push(targetUser.id);
             }
           }
         } catch (err) {
@@ -830,7 +931,10 @@ export class RealtimeGateway
           pushTitle = `${senderDisplayName} at ${channelName}, ${groupName || 'Group'}`;
         }
 
-        // Structured metadata payload — FE reads this to identify active threads
+        // Structured metadata payload — FE reads this to identify active threads.
+        // isMention=true tells the frontend to bypass active-channel suppression
+        // so the user always sees an @mention notification even if they are
+        // currently viewing the channel.
         const metadataPayload = {
           message: content,
           conversationId,
@@ -841,6 +945,7 @@ export class RealtimeGateway
           groupId,
           groupName,
           channelName,
+          isMention: notificationIsMention,
         };
 
         this.notificationsQueue

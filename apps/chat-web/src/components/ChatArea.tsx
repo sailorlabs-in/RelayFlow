@@ -339,16 +339,46 @@ export const ChatArea = ({
   const isVoiceChannel = isChannelMode && activeChannel?.layout === 'voice';
 
   const isGroupChannel = !!(activeGroup && activeChannel);
-  const canSendMessages =
-    !isGroupChannel ||
-    hasGroupPermission(activeGroup, user?.id, 'send_messages');
-  const canAttachFiles =
-    !isGroupChannel ||
-    hasGroupPermission(activeGroup, user?.id, 'attach_files');
-
   const isOwner = activeGroup?.ownerId === user?.id;
   const isAdmin =
     activeGroup?.members?.find((m) => m.userId === user?.id)?.role === 'admin';
+  const member = activeGroup?.members?.find((m) => m.userId === user?.id);
+  const isOwnerOrAdmin = isOwner || isAdmin;
+  const hasManageGroup = hasGroupPermission(
+    activeGroup,
+    user?.id,
+    'manage_group',
+  );
+
+  const isChannelWriteRestricted =
+    activeChannel?.isReadOnly ||
+    (activeChannel?.writeRoleIds && activeChannel.writeRoleIds.length > 0);
+
+  let hasChannelWriteAccess = true;
+  if (isChannelWriteRestricted) {
+    if (isOwnerOrAdmin || hasManageGroup) {
+      hasChannelWriteAccess = true;
+    } else {
+      const writeRoles = activeChannel?.writeRoleIds || [];
+      if (writeRoles.length === 0) {
+        hasChannelWriteAccess = false;
+      } else {
+        const memberRoleIds = member?.roleIds || [];
+        hasChannelWriteAccess = writeRoles.some((roleId) =>
+          memberRoleIds.includes(roleId),
+        );
+      }
+    }
+  }
+
+  const canSendMessages =
+    (!isGroupChannel ||
+      hasGroupPermission(activeGroup, user?.id, 'send_messages')) &&
+    hasChannelWriteAccess;
+  const canAttachFiles =
+    (!isGroupChannel ||
+      hasGroupPermission(activeGroup, user?.id, 'attach_files')) &&
+    hasChannelWriteAccess;
   const canDeleteOthers =
     isChannelMode &&
     !!activeGroup &&
@@ -2660,7 +2690,13 @@ export const ChatArea = ({
                         title={
                           canSendMessages
                             ? 'Choose an emoji'
-                            : 'You do not have permission to send messages'
+                            : isChannelMode &&
+                                activeChannel &&
+                                (activeChannel.isReadOnly ||
+                                  (activeChannel.writeRoleIds &&
+                                    activeChannel.writeRoleIds.length > 0))
+                              ? 'This channel is read-only'
+                              : 'You do not have permission to send messages'
                         }
                       >
                         <IconEmoji size={20} />
@@ -2689,7 +2725,13 @@ export const ChatArea = ({
                       className="w-11.5 h-11.5 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200 bg-theme-input text-theme-muted hover:bg-(--theme-btn-hover) hover:text-theme-primary disabled:opacity-40 disabled:cursor-not-allowed active-press border border-glass"
                       title={
                         !canSendMessages
-                          ? 'You do not have permission to send messages'
+                          ? isChannelMode &&
+                            activeChannel &&
+                            (activeChannel.isReadOnly ||
+                              (activeChannel.writeRoleIds &&
+                                activeChannel.writeRoleIds.length > 0))
+                            ? 'This channel is read-only'
+                            : 'You do not have permission to send messages'
                           : !canAttachFiles
                             ? 'You do not have permission to attach files'
                             : 'Attach a file'
@@ -3003,7 +3045,13 @@ export const ChatArea = ({
                                 ? isMobileScreen
                                   ? 'Type a message…'
                                   : 'Type a message… (Enter to send)'
-                                : 'You do not have permission to send messages in this group.'
+                                : isChannelMode &&
+                                    activeChannel &&
+                                    (activeChannel.isReadOnly ||
+                                      (activeChannel.writeRoleIds &&
+                                        activeChannel.writeRoleIds.length > 0))
+                                  ? 'This channel is read-only.'
+                                  : 'You do not have permission to send messages in this group.'
                           }
                           rows={isMdMode ? 4 : 1}
                           value={messageInput}

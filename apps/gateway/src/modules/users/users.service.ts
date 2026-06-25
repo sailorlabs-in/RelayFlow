@@ -153,6 +153,7 @@ export class UsersService {
       notificationsEnabled?: boolean;
       notificationsDmEnabled?: boolean;
       notificationsGroupEnabled?: boolean;
+      groupNotificationPref?: 'all' | 'mention' | 'none';
       notificationsInAppEnabled?: boolean;
       notificationsFriendRequestEnabled?: boolean;
       isTwoFactorEnabled?: boolean;
@@ -210,6 +211,10 @@ export class UsersService {
 
     if (data.notificationsGroupEnabled !== undefined) {
       user.notificationsGroupEnabled = data.notificationsGroupEnabled;
+    }
+
+    if (data.groupNotificationPref !== undefined) {
+      user.groupNotificationPref = data.groupNotificationPref;
     }
 
     if (data.notificationsInAppEnabled !== undefined) {

@@ -50,6 +50,14 @@ export class User {
   @Column({ name: 'notifications_group_enabled', default: true })
   notificationsGroupEnabled!: boolean;
 
+  @Column({
+    name: 'group_notification_pref',
+    type: 'varchar',
+    length: 20,
+    default: 'all',
+  })
+  groupNotificationPref!: 'all' | 'mention' | 'none';
+
   @Column({ name: 'notifications_in_app_enabled', default: true })
   notificationsInAppEnabled!: boolean;
 

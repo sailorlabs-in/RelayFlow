@@ -10,6 +10,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -326,6 +327,24 @@ export class GroupsController {
     return newMembers;
   }
 
+  @Put(':id/notification-pref')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Update group notification preference for current user',
+  })
+  async updateNotificationPref(
+    @Param('id') groupId: string,
+    @CurrentUser() currentUser: { userId: string },
+    @Body('notificationPref') notificationPref: 'all' | 'mention' | 'none',
+  ) {
+    return this.groupsService.updateNotificationPref(
+      groupId,
+      currentUser.userId,
+      notificationPref,
+    );
+  }
+
   // ─── Remove a member from a group ────────────────────────────────────────────
   @Delete(':id/members/:userId')
   @Permissions(GroupPermission.KICK_MEMBERS)
@@ -383,6 +402,9 @@ export class GroupsController {
     @Body('readRoleIds') readRoleIds?: string[],
     @Body('writeRoleIds') writeRoleIds?: string[],
     @Body('hiddenFromUserIds') hiddenFromUserIds?: string[],
+    @Body('isReadOnly') isReadOnly?: boolean,
+    @Body('notificationSetting')
+    notificationSetting?: 'all' | 'mention' | 'none',
   ) {
     const channel = await this.groupsService.createChannel(
       groupId,
@@ -394,6 +416,8 @@ export class GroupsController {
       readRoleIds,
       writeRoleIds,
       hiddenFromUserIds,
+      isReadOnly,
+      notificationSetting,
     );
 
     // Notify all group members about the new channel
@@ -437,6 +461,9 @@ export class GroupsController {
     @Body('readRoleIds') readRoleIds?: string[],
     @Body('writeRoleIds') writeRoleIds?: string[],
     @Body('hiddenFromUserIds') hiddenFromUserIds?: string[],
+    @Body('isReadOnly') isReadOnly?: boolean,
+    @Body('notificationSetting')
+    notificationSetting?: 'all' | 'mention' | 'none',
   ) {
     const channel = await this.groupsService.updateChannel(
       groupId,
@@ -447,6 +474,8 @@ export class GroupsController {
       readRoleIds,
       writeRoleIds,
       hiddenFromUserIds,
+      isReadOnly,
+      notificationSetting,
     );
 
     // Notify all group members about the channel update

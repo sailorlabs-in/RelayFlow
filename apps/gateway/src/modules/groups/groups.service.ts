@@ -467,6 +467,8 @@ export class GroupsService {
     readRoleIds?: string[],
     writeRoleIds?: string[],
     hiddenFromUserIds?: string[],
+    isReadOnly?: boolean,
+    notificationSetting?: 'all' | 'mention' | 'none',
   ): Promise<Conversation> {
     const membership = await this.groupMemberRepo.findOne({
       where: { groupId, userId: requesterId },
@@ -495,6 +497,8 @@ export class GroupsService {
       writeRoleIds: writeRoleIds || [],
       hiddenFromUserIds: hiddenFromUserIds || [],
       sectionId,
+      isReadOnly: isReadOnly || false,
+      notificationSetting: notificationSetting || 'all',
     });
     const savedChannel = await this.conversationRepo.save(channel);
 
@@ -523,6 +527,8 @@ export class GroupsService {
     readRoleIds?: string[],
     writeRoleIds?: string[],
     hiddenFromUserIds?: string[],
+    isReadOnly?: boolean,
+    notificationSetting?: 'all' | 'mention' | 'none',
   ): Promise<Conversation> {
     const group = await this.groupRepo.findOne({ where: { id: groupId } });
     if (!group) {
@@ -566,6 +572,12 @@ export class GroupsService {
     }
     if (hiddenFromUserIds !== undefined) {
       channel.hiddenFromUserIds = hiddenFromUserIds;
+    }
+    if (isReadOnly !== undefined) {
+      channel.isReadOnly = isReadOnly;
+    }
+    if (notificationSetting !== undefined) {
+      channel.notificationSetting = notificationSetting;
     }
     return this.conversationRepo.save(channel);
   }
@@ -643,6 +655,29 @@ export class GroupsService {
   // ─── Get members of a specific group ─────────────────────────────────────────
   async getGroupMembers(groupId: string): Promise<GroupMember[]> {
     return this.groupMemberRepo.find({ where: { groupId } });
+  }
+
+  async updateNotificationPref(
+    groupId: string,
+    userId: string,
+    notificationPref: 'all' | 'mention' | 'none',
+  ): Promise<GroupMember> {
+    const member = await this.groupMemberRepo.findOne({
+      where: { groupId, userId },
+    });
+    if (!member) {
+      throw new NotFoundException('Member not found in group');
+    }
+    member.notificationPref = notificationPref;
+    member.isMuted = notificationPref === 'none';
+    return this.groupMemberRepo.save(member);
+  }
+
+  async getGroupMember(
+    groupId: string,
+    userId: string,
+  ): Promise<GroupMember | null> {
+    return this.groupMemberRepo.findOne({ where: { groupId, userId } });
   }
 
   // ─── Get channels in a group ──────────────────────────────────────────────────
@@ -783,20 +818,27 @@ export class GroupsService {
     const readRoles = channel.readRoleIds || [];
     const writeRoles = channel.writeRoleIds || [];
 
-    if (
-      allowed.length === 0 &&
-      readRoles.length === 0 &&
-      writeRoles.length === 0
-    ) {
+    if (allowed.length === 0 && readRoles.length === 0) {
       return true;
     }
 
     const memberRoleIds = member.roleIds || [];
-    return (
+    const hasReadRole =
       allowed.some((roleId) => memberRoleIds.includes(roleId)) ||
-      readRoles.some((roleId) => memberRoleIds.includes(roleId)) ||
+      readRoles.some((roleId) => memberRoleIds.includes(roleId));
+
+    if (hasReadRole) {
+      return true;
+    }
+
+    if (
+      !channel.isReadOnly &&
       writeRoles.some((roleId) => memberRoleIds.includes(roleId))
-    );
+    ) {
+      return true;
+    }
+
+    return false;
   }
 
   async canUserWriteToChannel(
@@ -841,6 +883,9 @@ export class GroupsService {
     }
 
     const writeRoles = channel.writeRoleIds || [];
+    if (channel.isReadOnly && writeRoles.length === 0) {
+      return false;
+    }
     if (writeRoles.length === 0) {
       return true;
     }

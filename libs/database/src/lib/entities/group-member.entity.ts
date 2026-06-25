@@ -49,6 +49,17 @@ export class GroupMember {
   @Column({ name: 'permissions', type: 'jsonb', nullable: true, default: [] })
   permissions?: string[];
 
+  @Column({ name: 'is_muted', type: 'boolean', default: false })
+  isMuted!: boolean;
+
+  @Column({
+    name: 'notification_pref',
+    type: 'varchar',
+    length: 20,
+    default: 'all',
+  })
+  notificationPref!: 'all' | 'mention' | 'none';
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 }

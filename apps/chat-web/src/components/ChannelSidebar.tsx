@@ -9,9 +9,7 @@ import type {
 } from '../store/slices/groupsSlice';
 import {
   setActiveChannel,
-  deleteGroup,
   deleteChannel,
-  removeGroupMember,
   deleteSection,
   reorderSections,
   reorderChannels,
@@ -26,7 +24,6 @@ import {
   IconTrash,
   IconChevronDown,
   IconSettings,
-  IconLogout,
   IconMessageDm,
 } from './Icons';
 import { showToast } from './toast';
@@ -153,53 +150,6 @@ export const ChannelSidebar = ({
     } else {
       socketManager.joinConversation(channel.id);
     }
-  };
-
-  const handleDeleteGroup = () => {
-    setConfirmModal({
-      isOpen: true,
-      title: 'Delete Group',
-      message: `Are you sure you want to delete "${group.name}" and all its channels? This action is permanent and cannot be undone.`,
-      confirmLabel: 'Delete',
-      type: 'danger',
-      onConfirm: async () => {
-        try {
-          await dispatch(deleteGroup(group.id)).unwrap();
-          showToast.success(`Group "${group.name}" deleted.`);
-        } catch {
-          showToast.error('Failed to delete group.');
-        } finally {
-          setConfirmModal(null);
-        }
-      },
-    });
-  };
-
-  const handleLeaveGroup = () => {
-    setConfirmModal({
-      isOpen: true,
-      title: 'Leave Group',
-      message: `Are you sure you want to leave the group "${group.name}"? You will lose access to all its channels.`,
-      confirmLabel: 'Leave',
-      type: 'danger',
-      onConfirm: async () => {
-        try {
-          if (user) {
-            await dispatch(
-              removeGroupMember({
-                groupId: group.id,
-                userId: user.id,
-              }),
-            ).unwrap();
-            showToast.success(`You have left the group "${group.name}".`);
-          }
-        } catch {
-          showToast.error('Failed to leave group.');
-        } finally {
-          setConfirmModal(null);
-        }
-      },
-    });
   };
 
   const handleDeleteChannel = (channel: GroupChannel) => {
@@ -704,26 +654,6 @@ export const ChannelSidebar = ({
                 id="group-settings-btn"
               >
                 <IconSettings />
-              </IconButton>
-            )}
-            {isOwner && (
-              <IconButton
-                title="Delete Group"
-                onClick={handleDeleteGroup}
-                id="delete-group-btn"
-                danger
-              >
-                <IconTrash />
-              </IconButton>
-            )}
-            {!isOwner && (
-              <IconButton
-                title="Leave Group"
-                onClick={handleLeaveGroup}
-                id="leave-group-btn"
-                danger
-              >
-                <IconLogout />
               </IconButton>
             )}
           </div>

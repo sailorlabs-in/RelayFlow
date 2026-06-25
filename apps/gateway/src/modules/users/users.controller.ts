@@ -156,6 +156,7 @@ export class UsersController {
       notificationsEnabled?: boolean;
       notificationsDmEnabled?: boolean;
       notificationsGroupEnabled?: boolean;
+      groupNotificationPref?: 'all' | 'mention' | 'none';
       notificationsInAppEnabled?: boolean;
       notificationsFriendRequestEnabled?: boolean;
       isTwoFactorEnabled?: boolean;

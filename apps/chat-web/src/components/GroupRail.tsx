@@ -1,10 +1,23 @@
 import React, { useState, useEffect } from 'react';
 
 import { useAppDispatch, useAppSelector } from '../store';
-import { setActiveGroup } from '../store/slices/groupsSlice';
+import {
+  setActiveGroup,
+  updateGroupNotificationPref,
+  removeGroupMember,
+  deleteGroup,
+} from '../store/slices/groupsSlice';
 import { updateUserProfile } from '../store/slices/authSlice';
 
-import { IconPlus } from './Icons';
+import {
+  IconPlus,
+  IconBell,
+  IconBellOff,
+  IconLogout,
+  IconTrash,
+} from './Icons';
+import { showToast } from './toast';
+import { ConfirmationModal } from './ConfirmationModal';
 
 interface GroupRailProps {
   onCreateGroup: () => void;
@@ -32,6 +45,131 @@ export const GroupRail = ({
   const { conversations, messages, activeConversationId } = useAppSelector(
     (s) => s.chat,
   );
+
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    groupId: string;
+  } | null>(null);
+
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    type?: 'danger' | 'info';
+    onConfirm: () => void;
+  } | null>(null);
+
+  useEffect(() => {
+    const handleCloseMenu = () => {
+      setContextMenu(null);
+    };
+    window.addEventListener('click', handleCloseMenu);
+    return () => window.removeEventListener('click', handleCloseMenu);
+  }, []);
+
+  const handleGroupContextMenu = (e: React.MouseEvent, groupId: string) => {
+    e.preventDefault();
+    const menuWidth = 160;
+    const menuHeight = 100;
+    let x = e.clientX;
+    let y = e.clientY;
+
+    if (x + menuWidth > window.innerWidth) {
+      x = window.innerWidth - menuWidth - 8;
+    }
+    if (y + menuHeight > window.innerHeight) {
+      y = window.innerHeight - menuHeight - 8;
+    }
+
+    setContextMenu({ x, y, groupId });
+  };
+
+  const handleUpdateGroupNotificationPref = async (
+    groupId: string,
+    notificationPref: 'all' | 'mention' | 'none',
+  ) => {
+    if (!user) {
+      return;
+    }
+    try {
+      await dispatch(
+        updateGroupNotificationPref({
+          groupId,
+          userId: user.id,
+          notificationPref,
+        }),
+      ).unwrap();
+      const prefLabels = {
+        all: 'All Messages',
+        mention: 'Only Mentions',
+        none: 'Server Muted',
+      };
+      showToast.success(
+        `Notification preference updated to: ${prefLabels[notificationPref]}`,
+      );
+    } catch (err: any) {
+      showToast.error(err || 'Failed to update notification setting.');
+    }
+  };
+
+  const handleLeaveGroupAction = (groupId: string, groupName: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Leave Group',
+      message: `Are you sure you want to leave the group "${groupName}"? You will lose access to all its channels.`,
+      confirmLabel: 'Leave',
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          if (user) {
+            await dispatch(
+              removeGroupMember({
+                groupId,
+                userId: user.id,
+              }),
+            ).unwrap();
+            showToast.success(`You have left the group "${groupName}".`);
+          }
+        } catch {
+          showToast.error('Failed to leave group.');
+        } finally {
+          setConfirmModal(null);
+        }
+      },
+    });
+  };
+
+  const handleDeleteGroupAction = (groupId: string, groupName: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Group',
+      message: `Are you sure you want to delete "${groupName}" and all its channels? This action is permanent and cannot be undone.`,
+      confirmLabel: 'Delete',
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          await dispatch(deleteGroup(groupId)).unwrap();
+          showToast.success(`Group "${groupName}" deleted.`);
+        } catch {
+          showToast.error('Failed to delete group.');
+        } finally {
+          setConfirmModal(null);
+        }
+      },
+    });
+  };
+
+  const targetGroup = contextMenu
+    ? groups.find((g) => g.id === contextMenu.groupId)
+    : null;
+  const isTargetOwner = targetGroup?.ownerId === user?.id;
+  const targetMember = targetGroup?.members?.find((m) => m.userId === user?.id);
+  const isTargetMuted = !!targetMember?.isMuted;
+  const targetNotificationPref =
+    targetMember?.notificationPref || (isTargetMuted ? 'none' : 'all');
 
   // Compute if any DM conversation has an unread message
   const dmHasUnread = React.useMemo(() => {
@@ -214,6 +352,7 @@ export const GroupRail = ({
                 hasUnread={groupHasUnread}
                 tooltip={group.name}
                 onClick={() => handleSelectGroup(group.id)}
+                onContextMenu={(e) => handleGroupContextMenu(e, group.id)}
                 tooltip_state={tooltip}
                 setTooltip={setTooltip}
               >
@@ -248,6 +387,107 @@ export const GroupRail = ({
           <IconPlus size={20} />
         </RailButton>
       </div>
+
+      {contextMenu && targetGroup && (
+        <div
+          className="fixed z-9999 bg-theme-sidebar border-[1.5px] border-glass backdrop-blur-[20px] rounded-xl shadow-(--glass-shadow) py-1.5 min-w-[170px] animate-fade-in"
+          style={{
+            top: contextMenu.y,
+            left: contextMenu.x,
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="px-3 py-1.5 text-[9.5px] font-bold uppercase tracking-wider text-theme-muted border-b border-theme/10 mb-1">
+            Server Notifications
+          </div>
+          <button
+            onClick={() => {
+              handleUpdateGroupNotificationPref(targetGroup.id, 'all');
+              setContextMenu(null);
+            }}
+            className={`w-full text-left bg-transparent border-0 py-2 px-3 text-xs font-semibold hover:bg-theme-input cursor-pointer transition-colors duration-150 flex items-center justify-between
+              ${targetNotificationPref === 'all' ? 'text-(--accent-primary)' : 'text-theme-primary'}`}
+          >
+            <div className="flex items-center gap-2">
+              <IconBell />
+              <span>All Messages</span>
+            </div>
+            {targetNotificationPref === 'all' && (
+              <span className="text-xs">✓</span>
+            )}
+          </button>
+          <button
+            onClick={() => {
+              handleUpdateGroupNotificationPref(targetGroup.id, 'mention');
+              setContextMenu(null);
+            }}
+            className={`w-full text-left bg-transparent border-0 py-2 px-3 text-xs font-semibold hover:bg-theme-input cursor-pointer transition-colors duration-150 flex items-center justify-between
+              ${targetNotificationPref === 'mention' ? 'text-(--accent-primary)' : 'text-theme-primary'}`}
+          >
+            <div className="flex items-center gap-2">
+              <IconBellOff />
+              <span>Only Mentions</span>
+            </div>
+            {targetNotificationPref === 'mention' && (
+              <span className="text-xs">✓</span>
+            )}
+          </button>
+          <button
+            onClick={() => {
+              handleUpdateGroupNotificationPref(targetGroup.id, 'none');
+              setContextMenu(null);
+            }}
+            className={`w-full text-left bg-transparent border-0 py-2 px-3 text-xs font-semibold hover:bg-theme-input cursor-pointer transition-colors duration-150 flex items-center justify-between
+              ${targetNotificationPref === 'none' ? 'text-(--accent-primary)' : 'text-theme-primary'}`}
+          >
+            <div className="flex items-center gap-2">
+              <IconBellOff />
+              <span>Mute Server</span>
+            </div>
+            {targetNotificationPref === 'none' && (
+              <span className="text-xs">✓</span>
+            )}
+          </button>
+
+          <div className="h-px bg-theme/10 my-1.5" />
+
+          {isTargetOwner ? (
+            <button
+              onClick={() => {
+                handleDeleteGroupAction(targetGroup.id, targetGroup.name);
+                setContextMenu(null);
+              }}
+              className="w-full text-left bg-transparent border-0 py-2 px-3 text-xs font-semibold text-(--danger) hover:bg-(--danger-bg) cursor-pointer transition-colors duration-150 flex items-center gap-2"
+            >
+              <IconTrash />
+              <span>Delete Group</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                handleLeaveGroupAction(targetGroup.id, targetGroup.name);
+                setContextMenu(null);
+              }}
+              className="w-full text-left bg-transparent border-0 py-2 px-3 text-xs font-semibold text-(--danger) hover:bg-(--danger-bg) cursor-pointer transition-colors duration-150 flex items-center gap-2"
+            >
+              <IconLogout />
+              <span>Leave Group</span>
+            </button>
+          )}
+        </div>
+      )}
+
+      {confirmModal && (
+        <ConfirmationModal
+          isOpen={confirmModal.isOpen}
+          title={confirmModal.title}
+          message={confirmModal.message}
+          confirmLabel={confirmModal.confirmLabel}
+          type={confirmModal.type}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={() => setConfirmModal(null)}
+        />
+      )}
     </div>
   );
 };
@@ -260,6 +500,7 @@ interface RailButtonProps {
   hasUnread?: boolean;
   tooltip: string;
   onClick: () => void;
+  onContextMenu?: (e: React.MouseEvent) => void;
   children: React.ReactNode;
   tooltip_state: { text: string; id: string } | null;
   setTooltip: (t: { text: string; id: string } | null) => void;
@@ -272,6 +513,7 @@ const RailButton = ({
   hasUnread,
   tooltip,
   onClick,
+  onContextMenu,
   children,
   tooltip_state,
   setTooltip,
@@ -289,6 +531,7 @@ const RailButton = ({
       <button
         id={id}
         onClick={onClick}
+        onContextMenu={onContextMenu}
         title={tooltip}
         onMouseEnter={() => setTooltip({ text: tooltip, id })}
         onMouseLeave={() => setTooltip(null)}

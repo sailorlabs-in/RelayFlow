@@ -43,6 +43,8 @@ export interface GroupChannel {
   readRoleIds?: string[];
   writeRoleIds?: string[];
   hiddenFromUserIds?: string[];
+  isReadOnly?: boolean;
+  notificationSetting?: 'all' | 'mention' | 'none';
   createdAt: string;
   updatedAt: string;
   sectionId?: string;
@@ -56,6 +58,8 @@ export interface GroupMember {
   role: 'owner' | 'admin' | 'member';
   roleIds?: string[];
   permissions?: string[];
+  isMuted?: boolean;
+  notificationPref?: 'all' | 'mention' | 'none';
   createdAt: string;
   user?: {
     id: string;
@@ -236,6 +240,8 @@ export const createChannel = createAsyncThunk(
       readRoleIds?: string[];
       writeRoleIds?: string[];
       hiddenFromUserIds?: string[];
+      isReadOnly?: boolean;
+      notificationSetting?: 'all' | 'mention' | 'none';
     },
     { rejectWithValue },
   ) => {
@@ -251,6 +257,8 @@ export const createChannel = createAsyncThunk(
           readRoleIds: payload.readRoleIds || [],
           writeRoleIds: payload.writeRoleIds || [],
           hiddenFromUserIds: payload.hiddenFromUserIds || [],
+          isReadOnly: payload.isReadOnly || false,
+          notificationSetting: payload.notificationSetting || 'all',
         },
         true,
       );
@@ -280,6 +288,8 @@ export const updateChannel = createAsyncThunk(
       readRoleIds?: string[];
       writeRoleIds?: string[];
       hiddenFromUserIds?: string[];
+      isReadOnly?: boolean;
+      notificationSetting?: 'all' | 'mention' | 'none';
     },
     { rejectWithValue },
   ) => {
@@ -293,6 +303,8 @@ export const updateChannel = createAsyncThunk(
           readRoleIds: payload.readRoleIds,
           writeRoleIds: payload.writeRoleIds,
           hiddenFromUserIds: payload.hiddenFromUserIds,
+          isReadOnly: payload.isReadOnly,
+          notificationSetting: payload.notificationSetting,
         },
         true,
       );
@@ -330,6 +342,39 @@ export const deleteChannel = createAsyncThunk(
         error.response?.data?.error?.message ||
           error.response?.data?.message ||
           'Failed to delete channel.',
+      );
+    }
+  },
+);
+
+// ── Update Group Notification Preference ──────────────────────────────────────
+export const updateGroupNotificationPref = createAsyncThunk(
+  'groups/updateGroupNotificationPref',
+  async (
+    payload: {
+      groupId: string;
+      userId: string;
+      notificationPref: 'all' | 'mention' | 'none';
+    },
+    { rejectWithValue },
+  ) => {
+    try {
+      await ApiRequest(
+        `/groups/${payload.groupId}/notification-pref`,
+        'put',
+        { notificationPref: payload.notificationPref },
+        true,
+      );
+      return {
+        groupId: payload.groupId,
+        userId: payload.userId,
+        notificationPref: payload.notificationPref,
+      };
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.error?.message ||
+          error.response?.data?.message ||
+          'Failed to update group notification preference.',
       );
     }
   },
@@ -1398,6 +1443,19 @@ const groupsSlice = createSlice({
             roleIds,
             ...(member || {}),
           };
+        }
+      }
+    });
+
+    // Update group notification preference
+    builder.addCase(updateGroupNotificationPref.fulfilled, (state, action) => {
+      const { groupId, userId, notificationPref } = action.payload;
+      const group = state.groups.find((g) => g.id === groupId);
+      if (group && Array.isArray(group.members)) {
+        const mIdx = group.members.findIndex((m) => m.userId === userId);
+        if (mIdx !== -1) {
+          group.members[mIdx].notificationPref = notificationPref;
+          group.members[mIdx].isMuted = notificationPref === 'none';
         }
       }
     });

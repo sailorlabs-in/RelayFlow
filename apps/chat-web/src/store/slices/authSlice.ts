@@ -15,6 +15,7 @@ export interface User {
   notificationsEnabled?: boolean;
   notificationsDmEnabled?: boolean;
   notificationsGroupEnabled?: boolean;
+  groupNotificationPref?: 'all' | 'mention' | 'none';
   notificationsInAppEnabled?: boolean;
   notificationsFriendRequestEnabled?: boolean;
   isTwoFactorEnabled?: boolean;
@@ -263,6 +264,7 @@ export const updateUserProfile = createAsyncThunk(
       notificationsEnabled?: boolean;
       notificationsDmEnabled?: boolean;
       notificationsGroupEnabled?: boolean;
+      groupNotificationPref?: 'all' | 'mention' | 'none';
       notificationsInAppEnabled?: boolean;
       notificationsFriendRequestEnabled?: boolean;
       isTwoFactorEnabled?: boolean;

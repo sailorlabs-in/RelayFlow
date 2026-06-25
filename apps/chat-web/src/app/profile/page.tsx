@@ -390,6 +390,9 @@ export function ProfileSettingsContent({
   const [notificationsDmEnabled, setNotificationsDmEnabled] = useState(true);
   const [notificationsGroupEnabled, setNotificationsGroupEnabled] =
     useState(true);
+  const [groupNotificationPref, setGroupNotificationPref] = useState<
+    'all' | 'mention' | 'none'
+  >('all');
   const [notificationsInAppEnabled, setNotificationsInAppEnabled] =
     useState(true);
   const [
@@ -590,6 +593,7 @@ export function ProfileSettingsContent({
       setNotificationsEnabled(user.notificationsEnabled ?? true);
       setNotificationsDmEnabled(user.notificationsDmEnabled ?? true);
       setNotificationsGroupEnabled(user.notificationsGroupEnabled ?? true);
+      setGroupNotificationPref(user.groupNotificationPref || 'all');
       setNotificationsInAppEnabled(user.notificationsInAppEnabled ?? true);
       setNotificationsFriendRequestEnabled(
         user.notificationsFriendRequestEnabled ?? true,
@@ -719,6 +723,7 @@ export function ProfileSettingsContent({
         notificationsEnabled,
         notificationsDmEnabled,
         notificationsGroupEnabled,
+        groupNotificationPref,
         notificationsInAppEnabled,
         notificationsFriendRequestEnabled,
         isTwoFactorEnabled,
@@ -2863,27 +2868,79 @@ export function ProfileSettingsContent({
                     </div>
 
                     {/* Group Notifications */}
-                    <div className="flex items-center justify-between p-4 rounded-xl border border-[var(--glass-border)] bg-[var(--theme-btn)]">
-                      <div className="flex flex-col gap-0.5 pr-4">
-                        <span className="font-bold text-[13.5px] text-[var(--text-primary)]">
-                          Groups & Channels
-                        </span>
-                        <span className="text-[11.5px] text-[var(--text-muted)]">
-                          Receive push notifications for messages in group
-                          channels
-                        </span>
+                    <div className="flex flex-col gap-3 p-4 rounded-xl border border-[var(--glass-border)] bg-[var(--theme-btn)]">
+                      <div className="flex items-center justify-between">
+                        <div className="flex flex-col gap-0.5 pr-4">
+                          <span className="font-bold text-[13.5px] text-[var(--text-primary)]">
+                            Groups & Channels
+                          </span>
+                          <span className="text-[11.5px] text-[var(--text-muted)]">
+                            Receive push notifications for messages in group
+                            channels
+                          </span>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={notificationsGroupEnabled}
+                            onChange={(e) =>
+                              setNotificationsGroupEnabled(e.target.checked)
+                            }
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent-primary)]"></div>
+                        </label>
                       </div>
-                      <label className="relative inline-flex items-center cursor-pointer select-none">
-                        <input
-                          type="checkbox"
-                          checked={notificationsGroupEnabled}
-                          onChange={(e) =>
-                            setNotificationsGroupEnabled(e.target.checked)
-                          }
-                          className="sr-only peer"
-                        />
-                        <div className="w-11 h-6 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent-primary)]"></div>
-                      </label>
+
+                      {notificationsGroupEnabled && (
+                        <div className="flex flex-col gap-2 mt-2 pt-2 border-t border-[var(--border-muted)]">
+                          <label className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] font-semibold">
+                            Group Notification Preference
+                          </label>
+                          <select
+                            value={groupNotificationPref}
+                            onChange={(e) =>
+                              setGroupNotificationPref(
+                                e.target.value as 'all' | 'mention' | 'none',
+                              )
+                            }
+                            style={{
+                              background: 'var(--bg-input)',
+                              borderColor: 'var(--glass-border)',
+                              color: 'var(--text-primary)',
+                            }}
+                            className="w-full py-2 px-3 rounded-lg border text-sm focus:outline-none focus:border-[var(--accent-primary)]"
+                          >
+                            <option
+                              value="all"
+                              style={{
+                                background: 'var(--dropdown-bg)',
+                                color: 'var(--text-primary)',
+                              }}
+                            >
+                              All Messages
+                            </option>
+                            <option
+                              value="mention"
+                              style={{
+                                background: 'var(--dropdown-bg)',
+                                color: 'var(--text-primary)',
+                              }}
+                            >
+                              Only Mentions (me & @everyone)
+                            </option>
+                            <option
+                              value="none"
+                              style={{
+                                background: 'var(--dropdown-bg)',
+                                color: 'var(--text-primary)',
+                              }}
+                            >
+                              None
+                            </option>
+                          </select>
+                        </div>
+                      )}
                     </div>
 
                     {/* Friend Request Notifications */}
