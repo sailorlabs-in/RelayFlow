@@ -321,6 +321,7 @@ export const MobileDashboard = ({
     if (activeTab === 'chats') {
       dispatch(setActiveChannel(null));
       dispatch(setActiveGroup(null));
+      dispatch(setActiveConversation(null));
     } else if (activeTab === 'groups') {
       dispatch(setActiveConversation(null));
     } else if (activeTab === 'friends') {
@@ -686,33 +687,166 @@ export const MobileDashboard = ({
     dispatch,
   ]);
 
-  const showChatArea =
-    (activeConversationId && activeConversationId !== 'friends') ||
-    activeChannelId;
+  // Show DM chat only in chats tab; verify the ID actually belongs to a
+  // DM conversation (not a stale channel ID that slipped through).
+  const showDMChat =
+    activeTab === 'chats' &&
+    !!activeConversationId &&
+    activeConversationId !== 'friends' &&
+    conversations.some((c) => c.id === activeConversationId);
+  const showChannelChat = activeTab === 'groups' && !!activeChannelId;
+  const showChatArea = showDMChat || showChannelChat;
 
   if (showChatArea) {
-    const effectiveActiveConversationId =
-      activeChannelId || activeConversationId;
+    const effectiveActiveConversationId = showChannelChat
+      ? activeChannelId || activeConversationId
+      : activeConversationId;
+    const isChannelModeEffective = showChannelChat;
+
+    const handleMobileBack = () => {
+      dispatch(setActiveConversation(null));
+      dispatch(setActiveChannel(null));
+    };
+
+    // Resolve header info for DM or channel
+    let headerName = '';
+    let headerLetter = '';
+    let headerAvatarUrl: string | undefined;
+    let headerSubtitle: React.ReactNode = null;
+
+    if (isChannelModeEffective && activeGroup) {
+      const chan = activeGroup.channels.find((c) => c.id === activeChannelId);
+      headerName = chan?.name || '';
+      headerSubtitle = (
+        <span className="text-[10px] text-theme-muted">{activeGroup.name}</span>
+      );
+    } else if (!isChannelModeEffective && activeConversationId) {
+      const convo = conversations.find((c) => c.id === activeConversationId);
+      if (convo) {
+        const det = getConversationDetails(convo);
+        headerName = det.name;
+        headerLetter = det.letter;
+        headerAvatarUrl = det.avatarThumbnailUrl || det.avatarUrl;
+        const recipStatus = det.id
+          ? onlineUsers[det.id] || 'offline'
+          : 'offline';
+        const presenceInfo = PRESENCE_STATUS_DETAILS.find(
+          (p) => p.id === recipStatus,
+        );
+        headerSubtitle = (
+          <span
+            className="text-[10px] font-medium"
+            style={{ color: presenceInfo?.color || 'var(--text-muted)' }}
+          >
+            {presenceInfo?.name || 'Offline'}
+          </span>
+        );
+      }
+    }
+
     return (
-      <ChatArea
-        activeConversationId={effectiveActiveConversationId}
-        setIsComposeOpen={setIsComposeOpen}
-        isChannelMode={!!activeChannelId}
-        activeChannelName={
-          activeChannelId && activeGroup
-            ? activeGroup.channels.find((c) => c.id === activeChannelId)
-                ?.name || null
-            : null
-        }
-        isMembersListOpen={isMembersListOpen}
-        onToggleMembersList={() => setIsMembersListOpen(!isMembersListOpen)}
-        onMenuClick={() => {
-          // Back button logic: clears selected conversation / channel
-          dispatch(setActiveConversation(null));
-          dispatch(setActiveChannel(null));
-        }}
-        isMobileView={true}
-      />
+      <div className="flex flex-col h-screen w-screen bg-theme-primary overflow-hidden">
+        {/* Mobile Chat Header Bar */}
+        <header className="glass-panel mx-3 mt-3 px-3 py-2.5 flex items-center gap-2.5 shrink-0 rounded-2xl border border-glass shadow-lg z-10">
+          <button
+            onClick={handleMobileBack}
+            className="flex items-center justify-center w-8 h-8 rounded-xl text-theme-muted hover:bg-theme-input active-press shrink-0"
+            title="Back"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              className="w-5 h-5"
+            >
+              <line x1="19" y1="12" x2="5" y2="12" />
+              <polyline points="12 19 5 12 12 5" />
+            </svg>
+          </button>
+
+          {/* Avatar + Name */}
+          {isChannelModeEffective ? (
+            <div className="flex items-center gap-2.5 flex-1 min-w-0">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-(--accent-primary)/15 text-(--accent-primary) shrink-0">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className="w-4 h-4"
+                >
+                  <line x1="4" y1="9" x2="20" y2="9" />
+                  <line x1="4" y1="15" x2="20" y2="15" />
+                  <line x1="10" y1="3" x2="8" y2="21" />
+                  <line x1="16" y1="3" x2="14" y2="21" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[14px] font-bold truncate text-theme-primary">
+                  {headerName}
+                </div>
+                {headerSubtitle}
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2.5 flex-1 min-w-0">
+              <Avatar letter={headerLetter} url={headerAvatarUrl} size="sm" />
+              <div className="flex-1 min-w-0">
+                <div className="text-[14px] font-bold truncate text-theme-primary">
+                  {headerName}
+                </div>
+                {headerSubtitle}
+              </div>
+            </div>
+          )}
+
+          {/* Action buttons */}
+          {isChannelModeEffective && (
+            <button
+              onClick={() => setIsMembersListOpen(!isMembersListOpen)}
+              className={`w-8 h-8 flex items-center justify-center rounded-xl active-press shrink-0 ${
+                isMembersListOpen
+                  ? 'text-(--accent-primary) bg-(--accent-primary)/10'
+                  : 'text-theme-muted hover:bg-theme-input'
+              }`}
+              title="Toggle Members"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                className="w-4.5 h-4.5"
+              >
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
+            </button>
+          )}
+        </header>
+
+        {/* Chat Area fills remaining space */}
+        <div className="flex-1 min-h-0 mx-3 mb-3 mt-2 rounded-2xl overflow-hidden">
+          <ChatArea
+            activeConversationId={effectiveActiveConversationId}
+            setIsComposeOpen={setIsComposeOpen}
+            isChannelMode={isChannelModeEffective}
+            activeChannelName={
+              isChannelModeEffective && activeGroup
+                ? activeGroup.channels.find((c) => c.id === activeChannelId)
+                    ?.name || null
+                : null
+            }
+            isMembersListOpen={isMembersListOpen}
+            onToggleMembersList={() => setIsMembersListOpen(!isMembersListOpen)}
+            onMenuClick={handleMobileBack}
+            isMobileView={true}
+          />
+        </div>
+      </div>
     );
   }
 
@@ -824,7 +958,7 @@ export const MobileDashboard = ({
             <div className="flex items-center gap-2">
               <div className="text-[18px] font-black tracking-tight bg-gradient-to-r from-(--accent-primary) to-(--accent-secondary) bg-clip-text text-transparent">
                 {activeTab === 'chats' && 'Messages'}
-                {activeTab === 'groups' && 'Servers'}
+                {activeTab === 'groups' && 'Groups'}
                 {activeTab === 'friends' && 'Friends'}
                 {activeTab === 'profile' && 'My Profile'}
               </div>
@@ -887,7 +1021,12 @@ export const MobileDashboard = ({
                 return (
                   <div
                     key={convo.id}
-                    onClick={() => dispatch(setActiveConversation(convo.id))}
+                    onClick={() => {
+                      // Clear any group/channel state before opening DM
+                      dispatch(setActiveChannel(null));
+                      dispatch(setActiveGroup(null));
+                      dispatch(setActiveConversation(convo.id));
+                    }}
                     onTouchStart={(e) => handleTouchStart('chat', convo.id, e)}
                     onTouchEnd={handleTouchEnd}
                     className="glass-panel relative flex items-center gap-3 p-3 rounded-[20px] cursor-pointer border border-glass hover:bg-theme-input transition-all duration-200 shadow-sm active:scale-[0.98]"
@@ -1748,7 +1887,7 @@ export const MobileDashboard = ({
           <div className="w-8 h-8 flex items-center justify-center mobile-nav-icon-container">
             <IconServer />
           </div>
-          <span className="text-[10px] font-semibold mt-0.5">Servers</span>
+          <span className="text-[10px] font-semibold mt-0.5">Groups</span>
         </button>
 
         {/* Friends Tab */}

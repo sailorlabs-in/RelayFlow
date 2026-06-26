@@ -185,10 +185,12 @@ function ChatDashboardContent() {
     return undefined;
   }, [accessToken, user, dispatch]);
 
-  // When a group is activated, switch from DM mode
+  // When a group is activated, switch from DM mode.
   useEffect(() => {
     if (activeGroupId) {
       setIsDMMode(false);
+    } else {
+      setIsDMMode(true);
     }
   }, [activeGroupId]);
 

@@ -1708,175 +1708,179 @@ export const ChatArea = ({
     : null;
 
   return (
-    <div className="glass-panel flex flex-col overflow-hidden h-full flex-1 min-w-0">
+    <div
+      className={`glass-panel flex flex-col overflow-hidden h-full flex-1 min-w-0 ${isMobileView ? 'rounded-none' : ''}`}
+    >
       {activeConversationId && (activeDetails || isChannelMode) ? (
         <>
-          {/* Chat Header */}
-          <div
-            className={`flex items-center gap-3 border-b border-theme bg-theme-sidebar/40 backdrop-blur-md rounded-t-2xl shrink-0 ${isMobileScreen || isMobileView ? 'px-3.5 py-2.5' : 'px-5 py-3.5'}`}
-          >
-            {isChannelMode ? (
-              /* Channel mode header */
-              <div className="flex-1 min-w-0 flex items-center gap-2">
-                {onMenuClick && (
-                  <button
-                    id="mobile-menu-btn"
-                    onClick={onMenuClick}
-                    className={`flex items-center justify-center p-1.5 rounded-md text-theme-muted hover:bg-theme-input hover:text-theme-primary cursor-pointer active-press focus:outline-none shrink-0 ${isMobileView ? '' : 'md:hidden'}`}
-                    title="Open Navigation"
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                      className="w-5 h-5"
+          {/* Chat Header — hidden in mobile view since MobileDashboard renders its own header */}
+          {!isMobileView && (
+            <div
+              className={`flex items-center gap-3 border-b border-theme bg-theme-sidebar/40 backdrop-blur-md rounded-t-2xl shrink-0 ${isMobileScreen ? 'px-3.5 py-2.5' : 'px-5 py-3.5'}`}
+            >
+              {isChannelMode ? (
+                /* Channel mode header */
+                <div className="flex-1 min-w-0 flex items-center gap-2">
+                  {onMenuClick && (
+                    <button
+                      id="mobile-menu-btn"
+                      onClick={onMenuClick}
+                      className="flex items-center justify-center p-1.5 rounded-md text-theme-muted hover:bg-theme-input hover:text-theme-primary cursor-pointer active-press focus:outline-none shrink-0 md:hidden"
+                      title="Open Navigation"
                     >
-                      <line x1="19" y1="12" x2="5" y2="12" />
-                      <polyline points="12 19 5 12 12 5" />
-                    </svg>
-                  </button>
-                )}
-                <span className="text-theme-muted flex shrink-0">
-                  {isVoiceChannel ? (
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.2"
-                      className="w-5 h-5"
-                    >
-                      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                      <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-                      <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-                    </svg>
-                  ) : (
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      className="w-5 h-5"
-                    >
-                      <line x1="4" y1="9" x2="20" y2="9" />
-                      <line x1="4" y1="15" x2="20" y2="15" />
-                      <line x1="10" y1="3" x2="8" y2="21" />
-                      <line x1="16" y1="3" x2="14" y2="21" />
-                    </svg>
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        className="w-5 h-5"
+                      >
+                        <line x1="19" y1="12" x2="5" y2="12" />
+                        <polyline points="12 19 5 12 12 5" />
+                      </svg>
+                    </button>
                   )}
-                </span>
-                <h3 className="text-[16px] font-bold tracking-tight truncate text-theme-primary">
-                  {activeChannelName || activeDetails?.name || ''}
-                </h3>
-                {isActiveTyping && !isVoiceChannel && (
-                  <span className="text-[11.5px] font-medium ml-2 animate-pulse text-(--accent-primary)">
-                    {getTypingText()}…
-                  </span>
-                )}
-              </div>
-            ) : (
-              <>
-                {onMenuClick && (
-                  <button
-                    id="mobile-menu-btn"
-                    onClick={onMenuClick}
-                    className={`flex items-center justify-center p-1.5 rounded-md text-theme-muted hover:bg-theme-input hover:text-theme-primary cursor-pointer active-press focus:outline-none shrink-0 mr-1 ${isMobileView ? '' : 'md:hidden'}`}
-                    title="Open Navigation"
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                      className="w-5 h-5"
-                    >
-                      <line x1="19" y1="12" x2="5" y2="12" />
-                      <polyline points="12 19 5 12 12 5" />
-                    </svg>
-                  </button>
-                )}
-                <div
-                  onClick={(e) => {
-                    if (activeDetails?.id) {
-                      handleOpenProfile(e, activeDetails.id);
-                    }
-                  }}
-                  className="flex items-center gap-3 cursor-pointer hover:opacity-90 active:scale-95 transition-all"
-                >
-                  <Avatar
-                    letter={activeDetails?.letter || ''}
-                    url={
-                      activeDetails?.avatarThumbnailUrl ||
-                      activeDetails?.avatarUrl
-                    }
-                    status={activeStatus}
-                    size="md"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-[16px] font-bold tracking-tight truncate text-theme-primary">
-                      {activeDetails?.name || ''}
-                    </h3>
-                    {isActiveTyping ? (
-                      <span className="text-[11.5px] font-medium text-(--accent-primary)">
-                        typing…
-                      </span>
+                  <span className="text-theme-muted flex shrink-0">
+                    {isVoiceChannel ? (
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.2"
+                        className="w-5 h-5"
+                      >
+                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                        <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                        <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+                      </svg>
                     ) : (
-                      <div className="flex items-center gap-1.5 text-[11.5px] mt-0.5">
-                        <PresenceDot status={activeStatus} size={7} />
-                        <span
-                          style={{
-                            color:
-                              PRESENCE_DOT_COLORS[
-                                activeStatus as PresenceStatus
-                              ] || 'var(--text-muted)',
-                          }}
-                        >
-                          {STATUS_TEXTS[activeStatus as PresenceStatus] ||
-                            'Offline'}
-                        </span>
-                      </div>
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        className="w-5 h-5"
+                      >
+                        <line x1="4" y1="9" x2="20" y2="9" />
+                        <line x1="4" y1="15" x2="20" y2="15" />
+                        <line x1="10" y1="3" x2="8" y2="21" />
+                        <line x1="16" y1="3" x2="14" y2="21" />
+                      </svg>
                     )}
-                  </div>
+                  </span>
+                  <h3 className="text-[16px] font-bold tracking-tight truncate text-theme-primary">
+                    {activeChannelName || activeDetails?.name || ''}
+                  </h3>
+                  {isActiveTyping && !isVoiceChannel && (
+                    <span className="text-[11.5px] font-medium ml-2 animate-pulse text-(--accent-primary)">
+                      {getTypingText()}…
+                    </span>
+                  )}
                 </div>
-              </>
-            )}
-            {/* Delete thread — only in DM mode */}
-            {!isChannelMode && (
-              <button
-                id="delete-thread-btn"
-                title="Delete thread"
-                className="flex items-center gap-1.5 rounded-[9px] px-3 py-1.5 text-[12px] font-semibold cursor-pointer transition-all duration-200 shrink-0 border-[1.5px] bg-(--danger-bg) text-(--danger) border-(--danger-border) hover:bg-(--danger) hover:text-white hover:border-(--danger) hover:shadow-[0_4px_14px_rgba(239,68,68,0.3)] active-press"
-                onClick={() => handleDeleteConversation(activeConversationId)}
-              >
-                <IconTrash />
-                Delete
-              </button>
-            )}
-
-            {/* Members Toggle Button — only in Channel mode */}
-            {isChannelMode && onToggleMembersList && (
-              <button
-                id="toggle-members-btn"
-                title="Toggle Member List"
-                onClick={onToggleMembersList}
-                className={`bg-transparent border-none cursor-pointer p-1.5 rounded-md flex items-center transition-all duration-150 active-press 
-                  ${isMembersListOpen ? 'text-(--accent-primary)' : 'text-theme-muted hover:bg-theme-input hover:text-theme-primary'}`}
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  className="w-4.5 h-4.5"
+              ) : (
+                <>
+                  {onMenuClick && (
+                    <button
+                      id="mobile-menu-btn"
+                      onClick={onMenuClick}
+                      className="flex items-center justify-center p-1.5 rounded-md text-theme-muted hover:bg-theme-input hover:text-theme-primary cursor-pointer active-press focus:outline-none shrink-0 mr-1 md:hidden"
+                      title="Open Navigation"
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        className="w-5 h-5"
+                      >
+                        <line x1="19" y1="12" x2="5" y2="12" />
+                        <polyline points="12 19 5 12 12 5" />
+                      </svg>
+                    </button>
+                  )}
+                  <div
+                    onClick={(e) => {
+                      if (activeDetails?.id) {
+                        handleOpenProfile(e, activeDetails.id);
+                      }
+                    }}
+                    className="flex items-center gap-3 cursor-pointer hover:opacity-90 active:scale-95 transition-all"
+                  >
+                    <Avatar
+                      letter={activeDetails?.letter || ''}
+                      url={
+                        activeDetails?.avatarThumbnailUrl ||
+                        activeDetails?.avatarUrl
+                      }
+                      status={activeStatus}
+                      size="md"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-[16px] font-bold tracking-tight truncate text-theme-primary">
+                        {activeDetails?.name || ''}
+                      </h3>
+                      {isActiveTyping ? (
+                        <span className="text-[11.5px] font-medium text-(--accent-primary)">
+                          typing…
+                        </span>
+                      ) : (
+                        <div className="flex items-center gap-1.5 text-[11.5px] mt-0.5">
+                          <PresenceDot status={activeStatus} size={7} />
+                          <span
+                            style={{
+                              color:
+                                PRESENCE_DOT_COLORS[
+                                  activeStatus as PresenceStatus
+                                ] || 'var(--text-muted)',
+                            }}
+                          >
+                            {STATUS_TEXTS[activeStatus as PresenceStatus] ||
+                              'Offline'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+              {/* Delete thread — only in DM mode */}
+              {!isChannelMode && (
+                <button
+                  id="delete-thread-btn"
+                  title="Delete thread"
+                  className="flex items-center gap-1.5 rounded-[9px] px-3 py-1.5 text-[12px] font-semibold cursor-pointer transition-all duration-200 shrink-0 border-[1.5px] bg-(--danger-bg) text-(--danger) border-(--danger-border) hover:bg-(--danger) hover:text-white hover:border-(--danger) hover:shadow-[0_4px_14px_rgba(239,68,68,0.3)] active-press"
+                  onClick={() => handleDeleteConversation(activeConversationId)}
                 >
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                </svg>
-              </button>
-            )}
-          </div>
+                  <IconTrash />
+                  Delete
+                </button>
+              )}
+
+              {/* Members Toggle Button — only in Channel mode */}
+              {isChannelMode && onToggleMembersList && (
+                <button
+                  id="toggle-members-btn"
+                  title="Toggle Member List"
+                  onClick={onToggleMembersList}
+                  className={`bg-transparent border-none cursor-pointer p-1.5 rounded-md flex items-center transition-all duration-150 active-press 
+                  ${isMembersListOpen ? 'text-(--accent-primary)' : 'text-theme-muted hover:bg-theme-input hover:text-theme-primary'}`}
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    className="w-4.5 h-4.5"
+                  >
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          )}
 
           {isVoiceChannel && activeGroupId && activeChannel ? (
             <div
