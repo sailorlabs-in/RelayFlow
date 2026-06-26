@@ -41,6 +41,7 @@ import StoreProvider from '../store/StoreProvider';
 
 import { ProfileSettingsContent } from './profile/page';
 import { useNotificationClient } from './useNotificationClient';
+import { MobileDashboard } from '../components/MobileDashboard';
 
 function ChatDashboardContent() {
   const dispatch = useAppDispatch();
@@ -90,6 +91,14 @@ function ChatDashboardContent() {
   const [autoStatus, setAutoStatus] = useState<'online' | 'away' | 'offline'>(
     'online',
   );
+
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useNotificationClient(user, setIsDMMode);
 
@@ -331,6 +340,174 @@ function ChatDashboardContent() {
   const activeGroup = activeGroupId
     ? groups.find((g) => g.id === activeGroupId) || null
     : null;
+
+  if (isMobile) {
+    return (
+      <>
+        <MobileDashboard
+          ownStatus={ownStatus}
+          handleLogout={handleLogout}
+          _setIsProfileOpen={setIsProfileOpen}
+          setIsComposeOpen={setIsComposeOpen}
+          setIsCreateGroupOpen={setIsCreateGroupOpen}
+          setIsCreateChannelOpen={setIsCreateChannelOpen}
+          setCreateChannelSectionId={setCreateChannelSectionId}
+          setIsCreateSectionOpen={setIsCreateSectionOpen}
+          setSectionToEdit={setSectionToEdit}
+          setIsGroupSettingsOpen={setIsGroupSettingsOpen}
+          setIsInviteMembersOpen={setIsInviteMembersOpen}
+          isMembersListOpen={isMembersListOpen}
+          setIsMembersListOpen={setIsMembersListOpen}
+        />
+
+        {/* Backdrop for mobile member sidebar */}
+        {!isDMMode && activeGroup && (
+          <div
+            className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300
+              ${isMembersListOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+            onClick={() => setIsMembersListOpen(false)}
+          />
+        )}
+
+        {/* Collapsible Group Member Sidebar */}
+        {!isDMMode && activeGroup && (
+          <MemberSidebar
+            group={activeGroup}
+            isOpen={isMembersListOpen}
+            onInviteClick={() => setIsInviteMembersOpen(true)}
+          />
+        )}
+        {/* ── Global Voice Dashboard Connection (Portal based) ── */}
+        {(() => {
+          let voiceGroup = null;
+          let voiceChannel = null;
+          if (activeVoiceChannelId) {
+            for (const g of groups) {
+              const ch = g.channels?.find((c) => c.id === activeVoiceChannelId);
+              if (ch) {
+                voiceGroup = g;
+                voiceChannel = ch;
+                break;
+              }
+            }
+          }
+          if (activeVoiceChannelId && voiceGroup && voiceChannel) {
+            return (
+              <VoiceDashboard
+                groupId={voiceGroup.id}
+                channel={voiceChannel}
+                voiceStates={voiceStates}
+                groupMembers={voiceGroup.members || []}
+                currentUser={user}
+                isViewed={
+                  !isDMMode &&
+                  activeGroupId === voiceGroup.id &&
+                  activeChannelId === voiceChannel.id
+                }
+              />
+            );
+          }
+          return null;
+        })()}
+
+        {/* Compose DM */}
+        {isComposeOpen && (
+          <ComposeModal onClose={() => setIsComposeOpen(false)} />
+        )}
+
+        {/* Create Group */}
+        {isCreateGroupOpen && (
+          <CreateGroupModal onClose={() => setIsCreateGroupOpen(false)} />
+        )}
+
+        {/* Create Channel */}
+        {isCreateChannelOpen && activeGroup && (
+          <CreateChannelModal
+            groupId={activeGroup.id}
+            groupName={activeGroup.name}
+            sectionId={createChannelSectionId}
+            onClose={() => {
+              setIsCreateChannelOpen(false);
+              setCreateChannelSectionId(undefined);
+            }}
+          />
+        )}
+
+        {/* Create Section Category */}
+        {isCreateSectionOpen && activeGroup && (
+          <CreateSectionModal
+            groupId={activeGroup.id}
+            section={sectionToEdit || undefined}
+            onClose={() => {
+              setIsCreateSectionOpen(false);
+              setSectionToEdit(null);
+            }}
+          />
+        )}
+
+        {/* Invite Members */}
+        {isInviteMembersOpen && activeGroup && (
+          <InviteMembersModal
+            group={activeGroup}
+            onClose={() => setIsInviteMembersOpen(false)}
+          />
+        )}
+
+        {/* Group Settings */}
+        {isGroupSettingsOpen && activeGroup && (
+          <GroupSettingsModal
+            group={activeGroup}
+            onClose={() => setIsGroupSettingsOpen(false)}
+          />
+        )}
+
+        {/* Channel Settings */}
+        {isChannelSettingsOpen && activeGroup && channelToEdit && (
+          <ChannelSettingsModal
+            groupId={activeGroup.id}
+            channel={channelToEdit}
+            onClose={() => {
+              setIsChannelSettingsOpen(false);
+              setChannelToEdit(null);
+            }}
+          />
+        )}
+
+        {/* Profile Settings Modal */}
+        {isProfileOpen && (
+          <div
+            className="fixed inset-0 z-1000 flex items-center justify-center p-4 animate-fade-in bg-[rgba(4,6,12,0.65)] backdrop-blur-xs"
+            onClick={() => setIsProfileOpen(false)}
+          >
+            <div
+              className="w-200 max-w-full h-[85vh] flex flex-col overflow-hidden animate-slide-up bg-(--glass-bg) border-[1.5px] border-glass backdrop-blur-[20px] rounded-[18px] shadow-(--glass-shadow)"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <ProfileSettingsContent
+                isModal
+                onClose={() => setIsProfileOpen(false)}
+                onSignOut={() => {
+                  setIsProfileOpen(false);
+                  handleLogout();
+                }}
+              />
+            </div>
+          </div>
+        )}
+        {confirmModal && (
+          <ConfirmationModal
+            isOpen={confirmModal.isOpen}
+            title={confirmModal.title}
+            message={confirmModal.message}
+            confirmLabel={confirmModal.confirmLabel}
+            type={confirmModal.type}
+            onConfirm={confirmModal.onConfirm}
+            onCancel={() => setConfirmModal(null)}
+          />
+        )}
+      </>
+    );
+  }
 
   return (
     <div className="flex h-screen w-screen p-0 md:p-3.5 gap-0 md:gap-3.5 bg-theme-primary">

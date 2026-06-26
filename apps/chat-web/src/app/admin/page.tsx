@@ -491,7 +491,7 @@ function AdminDashboardContent() {
                   d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
                 />
               </svg>
-              Servers
+              Groups
             </button>
           </nav>
         </div>
@@ -600,7 +600,7 @@ function AdminDashboardContent() {
           <div className="glass-panel bg-theme-sidebar/10 p-4 border border-glass flex items-center justify-between hover:shadow-md transition-all">
             <div>
               <p className="text-[9px] uppercase font-bold text-theme-muted tracking-wider">
-                Servers
+                Groups
               </p>
               <h3 className="text-xl font-extrabold text-theme-primary mt-0.5">
                 {groups.length}
@@ -904,7 +904,7 @@ function AdminDashboardContent() {
                           colSpan={6}
                           className="px-6 py-12 text-center text-theme-muted font-semibold"
                         >
-                          No servers registered
+                          No Group registered
                         </td>
                       </tr>
                     ) : (

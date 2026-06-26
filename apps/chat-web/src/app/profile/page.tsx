@@ -175,19 +175,36 @@ export function ProfileSettingsContent({
   isModal = false,
   onClose,
   onSignOut,
+  activeTab: externalActiveTab,
+  setActiveTab: externalSetActiveTab,
+  isMobileView = false,
+  onSaveSuccess,
 }: {
   isModal?: boolean;
   onClose?: () => void;
   onSignOut?: () => void;
+  activeTab?: 'account' | 'theme' | 'status' | 'notifications';
+  setActiveTab?: (
+    tab: 'account' | 'theme' | 'status' | 'notifications',
+  ) => void;
+  isMobileView?: boolean;
+  onSaveSuccess?: () => void;
 }): React.JSX.Element {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const { user, accessToken, status } = useAppSelector((s) => s.auth);
 
   // Active Tab: 'account' | 'theme' | 'status' | 'notifications'
-  const [activeTab, setActiveTab] = useState<
+  const [internalActiveTab, setInternalActiveTab] = useState<
     'account' | 'theme' | 'status' | 'notifications'
   >('account');
+
+  const activeTab =
+    externalActiveTab !== undefined ? externalActiveTab : internalActiveTab;
+  const setActiveTab =
+    externalSetActiveTab !== undefined
+      ? externalSetActiveTab
+      : setInternalActiveTab;
 
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -770,6 +787,12 @@ export function ProfileSettingsContent({
         }, 0);
       }
 
+      if (onSaveSuccess) {
+        setTimeout(() => {
+          onSaveSuccess();
+        }, 1000);
+      }
+
       // Clear alert after 3.5 seconds
       setTimeout(() => {
         setMessage(null);
@@ -1118,119 +1141,125 @@ export function ProfileSettingsContent({
   const innerContent = (
     <div
       className={
-        isModal
+        isMobileView
           ? 'relative flex flex-col w-full h-full overflow-hidden z-10'
-          : 'relative flex flex-col w-[960px] max-w-full min-h-[620px] rounded-2xl glass-panel animate-slide-up overflow-hidden z-10'
+          : isModal
+            ? 'relative flex flex-col w-full h-full overflow-hidden z-10'
+            : 'relative flex flex-col w-[960px] max-w-full min-h-[620px] rounded-2xl glass-panel animate-slide-up overflow-hidden z-10'
       }
     >
       {/* Header bar */}
-      <div className="flex items-center justify-between px-6 py-4.5 border-b border-[var(--border-muted)]">
-        <div>
-          <h1 className="text-[20px] font-bold tracking-tight text-[var(--text-primary)]">
-            Profile Settings
-          </h1>
-          <p className="text-[11.5px] mt-0.5 text-[var(--text-muted)]">
-            Configure your display name, theme layouts, and active status.
-          </p>
-        </div>
+      {!isMobileView && (
+        <div className="flex items-center justify-between px-6 py-4.5 border-b border-[var(--border-muted)]">
+          <div>
+            <h1 className="text-[20px] font-bold tracking-tight text-[var(--text-primary)]">
+              Profile Settings
+            </h1>
+            <p className="text-[11.5px] mt-0.5 text-[var(--text-muted)]">
+              Configure your display name, theme layouts, and active status.
+            </p>
+          </div>
 
-        {isModal ? (
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer transition-all duration-200 border-none bg-[var(--theme-btn)] text-[var(--text-muted)] hover:bg-[var(--theme-btn-hover)] hover:text-[var(--text-primary)] active-press"
-            title="Close Settings"
-          >
-            <IconX size={15} />
-          </button>
-        ) : (
-          <Link
-            href="/"
-            className="flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer transition-all duration-200 bg-[var(--theme-btn)] text-[var(--text-muted)] hover:bg-[var(--theme-btn-hover)] hover:text-[var(--text-primary)] active-press"
-            title="Back to Chat"
-          >
-            <IconX size={15} />
-          </Link>
-        )}
-      </div>
+          {isModal ? (
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer transition-all duration-200 border-none bg-[var(--theme-btn)] text-[var(--text-muted)] hover:bg-[var(--theme-btn-hover)] hover:text-[var(--text-primary)] active-press"
+              title="Close Settings"
+            >
+              <IconX size={15} />
+            </button>
+          ) : (
+            <Link
+              href="/"
+              className="flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer transition-all duration-200 bg-[var(--theme-btn)] text-[var(--text-muted)] hover:bg-[var(--theme-btn-hover)] hover:text-[var(--text-primary)] active-press"
+              title="Back to Chat"
+            >
+              <IconX size={15} />
+            </Link>
+          )}
+        </div>
+      )}
 
       {/* Inner split workspace */}
       <div className="flex flex-1 flex-col md:flex-row overflow-hidden">
         {/* Left Navigation tab list */}
-        <div
-          className="w-full md:w-[240px] flex flex-row md:flex-col p-3 gap-1.5 border-b md:border-b-0 md:border-r overflow-x-auto md:overflow-x-visible shrink-0 flex-nowrap"
-          style={{
-            borderColor: 'var(--border-muted)',
-            background: 'rgba(0,0,0,0.015)',
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none',
-          }}
-        >
-          {[
-            { id: 'account', label: 'Account settings', icon: <IconUser /> },
-            {
-              id: 'theme',
-              label: 'Appearance & Themes',
-              icon: <IconPalette />,
-            },
-            {
-              id: 'status',
-              label: 'Status & Visibility',
-              icon: <IconActivity />,
-            },
-            {
-              id: 'notifications',
-              label: 'Notifications',
-              icon: <IconBell />,
-            },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => {
-                setActiveTab(
-                  tab.id as 'account' | 'theme' | 'status' | 'notifications',
-                );
-              }}
-              className={`flex items-center gap-3 shrink-0 w-max md:w-full px-4 py-3 rounded-xl text-[13.5px] font-semibold cursor-pointer text-left transition-all duration-200 border-none ${
-                activeTab === tab.id ? 'theme-btn-active' : ''
-              }`}
-              style={
-                activeTab === tab.id
-                  ? {
-                      background: 'var(--theme-btn-active)',
-                      color: 'var(--theme-btn-active-text)',
-                    }
-                  : {
-                      background: 'transparent',
-                      color: 'var(--text-muted)',
-                    }
-              }
-              onMouseEnter={(e) => {
-                if (activeTab !== tab.id) {
-                  e.currentTarget.style.background = 'var(--theme-btn-hover)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (activeTab !== tab.id) {
-                  e.currentTarget.style.background = 'transparent';
-                }
-              }}
-            >
-              {tab.icon}
-              <span>{tab.label}</span>
-            </button>
-          ))}
-
-          <div className="flex-grow hidden md:block" />
-          <button
-            type="button"
-            onClick={handleSignOut}
-            className="flex items-center gap-3 shrink-0 w-max md:w-full px-4 py-3 rounded-xl text-[13.5px] font-semibold cursor-pointer text-left transition-all duration-200 border border-[var(--danger-border)] bg-[var(--danger-bg)] text-[var(--danger)] hover:opacity-85 mt-auto md:mt-0"
+        {!isMobileView && (
+          <div
+            className="w-full md:w-[240px] flex flex-row md:flex-col p-3 gap-1.5 border-b md:border-b-0 md:border-r overflow-x-auto md:overflow-x-visible shrink-0 flex-nowrap"
+            style={{
+              borderColor: 'var(--border-muted)',
+              background: 'rgba(0,0,0,0.015)',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+            }}
           >
-            <IconLogout />
-            <span>Sign Out</span>
-          </button>
-        </div>
+            {[
+              { id: 'account', label: 'Account settings', icon: <IconUser /> },
+              {
+                id: 'theme',
+                label: 'Appearance & Themes',
+                icon: <IconPalette />,
+              },
+              {
+                id: 'status',
+                label: 'Status & Visibility',
+                icon: <IconActivity />,
+              },
+              {
+                id: 'notifications',
+                label: 'Notifications',
+                icon: <IconBell />,
+              },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  setActiveTab(
+                    tab.id as 'account' | 'theme' | 'status' | 'notifications',
+                  );
+                }}
+                className={`flex items-center gap-3 shrink-0 w-max md:w-full px-4 py-3 rounded-xl text-[13.5px] font-semibold cursor-pointer text-left transition-all duration-200 border-none ${
+                  activeTab === tab.id ? 'theme-btn-active' : ''
+                }`}
+                style={
+                  activeTab === tab.id
+                    ? {
+                        background: 'var(--theme-btn-active)',
+                        color: 'var(--theme-btn-active-text)',
+                      }
+                    : {
+                        background: 'transparent',
+                        color: 'var(--text-muted)',
+                      }
+                }
+                onMouseEnter={(e) => {
+                  if (activeTab !== tab.id) {
+                    e.currentTarget.style.background = 'var(--theme-btn-hover)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (activeTab !== tab.id) {
+                    e.currentTarget.style.background = 'transparent';
+                  }
+                }}
+              >
+                {tab.icon}
+                <span>{tab.label}</span>
+              </button>
+            ))}
+
+            <div className="flex-grow hidden md:block" />
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="flex items-center gap-3 shrink-0 w-max md:w-full px-4 py-3 rounded-xl text-[13.5px] font-semibold cursor-pointer text-left transition-all duration-200 border border-[var(--danger-border)] bg-[var(--danger-bg)] text-[var(--danger)] hover:opacity-85 mt-auto md:mt-0"
+            >
+              <IconLogout />
+              <span>Sign Out</span>
+            </button>
+          </div>
+        )}
 
         {/* Right Main panel content Form */}
         <form
@@ -1238,9 +1267,17 @@ export function ProfileSettingsContent({
             void handleSave(e);
           }}
           className="flex-1 flex flex-col overflow-hidden"
-          style={{ background: 'var(--bg-chat)' }}
+          style={{
+            background: isMobileView ? 'transparent' : 'var(--bg-chat)',
+          }}
         >
-          <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-5">
+          <div
+            className={
+              isMobileView
+                ? 'flex-1 overflow-y-auto p-1.5 flex flex-col gap-4'
+                : 'flex-1 overflow-y-auto p-6 flex flex-col gap-5'
+            }
+          >
             {message && (
               <div
                 className="flex items-center gap-2 rounded-xl px-4 py-3 mb-5 text-[13.5px] animate-fade-in"
@@ -3278,27 +3315,32 @@ export function ProfileSettingsContent({
           {/* Footer Action Save Buttons */}
           {activeTab !== 'status' && (
             <div
-              className="flex items-center justify-end gap-3 border-t p-6 pt-4 bg-[var(--bg-chat)] z-10"
+              className={
+                isMobileView
+                  ? 'flex items-center justify-end gap-3 border-t py-4 px-2 bg-transparent z-10'
+                  : 'flex items-center justify-end gap-3 border-t p-6 pt-4 bg-[var(--bg-chat)] z-10'
+              }
               style={{ borderColor: 'var(--border-muted)' }}
             >
-              {isModal ? (
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="text-[13.5px] font-semibold px-5 py-2.5 rounded-xl cursor-pointer transition-all duration-200 border-none bg-transparent"
-                  style={{ color: 'var(--text-muted)' }}
-                >
-                  Cancel
-                </button>
-              ) : (
-                <Link
-                  href="/"
-                  className="text-[13.5px] font-semibold px-5 py-2.5 rounded-xl cursor-pointer transition-all duration-200"
-                  style={{ color: 'var(--text-muted)' }}
-                >
-                  Cancel
-                </Link>
-              )}
+              {!isMobileView &&
+                (isModal ? (
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="text-[13.5px] font-semibold px-5 py-2.5 rounded-xl cursor-pointer transition-all duration-200 border-none bg-transparent"
+                    style={{ color: 'var(--text-muted)' }}
+                  >
+                    Cancel
+                  </button>
+                ) : (
+                  <Link
+                    href="/"
+                    className="text-[13.5px] font-semibold px-5 py-2.5 rounded-xl cursor-pointer transition-all duration-200"
+                    style={{ color: 'var(--text-muted)' }}
+                  >
+                    Cancel
+                  </Link>
+                ))}
               <button
                 type="submit"
                 disabled={
@@ -3319,7 +3361,9 @@ export function ProfileSettingsContent({
 
   return (
     <>
-      {isModal ? (
+      {isMobileView ? (
+        innerContent
+      ) : isModal ? (
         innerContent
       ) : (
         <div

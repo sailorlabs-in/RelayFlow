@@ -3179,3 +3179,116 @@ em-emoji-picker {
 .markdown-body h3 {
   font-size: 1.1em;
 }
+
+/* Mobile Redesign - Rounded Corners & Native Feel overrides */
+@media (max-width: 767px) {
+  /* Modals */
+  div[class*='fixed'][class*='z-1000'] > div,
+  div[class*='fixed'][class*='z-1000'] div[class*='rounded-'] {
+    border-radius: 28px !important;
+  }
+
+  /* Inputs inside modals */
+  div[class*='fixed'][class*='z-1000'] input,
+  div[class*='fixed'][class*='z-1000'] select,
+  div[class*='fixed'][class*='z-1000'] textarea {
+    border-radius: 16px !important;
+  }
+
+  /* Buttons inside modals */
+  div[class*='fixed'][class*='z-1000'] button:not(#modal-close-btn) {
+    border-radius: 16px !important;
+  }
+
+  /* Prevent browser zoom on focus on iOS/macOS Safari by ensuring font-size is at least 16px */
+  input,
+  select,
+  textarea,
+  input:focus,
+  select:focus,
+  textarea:focus {
+    font-size: 16px !important;
+  }
+
+  /* Enforce rounded corners and glassmorphism on mobile settings / forms */
+
+  input[type='text'],
+  input[type='email'],
+  input[type='password'],
+  select,
+  textarea,
+  .input-base {
+    border-radius: 20px !important;
+    background: rgba(255, 255, 255, 0.03) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border: 1.5px solid rgba(255, 255, 255, 0.08) !important;
+    color: var(--text-primary) !important;
+  }
+
+  [data-theme='light'] input[type='text'],
+  [data-theme='light'] input[type='email'],
+  [data-theme='light'] input[type='password'],
+  [data-theme='light'] select,
+  [data-theme='light'] textarea,
+  [data-theme='light'] .input-base {
+    background: rgba(0, 0, 0, 0.03) !important;
+    border: 1.5px solid rgba(0, 0, 0, 0.08) !important;
+  }
+
+  /* Focus states */
+  input[type='text']:focus,
+  input[type='email']:focus,
+  input[type='password']:focus,
+  select:focus,
+  textarea:focus,
+  .input-base:focus {
+    border-color: var(--accent-primary) !important;
+    box-shadow: 0 0 0 3px var(--accent-ring) !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+  }
+
+  [data-theme='light'] input[type='text']:focus,
+  [data-theme='light'] input[type='email']:focus,
+  [data-theme='light'] input[type='password']:focus,
+  [data-theme='light'] select:focus,
+  [data-theme='light'] textarea:focus,
+  [data-theme='light'] .input-base:focus {
+    background: rgba(0, 0, 0, 0.05) !important;
+  }
+
+  /* Preset theme cards, theme choices, buttons, and other blocks */
+  .grid.grid-cols-3 button,
+  .grid.grid-cols-2 button,
+  .flex.flex-col.gap-3 button,
+  .glass-panel button,
+  button.active-press,
+  .btn-send {
+    border-radius: 20px !important;
+  }
+
+  /* Special items that should be rounder */
+  .glass-panel {
+    border-radius: 28px !important;
+  }
+
+  /* Avatar upload wrapper */
+  .flex.items-center.gap-4.p-4.rounded-xl {
+    border-radius: 24px !important;
+    background: rgba(255, 255, 255, 0.02) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+  }
+
+  /* Enforce consistent size for mobile navigation bar icons */
+  .mobile-nav-icon-container svg {
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  .mobile-nav-profile-container .avatar-base {
+    width: 20px !important;
+    height: 20px !important;
+    font-size: 11px !important;
+  }
+}

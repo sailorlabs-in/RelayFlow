@@ -101,6 +101,7 @@ interface ChatAreaProps {
   isMembersListOpen?: boolean;
   onToggleMembersList?: () => void;
   onMenuClick?: () => void;
+  isMobileView?: boolean;
 }
 
 const isOnlyEmojis = (str: string): boolean => {
@@ -286,6 +287,7 @@ export const ChatArea = ({
   isMembersListOpen = false,
   onToggleMembersList,
   onMenuClick,
+  isMobileView = false,
 }: ChatAreaProps): React.JSX.Element => {
   const dispatch = useAppDispatch();
   const feedEndRef = useRef<HTMLDivElement>(null);
@@ -1488,10 +1490,24 @@ export const ChatArea = ({
   };
 
   const handleContextMenu = (e: React.MouseEvent, msg: Message) => {
-    if (msg.senderId !== user?.id) {
+    e.preventDefault();
+    setContextMenu({ message: msg, x: e.clientX, y: e.clientY });
+  };
+
+  const handleMobileClick = (e: React.MouseEvent, msg: Message) => {
+    const target = e.target as HTMLElement;
+    if (
+      target.tagName === 'A' ||
+      target.tagName === 'BUTTON' ||
+      target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.closest('button') ||
+      target.closest('a')
+    ) {
       return;
     }
     e.preventDefault();
+    e.stopPropagation();
     setContextMenu({ message: msg, x: e.clientX, y: e.clientY });
   };
 
@@ -1696,7 +1712,9 @@ export const ChatArea = ({
       {activeConversationId && (activeDetails || isChannelMode) ? (
         <>
           {/* Chat Header */}
-          <div className="flex items-center gap-3 px-5 py-3.5 border-b border-theme bg-theme-sidebar/40 backdrop-blur-md rounded-t-2xl shrink-0">
+          <div
+            className={`flex items-center gap-3 border-b border-theme bg-theme-sidebar/40 backdrop-blur-md rounded-t-2xl shrink-0 ${isMobileScreen || isMobileView ? 'px-3.5 py-2.5' : 'px-5 py-3.5'}`}
+          >
             {isChannelMode ? (
               /* Channel mode header */
               <div className="flex-1 min-w-0 flex items-center gap-2">
@@ -1704,7 +1722,7 @@ export const ChatArea = ({
                   <button
                     id="mobile-menu-btn"
                     onClick={onMenuClick}
-                    className="md:hidden flex items-center justify-center p-1.5 rounded-md text-theme-muted hover:bg-theme-input hover:text-theme-primary cursor-pointer active-press focus:outline-none shrink-0"
+                    className={`flex items-center justify-center p-1.5 rounded-md text-theme-muted hover:bg-theme-input hover:text-theme-primary cursor-pointer active-press focus:outline-none shrink-0 ${isMobileView ? '' : 'md:hidden'}`}
                     title="Open Navigation"
                   >
                     <svg
@@ -1714,9 +1732,8 @@ export const ChatArea = ({
                       strokeWidth="2.5"
                       className="w-5 h-5"
                     >
-                      <line x1="3" y1="12" x2="21" y2="12" />
-                      <line x1="3" y1="6" x2="21" y2="6" />
-                      <line x1="3" y1="18" x2="21" y2="18" />
+                      <line x1="19" y1="12" x2="5" y2="12" />
+                      <polyline points="12 19 5 12 12 5" />
                     </svg>
                   </button>
                 )}
@@ -1763,7 +1780,7 @@ export const ChatArea = ({
                   <button
                     id="mobile-menu-btn"
                     onClick={onMenuClick}
-                    className="md:hidden flex items-center justify-center p-1.5 rounded-md text-theme-muted hover:bg-theme-input hover:text-theme-primary cursor-pointer active-press focus:outline-none shrink-0 mr-1"
+                    className={`flex items-center justify-center p-1.5 rounded-md text-theme-muted hover:bg-theme-input hover:text-theme-primary cursor-pointer active-press focus:outline-none shrink-0 mr-1 ${isMobileView ? '' : 'md:hidden'}`}
                     title="Open Navigation"
                   >
                     <svg
@@ -1773,9 +1790,8 @@ export const ChatArea = ({
                       strokeWidth="2.5"
                       className="w-5 h-5"
                     >
-                      <line x1="3" y1="12" x2="21" y2="12" />
-                      <line x1="3" y1="6" x2="21" y2="6" />
-                      <line x1="3" y1="18" x2="21" y2="18" />
+                      <line x1="19" y1="12" x2="5" y2="12" />
+                      <polyline points="12 19 5 12 12 5" />
                     </svg>
                   </button>
                 )}
@@ -1873,7 +1889,7 @@ export const ChatArea = ({
               <div
                 ref={feedContainerRef}
                 onScroll={handleScroll}
-                className="flex-1 overflow-y-auto flex flex-col gap-3.5 p-5 bg-theme-chat"
+                className={`flex-1 overflow-y-auto flex flex-col gap-3.5 bg-theme-chat ${isMobileScreen || isMobileView ? 'p-3' : 'p-5'}`}
               >
                 {isFetchingMore && (
                   <div className="flex justify-center py-2 shrink-0">
@@ -1936,7 +1952,12 @@ export const ChatArea = ({
                           id={`msg-${msg.id}`}
                           key={msg.id}
                           onContextMenu={(e) => handleContextMenu(e, msg)}
-                          className="flex items-start gap-3 animate-fade-in group justify-between hover:bg-[rgba(0,0,0,0.015)] dark:hover:bg-[rgba(255,255,255,0.01)] rounded-xl px-2 py-1.5 transition-colors duration-150 -mx-2"
+                          onClick={(e) => {
+                            if (isMobileScreen || isMobileView) {
+                              handleMobileClick(e, msg);
+                            }
+                          }}
+                          className="flex items-start gap-3 animate-fade-in group justify-between hover:bg-[rgba(0,0,0,0.015)] dark:hover:bg-[rgba(255,255,255,0.01)] rounded-xl px-2 py-1.5 transition-colors duration-150 -mx-2 cursor-pointer md:cursor-default"
                         >
                           <div className="flex items-start gap-3 flex-1 min-w-0">
                             <div
@@ -2246,7 +2267,12 @@ export const ChatArea = ({
                         id={`msg-${msg.id}`}
                         key={msg.id}
                         onContextMenu={(e) => handleContextMenu(e, msg)}
-                        className={`flex items-start gap-2.5 group max-w-[72%] animate-fade-in ${isOut ? 'self-end' : 'self-start'}`}
+                        onClick={(e) => {
+                          if (isMobileScreen || isMobileView) {
+                            handleMobileClick(e, msg);
+                          }
+                        }}
+                        className={`flex items-start gap-2.5 group max-w-[85%] md:max-w-[72%] animate-fade-in cursor-pointer md:cursor-default ${isOut ? 'self-end' : 'self-start'}`}
                       >
                         {isOut && editingMessageId !== msg.id && (
                           <div
