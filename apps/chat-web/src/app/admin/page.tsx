@@ -129,6 +129,48 @@ function AdminDashboardContent() {
     }
   };
 
+  const handleForceReload = async (targetUser: UserData) => {
+    const label =
+      targetUser.displayName || targetUser.username || targetUser.email;
+    if (
+      !window.confirm(
+        `Force clear cache and hard reload for ${label}'s registered devices?`,
+      )
+    ) {
+      return;
+    }
+    try {
+      await ApiRequest(`/admin/users/${targetUser.id}/reset`, 'post');
+      showToast.success(
+        'Clear cache & hard reload command queued successfully',
+      );
+    } catch (err: any) {
+      showToast.error(
+        err.response?.data?.message || 'Failed to trigger clear cache & reload',
+      );
+    }
+  };
+
+  const handleResetAllDevices = async () => {
+    if (
+      !window.confirm(
+        'Are you sure you want to force clear cache and hard reload for ALL registered users and sessions? This will affect everyone globally.',
+      )
+    ) {
+      return;
+    }
+    try {
+      await ApiRequest('/admin/users/reset-all', 'post');
+      showToast.success(
+        'Global silent clear cache & hard reload command queued',
+      );
+    } catch (err: any) {
+      showToast.error(
+        err.response?.data?.message || 'Failed to trigger global reset',
+      );
+    }
+  };
+
   const handleSendWarning = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!warningModal || !warningMessage.trim()) {
@@ -394,6 +436,14 @@ function AdminDashboardContent() {
           </div>
 
           <div className="flex items-center gap-3">
+            {activeTab === 'users' && (
+              <button
+                onClick={handleResetAllDevices}
+                className="px-3 py-1.5 rounded-lg border border-red-500/20 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-[10px] font-bold cursor-pointer transition-all active-press"
+              >
+                Reset All Devices
+              </button>
+            )}
             <span className="text-[10px] font-bold text-theme-muted uppercase tracking-wider bg-theme-input/40 px-2.5 py-1 rounded border border-glass">
               {activeTab === 'users'
                 ? `${filteredUsers.length} Users`
@@ -629,6 +679,13 @@ function AdminDashboardContent() {
                                 className="px-3 py-1.5 rounded-lg border border-amber-500/20 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-[10px] font-bold cursor-pointer transition-all"
                               >
                                 Warn
+                              </button>
+                              <button
+                                onClick={() => handleForceReload(u)}
+                                disabled={u.id === user?.id}
+                                className="px-3 py-1.5 rounded-lg border border-red-500/20 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-[10px] font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                              >
+                                Reset
                               </button>
                             </div>
                           </td>

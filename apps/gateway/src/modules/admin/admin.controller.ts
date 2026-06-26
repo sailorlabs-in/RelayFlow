@@ -13,6 +13,9 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
+import { QueueNames } from '@chat-app/queues';
 import { User, Group, GroupMember } from '@chat-app/database';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
@@ -33,6 +36,8 @@ export class AdminController {
     private readonly groupsService: GroupsService,
     @Inject(forwardRef(() => RealtimeGateway))
     private readonly realtimeGateway: RealtimeGateway,
+    @InjectQueue(QueueNames.NOTIFICATIONS)
+    private readonly notificationsQueue: Queue,
   ) {}
 
   /**
@@ -218,5 +223,97 @@ export class AdminController {
     }
 
     return { success: true, member: addedMember };
+  }
+
+  @UseGuards(JwtAuthGuard, PlatformAdminGuard)
+  @Post('users/:userId/reset')
+  async resetUserDevice(@Param('userId') userId: string) {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Determine target recipient devices
+    const recipientsToNotify: string[] = [];
+    if (user.loggedInDevices) {
+      try {
+        const devices = JSON.parse(user.loggedInDevices);
+        if (Array.isArray(devices)) {
+          for (const d of devices) {
+            recipientsToNotify.push(`${user.id}:${d.deviceId}`);
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    if (recipientsToNotify.length === 0) {
+      // Fallback to userId if no device registered
+      recipientsToNotify.push(user.id);
+    }
+
+    // Add job to notificationsQueue
+    await this.notificationsQueue.add('send-push', {
+      title: 'Silent Reset',
+      body: 'silent',
+      recipients: recipientsToNotify,
+      silent: true,
+      metadata: {
+        action: 'clear-cache-reload',
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Silent hard reload command queued for user devices.',
+    };
+  }
+
+  @UseGuards(JwtAuthGuard, PlatformAdminGuard)
+  @Post('users/reset-all')
+  async resetAllUsersDevices() {
+    const users = await this.userRepo.find({
+      select: ['id', 'loggedInDevices'],
+    });
+
+    const recipientsToNotify: string[] = [];
+    for (const u of users) {
+      let hasDevices = false;
+      if (u.loggedInDevices) {
+        try {
+          const devices = JSON.parse(u.loggedInDevices);
+          if (Array.isArray(devices) && devices.length > 0) {
+            hasDevices = true;
+            for (const d of devices) {
+              recipientsToNotify.push(`${u.id}:${d.deviceId}`);
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      if (!hasDevices) {
+        recipientsToNotify.push(u.id);
+      }
+    }
+
+    if (recipientsToNotify.length > 0) {
+      await this.notificationsQueue.add('send-push', {
+        title: 'Silent Reset All',
+        body: 'silent',
+        recipients: recipientsToNotify,
+        silent: true,
+        metadata: {
+          action: 'clear-cache-reload',
+        },
+      });
+    }
+
+    return {
+      success: true,
+      message: `Silent hard reload command queued for all registered users' devices (${recipientsToNotify.length} targets).`,
+    };
   }
 }

@@ -3220,6 +3220,57 @@ export function ProfileSettingsContent({
                     </div>
                   </div>
                 )}
+
+                {/* Troubleshooting / Cache clear section */}
+                <div className="flex flex-col gap-3 p-4 rounded-xl border border-dashed border-[var(--danger-border)] bg-[var(--danger-bg)] mt-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-bold text-[13.5px] text-[var(--danger)]">
+                        Troubleshooting: Force Reset Cache
+                      </span>
+                      <span className="text-[11.5px] text-[var(--text-muted)]">
+                        If you are experiencing sync issues, layout bugs, or
+                        stale media, clear the local cache and hard reload this
+                        device.
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (
+                          window.confirm(
+                            'Force clear cache and hard reload this device?',
+                          )
+                        ) {
+                          if ('caches' in window) {
+                            caches.keys().then((keys) => {
+                              Promise.all(
+                                keys.map((key) => caches.delete(key)),
+                              ).catch(console.error);
+                            });
+                          }
+                          navigator.serviceWorker
+                            ?.getRegistrations()
+                            .then((registrations) => {
+                              Promise.all(
+                                registrations.map((registration) =>
+                                  registration.unregister(),
+                                ),
+                              ).then(() => {
+                                window.location.reload();
+                              });
+                            })
+                            .catch(() => {
+                              window.location.reload();
+                            });
+                        }
+                      }}
+                      className="px-4 py-2 rounded-lg border border-[var(--danger-border)] bg-[var(--danger-bg)] hover:bg-[var(--danger-border)] text-[var(--danger)] text-xs font-bold cursor-pointer transition-all shrink-0"
+                    >
+                      Reset Device
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
           </div>

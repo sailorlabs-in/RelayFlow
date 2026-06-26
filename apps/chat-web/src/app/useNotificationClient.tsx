@@ -579,6 +579,30 @@ export function useNotificationClient(
 
       c.onSilentMessage((data: any) => {
         PrintLog('Vibe Message Silent payload:', data);
+        if (data && data.action === 'clear-cache-reload') {
+          PrintLog(
+            'Received clear-cache-reload silent message in foreground. Executing...',
+          );
+          if ('caches' in window) {
+            caches.keys().then((keys) => {
+              Promise.all(keys.map((key) => caches.delete(key))).catch(
+                console.error,
+              );
+            });
+          }
+          navigator.serviceWorker
+            ?.getRegistrations()
+            .then((registrations) => {
+              Promise.all(
+                registrations.map((registration) => registration.unregister()),
+              ).then(() => {
+                window.location.reload();
+              });
+            })
+            .catch(() => {
+              window.location.reload();
+            });
+        }
       });
     }
   }, []);
