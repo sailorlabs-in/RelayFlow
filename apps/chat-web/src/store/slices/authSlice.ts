@@ -23,6 +23,8 @@ export interface User {
   loggedInDevices?: string;
   groupOrder?: string;
   customThemes?: string;
+  role?: string;
+  warnings?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -486,6 +488,25 @@ const authSlice = createSlice({
         }
       }
     },
+    addWarning: (state, action) => {
+      if (state.user) {
+        if (!state.user.warnings) {
+          state.user.warnings = [];
+        }
+        state.user.warnings.push(action.payload);
+        if (isBrowser) {
+          localStorage.setItem('chat_user', JSON.stringify(state.user));
+        }
+      }
+    },
+    updateRole: (state, action) => {
+      if (state.user) {
+        state.user.role = action.payload;
+        if (isBrowser) {
+          localStorage.setItem('chat_user', JSON.stringify(state.user));
+        }
+      }
+    },
   },
   extraReducers: (builder) => {
     // Register
@@ -672,5 +693,7 @@ export const {
   setLocalCustomThemes,
   updateUserStatusOptimistic,
   restoreSession,
+  addWarning,
+  updateRole,
 } = authSlice.actions;
 export default authSlice.reducer;

@@ -76,6 +76,7 @@ export interface GroupMember {
   permissions?: string[];
   isMuted?: boolean;
   notificationPref?: 'all' | 'mention' | 'none';
+  isGhost?: boolean;
   createdAt: string;
   user?: {
     id: string;
@@ -85,6 +86,7 @@ export interface GroupMember {
     avatarUrl?: string;
     avatarThumbnailUrl?: string;
     status?: string;
+    role?: string;
   };
 }
 

@@ -514,6 +514,11 @@ export const ChatArea = ({
     const matchingRoles = [...groupRoles]
       .filter((r) => memberRoleIds.includes(r.id))
       .sort((a, b) => {
+        const hpA = a.hierarchyPriority ?? a.priority ?? 1000000;
+        const hpB = b.hierarchyPriority ?? b.priority ?? 1000000;
+        if (hpA !== hpB) {
+          return hpA - hpB;
+        }
         const cpA = a.colorPriority ?? 0;
         const cpB = b.colorPriority ?? 0;
         if (cpA !== cpB) {
@@ -525,9 +530,25 @@ export const ChatArea = ({
           }
           return cpA - cpB;
         }
-        return 0;
+        return a.createdAt.localeCompare(b.createdAt);
       });
-    const color = isOwner ? '#eab308' : matchingRoles[0]?.color || 'inherit';
+
+    const colorRoles = [...matchingRoles].sort((a, b) => {
+      const cpA = a.colorPriority ?? 0;
+      const cpB = b.colorPriority ?? 0;
+      if (cpA !== cpB) {
+        if (cpA <= 0) {
+          return 1;
+        }
+        if (cpB <= 0) {
+          return -1;
+        }
+        return cpA - cpB;
+      }
+      return 0;
+    });
+
+    const color = isOwner ? '#eab308' : colorRoles[0]?.color || 'inherit';
 
     return {
       id: userId,

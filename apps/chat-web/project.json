@@ -10,7 +10,7 @@
       "executor": "nx:run-commands",
       "outputs": ["{projectRoot}/.next"],
       "options": {
-        "command": "npx next build",
+        "command": "npx cross-env NODE_ENV=production npx next build",
         "cwd": "apps/chat-web"
       }
     },

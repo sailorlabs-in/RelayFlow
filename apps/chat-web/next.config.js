@@ -19,7 +19,7 @@ const nextConfig = {
   },
 
   // NOTE: Turbopack resolves @chat-app/* via tsconfig.json compilerOptions.paths
-  // — no extra config needed here. resolveAlias breaks with absolute paths.
+  // — no extra config needed here. resolveAlias breaks with absolute paths on Windows.
 
   // Webpack alias config (used when Turbopack is disabled or for edge cases)
   webpack: (config) => {

@@ -92,7 +92,9 @@ export const MemberProfilePopover = ({
   const currentUserRole = currentUserMember?.role || 'member';
 
   const isOwner =
-    currentUserRole === 'owner' || activeGroup?.ownerId === currentUser?.id;
+    currentUserRole === 'owner' ||
+    activeGroup?.ownerId === currentUser?.id ||
+    currentUser?.role === 'admin';
 
   const currentUserHighestPriority = isOwner
     ? 0
@@ -320,13 +322,31 @@ export const MemberProfilePopover = ({
                           ) || [];
                         const isThisOwner =
                           activeGroup.ownerId === selectedMember.id;
+
+                        const colorSortedRoles = [...updatedMatchingRoles].sort(
+                          (a, b) => {
+                            const cpA = a.colorPriority ?? 0;
+                            const cpB = b.colorPriority ?? 0;
+                            if (cpA !== cpB) {
+                              if (cpA <= 0) {
+                                return 1;
+                              }
+                              if (cpB <= 0) {
+                                return -1;
+                              }
+                              return cpA - cpB;
+                            }
+                            return 0;
+                          },
+                        );
+
                         const updated = {
                           ...selectedMember,
                           roleIds: newRoleIds,
                           matchingRoles: updatedMatchingRoles,
                           color: isThisOwner
                             ? '#eab308'
-                            : updatedMatchingRoles[0]?.color || 'inherit',
+                            : colorSortedRoles[0]?.color || 'inherit',
                         };
 
                         if (onUpdate) {

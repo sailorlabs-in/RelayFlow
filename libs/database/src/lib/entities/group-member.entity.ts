@@ -60,6 +60,9 @@ export class GroupMember {
   })
   notificationPref!: 'all' | 'mention' | 'none';
 
+  @Column({ name: 'is_ghost', type: 'boolean', default: false })
+  isGhost!: boolean;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 }

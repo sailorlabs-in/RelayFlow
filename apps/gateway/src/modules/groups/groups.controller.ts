@@ -68,26 +68,18 @@ export class GroupsController {
     );
 
     // Notify all members of the group about the new member via socket
-    const groupDetails = await this.groupsService.getGroupsForUser(
-      currentUser.userId,
-    );
-    const updatedGroup = groupDetails.find((g) => g.id === group.id);
-
-    this.realtimeGateway.server
-      .to(`user:${currentUser.userId}`)
-      .emit('group.member.added', {
-        groupId: group.id,
-        group: updatedGroup,
-      });
-
     const members = await this.groupsService.getGroupMembers(group.id);
     for (const member of members) {
-      if (member.userId !== currentUser.userId) {
+      const userGroup = await this.groupsService.getGroupForUser(
+        group.id,
+        member.userId,
+      );
+      if (userGroup) {
         this.realtimeGateway.server
           .to(`user:${member.userId}`)
           .emit('group.member.added', {
             groupId: group.id,
-            group: updatedGroup,
+            group: userGroup,
           });
       }
     }
@@ -118,9 +110,15 @@ export class GroupsController {
     // Broadcast updated group to all members
     const members = await this.groupsService.getGroupMembers(updatedGroup.id);
     for (const member of members) {
-      this.realtimeGateway.server
-        .to(`user:${member.userId}`)
-        .emit('group.updated', updatedGroup);
+      const userGroup = await this.groupsService.getGroupForUser(
+        updatedGroup.id,
+        member.userId,
+      );
+      if (userGroup) {
+        this.realtimeGateway.server
+          .to(`user:${member.userId}`)
+          .emit('group.updated', userGroup);
+      }
     }
 
     return updatedGroup;
@@ -277,9 +275,15 @@ export class GroupsController {
     // Notify all group members about the update via socket
     const allMemberIds = updatedGroup.members.map((m: any) => m.userId);
     for (const userId of allMemberIds) {
-      this.realtimeGateway.server
-        .to(`user:${userId}`)
-        .emit('group.updated', updatedGroup);
+      const userGroup = await this.groupsService.getGroupForUser(
+        groupId,
+        userId,
+      );
+      if (userGroup) {
+        this.realtimeGateway.server
+          .to(`user:${userId}`)
+          .emit('group.updated', userGroup);
+      }
     }
 
     return updatedGroup;
@@ -309,19 +313,21 @@ export class GroupsController {
       userIds,
     );
 
-    // Notify newly added members about the group
-    const groups = await this.groupsService.getGroupsForUser(
-      currentUser.userId,
-    );
-    const updatedGroup = groups.find((g) => g.id === groupId);
-
-    for (const member of newMembers) {
-      this.realtimeGateway.server
-        .to(`user:${member.userId}`)
-        .emit('group.member.added', {
-          groupId,
-          group: updatedGroup,
-        });
+    // Notify all group members (including new ones) about the update via socket
+    const members = await this.groupsService.getGroupMembers(groupId);
+    for (const member of members) {
+      const userGroup = await this.groupsService.getGroupForUser(
+        groupId,
+        member.userId,
+      );
+      if (userGroup) {
+        this.realtimeGateway.server
+          .to(`user:${member.userId}`)
+          .emit('group.member.added', {
+            groupId,
+            group: userGroup,
+          });
+      }
     }
 
     return newMembers;
@@ -343,6 +349,35 @@ export class GroupsController {
       currentUser.userId,
       notificationPref,
     );
+  }
+
+  @Put(':id/ghost')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Toggle ghost mode in a group for platform admin',
+  })
+  async toggleGhostMode(
+    @Param('id') groupId: string,
+    @CurrentUser() currentUser: { userId: string },
+  ) {
+    await this.groupsService.toggleGhostMode(groupId, currentUser.userId);
+
+    // Notify all members of the group about the update via socket
+    const members = await this.groupsService.getGroupMembers(groupId);
+    for (const member of members) {
+      const userGroup = await this.groupsService.getGroupForUser(
+        groupId,
+        member.userId,
+      );
+      if (userGroup) {
+        this.realtimeGateway.server
+          .to(`user:${member.userId}`)
+          .emit('group.updated', userGroup);
+      }
+    }
+
+    return { success: true };
   }
 
   // ─── Remove a member from a group ────────────────────────────────────────────
@@ -367,6 +402,20 @@ export class GroupsController {
     this.realtimeGateway.server
       .to(`user:${targetUserId}`)
       .emit('group.member.removed', { groupId, groupName, kickerRole });
+
+    // Notify all remaining members
+    const members = await this.groupsService.getGroupMembers(groupId);
+    for (const member of members) {
+      const userGroup = await this.groupsService.getGroupForUser(
+        groupId,
+        member.userId,
+      );
+      if (userGroup) {
+        this.realtimeGateway.server
+          .to(`user:${member.userId}`)
+          .emit('group.updated', userGroup);
+      }
+    }
   }
 
   // ─── Create a channel inside a group ─────────────────────────────────────────
@@ -799,14 +848,21 @@ export class GroupsController {
     // Broadcast member update to all group members
     const members = await this.groupsService.getGroupMembers(groupId);
     for (const member of members) {
-      this.realtimeGateway.server
-        .to(`user:${member.userId}`)
-        .emit('group.member.roles.updated', {
-          groupId,
-          userId: targetUserId,
-          roleIds,
-          member: updatedMember,
-        });
+      const canSee = await this.groupsService.canUserSeeMember(
+        groupId,
+        member.userId,
+        targetUserId,
+      );
+      if (canSee) {
+        this.realtimeGateway.server
+          .to(`user:${member.userId}`)
+          .emit('group.member.roles.updated', {
+            groupId,
+            userId: targetUserId,
+            roleIds,
+            member: updatedMember,
+          });
+      }
     }
 
     return updatedMember;

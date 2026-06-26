@@ -4,7 +4,7 @@ import { io } from 'socket.io-client';
 import { PrintLog } from '../utils/logger';
 import { showToast } from '../components/toast';
 
-import { logoutUser } from './slices/authSlice';
+import { logoutUser, addWarning, updateRole } from './slices/authSlice';
 import type { Message } from './slices/chatSlice';
 import {
   socketReceiveMessage,
@@ -517,6 +517,25 @@ class SocketManager {
     this.socket.on('friend.removed', (data: { friendId: string }) => {
       PrintLog('👤 Socket friend.removed:', data.friendId);
       store.dispatch(socketFriendRemoved({ friendId: data.friendId }));
+    });
+
+    this.socket.on(
+      'user.warned',
+      (data: { warnings: string[]; latestWarning: string }) => {
+        PrintLog('🚨 Socket user.warned received:', data.latestWarning);
+        store.dispatch(addWarning(data.latestWarning));
+        showToast.warning(`⚠️ Administrative Warning: ${data.latestWarning}`, {
+          autoClose: false,
+        });
+      },
+    );
+
+    this.socket.on('user.role.updated', (data: { role: string }) => {
+      PrintLog('👑 Socket user.role.updated received:', data.role);
+      store.dispatch(updateRole(data.role));
+      showToast.info(
+        `System Update: Your platform role is now ${data.role.toUpperCase()}`,
+      );
     });
 
     // Start connection attempt sequence

@@ -103,24 +103,37 @@ export const MemberSidebar = ({
       targetUserId === currentUser?.id
         ? (currentUser?.status as PresenceStatus) || 'online'
         : (onlineUsers[targetUserId] as PresenceStatus) || 'offline';
+    const targetIsPlatformAdmin = userDetail?.role === 'admin';
+    const currentUserIsPlatformAdmin = currentUser?.role === 'admin';
     const isOwner = m.role === 'owner' || activeGroup.ownerId === targetUserId;
     const isTyping = activeConversationId
       ? !!typingUsers[activeConversationId]?.[targetUserId]
       : false;
     const canKick =
       targetUserId !== currentUser?.id &&
-      !isOwner &&
-      (isCurrentUserOwner ||
-        (m.role !== 'owner' &&
-          m.role !== 'admin' &&
-          (currentUserRole === 'admin' ||
-            hasGroupPermission(activeGroup, currentUser?.id, 'kick_members'))));
+      (!targetIsPlatformAdmin || currentUserIsPlatformAdmin) &&
+      (currentUserIsPlatformAdmin ||
+        (!isOwner &&
+          (isCurrentUserOwner ||
+            (m.role !== 'owner' &&
+              m.role !== 'admin' &&
+              (currentUserRole === 'admin' ||
+                hasGroupPermission(
+                  activeGroup,
+                  currentUser?.id,
+                  'kick_members',
+                ))))));
 
     const memberRoleIds = m.roleIds || [];
     const groupRoles = activeGroup.roles || [];
     const matchingRoles = [...groupRoles]
       .filter((r) => memberRoleIds.includes(r.id))
       .sort((a, b) => {
+        const hpA = a.hierarchyPriority ?? a.priority ?? 1000000;
+        const hpB = b.hierarchyPriority ?? b.priority ?? 1000000;
+        if (hpA !== hpB) {
+          return hpA - hpB;
+        }
         const cpA = a.colorPriority ?? 0;
         const cpB = b.colorPriority ?? 0;
         if (cpA !== cpB) {
@@ -132,10 +145,26 @@ export const MemberSidebar = ({
           }
           return cpA - cpB;
         }
-        return 0;
+        return a.createdAt.localeCompare(b.createdAt);
       });
+
+    const colorRoles = [...matchingRoles].sort((a, b) => {
+      const cpA = a.colorPriority ?? 0;
+      const cpB = b.colorPriority ?? 0;
+      if (cpA !== cpB) {
+        if (cpA <= 0) {
+          return 1;
+        }
+        if (cpB <= 0) {
+          return -1;
+        }
+        return cpA - cpB;
+      }
+      return 0;
+    });
+
     // Owner color always wins over any role color
-    const color = isOwner ? '#eab308' : matchingRoles[0]?.color || 'inherit';
+    const color = isOwner ? '#eab308' : colorRoles[0]?.color || 'inherit';
 
     return {
       id: targetUserId,
@@ -152,10 +181,12 @@ export const MemberSidebar = ({
       matchingRoles,
       color,
       canKick,
+      isGhost: m.isGhost,
     };
   };
 
-  const membersWithDetails = members.map((m) => getMemberDetails(m));
+  const visibleMembers = members.filter((m) => !m.isGhost);
+  const membersWithDetails = visibleMembers.map((m) => getMemberDetails(m));
 
   const onlineMembers = membersWithDetails.filter(
     (m) => m.presence === 'online',
@@ -214,6 +245,7 @@ export const MemberSidebar = ({
         key={m.id}
         id={`member-row-${m.id}`}
         className={`group flex items-center justify-between gap-2.5 px-2.5 py-2 rounded-xl transition-all duration-150 mb-1 cursor-pointer hover:bg-theme-input hover:translate-x-0.5 fade-in-list ${isSelected ? 'bg-theme-input translate-x-0.5' : ''}`}
+        style={m.isGhost ? { opacity: 0.45 } : undefined}
         onClick={(e) => handleMemberClick(e, m)}
       >
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
@@ -330,7 +362,7 @@ export const MemberSidebar = ({
         <div className="px-4 py-3.5 border-b-[1.5px] border-theme flex items-center justify-between text-theme-primary text-sm font-bold bg-theme-sidebar rounded-t-2xl">
           <div className="flex items-center gap-1.5">
             <IconPeople />
-            <span>Group Members ({members.length})</span>
+            <span>Group Members ({visibleMembers.length})</span>
           </div>
           {onInviteClick && canInvite && (
             <button

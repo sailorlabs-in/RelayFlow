@@ -103,7 +103,11 @@ export const GroupSettingsModal = ({
     if (!member || !activeGroup) {
       return 1000000;
     }
-    if (member.role === 'owner' || activeGroup.ownerId === member.userId) {
+    if (
+      member.role === 'owner' ||
+      activeGroup.ownerId === member.userId ||
+      member.user?.role === 'admin'
+    ) {
       return 0;
     }
     if (member.role === 'admin') {
@@ -158,6 +162,23 @@ export const GroupSettingsModal = ({
   // Overview Tab State
   const [name, setName] = useState(group.name);
   const [description, setDescription] = useState(group.description || '');
+  const [ghostToggling, setGhostToggling] = useState(false);
+  const handleToggleGhostMode = async () => {
+    if (ghostToggling) {
+      return;
+    }
+    setGhostToggling(true);
+    try {
+      await ApiRequest(`/groups/${group.id}/ghost`, 'put');
+      showToast.success('Ghost status toggled successfully');
+    } catch (err: any) {
+      showToast.error(
+        err.response?.data?.message || 'Failed to toggle ghost mode',
+      );
+    } finally {
+      setGhostToggling(false);
+    }
+  };
   const [avatarUrl, setAvatarUrl] = useState(group.avatarUrl || '');
   const [avatarThumbnailUrl, setAvatarThumbnailUrl] = useState(
     group.avatarThumbnailUrl || '',
@@ -798,6 +819,34 @@ export const GroupSettingsModal = ({
                     Transfer
                   </button>
                 </div>
+              </div>
+            )}
+
+            {user?.role === 'admin' && (
+              <div className="flex items-center justify-between p-3.5 rounded-xl border border-glass bg-[rgba(0,0,0,0.015)] dark:bg-[rgba(255,255,255,0.01)] shadow-sm animate-fade-in mt-4">
+                <div>
+                  <h4 className="m-0 text-sm font-bold text-white">
+                    Ghost Mode
+                  </h4>
+                  <p className="m-0 mt-1 text-[11px] leading-relaxed text-theme-secondary">
+                    Vanish from the member list of this group. You will remain
+                    in the group but other users won't see you.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={ghostToggling}
+                  onClick={handleToggleGhostMode}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all active-press ${
+                    currentUserMember?.isGhost
+                      ? 'bg-amber-500 text-white hover:opacity-90'
+                      : 'bg-[rgba(255,255,255,0.05)] text-white hover:bg-[rgba(255,255,255,0.1)] border border-[rgba(255,255,255,0.1)]'
+                  }`}
+                >
+                  {currentUserMember?.isGhost
+                    ? 'Ghost Mode Active'
+                    : 'Go Ghost'}
+                </button>
               </div>
             )}
           </form>

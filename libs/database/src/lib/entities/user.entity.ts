@@ -95,6 +95,12 @@ export class User {
   })
   resetPasswordExpiresAt?: Date;
 
+  @Column({ name: 'role', type: 'varchar', default: 'user' })
+  role!: string;
+
+  @Column({ name: 'warnings', type: 'jsonb', default: [] })
+  warnings!: string[];
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 
