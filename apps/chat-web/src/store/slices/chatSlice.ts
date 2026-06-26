@@ -434,6 +434,53 @@ const chatSlice = createSlice({
       state.onlineUsers[userId] =
         status === 'online' ? autoStatus || 'online' : status;
     },
+    // Real-time user profile update (displayName, avatar, etc.)
+    socketUpdateUserProfile: (
+      state,
+      action: PayloadAction<{
+        userId: string;
+        displayName?: string;
+        username?: string;
+        avatarUrl?: string;
+        avatarThumbnailUrl?: string;
+      }>,
+    ) => {
+      const { userId, displayName, username, avatarUrl, avatarThumbnailUrl } =
+        action.payload;
+
+      // Patch the userProfiles cache
+      if (state.userProfiles[userId]) {
+        if (displayName !== undefined) {
+          state.userProfiles[userId].displayName = displayName;
+        }
+        if (username !== undefined) {
+          state.userProfiles[userId].username = username;
+        }
+        if (avatarUrl !== undefined) {
+          state.userProfiles[userId].avatarUrl = avatarUrl;
+        }
+        if (avatarThumbnailUrl !== undefined) {
+          state.userProfiles[userId].avatarThumbnailUrl = avatarThumbnailUrl;
+        }
+      }
+
+      // Patch the friends list
+      const friend = state.friends.find((f) => f.id === userId);
+      if (friend) {
+        if (displayName !== undefined) {
+          friend.displayName = displayName;
+        }
+        if (username !== undefined) {
+          friend.username = username;
+        }
+        if (avatarUrl !== undefined) {
+          friend.avatarUrl = avatarUrl;
+        }
+        if (avatarThumbnailUrl !== undefined) {
+          friend.avatarThumbnailUrl = avatarThumbnailUrl;
+        }
+      }
+    },
     socketUpdateTyping: (
       state,
       action: PayloadAction<{
@@ -867,6 +914,7 @@ export const {
   socketReceiveMessage,
   socketUpdatePresence,
   socketUpdateUserStatus,
+  socketUpdateUserProfile,
   socketUpdateTyping,
   socketDeleteMessage,
   socketUpdateMessage,

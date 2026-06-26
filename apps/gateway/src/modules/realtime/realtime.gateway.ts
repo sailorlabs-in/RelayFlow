@@ -219,6 +219,7 @@ export class RealtimeGateway
         userId: payload.userId,
         status: currentStatus,
         autoStatus: currentAutoStatus,
+        lastSeen: new Date().toISOString(),
       });
       // Legacy backward-compat event
       if (currentStatus === 'online' && currentAutoStatus === 'online') {
@@ -231,6 +232,7 @@ export class RealtimeGateway
         userId: string;
         status: string;
         autoStatus: string;
+        lastSeen?: string;
       }[] = [];
       for (const [uid, presenceJson] of Object.entries(allPresence)) {
         try {
@@ -239,6 +241,7 @@ export class RealtimeGateway
             userId: uid,
             status: presence.status || 'offline',
             autoStatus: presence.autoStatus || 'online',
+            lastSeen: presence.lastSeen || undefined,
           });
         } catch {
           // Ignore invalid presence payloads from Redis.
@@ -360,6 +363,7 @@ export class RealtimeGateway
         userId,
         status: 'away',
         autoStatus: 'away',
+        lastSeen: new Date().toISOString(),
       });
       // Legacy backward-compat event
       this.server.emit('user.offline', { userId });
@@ -392,6 +396,8 @@ export class RealtimeGateway
               }
             }
 
+            const lastSeenTime = new Date().toISOString();
+
             await redisCheck.hset(
               'presence:status',
               userId,
@@ -399,7 +405,7 @@ export class RealtimeGateway
                 userId,
                 status: currentStatus,
                 autoStatus: currentAutoStatus,
-                lastSeen: new Date().toISOString(),
+                lastSeen: lastSeenTime,
               }),
             );
 
@@ -407,6 +413,7 @@ export class RealtimeGateway
               userId,
               status: currentStatus,
               autoStatus: currentAutoStatus,
+              lastSeen: lastSeenTime,
             });
             this.server.emit('user.offline', { userId });
 
@@ -1011,8 +1018,8 @@ export class RealtimeGateway
       `🟡 User ${userId} set status to '${safeStatus}' (autoStatus: '${safeAutoStatus}')`,
     );
 
-    // Persist in Redis
     const redisClient = this.redisService.getClient();
+    const lastSeenTime = new Date().toISOString();
     await redisClient.hset(
       'presence:status',
       userId,
@@ -1020,7 +1027,7 @@ export class RealtimeGateway
         userId,
         status: safeStatus,
         autoStatus: safeAutoStatus,
-        lastSeen: new Date().toISOString(),
+        lastSeen: lastSeenTime,
       }),
     );
 
@@ -1029,6 +1036,7 @@ export class RealtimeGateway
       userId,
       status: safeStatus,
       autoStatus: safeAutoStatus,
+      lastSeen: lastSeenTime,
     });
 
     // Acknowledge back to the requesting socket

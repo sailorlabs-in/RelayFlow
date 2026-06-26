@@ -167,7 +167,41 @@ export class UsersController {
       customThemes?: string;
     },
   ): Promise<User> {
-    return this.usersService.updateProfile(currentUser.userId, body);
+    const updatedUser = await this.usersService.updateProfile(
+      currentUser.userId,
+      body,
+    );
+
+    // Broadcast public profile changes to all connected clients so they
+    // don't need to reload to see the updated name / avatar.
+    const publicFields: Record<string, string | undefined> = {
+      userId: currentUser.userId,
+    };
+    if (body.displayName !== undefined) {
+      publicFields.displayName = updatedUser.displayName ?? undefined;
+    }
+    if (body.username !== undefined) {
+      publicFields.username = updatedUser.username ?? undefined;
+    }
+    if (body.avatarUrl !== undefined) {
+      publicFields.avatarUrl = updatedUser.avatarUrl ?? undefined;
+    }
+    if (body.avatarThumbnailUrl !== undefined) {
+      publicFields.avatarThumbnailUrl =
+        updatedUser.avatarThumbnailUrl ?? undefined;
+    }
+
+    const hasPublicChange =
+      body.displayName !== undefined ||
+      body.username !== undefined ||
+      body.avatarUrl !== undefined ||
+      body.avatarThumbnailUrl !== undefined;
+
+    if (hasPublicChange) {
+      this.realtimeGateway.server.emit('user.profile.updated', publicFields);
+    }
+
+    return updatedUser;
   }
 
   @Get('search-friend')

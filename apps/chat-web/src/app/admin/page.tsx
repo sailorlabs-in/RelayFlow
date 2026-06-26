@@ -8,6 +8,7 @@ import { restoreSession } from '../../store/slices/authSlice';
 import ApiRequest from '../../utils/ApiRequest';
 import { showToast } from '../../components/toast';
 import { Avatar } from '../../components/Avatar';
+import { socketManager } from '../../store/socketManager';
 
 interface UserData {
   id: string;
@@ -18,7 +19,42 @@ interface UserData {
   role: string;
   warnings: string[];
   status: string;
+  lastSeen?: string | null;
   createdAt: string;
+}
+
+function formatLastSeen(dateString: string | null | undefined): string {
+  if (!dateString) {
+    return 'never';
+  }
+  try {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    if (isNaN(diffMs) || diffMs < 0) {
+      return 'recently';
+    }
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHr = Math.floor(diffMin / 60);
+    const diffDays = Math.floor(diffHr / 24);
+
+    if (diffSec < 60) {
+      return 'just now';
+    }
+    if (diffMin < 60) {
+      return `${diffMin}m ago`;
+    }
+    if (diffHr < 24) {
+      return `${diffHr}h ago`;
+    }
+    if (diffDays < 7) {
+      return `${diffDays}d ago`;
+    }
+    return date.toLocaleDateString();
+  } catch {
+    return 'recently';
+  }
 }
 
 interface GroupData {
@@ -106,6 +142,88 @@ function AdminDashboardContent() {
       fetchData();
     }
   }, [hydrated, user]);
+
+  // Step 4: Subscribe to socket events for real-time admin panel updates
+  useEffect(() => {
+    if (!hydrated || !accessToken) {
+      return;
+    }
+
+    // Connect socket for the admin dashboard to enable real-time status
+    socketManager.connect(accessToken);
+    const socket = socketManager.getSocket();
+    if (!socket) {
+      return;
+    }
+
+    // Helper: patch a single user's status and lastSeen in local state
+    const patchStatus = (userId: string, status: string, lastSeen?: string) => {
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === userId
+            ? { ...u, status, ...(lastSeen !== undefined && { lastSeen }) }
+            : u,
+        ),
+      );
+    };
+
+    const onStatusChanged = (data: {
+      userId: string;
+      status: string;
+      autoStatus?: string;
+      lastSeen?: string;
+    }) => {
+      // Resolve the display status the same way the app does
+      const resolved =
+        data.status === 'online' ? data.autoStatus || 'online' : data.status;
+      patchStatus(data.userId, resolved, data.lastSeen);
+    };
+
+    const onOnline = (data: { userId: string }) => {
+      patchStatus(data.userId, 'online', new Date().toISOString());
+    };
+
+    const onOffline = (data: { userId: string }) => {
+      patchStatus(data.userId, 'offline', new Date().toISOString());
+    };
+
+    const onProfileUpdated = (data: {
+      userId: string;
+      displayName?: string;
+      username?: string;
+      avatarUrl?: string;
+      avatarThumbnailUrl?: string;
+    }) => {
+      setUsers((prev) =>
+        prev.map((u) => {
+          if (u.id !== data.userId) {
+            return u;
+          }
+          return {
+            ...u,
+            ...(data.displayName !== undefined && {
+              displayName: data.displayName,
+            }),
+            ...(data.username !== undefined && { username: data.username }),
+            ...(data.avatarUrl !== undefined && { avatarUrl: data.avatarUrl }),
+          };
+        }),
+      );
+    };
+
+    socket.on('user.status.changed', onStatusChanged);
+    socket.on('user.online', onOnline);
+    socket.on('user.offline', onOffline);
+    socket.on('user.profile.updated', onProfileUpdated);
+
+    return () => {
+      socket.off('user.status.changed', onStatusChanged);
+      socket.off('user.online', onOnline);
+      socket.off('user.offline', onOffline);
+      socket.off('user.profile.updated', onProfileUpdated);
+      socketManager.disconnect();
+    };
+  }, [hydrated, accessToken]);
 
   const handleToggleRole = async (targetUser: UserData) => {
     const newRole = targetUser.role === 'admin' ? 'user' : 'admin';
@@ -574,13 +692,13 @@ function AdminDashboardContent() {
                 <table className="w-full text-left border-collapse table-fixed">
                   <thead className="sticky top-0 z-10 bg-[var(--bg-primary)] border-b border-[var(--glass-border)]">
                     <tr className="text-theme-muted text-[10px] font-bold uppercase tracking-wider">
-                      <th className="px-6 py-3 w-[250px]">User Profile</th>
-                      <th className="px-6 py-3 w-[220px]">Email</th>
+                      <th className="px-6 py-3 w-[220px]">User Profile</th>
+                      <th className="px-6 py-3 w-[200px]">Email</th>
                       <th className="px-6 py-3 w-[100px]">Role</th>
                       <th className="px-6 py-3 w-[110px]">Warnings</th>
-                      <th className="px-6 py-3 w-[100px]">Status</th>
+                      <th className="px-6 py-3 w-[180px]">Status</th>
                       <th className="px-6 py-3 w-[110px]">Joined</th>
-                      <th className="px-6 py-3 text-right w-[200px]">
+                      <th className="px-6 py-3 text-right w-[170px]">
                         Actions
                       </th>
                     </tr>
@@ -647,15 +765,57 @@ function AdminDashboardContent() {
                             )}
                           </td>
                           <td className="px-6 py-3.5">
-                            <span
-                              className={`inline-flex items-center gap-1.5 font-semibold text-xs ${u.status === 'online' ? 'text-emerald-400' : 'text-theme-muted'}`}
-                            >
-                              <span
-                                className={`w-1.5 h-1.5 rounded-full ${u.status === 'online' ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`}
-                              />
-                              {u.status}
-                            </span>
+                            {(() => {
+                              const s = u.status || 'offline';
+                              const cfg: Record<
+                                string,
+                                {
+                                  dot: string;
+                                  text: string;
+                                  label: string;
+                                  pulse?: boolean;
+                                }
+                              > = {
+                                online: {
+                                  dot: 'bg-emerald-400',
+                                  text: 'text-emerald-400',
+                                  label: 'Online',
+                                  pulse: true,
+                                },
+                                away: {
+                                  dot: 'bg-amber-400',
+                                  text: 'text-amber-400',
+                                  label: 'Away',
+                                },
+                                dnd: {
+                                  dot: 'bg-red-400',
+                                  text: 'text-red-400',
+                                  label: 'DND',
+                                },
+                                offline: {
+                                  dot: 'bg-slate-500',
+                                  text: 'text-theme-muted',
+                                  label: 'Offline',
+                                },
+                              };
+                              const c = cfg[s] ?? cfg.offline;
+                              let displayLabel = c.label;
+                              if (s === 'offline' && u.lastSeen) {
+                                displayLabel = `Offline (${formatLastSeen(u.lastSeen)})`;
+                              }
+                              return (
+                                <span
+                                  className={`inline-flex items-center gap-1.5 font-semibold text-xs ${c.text}`}
+                                >
+                                  <span
+                                    className={`w-1.5 h-1.5 rounded-full ${c.dot}${c.pulse ? ' animate-pulse' : ''}`}
+                                  />
+                                  {displayLabel}
+                                </span>
+                              );
+                            })()}
                           </td>
+
                           <td className="px-6 py-3.5 text-theme-muted font-medium">
                             {new Date(u.createdAt).toLocaleDateString()}
                           </td>

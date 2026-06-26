@@ -17,6 +17,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { QueueNames } from '@chat-app/queues';
 import { User, Group, GroupMember } from '@chat-app/database';
+import { RedisService } from '@chat-app/redis';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
 import { UsersService } from '../users/users.service';
@@ -38,6 +39,7 @@ export class AdminController {
     private readonly realtimeGateway: RealtimeGateway,
     @InjectQueue(QueueNames.NOTIFICATIONS)
     private readonly notificationsQueue: Queue,
+    private readonly redisService: RedisService,
   ) {}
 
   /**
@@ -81,7 +83,7 @@ export class AdminController {
   @UseGuards(JwtAuthGuard, PlatformAdminGuard)
   @Get('users')
   async listUsers() {
-    return this.userRepo.find({
+    const users = await this.userRepo.find({
       select: [
         'id',
         'email',
@@ -95,6 +97,36 @@ export class AdminController {
       ],
       order: { createdAt: 'DESC' },
     });
+
+    // Merge real-time presence from Redis so the admin sees live status
+    // instead of the stale DB value.
+    try {
+      const redis = this.redisService.getClient();
+      const allPresence = await redis.hgetall('presence:status');
+      if (allPresence && Object.keys(allPresence).length > 0) {
+        return users.map((u) => {
+          const presenceJson = allPresence[u.id];
+          if (presenceJson) {
+            try {
+              const presence = JSON.parse(presenceJson);
+              return {
+                ...u,
+                status: presence.status || u.status,
+                lastSeen: presence.lastSeen || null,
+              };
+            } catch {
+              // ignore malformed presence, fall back to DB status
+            }
+          }
+          // Not in Redis presence = offline
+          return { ...u, status: 'offline', lastSeen: null };
+        });
+      }
+    } catch {
+      // Redis unavailable — return DB data as-is
+    }
+
+    return users.map((u) => ({ ...u, lastSeen: null }));
   }
 
   @UseGuards(JwtAuthGuard, PlatformAdminGuard)
@@ -147,7 +179,35 @@ export class AdminController {
     user.role = role;
     const savedUser = await this.userRepo.save(user);
 
-    // Notify updated user via WebSocket
+    // Immediately update the Redis user profile cache so PlatformAdminGuard
+    // and any findById() call sees the new role without waiting for cache expiry.
+    try {
+      const redis = this.redisService.getClient();
+      const cacheKey = `user:profile:${userId}`;
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        const cachedUser = JSON.parse(cached);
+        cachedUser.role = role;
+        // Preserve the remaining TTL so we don't reset the 24 h window
+        const ttl = await redis.ttl(cacheKey);
+        await redis.setex(
+          cacheKey,
+          ttl > 0 ? ttl : 86400,
+          JSON.stringify(cachedUser),
+        );
+      } else {
+        // Cache the full updated user so future calls don't hit the DB
+        await redis.setex(
+          `user:profile:${userId}`,
+          86400,
+          JSON.stringify(savedUser),
+        );
+      }
+    } catch {
+      // Redis unavailable — DB is the source of truth, continue
+    }
+
+    // Notify updated user via WebSocket so their frontend updates instantly
     this.realtimeGateway.server.to(`user:${userId}`).emit('user.role.updated', {
       role: savedUser.role,
     });

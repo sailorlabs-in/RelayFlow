@@ -1010,6 +1010,38 @@ const groupsSlice = createSlice({
         state.activeChannelId = null;
       }
     },
+    socketGroupMemberProfileUpdated: (
+      state,
+      action: PayloadAction<{
+        userId: string;
+        displayName?: string;
+        username?: string;
+        avatarUrl?: string;
+        avatarThumbnailUrl?: string;
+      }>,
+    ) => {
+      const { userId, displayName, username, avatarUrl, avatarThumbnailUrl } =
+        action.payload;
+      // Walk every group and patch the matching member's embedded user object
+      for (const group of state.groups) {
+        for (const member of group.members) {
+          if (member.userId === userId && member.user) {
+            if (displayName !== undefined) {
+              member.user.displayName = displayName;
+            }
+            if (username !== undefined) {
+              member.user.username = username;
+            }
+            if (avatarUrl !== undefined) {
+              member.user.avatarUrl = avatarUrl;
+            }
+            if (avatarThumbnailUrl !== undefined) {
+              member.user.avatarThumbnailUrl = avatarThumbnailUrl;
+            }
+          }
+        }
+      }
+    },
     socketChannelCreated: (
       state,
       action: PayloadAction<{ groupId: string; channel: GroupChannel }>,
@@ -1597,6 +1629,7 @@ export const {
   socketGroupDeleted,
   socketGroupMemberAdded,
   socketGroupMemberRemoved,
+  socketGroupMemberProfileUpdated,
   socketChannelCreated,
   socketChannelUpdated,
   socketChannelDeleted,

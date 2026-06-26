@@ -10,6 +10,7 @@ import {
   socketReceiveMessage,
   socketUpdatePresence,
   socketUpdateUserStatus,
+  socketUpdateUserProfile,
   socketUpdateTyping,
   socketDeleteMessage,
   socketUpdateMessage,
@@ -29,6 +30,7 @@ import {
   socketGroupDeleted,
   socketGroupMemberAdded,
   socketGroupMemberRemoved,
+  socketGroupMemberProfileUpdated,
   socketChannelCreated,
   socketChannelUpdated,
   socketChannelDeleted,
@@ -538,6 +540,24 @@ class SocketManager {
       );
     });
 
+    // Broadcast from server when any user updates their profile
+    this.socket.on(
+      'user.profile.updated',
+      (data: {
+        userId: string;
+        displayName?: string;
+        username?: string;
+        avatarUrl?: string;
+        avatarThumbnailUrl?: string;
+      }) => {
+        PrintLog('👤 Socket user.profile.updated received:', data.userId);
+        // Update the user in chat slice (userProfiles cache + friends list)
+        store.dispatch(socketUpdateUserProfile(data));
+        // Update the user in all group member lists
+        store.dispatch(socketGroupMemberProfileUpdated(data));
+      },
+    );
+
     // Start connection attempt sequence
     this.reconnectWithRetry();
   }
@@ -816,6 +836,12 @@ class SocketManager {
       );
       this.socket.emit('voice.disconnect.user', { groupId, targetUserId });
     }
+  }
+
+  /** Expose the raw socket instance for components that need to subscribe
+   *  to events directly (e.g. the admin dashboard for live presence). */
+  getSocket() {
+    return this.socket;
   }
 
   disconnect() {
