@@ -430,6 +430,54 @@ export const ChatArea = ({
     start: number;
     end: number;
   } | null>(null);
+  const [activeSuggestIndex, setActiveSuggestIndex] = useState<number>(0);
+
+  const matchingMentions = React.useMemo(() => {
+    if (!atMentionQuery || !isChannelMode || !activeGroup) {
+      return [];
+    }
+    const q = atMentionQuery.text.toLowerCase();
+    const list: {
+      id: string;
+      name: string;
+      isEveryone?: boolean;
+      member?: any;
+    }[] = [];
+
+    if ('everyone'.startsWith(q) || q === '') {
+      list.push({ id: 'everyone', name: 'everyone', isEveryone: true });
+    }
+
+    const matchingMembers = (activeGroup.members || [])
+      .filter((m) => !m.isGhost)
+      .filter((m) => {
+        const username = m.user?.username?.toLowerCase() || '';
+        const displayName = m.user?.displayName?.toLowerCase() || '';
+        return username.includes(q) || displayName.includes(q);
+      });
+
+    matchingMembers.forEach((m) => {
+      const name = m.user?.username || m.user?.displayName || 'Member';
+      list.push({ id: m.id, name, member: m });
+    });
+
+    return list;
+  }, [atMentionQuery, isChannelMode, activeGroup]);
+
+  useEffect(() => {
+    setActiveSuggestIndex(0);
+  }, [atMentionQuery?.text]);
+
+  // Focus the input field and scroll feed to bottom when replying to a message
+  useEffect(() => {
+    if (replyingToMessage) {
+      document.getElementById('message-input')?.focus();
+      setTimeout(() => {
+        feedEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    }
+  }, [replyingToMessage]);
+
   const [activeReactionMessageId, setActiveReactionMessageId] = useState<
     string | null
   >(null);
@@ -2837,61 +2885,58 @@ export const ChatArea = ({
                           ))}
                         </div>
                       )}
-                      {atMentionQuery && isChannelMode && activeGroup && (
-                        <div className="absolute bottom-full left-0 mb-2 w-75 max-h-50 overflow-y-auto bg-theme-sidebar border border-theme rounded-xl shadow-(--glass-shadow) z-50 flex flex-col p-1">
-                          {('everyone'.startsWith(
-                            atMentionQuery.text.toLowerCase(),
-                          ) ||
-                            atMentionQuery.text === '') && (
-                            <button
-                              type="button"
-                              className="flex items-center gap-2.5 px-3 py-2 text-left rounded-lg hover:bg-theme-input active-press cursor-pointer border-none bg-transparent"
-                              onClick={() => {
-                                const val = messageInput;
-                                const newText =
-                                  val.slice(0, atMentionQuery.start) +
-                                  '@everyone ' +
-                                  val.slice(atMentionQuery.end);
-                                setMessageInput(newText);
-                                setAtMentionQuery(null);
-                                document
-                                  .getElementById('message-input')
-                                  ?.focus();
-                              }}
-                            >
-                              <div className="w-8 h-8 rounded-full flex items-center justify-center bg-(--accent-primary) text-white text-[12px] font-bold">
-                                📢
-                              </div>
-                              <div className="flex flex-col">
-                                <span className="text-[13px] font-bold text-theme-primary">
-                                  @everyone
-                                </span>
-                                <span className="text-[10.5px] text-theme-muted">
-                                  Notify all members
-                                </span>
-                              </div>
-                            </button>
-                          )}
-                          {activeGroup.members
-                            .filter((m) => {
-                              const username =
-                                m.user?.username?.toLowerCase() || '';
-                              const displayName =
-                                m.user?.displayName?.toLowerCase() || '';
-                              const q = atMentionQuery.text.toLowerCase();
-                              return (
-                                username.includes(q) || displayName.includes(q)
-                              );
-                            })
-                            .map((member) => {
-                              const memberName =
-                                member.user?.username ||
-                                member.user?.displayName ||
-                                'Member';
+                      {atMentionQuery &&
+                        isChannelMode &&
+                        activeGroup &&
+                        matchingMentions.length > 0 && (
+                          <div className="absolute bottom-full left-0 mb-2 w-75 max-h-50 overflow-y-auto bg-theme-sidebar border border-theme rounded-xl shadow-(--glass-shadow) z-50 flex flex-col p-1">
+                            {matchingMentions.map((item, idx) => {
+                              const isActive = idx === activeSuggestIndex;
+                              if (item.isEveryone) {
+                                return (
+                                  <button
+                                    key="everyone"
+                                    type="button"
+                                    className={`flex items-center gap-2.5 px-3 py-2 text-left rounded-lg active-press cursor-pointer border-none ${
+                                      isActive
+                                        ? 'bg-theme-input text-theme-secondary font-semibold'
+                                        : 'bg-transparent text-theme-muted hover:bg-theme-input/50'
+                                    }`}
+                                    onClick={() => {
+                                      const val = messageInput;
+                                      const newText =
+                                        val.slice(0, atMentionQuery.start) +
+                                        '@everyone ' +
+                                        val.slice(atMentionQuery.end);
+                                      setMessageInput(newText);
+                                      setAtMentionQuery(null);
+                                      document
+                                        .getElementById('message-input')
+                                        ?.focus();
+                                    }}
+                                  >
+                                    <div className="w-8 h-8 rounded-full flex items-center justify-center bg-(--accent-primary) text-white text-[12px] font-bold shrink-0">
+                                      📢
+                                    </div>
+                                    <div className="flex flex-col">
+                                      <span
+                                        className={`text-[13px] font-bold ${isActive ? 'text-theme-secondary' : 'text-theme-primary'}`}
+                                      >
+                                        @everyone
+                                      </span>
+                                      <span className="text-[10.5px] text-theme-muted">
+                                        Notify all members
+                                      </span>
+                                    </div>
+                                  </button>
+                                );
+                              }
+
+                              const member = item.member;
+                              const memberName = item.name;
                               const letter =
                                 memberName[0]?.toUpperCase() || 'U';
 
-                              // Determine member color (owner wins over role)
                               const isOwnerMember =
                                 activeGroup.ownerId === member.userId;
                               const memberRoleIds = member.roleIds || [];
@@ -2906,7 +2951,11 @@ export const ChatArea = ({
                                 <button
                                   key={member.id}
                                   type="button"
-                                  className="flex items-center gap-2.5 px-3 py-2 text-left rounded-lg hover:bg-theme-input active-press cursor-pointer border-none bg-transparent"
+                                  className={`flex items-center gap-2.5 px-3 py-2 text-left rounded-lg active-press cursor-pointer border-none ${
+                                    isActive
+                                      ? 'bg-theme-input font-semibold'
+                                      : 'bg-transparent hover:bg-theme-input/50'
+                                  }`}
                                   onClick={() => {
                                     const val = messageInput;
                                     const newText =
@@ -2930,7 +2979,7 @@ export const ChatArea = ({
                                   />
                                   <div className="flex flex-col">
                                     <span
-                                      className={`text-[13px] font-bold ${!memberColor ? 'text-theme-primary' : ''}`}
+                                      className={`text-[13px] font-bold ${!memberColor ? (isActive ? 'text-theme-secondary' : 'text-theme-primary') : ''}`}
                                       style={
                                         memberColor
                                           ? { color: memberColor }
@@ -2948,8 +2997,8 @@ export const ChatArea = ({
                                 </button>
                               );
                             })}
-                        </div>
-                      )}
+                          </div>
+                        )}
                       {isMdMode && (
                         <div className="flex items-center justify-between mb-2 px-2">
                           {/* Toggle Icon Button */}
@@ -3105,6 +3154,65 @@ export const ChatArea = ({
                           onChange={handleInputChange}
                           onSelect={handleTextareaSelect}
                           onKeyDown={(e) => {
+                            if (
+                              atMentionQuery &&
+                              isChannelMode &&
+                              activeGroup &&
+                              matchingMentions.length > 0
+                            ) {
+                              if (e.key === 'ArrowDown') {
+                                e.preventDefault();
+                                setActiveSuggestIndex(
+                                  (prev) =>
+                                    (prev + 1) % matchingMentions.length,
+                                );
+                                return;
+                              }
+                              if (e.key === 'ArrowUp') {
+                                e.preventDefault();
+                                setActiveSuggestIndex(
+                                  (prev) =>
+                                    (prev - 1 + matchingMentions.length) %
+                                    matchingMentions.length,
+                                );
+                                return;
+                              }
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                const selected =
+                                  matchingMentions[activeSuggestIndex];
+                                if (selected) {
+                                  const val = messageInput;
+                                  const inserted = selected.isEveryone
+                                    ? '@everyone '
+                                    : `@${selected.name} `;
+                                  const newText =
+                                    val.slice(0, atMentionQuery.start) +
+                                    inserted +
+                                    val.slice(atMentionQuery.end);
+                                  setMessageInput(newText);
+                                  setAtMentionQuery(null);
+                                  setTimeout(() => {
+                                    document
+                                      .getElementById('message-input')
+                                      ?.focus();
+                                  }, 0);
+                                }
+                                return;
+                              }
+                              if (e.key === 'Escape') {
+                                e.preventDefault();
+                                setAtMentionQuery(null);
+                                return;
+                              }
+                            }
+
+                            if (e.key === 'Escape' && replyingToMessage) {
+                              e.preventDefault();
+                              setReplyingToMessage(null);
+                              return;
+                            }
+
                             if (e.key === 'Enter' && !e.shiftKey && !isMdMode) {
                               e.preventDefault();
                               if (canSendMessages) {
