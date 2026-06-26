@@ -2102,7 +2102,7 @@ export const ChatArea = ({
 
                           {editingMessageId !== msg.id && (
                             <div
-                              className={`flex items-center gap-1 transition-opacity duration-150 shrink-0 self-center ${
+                              className={` hidden md:flex items-center gap-1 transition-opacity duration-150 shrink-0 self-center ${
                                 activeReactionMessageId === msg.id
                                   ? 'opacity-100 pointer-events-auto'
                                   : 'opacity-0 group-hover:opacity-100'
@@ -2202,7 +2202,7 @@ export const ChatArea = ({
                       >
                         {isOut && editingMessageId !== msg.id && (
                           <div
-                            className={`flex items-center gap-1 transition-opacity duration-150 shrink-0 self-center ${
+                            className={`hidden md:flex items-center gap-1 transition-opacity duration-150 shrink-0 self-center ${
                               activeReactionMessageId === msg.id
                                 ? 'opacity-100 pointer-events-auto'
                                 : 'opacity-0 group-hover:opacity-100'
@@ -2502,7 +2502,7 @@ export const ChatArea = ({
                         </div>
                         {!isOut && editingMessageId !== msg.id && (
                           <div
-                            className={`flex items-center gap-1 transition-opacity duration-150 shrink-0 self-center ${
+                            className={`hidden md:flex items-center gap-1 transition-opacity duration-150 shrink-0 self-center ${
                               activeReactionMessageId === msg.id
                                 ? 'opacity-100 pointer-events-auto'
                                 : 'opacity-0 group-hover:opacity-100'
