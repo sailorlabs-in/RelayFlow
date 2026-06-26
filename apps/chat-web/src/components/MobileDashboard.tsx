@@ -1717,7 +1717,7 @@ export const MobileDashboard = ({
         return null;
       })()}
 
-      <footer className="glass-panel mx-2 mb-2 border border-glass shadow-lg flex items-center justify-around py-1.5 px-1.5 rounded-2xl shrink-0 z-40 pb-safe">
+      <footer className="glass-panel mx-3 mb-4 border border-glass shadow-lg flex items-center justify-around py-1.5 px-1.5 rounded-4xl shrink-0 z-40 pb-safe">
         {/* Chats Tab */}
         <button
           onClick={() => {
