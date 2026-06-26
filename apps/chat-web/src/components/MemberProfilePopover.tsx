@@ -95,29 +95,17 @@ export const MemberProfilePopover = ({
     currentUserRole === 'owner' || activeGroup?.ownerId === currentUser?.id;
 
   const currentUserHighestPriority = isOwner
-    ? Infinity
-    : Math.max(
-        0,
-        ...(currentUserMember?.roleIds || []).map(
-          (id) => activeGroup?.roles?.find((r) => r.id === id)?.priority || 0,
-        ),
-      );
-
-  const selectedMemberHighestPriority =
-    selectedMember.role === 'owner' ||
-    activeGroup?.ownerId === selectedMember.id
-      ? Infinity
-      : Math.max(
-          0,
-          ...(selectedMember.roleIds || []).map(
-            (id) => activeGroup?.roles?.find((r) => r.id === id)?.priority || 0,
-          ),
-        );
-
-  const canManageThisMember =
-    isOwner ||
-    selectedMember.id === currentUser?.id ||
-    currentUserHighestPriority > selectedMemberHighestPriority;
+    ? 0
+    : currentUserMember?.role === 'admin'
+      ? 1
+      : currentUserMember?.roleIds && currentUserMember.roleIds.length > 0
+        ? Math.min(
+            ...(currentUserMember.roleIds || []).map((id) => {
+              const r = activeGroup?.roles?.find((role) => role.id === id);
+              return Math.max(r?.hierarchyPriority ?? r?.priority ?? 1, 1);
+            }),
+          )
+        : 1000000;
 
   const handleSendFriendRequest = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -294,10 +282,13 @@ export const MemberProfilePopover = ({
             <div className="flex flex-wrap gap-1.5 max-h-25 overflow-y-auto pr-1">
               {activeGroup.roles.map((role) => {
                 const isAssigned = selectedMember.roleIds?.includes(role.id);
-                const rolePriority = role.priority || 0;
+                const rolePriority = Math.max(
+                  role.hierarchyPriority ?? role.priority ?? 1,
+                  1,
+                );
                 const canInteractWithRole =
-                  isOwner || rolePriority < currentUserHighestPriority;
-                const isDisabled = !canInteractWithRole || !canManageThisMember;
+                  isOwner || currentUserHighestPriority < rolePriority;
+                const isDisabled = !canInteractWithRole;
 
                 return (
                   <button

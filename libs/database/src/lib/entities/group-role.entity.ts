@@ -53,6 +53,14 @@ export class GroupRole {
   @Column({ name: 'priority', type: 'int', default: 0 })
   priority!: number;
 
+  @ApiProperty({ example: 0 })
+  @Column({ name: 'color_priority', type: 'int', default: 0 })
+  colorPriority!: number;
+
+  @ApiProperty({ example: 0 })
+  @Column({ name: 'hierarchy_priority', type: 'int', default: 0 })
+  hierarchyPriority!: number;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 }

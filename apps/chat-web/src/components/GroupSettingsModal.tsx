@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 import { useAppDispatch, useAppSelector } from '../store';
 import ApiRequest from '../utils/ApiRequest';
@@ -8,7 +8,7 @@ import {
   createGroupRole,
   updateGroupRole,
   deleteGroupRole,
-  reorderGroupRoles,
+  batchUpdateGroupRoles,
 } from '../store/slices/groupsSlice';
 
 import { IconX } from './Icons';
@@ -16,34 +16,6 @@ import { showToast } from './toast';
 import { Avatar } from './Avatar';
 import { generateAvatarThumbnail, compressImage } from '../utils/media';
 import { hasGroupPermission } from '../utils/permissions';
-
-const IconArrowUp = ({ size = 16 }: { size?: number }) => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    style={{ width: size, height: size }}
-  >
-    <polyline points="18 15 12 9 6 15" />
-  </svg>
-);
-
-const IconArrowDown = ({ size = 16 }: { size?: number }) => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    style={{ width: size, height: size }}
-  >
-    <polyline points="6 9 12 15 18 9" />
-  </svg>
-);
 
 const AVAILABLE_PERMISSIONS = [
   { value: 'manage_group', label: 'Manage Server' },
@@ -72,7 +44,6 @@ export const GroupSettingsModal = ({
   const activeGroup = useAppSelector((state) =>
     state.groups.groups.find((g) => g.id === group.id),
   );
-  const roles = activeGroup?.roles || [];
 
   const isOwner = activeGroup?.ownerId === user?.id;
   const isOwnerOrAdmin =
@@ -128,6 +99,33 @@ export const GroupSettingsModal = ({
 
   const requesterRank = getRequesterRank();
 
+  const getMemberHighestRolePriority = (member: any): number => {
+    if (!member || !activeGroup) {
+      return 1000000;
+    }
+    if (member.role === 'owner' || activeGroup.ownerId === member.userId) {
+      return 0;
+    }
+    if (member.role === 'admin') {
+      return 1;
+    }
+    const memberRoleIds = member.roleIds || [];
+    const groupRoles = activeGroup.roles || [];
+    const matchingRoles = groupRoles.filter((r) =>
+      memberRoleIds.includes(r.id),
+    );
+    if (matchingRoles.length === 0) {
+      return 1000000;
+    }
+    return Math.min(
+      ...matchingRoles.map((r) =>
+        Math.max(r.hierarchyPriority ?? r.priority ?? 1, 1),
+      ),
+    );
+  };
+
+  const reqPriority = getMemberHighestRolePriority(currentUserMember);
+
   const visiblePermissions = AVAILABLE_PERMISSIONS.filter((perm) => {
     const permRank = getPermissionsHighestManageRank([perm.value]);
     return permRank > requesterRank;
@@ -136,6 +134,26 @@ export const GroupSettingsModal = ({
   const [activeTab, setActiveTab] = useState<'overview' | 'roles'>(
     canManageGroup ? 'overview' : 'roles',
   );
+  const [rolesSubTab, setRolesSubTab] = useState<
+    'manager' | 'hierarchy' | 'color'
+  >('manager');
+
+  const sortRolesByColorPriority = (roles: any[]) => {
+    return [...roles].sort((a, b) => {
+      const cpA = a.colorPriority ?? 0;
+      const cpB = b.colorPriority ?? 0;
+      if (cpA !== cpB) {
+        if (cpA <= 0) {
+          return 1;
+        }
+        if (cpB <= 0) {
+          return -1;
+        }
+        return cpA - cpB;
+      }
+      return a.createdAt.localeCompare(b.createdAt);
+    });
+  };
 
   // Overview Tab State
   const [name, setName] = useState(group.name);
@@ -153,7 +171,19 @@ export const GroupSettingsModal = ({
   const [roleName, setRoleName] = useState('');
   const [roleColor, setRoleColor] = useState('#7289da');
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
+  const [hierarchyPriority, setHierarchyPriority] = useState(0);
+  const [colorPriority, setColorPriority] = useState(0);
   const [isRoleLoading, setIsRoleLoading] = useState(false);
+
+  // Local roles list and reordering state
+  const [localRoles, setLocalRoles] = useState<any[]>(activeGroup?.roles || []);
+  const [hasPendingReorder, setHasPendingReorder] = useState(false);
+
+  useEffect(() => {
+    if (activeGroup?.roles && !hasPendingReorder) {
+      setLocalRoles(activeGroup.roles);
+    }
+  }, [activeGroup?.roles, hasPendingReorder]);
 
   // Transfer ownership state
   const [transferTargetUserId, setTransferTargetUserId] = useState('');
@@ -307,11 +337,15 @@ export const GroupSettingsModal = ({
           name: cleanName,
           color: roleColor,
           permissions: selectedPermissions,
+          colorPriority,
+          hierarchyPriority,
         }),
       ).unwrap();
       setRoleName('');
       setRoleColor('#7289da');
       setSelectedPermissions([]);
+      setHierarchyPriority(0);
+      setColorPriority(0);
       showToast.success('Role created successfully!');
     } catch (err: any) {
       showToast.error(err || 'Failed to create role.');
@@ -325,6 +359,8 @@ export const GroupSettingsModal = ({
     setRoleName(role.name);
     setRoleColor(role.color);
     setSelectedPermissions(role.permissions || []);
+    setHierarchyPriority(role.hierarchyPriority ?? role.priority ?? 0);
+    setColorPriority(role.colorPriority ?? 0);
   };
 
   const handleUpdateRole = async () => {
@@ -341,12 +377,16 @@ export const GroupSettingsModal = ({
           name: cleanName,
           color: roleColor,
           permissions: selectedPermissions,
+          colorPriority,
+          hierarchyPriority,
         }),
       ).unwrap();
       setEditingRoleId(null);
       setRoleName('');
       setRoleColor('#7289da');
       setSelectedPermissions([]);
+      setHierarchyPriority(0);
+      setColorPriority(0);
       showToast.success('Role updated successfully!');
     } catch (err: any) {
       showToast.error(err || 'Failed to update role.');
@@ -372,6 +412,8 @@ export const GroupSettingsModal = ({
         setRoleName('');
         setRoleColor('#7289da');
         setSelectedPermissions([]);
+        setHierarchyPriority(0);
+        setColorPriority(0);
       }
     } catch (err: any) {
       showToast.error(err || 'Failed to delete role.');
@@ -380,35 +422,154 @@ export const GroupSettingsModal = ({
     }
   };
 
-  const handleReorderRole = async (
-    roleId: string,
-    direction: 'up' | 'down',
-  ) => {
-    const idx = roles.findIndex((r) => r.id === roleId);
-    if (idx === -1) {
-      return;
-    }
-    const newRoles = [...roles];
-    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (targetIdx < 0 || targetIdx >= newRoles.length) {
-      return;
-    }
-
-    const temp = newRoles[idx];
-    newRoles[idx] = newRoles[targetIdx];
-    newRoles[targetIdx] = temp;
-
-    const roleIds = newRoles.map((r) => r.id);
+  const handleSaveReorder = async () => {
+    const rolesPayload = localRoles.map((r) => ({
+      id: r.id,
+      hierarchyPriority: Math.max(r.hierarchyPriority ?? r.priority ?? 1, 1),
+      colorPriority: r.colorPriority ?? 0,
+    }));
     setIsRoleLoading(true);
     try {
       await dispatch(
-        reorderGroupRoles({ groupId: group.id, roleIds }),
+        batchUpdateGroupRoles({ groupId: group.id, roles: rolesPayload }),
       ).unwrap();
-      showToast.success('Role order updated successfully!');
+      showToast.success('Role priorities updated successfully!');
+      setHasPendingReorder(false);
     } catch (err: any) {
-      showToast.error(err || 'Failed to reorder roles.');
+      showToast.error(err || 'Failed to update roles.');
     } finally {
       setIsRoleLoading(false);
+    }
+  };
+
+  const handleResetReorder = () => {
+    setLocalRoles(activeGroup?.roles || []);
+    setHasPendingReorder(false);
+  };
+
+  const handleHierarchyDragStart = (e: React.DragEvent, roleId: string) => {
+    e.dataTransfer.setData('text/plain', roleId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleHierarchyDrop = (e: React.DragEvent, targetLevel: number) => {
+    e.preventDefault();
+    const roleId = e.dataTransfer.getData('text/plain');
+    if (!roleId) {
+      return;
+    }
+
+    const role = localRoles.find((r) => r.id === roleId);
+    if (!role) {
+      return;
+    }
+
+    // Check if requester can modify this role
+    if (
+      !isOwner &&
+      Math.max(role.hierarchyPriority ?? role.priority ?? 1, 1) <= reqPriority
+    ) {
+      showToast.error(
+        'You cannot modify a role with equal or higher hierarchy authority than your own.',
+      );
+      return;
+    }
+
+    // Check if requester is trying to set priority equal or higher than their own
+    if (!isOwner && targetLevel <= reqPriority) {
+      showToast.error(
+        "You cannot set a role hierarchy level equal to or higher authority than your own highest role's hierarchy priority.",
+      );
+      return;
+    }
+
+    // Update local role hierarchyPriority
+    const updatedRoles = localRoles.map((r) => {
+      if (r.id === roleId) {
+        return {
+          ...r,
+          hierarchyPriority: targetLevel,
+          priority: targetLevel,
+        };
+      }
+      return r;
+    });
+
+    setLocalRoles(updatedRoles);
+    setHasPendingReorder(true);
+  };
+
+  const handleColorDragStart = (
+    e: React.DragEvent,
+    index: number,
+    roleId: string,
+  ) => {
+    e.dataTransfer.setData('text/plain', JSON.stringify({ index, roleId }));
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleColorDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    const dataStr = e.dataTransfer.getData('text/plain');
+    if (!dataStr) {
+      return;
+    }
+
+    try {
+      const { index: sourceIndex, roleId } = JSON.parse(dataStr);
+      if (sourceIndex === targetIndex) {
+        return;
+      }
+
+      const role = localRoles.find((r) => r.id === roleId);
+      if (!role) {
+        return;
+      }
+
+      // Check if requester can modify this role
+      if (
+        !isOwner &&
+        Math.max(role.hierarchyPriority ?? role.priority ?? 1, 1) <= reqPriority
+      ) {
+        showToast.error(
+          'You cannot modify a role with equal or higher hierarchy authority than your own.',
+        );
+        return;
+      }
+
+      // Sort localRoles by color precedence to align index with current visual order
+      const sortedForColor = sortRolesByColorPriority(localRoles);
+
+      const targetRole = sortedForColor[targetIndex];
+      if (
+        !isOwner &&
+        targetRole &&
+        Math.max(targetRole.hierarchyPriority ?? targetRole.priority ?? 1, 1) <=
+          reqPriority
+      ) {
+        showToast.error(
+          "You cannot reorder roles at or above your own highest role's hierarchy priority.",
+        );
+        return;
+      }
+
+      // Perform reorder on sortedForColor
+      const [moved] = sortedForColor.splice(sourceIndex, 1);
+      sortedForColor.splice(targetIndex, 0, moved);
+
+      // Reassign colorPriority sequentially: 1, 2, 3...
+      const updatedRoles = localRoles.map((r) => {
+        const newIdx = sortedForColor.findIndex((sf) => sf.id === r.id);
+        return {
+          ...r,
+          colorPriority: newIdx + 1,
+        };
+      });
+
+      setLocalRoles(updatedRoles);
+      setHasPendingReorder(true);
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -439,7 +600,7 @@ export const GroupSettingsModal = ({
   return (
     <div className="fixed inset-0 z-1100 flex items-center justify-center p-4 bg-[rgba(4,6,12,0.65)] backdrop-blur-xs">
       <div
-        className="w-110 max-w-full bg-(--glass-bg) border-[1.5px] border-glass backdrop-blur-[20px] rounded-[18px] shadow-(--glass-shadow) overflow-hidden animate-slide-up"
+        className="w-full max-w-3xl h-[650px] flex flex-col bg-(--glass-bg) border-[1.5px] border-glass backdrop-blur-[20px] rounded-[18px] shadow-(--glass-shadow) overflow-hidden animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -502,7 +663,7 @@ export const GroupSettingsModal = ({
         {activeTab === 'overview' ? (
           <form
             onSubmit={handleSubmit}
-            className="px-5 py-5 flex flex-col gap-4"
+            className="px-5 py-5 flex flex-col gap-4 flex-1 overflow-y-auto"
           >
             {/* Avatar Upload */}
             <div className="flex items-center gap-4 p-3.5 rounded-xl border border-glass bg-[rgba(0,0,0,0.015)] dark:bg-[rgba(255,255,255,0.01)] shadow-sm mb-1 animate-fade-in">
@@ -641,187 +802,413 @@ export const GroupSettingsModal = ({
             )}
           </form>
         ) : (
-          <div className="px-5 py-5 flex flex-col gap-5 max-h-[60vh] overflow-y-auto">
-            {/* Create/Edit Form */}
-            <div className="p-3.5 rounded-xl border-[1.5px] border-glass bg-[rgba(255,255,255,0.02)] flex flex-col gap-3">
-              <span className="text-[12px] font-bold text-theme-primary">
-                {editingRoleId ? 'Edit Role' : 'Create Role'}
-              </span>
-              <div className="flex gap-3 items-end">
-                <div className="flex-1">
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-theme-muted mb-1.5">
-                    Role Name
-                  </label>
-                  <input
-                    type="text"
-                    value={roleName}
-                    onChange={(e) => setRoleName(e.target.value)}
-                    placeholder="e.g. Staff"
-                    maxLength={32}
-                    className="input-base w-full px-3 py-2 rounded-lg bg-theme-input border-[1.5px] border-glass text-theme-primary text-sm focus:outline-none focus:border-(--accent-primary)"
-                  />
-                </div>
-                <div className="w-20">
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-theme-muted mb-1.5">
-                    Color
-                  </label>
-                  <div className="relative flex items-center h-9.5 rounded-lg border-[1.5px] border-glass bg-theme-input overflow-hidden">
-                    <input
-                      type="color"
-                      value={roleColor}
-                      onChange={(e) => setRoleColor(e.target.value)}
-                      className="absolute inset-0 w-full h-full p-0 border-none cursor-pointer scale-125"
-                    />
+          <div className="px-5 py-4 flex flex-col gap-4 flex-1 overflow-y-auto">
+            {/* Sub-tabs header */}
+            <div className="flex gap-2 border-b border-glass pb-2 shrink-0 select-none">
+              <button
+                type="button"
+                onClick={() => setRolesSubTab('manager')}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer border-none ${
+                  rolesSubTab === 'manager'
+                    ? 'bg-(--accent-primary) text-white'
+                    : 'bg-transparent text-theme-secondary hover:bg-white/5'
+                }`}
+              >
+                Roles Manager
+              </button>
+              <button
+                type="button"
+                onClick={() => setRolesSubTab('hierarchy')}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer border-none ${
+                  rolesSubTab === 'hierarchy'
+                    ? 'bg-(--accent-primary) text-white'
+                    : 'bg-transparent text-theme-secondary hover:bg-white/5'
+                }`}
+              >
+                Hierarchy Levels
+              </button>
+              <button
+                type="button"
+                onClick={() => setRolesSubTab('color')}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer border-none ${
+                  rolesSubTab === 'color'
+                    ? 'bg-(--accent-primary) text-white'
+                    : 'bg-transparent text-theme-secondary hover:bg-white/5'
+                }`}
+              >
+                Color Precedence
+              </button>
+            </div>
+
+            {rolesSubTab === 'manager' && (
+              <div className="flex flex-col gap-4">
+                {/* Create/Edit Form */}
+                <div className="p-3.5 rounded-xl border-[1.5px] border-glass bg-[rgba(255,255,255,0.02)] flex flex-col gap-3">
+                  <span className="text-[12px] font-bold text-theme-primary">
+                    {editingRoleId ? 'Edit Role' : 'Create Role'}
+                  </span>
+                  <div className="flex gap-3 items-end">
+                    <div className="flex-1">
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-theme-muted mb-1.5">
+                        Role Name
+                      </label>
+                      <input
+                        type="text"
+                        value={roleName}
+                        onChange={(e) => setRoleName(e.target.value)}
+                        placeholder="e.g. Staff"
+                        maxLength={32}
+                        className="input-base w-full px-3 py-2 rounded-lg bg-theme-input border-[1.5px] border-glass text-theme-primary text-sm focus:outline-none focus:border-(--accent-primary)"
+                      />
+                    </div>
+                    <div className="w-20">
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-theme-muted mb-1.5">
+                        Color
+                      </label>
+                      <div className="relative flex items-center h-9.5 rounded-lg border-[1.5px] border-glass bg-theme-input overflow-hidden">
+                        <input
+                          type="color"
+                          value={roleColor}
+                          onChange={(e) => setRoleColor(e.target.value)}
+                          className="absolute inset-0 w-full h-full p-0 border-none cursor-pointer scale-125"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-theme-muted mb-1.5">
+                      Permissions
+                    </label>
+                    <div className="grid grid-cols-2 gap-2 max-h-35 overflow-y-auto pr-1 border border-glass p-2.5 rounded-lg bg-theme-input">
+                      {visiblePermissions.map((perm) => {
+                        const isChecked = selectedPermissions.includes(
+                          perm.value,
+                        );
+                        return (
+                          <label
+                            key={perm.value}
+                            className="flex items-center gap-2 text-xs text-theme-secondary cursor-pointer hover:text-theme-primary select-none"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedPermissions([
+                                    ...selectedPermissions,
+                                    perm.value,
+                                  ]);
+                                } else {
+                                  setSelectedPermissions(
+                                    selectedPermissions.filter(
+                                      (p) => p !== perm.value,
+                                    ),
+                                  );
+                                }
+                              }}
+                              className="w-3.5 h-3.5 accent-(--accent-primary) cursor-pointer"
+                            />
+                            {perm.label}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2.5 mt-2">
+                    {editingRoleId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingRoleId(null);
+                          setRoleName('');
+                          setRoleColor('#7289da');
+                          setSelectedPermissions([]);
+                          setHierarchyPriority(0);
+                          setColorPriority(0);
+                        }}
+                        className="px-3 py-2 rounded-lg border-[1.5px] border-glass bg-transparent text-theme-secondary text-xs font-semibold cursor-pointer active-press"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={
+                        editingRoleId ? handleUpdateRole : handleCreateRole
+                      }
+                      disabled={isRoleLoading || !roleName.trim()}
+                      className="btn-send px-4 py-2 rounded-lg border-none text-xs font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed active-press"
+                    >
+                      {isRoleLoading
+                        ? 'Saving...'
+                        : editingRoleId
+                          ? 'Save Role'
+                          : 'Create Role'}
+                    </button>
                   </div>
                 </div>
+
+                {/* List of Roles */}
+                <div>
+                  <span className="block text-[10px] font-bold uppercase tracking-wider text-theme-muted mb-2.5">
+                    Roles List
+                  </span>
+                  {localRoles.length === 0 ? (
+                    <p className="m-0 text-xs text-theme-muted italic">
+                      No roles exist. Create one above to get started.
+                    </p>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      {localRoles.map((role) => (
+                        <div
+                          key={role.id}
+                          className="flex items-center justify-between p-2.5 rounded-[10px] border border-glass bg-[rgba(255,255,255,0.01)] hover:bg-[rgba(255,255,255,0.02)] transition-all"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div
+                              className="w-3.5 h-3.5 rounded-full border border-black/10 shrink-0"
+                              style={{ backgroundColor: role.color }}
+                            />
+                            <span
+                              style={{ color: role.color }}
+                              className="font-semibold text-sm"
+                            >
+                              {role.name}
+                            </span>
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-black/15 dark:bg-white/15 text-theme-muted font-bold ml-2 shrink-0">
+                              H:{' '}
+                              {Math.max(
+                                role.hierarchyPriority ?? role.priority ?? 1,
+                                1,
+                              )}{' '}
+                              | C: {role.colorPriority ?? 0}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {(isOwner ||
+                              reqPriority <
+                                Math.max(
+                                  role.hierarchyPriority ?? role.priority ?? 1,
+                                  1,
+                                )) && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleStartEdit(role)}
+                                  className="px-2.5 py-1.5 rounded-md text-[11px] font-bold cursor-pointer border border-glass bg-[rgba(255,255,255,0.03)] text-theme-secondary hover:bg-[rgba(255,255,255,0.06)] active-press"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteRole(role.id)}
+                                  className="px-2.5 py-1.5 rounded-md text-[11px] font-bold cursor-pointer border border-(--danger-border) bg-(--danger-bg) text-(--danger) hover:bg-(--danger) hover:text-white transition-all active-press"
+                                >
+                                  Delete
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-theme-muted mb-1.5">
-                  Permissions
-                </label>
-                <div className="grid grid-cols-2 gap-2 max-h-35 overflow-y-auto pr-1 border border-glass p-2.5 rounded-lg bg-theme-input">
-                  {visiblePermissions.map((perm) => {
-                    const isChecked = selectedPermissions.includes(perm.value);
-                    return (
-                      <label
-                        key={perm.value}
-                        className="flex items-center gap-2 text-xs text-theme-secondary cursor-pointer hover:text-theme-primary select-none"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedPermissions([
-                                ...selectedPermissions,
-                                perm.value,
-                              ]);
-                            } else {
-                              setSelectedPermissions(
-                                selectedPermissions.filter(
-                                  (p) => p !== perm.value,
-                                ),
+            )}
+
+            {rolesSubTab === 'hierarchy' && (
+              <div className="flex flex-col gap-3 flex-1">
+                <div className="p-2 rounded-lg bg-(--accent-ring)/20 border border-glass text-[11px] text-theme-secondary shrink-0">
+                  💡 Drag and drop role cards between Levels to change their
+                  hierarchy precedence. Equal levels cannot modify each other or
+                  higher levels.
+                </div>
+                <div className="flex gap-4 overflow-x-auto pb-4 pt-1 flex-1 min-h-[300px] scrollbar-thin">
+                  {(() => {
+                    const maxLvl = Math.max(
+                      ...localRoles.map((r) =>
+                        Math.max(r.hierarchyPriority ?? r.priority ?? 1, 1),
+                      ),
+                      1,
+                    );
+                    const lvls = [];
+                    for (let l = 1; l <= maxLvl + 1; l++) {
+                      lvls.push(l);
+                    }
+                    return lvls.map((level) => {
+                      const rolesInLevel = localRoles.filter(
+                        (r) =>
+                          Math.max(
+                            r.hierarchyPriority ?? r.priority ?? 1,
+                            1,
+                          ) === level,
+                      );
+                      const isNewLevel = level === maxLvl + 1;
+
+                      return (
+                        <div
+                          key={level}
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={(e) => handleHierarchyDrop(e, level)}
+                          className={`flex flex-col rounded-xl p-3 min-w-[200px] w-[200px] shrink-0 border transition-all ${
+                            isNewLevel
+                              ? 'border-dashed border-glass/40 bg-[rgba(255,255,255,0.01)] hover:bg-[rgba(255,255,255,0.03)]'
+                              : 'border-glass bg-[rgba(255,255,255,0.02)]'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between pb-2 border-b border-glass mb-3 shrink-0">
+                            <span className="text-xs font-bold text-theme-primary">
+                              {isNewLevel
+                                ? `Level ${level} (New)`
+                                : `Level ${level}`}
+                            </span>
+                            <span className="text-[10px] font-semibold text-theme-muted bg-white/10 px-1.5 py-0.5 rounded">
+                              {rolesInLevel.length}
+                            </span>
+                          </div>
+
+                          <div className="flex flex-col gap-2 flex-1 overflow-y-auto min-h-[220px]">
+                            {rolesInLevel.map((role) => {
+                              const isLocked =
+                                !isOwner &&
+                                Math.max(
+                                  role.hierarchyPriority ?? role.priority ?? 1,
+                                  1,
+                                ) <= reqPriority;
+                              return (
+                                <div
+                                  key={role.id}
+                                  draggable={!isLocked}
+                                  onDragStart={(e) =>
+                                    handleHierarchyDragStart(e, role.id)
+                                  }
+                                  className={`p-2.5 rounded-lg border text-xs font-semibold flex flex-col gap-1 transition-all select-none ${
+                                    isLocked
+                                      ? 'border-glass bg-white/5 opacity-60 cursor-not-allowed'
+                                      : 'border-glass bg-theme-input/40 cursor-grab hover:bg-theme-input/80 hover:border-(--accent-primary) active:cursor-grabbing'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                      <div
+                                        className="w-2.5 h-2.5 rounded-full shrink-0"
+                                        style={{ backgroundColor: role.color }}
+                                      />
+                                      <span
+                                        className="truncate font-semibold"
+                                        style={{ color: role.color }}
+                                      >
+                                        {role.name}
+                                      </span>
+                                    </div>
+                                    {isLocked && (
+                                      <span
+                                        className="text-[10px] text-theme-muted"
+                                        title="Locked (higher/equal priority)"
+                                      >
+                                        🔒
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-[10px] text-theme-muted flex justify-between">
+                                    <span>
+                                      Col Priority: {role.colorPriority ?? 0}
+                                    </span>
+                                  </div>
+                                </div>
                               );
-                            }
-                          }}
-                          className="w-3.5 h-3.5 accent-(--accent-primary) cursor-pointer"
-                        />
-                        {perm.label}
-                      </label>
+                            })}
+                            {rolesInLevel.length === 0 && (
+                              <div className="flex-1 flex items-center justify-center border border-dashed border-glass/25 rounded-lg p-4 text-center min-h-[100px]">
+                                <span className="text-[10px] text-theme-muted italic">
+                                  Drag roles here
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
+            )}
+
+            {rolesSubTab === 'color' && (
+              <div className="flex flex-col gap-3 flex-1">
+                <div className="p-2 rounded-lg bg-(--accent-ring)/20 border border-glass text-[11px] text-theme-secondary shrink-0">
+                  💡 Drag and drop roles to reorder their color precedence.
+                  Roles higher up in the list have higher precedence.
+                </div>
+                <div className="flex flex-col gap-2 flex-1 overflow-y-auto max-h-[350px] pr-1">
+                  {sortRolesByColorPriority(localRoles).map((role, idx) => {
+                    const isLocked =
+                      !isOwner &&
+                      Math.max(
+                        role.hierarchyPriority ?? role.priority ?? 1,
+                        1,
+                      ) <= reqPriority;
+                    return (
+                      <div
+                        key={role.id}
+                        draggable={!isLocked}
+                        onDragStart={(e) =>
+                          handleColorDragStart(e, idx, role.id)
+                        }
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => handleColorDrop(e, idx)}
+                        className={`flex items-center justify-between p-3 rounded-[10px] border transition-all select-none ${
+                          isLocked
+                            ? 'border-glass bg-white/5 opacity-60 cursor-not-allowed'
+                            : 'border-glass bg-theme-input/40 cursor-grab hover:bg-theme-input/80 hover:border-(--accent-primary) active:cursor-grabbing'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs font-bold text-theme-muted w-6">
+                            #{idx + 1}
+                          </span>
+                          <div
+                            className="w-3 h-3 rounded-full border border-black/10 shrink-0"
+                            style={{ backgroundColor: role.color }}
+                          />
+                          <span
+                            style={{ color: role.color }}
+                            className="font-semibold text-sm"
+                          >
+                            {role.name}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-[10px] text-theme-muted">
+                            Hierarchy Level:{' '}
+                            {Math.max(
+                              role.hierarchyPriority ?? role.priority ?? 1,
+                              1,
+                            )}
+                          </span>
+                          {isLocked ? (
+                            <span
+                              className="text-[11px] text-theme-muted"
+                              title="Locked (higher/equal priority)"
+                            >
+                              🔒 Locked
+                            </span>
+                          ) : (
+                            <span
+                              className="text-[11px] text-theme-muted cursor-grab font-bold"
+                              title="Drag to reorder"
+                            >
+                              ☰
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
               </div>
-              <div className="flex justify-end gap-2.5 mt-2">
-                {editingRoleId && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingRoleId(null);
-                      setRoleName('');
-                      setRoleColor('#7289da');
-                      setSelectedPermissions([]);
-                    }}
-                    className="px-3 py-2 rounded-lg border-[1.5px] border-glass bg-transparent text-theme-secondary text-xs font-semibold cursor-pointer active-press"
-                  >
-                    Cancel
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={editingRoleId ? handleUpdateRole : handleCreateRole}
-                  disabled={isRoleLoading || !roleName.trim()}
-                  className="btn-send px-4 py-2 rounded-lg border-none text-xs font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed active-press"
-                >
-                  {isRoleLoading
-                    ? 'Saving...'
-                    : editingRoleId
-                      ? 'Save Role'
-                      : 'Create Role'}
-                </button>
-              </div>
-            </div>
-
-            {/* List of Roles */}
-            <div>
-              <span className="block text-[10px] font-bold uppercase tracking-wider text-theme-muted mb-2.5">
-                Roles
-              </span>
-              {roles.length === 0 ? (
-                <p className="m-0 text-xs text-theme-muted italic">
-                  No roles exist. Create one above to get started.
-                </p>
-              ) : (
-                <div className="flex flex-col gap-2">
-                  {roles.map((role, idx) => (
-                    <div
-                      key={role.id}
-                      className="flex items-center justify-between p-2.5 rounded-[10px] border border-glass bg-[rgba(255,255,255,0.01)] hover:bg-[rgba(255,255,255,0.02)] transition-all"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="w-3.5 h-3.5 rounded-full border border-black/10 shrink-0"
-                          style={{ backgroundColor: role.color }}
-                        />
-                        <span
-                          style={{ color: role.color }}
-                          className="font-semibold text-sm"
-                        >
-                          {role.name}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {canManageRoles && (
-                          <div className="flex gap-1 mr-1">
-                            <button
-                              type="button"
-                              disabled={idx === 0 || isRoleLoading}
-                              onClick={() => handleReorderRole(role.id, 'up')}
-                              className="p-1.5 rounded-md cursor-pointer border border-glass bg-[rgba(255,255,255,0.03)] text-theme-secondary hover:bg-[rgba(255,255,255,0.06)] disabled:opacity-30 disabled:cursor-not-allowed active-press flex items-center justify-center"
-                              title="Move Role Up (Higher Priority)"
-                            >
-                              <IconArrowUp size={14} />
-                            </button>
-                            <button
-                              type="button"
-                              disabled={
-                                idx === roles.length - 1 || isRoleLoading
-                              }
-                              onClick={() => handleReorderRole(role.id, 'down')}
-                              className="p-1.5 rounded-md cursor-pointer border border-glass bg-[rgba(255,255,255,0.03)] text-theme-secondary hover:bg-[rgba(255,255,255,0.06)] disabled:opacity-30 disabled:cursor-not-allowed active-press flex items-center justify-center"
-                              title="Move Role Down (Lower Priority)"
-                            >
-                              <IconArrowDown size={14} />
-                            </button>
-                          </div>
-                        )}
-                        {(isOwner ||
-                          getPermissionsHighestManageRank(
-                            role.permissions || [],
-                          ) > requesterRank) && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => handleStartEdit(role)}
-                              className="px-2.5 py-1.5 rounded-md text-[11px] font-bold cursor-pointer border border-glass bg-[rgba(255,255,255,0.03)] text-theme-secondary hover:bg-[rgba(255,255,255,0.06)] active-press"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteRole(role.id)}
-                              className="px-2.5 py-1.5 rounded-md text-[11px] font-bold cursor-pointer border border-(--danger-border) bg-(--danger-bg) text-(--danger) hover:bg-(--danger) hover:text-white transition-all active-press"
-                            >
-                              Delete
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            )}
           </div>
         )}
 
@@ -847,13 +1234,34 @@ export const GroupSettingsModal = ({
           </div>
         ) : (
           <div className="px-5 pb-5 flex justify-end gap-2.5">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-5 py-2.5 rounded-[10px] border-[1.5px] border-glass bg-transparent text-theme-secondary text-sm font-semibold cursor-pointer active-press"
-            >
-              Close
-            </button>
+            {hasPendingReorder ? (
+              <>
+                <button
+                  type="button"
+                  onClick={handleResetReorder}
+                  disabled={isRoleLoading}
+                  className="px-5 py-2.5 rounded-[10px] border-[1.5px] border-glass bg-transparent text-theme-secondary text-sm font-semibold cursor-pointer active-press"
+                >
+                  Reset
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveReorder}
+                  disabled={isRoleLoading}
+                  className="btn-send px-6 py-2.5 rounded-[10px] border-none text-sm font-semibold text-white active-press"
+                >
+                  {isRoleLoading ? 'Saving…' : 'Save Changes'}
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-5 py-2.5 rounded-[10px] border-[1.5px] border-glass bg-transparent text-theme-secondary text-sm font-semibold cursor-pointer active-press"
+              >
+                Close
+              </button>
+            )}
           </div>
         )}
 

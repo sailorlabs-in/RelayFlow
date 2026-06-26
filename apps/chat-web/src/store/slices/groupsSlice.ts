@@ -9,16 +9,32 @@ export interface GroupRole {
   color: string;
   permissions?: string[];
   priority?: number;
+  colorPriority?: number;
+  hierarchyPriority?: number;
   createdAt: string;
 }
 
 const sortRoles = (roles: GroupRole[]) => {
   return [...roles].sort((a, b) => {
-    const pA = a.priority ?? 0;
-    const pB = b.priority ?? 0;
-    if (pB !== pA) {
-      return pB - pA;
+    const hpA = a.hierarchyPriority ?? a.priority ?? 1000000;
+    const hpB = b.hierarchyPriority ?? b.priority ?? 1000000;
+    if (hpA !== hpB) {
+      return hpA - hpB;
     }
+
+    // Sort by colorPriority ASC, but 0/unset goes to the end
+    const cpA = a.colorPriority ?? 0;
+    const cpB = b.colorPriority ?? 0;
+    if (cpA !== cpB) {
+      if (cpA <= 0) {
+        return 1;
+      }
+      if (cpB <= 0) {
+        return -1;
+      }
+      return cpA - cpB;
+    }
+
     return a.createdAt.localeCompare(b.createdAt);
   });
 };
@@ -577,6 +593,8 @@ export const createGroupRole = createAsyncThunk(
       name: string;
       color?: string;
       permissions?: string[];
+      colorPriority?: number;
+      hierarchyPriority?: number;
     },
     { rejectWithValue },
   ) => {
@@ -588,6 +606,8 @@ export const createGroupRole = createAsyncThunk(
           name: payload.name,
           color: payload.color,
           permissions: payload.permissions,
+          colorPriority: payload.colorPriority,
+          hierarchyPriority: payload.hierarchyPriority,
         },
         true,
       );
@@ -612,6 +632,8 @@ export const updateGroupRole = createAsyncThunk(
       name: string;
       color?: string;
       permissions?: string[];
+      colorPriority?: number;
+      hierarchyPriority?: number;
     },
     { rejectWithValue },
   ) => {
@@ -623,6 +645,8 @@ export const updateGroupRole = createAsyncThunk(
           name: payload.name,
           color: payload.color,
           permissions: payload.permissions,
+          colorPriority: payload.colorPriority,
+          hierarchyPriority: payload.hierarchyPriority,
         },
         true,
       );
@@ -682,6 +706,38 @@ export const reorderGroupRoles = createAsyncThunk(
         error.response?.data?.error?.message ||
           error.response?.data?.message ||
           'Failed to reorder roles.',
+      );
+    }
+  },
+);
+
+// ── Batch update group roles priorities ──────────────────────────────────────
+export const batchUpdateGroupRoles = createAsyncThunk(
+  'groups/batchUpdateGroupRoles',
+  async (
+    payload: {
+      groupId: string;
+      roles: {
+        id: string;
+        hierarchyPriority?: number;
+        colorPriority?: number;
+      }[];
+    },
+    { rejectWithValue },
+  ) => {
+    try {
+      const response = await ApiRequest(
+        `/groups/${payload.groupId}/roles/batch`,
+        'post',
+        { roles: payload.roles },
+        true,
+      );
+      return { groupId: payload.groupId, roles: response.data as GroupRole[] };
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.error?.message ||
+          error.response?.data?.message ||
+          'Failed to batch update roles.',
       );
     }
   },
@@ -1394,6 +1450,15 @@ const groupsSlice = createSlice({
 
     // Reorder group roles
     builder.addCase(reorderGroupRoles.fulfilled, (state, action) => {
+      const { groupId, roles } = action.payload;
+      const group = state.groups.find((g) => g.id === groupId);
+      if (group) {
+        group.roles = sortRoles(roles);
+      }
+    });
+
+    // Batch update group roles
+    builder.addCase(batchUpdateGroupRoles.fulfilled, (state, action) => {
       const { groupId, roles } = action.payload;
       const group = state.groups.find((g) => g.id === groupId);
       if (group) {

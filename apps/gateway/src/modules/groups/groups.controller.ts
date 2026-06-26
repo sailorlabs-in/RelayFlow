@@ -586,6 +586,8 @@ export class GroupsController {
     @Body('name') name: string,
     @Body('color') color?: string,
     @Body('permissions') permissions?: string[],
+    @Body('colorPriority') colorPriority?: number,
+    @Body('hierarchyPriority') hierarchyPriority?: number,
   ) {
     const role = await this.groupsService.createRole(
       groupId,
@@ -593,6 +595,8 @@ export class GroupsController {
       name,
       color,
       permissions,
+      colorPriority,
+      hierarchyPriority,
     );
 
     // Broadcast update to all group members
@@ -628,6 +632,8 @@ export class GroupsController {
     @Body('name') name: string,
     @Body('color') color?: string,
     @Body('permissions') permissions?: string[],
+    @Body('colorPriority') colorPriority?: number,
+    @Body('hierarchyPriority') hierarchyPriority?: number,
   ) {
     const role = await this.groupsService.updateRole(
       groupId,
@@ -636,6 +642,8 @@ export class GroupsController {
       name,
       color,
       permissions,
+      colorPriority,
+      hierarchyPriority,
     );
 
     // Broadcast update to all group members
@@ -698,6 +706,56 @@ export class GroupsController {
       groupId,
       currentUser.userId,
       roleIds,
+    );
+
+    // Broadcast update to all group members
+    const members = await this.groupsService.getGroupMembers(groupId);
+    for (const member of members) {
+      this.realtimeGateway.server
+        .to(`user:${member.userId}`)
+        .emit('group.roles.reordered', { groupId, roles });
+    }
+
+    return roles;
+  }
+
+  @Post(':id/roles/batch')
+  @Permissions(GroupPermission.MANAGE_ROLES)
+  @ApiOperation({ summary: 'Batch update custom roles priorities' })
+  @ApiParam({ name: 'id', description: 'Group UUID' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['roles'],
+      properties: {
+        roles: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              hierarchyPriority: { type: 'number' },
+              colorPriority: { type: 'number' },
+            },
+          },
+        },
+      },
+    },
+  })
+  async batchUpdateRoles(
+    @Param('id') groupId: string,
+    @CurrentUser() currentUser: { userId: string },
+    @Body('roles')
+    rolesData: {
+      id: string;
+      hierarchyPriority?: number;
+      colorPriority?: number;
+    }[],
+  ) {
+    const roles = await this.groupsService.batchUpdateRoles(
+      groupId,
+      currentUser.userId,
+      rolesData,
     );
 
     // Broadcast update to all group members

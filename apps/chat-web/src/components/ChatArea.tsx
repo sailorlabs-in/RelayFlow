@@ -511,9 +511,22 @@ export const ChatArea = ({
     const isOwner = activeGroup?.ownerId === userId;
     const memberRoleIds = member?.roleIds || [];
     const groupRoles = activeGroup?.roles || [];
-    const matchingRoles = groupRoles.filter((r) =>
-      memberRoleIds.includes(r.id),
-    );
+    const matchingRoles = [...groupRoles]
+      .filter((r) => memberRoleIds.includes(r.id))
+      .sort((a, b) => {
+        const cpA = a.colorPriority ?? 0;
+        const cpB = b.colorPriority ?? 0;
+        if (cpA !== cpB) {
+          if (cpA <= 0) {
+            return 1;
+          }
+          if (cpB <= 0) {
+            return -1;
+          }
+          return cpA - cpB;
+        }
+        return 0;
+      });
     const color = isOwner ? '#eab308' : matchingRoles[0]?.color || 'inherit';
 
     return {
@@ -659,9 +672,22 @@ export const ChatArea = ({
           );
           const memberRoleIds = member?.roleIds || [];
           const groupRoles = activeGroup?.roles || [];
-          const matchingRoles = groupRoles.filter((r) =>
-            memberRoleIds.includes(r.id),
-          );
+          const matchingRoles = [...groupRoles]
+            .filter((r) => memberRoleIds.includes(r.id))
+            .sort((a, b) => {
+              const cpA = a.colorPriority ?? 0;
+              const cpB = b.colorPriority ?? 0;
+              if (cpA !== cpB) {
+                if (cpA <= 0) {
+                  return 1;
+                }
+                if (cpB <= 0) {
+                  return -1;
+                }
+                return cpA - cpB;
+              }
+              return 0;
+            });
           const isOwner =
             member?.role === 'owner' ||
             activeGroup?.ownerId === resolvedUser.id;
@@ -2028,7 +2054,7 @@ export const ChatArea = ({
                                             : 'bg-theme-input/40 border-glass/30 text-theme-secondary hover:bg-theme-input hover:border-glass'
                                         }`}
                                       >
-                                        <span className="leading-none text-[13px]">
+                                        <span className="leading-none text-[16px]">
                                           {react.emoji}
                                         </span>
                                         <span>{react.userIds.length}</span>
@@ -2407,7 +2433,7 @@ export const ChatArea = ({
                                         : 'bg-theme-input/40 border-glass/30 text-theme-secondary hover:bg-theme-input hover:border-glass'
                                     }`}
                                   >
-                                    <span className="leading-none text-[13px]">
+                                    <span className="leading-none text-[16px]">
                                       {react.emoji}
                                     </span>
                                     <span>{react.userIds.length}</span>
@@ -2591,7 +2617,7 @@ export const ChatArea = ({
                   {replyingToMessage && (
                     <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-theme-input border border-glass mb-2.5 animate-fade-in">
                       <div className="flex items-center gap-2 text-[12.5px] min-w-0">
-                        <span className="text-[var(--accent-primary)] font-semibold flex items-center gap-1">
+                        <span className="text-(--accent-primary) font-semibold flex items-center gap-1">
                           <svg
                             viewBox="0 0 24 24"
                             fill="none"

@@ -118,9 +118,22 @@ export const MemberSidebar = ({
 
     const memberRoleIds = m.roleIds || [];
     const groupRoles = activeGroup.roles || [];
-    const matchingRoles = groupRoles.filter((r) =>
-      memberRoleIds.includes(r.id),
-    );
+    const matchingRoles = [...groupRoles]
+      .filter((r) => memberRoleIds.includes(r.id))
+      .sort((a, b) => {
+        const cpA = a.colorPriority ?? 0;
+        const cpB = b.colorPriority ?? 0;
+        if (cpA !== cpB) {
+          if (cpA <= 0) {
+            return 1;
+          }
+          if (cpB <= 0) {
+            return -1;
+          }
+          return cpA - cpB;
+        }
+        return 0;
+      });
     // Owner color always wins over any role color
     const color = isOwner ? '#eab308' : matchingRoles[0]?.color || 'inherit';
 

@@ -132,6 +132,45 @@ export class GroupsService {
     return this.getPermissionsHighestManageRank(Array.from(perms));
   }
 
+  async getMemberHighestRolePriority(
+    groupId: string,
+    member: GroupMember,
+  ): Promise<number> {
+    if (member.role === GroupMemberRole.OWNER) {
+      return 0; // Owner gets highest authority
+    }
+    if (member.role === GroupMemberRole.ADMIN) {
+      return 1; // Admin gets next highest authority
+    }
+    if (!member.roleIds || member.roleIds.length === 0) {
+      return 1000000; // Unassigned custom roles have lowest authority
+    }
+    const roles = await this.groupRoleRepo.find({
+      where: { id: In(member.roleIds), groupId },
+    });
+    if (roles.length === 0) {
+      return 1000000;
+    }
+    // Return the minimum priority value (which represents the highest authority role)
+    const priorities = roles.map((r) =>
+      Math.max(r.hierarchyPriority ?? r.priority ?? 1, 1),
+    );
+    return Math.min(...priorities);
+  }
+
+  async getMemberHighestRolePriorityByUserId(
+    groupId: string,
+    userId: string,
+  ): Promise<number> {
+    const member = await this.groupMemberRepo.findOne({
+      where: { groupId, userId },
+    });
+    if (!member) {
+      return -1;
+    }
+    return this.getMemberHighestRolePriority(groupId, member);
+  }
+
   // Helper to load profiles for group members
   private async attachProfilesToMembers(
     members: GroupMember[],
@@ -901,6 +940,8 @@ export class GroupsService {
     name: string,
     color?: string,
     permissions?: string[],
+    colorPriority?: number,
+    hierarchyPriority?: number,
   ): Promise<GroupRole> {
     const member = await this.groupMemberRepo.findOne({
       where: { groupId, userId: requesterId },
@@ -925,25 +966,45 @@ export class GroupsService {
     }
 
     // Permission hierarchy checks
-    const requesterRank = await this.getMemberHighestManageRank(
-      groupId,
-      requesterId,
-      member,
-    );
-    if (requesterRank > 0) {
-      // Not owner
-      if (requesterRank >= 4) {
+    if (member.role !== GroupMemberRole.OWNER) {
+      const reqPriority = await this.getMemberHighestRolePriority(
+        groupId,
+        member,
+      );
+      if (hierarchyPriority !== undefined && hierarchyPriority <= reqPriority) {
         throw new ForbiddenException(
-          'You do not have permission to manage roles',
+          'You cannot create a role with equal or higher authority than your own highest role',
         );
       }
-      const newRoleRank = this.getPermissionsHighestManageRank(
-        permissions || [],
-      );
-      if (newRoleRank <= requesterRank) {
-        throw new ForbiddenException(
-          'You cannot create a role with equal or higher permissions than your own',
-        );
+      if (permissions !== undefined) {
+        for (const perm of permissions) {
+          const hasPerm = await this.hasPermission(groupId, requesterId, perm);
+          if (!hasPerm) {
+            throw new ForbiddenException(
+              `You cannot assign the permission "${perm}" because you do not have it`,
+            );
+          }
+        }
+      }
+    }
+
+    let targetHierarchyPriority = hierarchyPriority;
+    if (
+      targetHierarchyPriority === undefined ||
+      targetHierarchyPriority === 0
+    ) {
+      const existingRoles = await this.groupRoleRepo.find({
+        where: { groupId },
+      });
+      if (existingRoles.length > 0) {
+        targetHierarchyPriority =
+          Math.max(
+            ...existingRoles.map((r) =>
+              Math.max(r.hierarchyPriority ?? r.priority ?? 1, 1),
+            ),
+          ) + 1;
+      } else {
+        targetHierarchyPriority = 1; // Custom roles start at 1
       }
     }
 
@@ -952,7 +1013,9 @@ export class GroupsService {
       name: name.trim(),
       color: color || '#7289da',
       permissions: permissions || [],
-      priority: permissions ? permissions.length : 0,
+      priority: targetHierarchyPriority,
+      colorPriority: colorPriority || 0,
+      hierarchyPriority: targetHierarchyPriority,
     });
     return this.groupRoleRepo.save(role);
   }
@@ -964,6 +1027,8 @@ export class GroupsService {
     name: string,
     color?: string,
     permissions?: string[],
+    colorPriority?: number,
+    hierarchyPriority?: number,
   ): Promise<GroupRole> {
     const member = await this.groupMemberRepo.findOne({
       where: { groupId, userId: requesterId },
@@ -995,35 +1060,32 @@ export class GroupsService {
     }
 
     // Permission hierarchy checks
-    const requesterRank = await this.getMemberHighestManageRank(
-      groupId,
-      requesterId,
-      member,
-    );
-    if (requesterRank > 0) {
-      // Not owner
-      if (requesterRank >= 4) {
+    if (member.role !== GroupMemberRole.OWNER) {
+      const reqPriority = await this.getMemberHighestRolePriority(
+        groupId,
+        member,
+      );
+      if (role.hierarchyPriority <= reqPriority) {
         throw new ForbiddenException(
-          'You do not have permission to manage roles',
+          'You cannot edit a role with equal or higher authority than your own highest role',
+        );
+      }
+      if (hierarchyPriority !== undefined && hierarchyPriority <= reqPriority) {
+        throw new ForbiddenException(
+          'You cannot set a role priority equal to or higher authority than your own highest role',
         );
       }
       if (member.roleIds && member.roleIds.includes(roleId)) {
         throw new ForbiddenException('You cannot edit your own assigned roles');
       }
-      const currentRoleRank = this.getPermissionsHighestManageRank(
-        role.permissions || [],
-      );
-      if (currentRoleRank <= requesterRank) {
-        throw new ForbiddenException(
-          'You cannot edit a role with equal or higher permissions than your own',
-        );
-      }
       if (permissions !== undefined) {
-        const newRoleRank = this.getPermissionsHighestManageRank(permissions);
-        if (newRoleRank <= requesterRank) {
-          throw new ForbiddenException(
-            'You cannot assign equal or higher permissions than your own to a role',
-          );
+        for (const perm of permissions) {
+          const hasPerm = await this.hasPermission(groupId, requesterId, perm);
+          if (!hasPerm) {
+            throw new ForbiddenException(
+              `You cannot assign the permission "${perm}" because you do not have it`,
+            );
+          }
         }
       }
     }
@@ -1034,6 +1096,13 @@ export class GroupsService {
     }
     if (permissions !== undefined) {
       role.permissions = permissions;
+    }
+    if (colorPriority !== undefined) {
+      role.colorPriority = colorPriority;
+    }
+    if (hierarchyPriority !== undefined) {
+      role.hierarchyPriority = hierarchyPriority;
+      role.priority = hierarchyPriority;
     }
     return this.groupRoleRepo.save(role);
   }
@@ -1073,29 +1142,19 @@ export class GroupsService {
     }
 
     // Permission hierarchy checks
-    const requesterRank = await this.getMemberHighestManageRank(
-      groupId,
-      requesterId,
-      member,
-    );
-    if (requesterRank > 0) {
-      // Not owner
-      if (requesterRank >= 4) {
+    if (member.role !== GroupMemberRole.OWNER) {
+      const reqPriority = await this.getMemberHighestRolePriority(
+        groupId,
+        member,
+      );
+      if (role.hierarchyPriority <= reqPriority) {
         throw new ForbiddenException(
-          'You do not have permission to manage roles',
+          'You cannot delete a role with equal or higher authority than your own highest role',
         );
       }
       if (member.roleIds && member.roleIds.includes(roleId)) {
         throw new ForbiddenException(
           'You cannot delete your own assigned roles',
-        );
-      }
-      const roleRank = this.getPermissionsHighestManageRank(
-        role.permissions || [],
-      );
-      if (roleRank <= requesterRank) {
-        throw new ForbiddenException(
-          'You cannot delete a role with equal or higher permissions than your own',
         );
       }
     }
@@ -1145,21 +1204,128 @@ export class GroupsService {
       );
     }
 
-    const roles = await this.groupRoleRepo.find({
-      where: { groupId },
-    });
-
+    const roles = await this.getGroupRoles(groupId);
     const roleMap = new Map(roles.map((r) => [r.id, r]));
     const invalidId = roleIds.some((id) => !roleMap.has(id));
     if (invalidId) {
       throw new BadRequestException('Invalid role IDs provided');
     }
 
+    if (member.role !== GroupMemberRole.OWNER) {
+      const reqPriority = await this.getMemberHighestRolePriority(
+        groupId,
+        member,
+      );
+      const oldRoleIds = roles.map((r) => r.id);
+      for (const role of roles) {
+        if (role.hierarchyPriority <= reqPriority) {
+          const oldIndex = oldRoleIds.indexOf(role.id);
+          const newIndex = roleIds.indexOf(role.id);
+          if (newIndex !== oldIndex) {
+            throw new ForbiddenException(
+              `You cannot reorder roles at or above your own highest role's priority`,
+            );
+          }
+        }
+      }
+    }
+
     for (let i = 0; i < roleIds.length; i++) {
       const roleId = roleIds[i];
       const role = roleMap.get(roleId);
       if (role) {
-        role.priority = roleIds.length - i;
+        role.hierarchyPriority = i + 1;
+        role.priority = i + 1;
+        await this.groupRoleRepo.save(role);
+      }
+    }
+
+    return this.getGroupRoles(groupId);
+  }
+
+  async batchUpdateRoles(
+    groupId: string,
+    requesterId: string,
+    rolesData: {
+      id: string;
+      hierarchyPriority?: number;
+      colorPriority?: number;
+    }[],
+  ): Promise<GroupRole[]> {
+    const member = await this.groupMemberRepo.findOne({
+      where: { groupId, userId: requesterId },
+    });
+    if (!member) {
+      throw new ForbiddenException('You are not a member of this group');
+    }
+    const hasPerm = await this.hasPermission(
+      groupId,
+      requesterId,
+      'manage_roles',
+    );
+    if (!hasPerm) {
+      throw new ForbiddenException(
+        'Only group owners, admins, or members with manage roles permission can manage roles',
+      );
+    }
+
+    const group = await this.groupRepo.findOne({ where: { id: groupId } });
+    if (!group) {
+      throw new NotFoundException('Group not found');
+    }
+
+    const roles = await this.getGroupRoles(groupId);
+    const roleMap = new Map(roles.map((r) => [r.id, r]));
+
+    const invalidId = rolesData.some((rd) => !roleMap.has(rd.id));
+    if (invalidId) {
+      throw new BadRequestException('Invalid role IDs provided');
+    }
+
+    if (member.role !== GroupMemberRole.OWNER) {
+      const reqPriority = await this.getMemberHighestRolePriority(
+        groupId,
+        member,
+      );
+      for (const rd of rolesData) {
+        const role = roleMap.get(rd.id);
+        if (role) {
+          const hasHierarchyChanged =
+            rd.hierarchyPriority !== undefined &&
+            rd.hierarchyPriority !== role.hierarchyPriority;
+          const hasColorChanged =
+            rd.colorPriority !== undefined &&
+            rd.colorPriority !== role.colorPriority;
+
+          if (hasHierarchyChanged || hasColorChanged) {
+            if (role.hierarchyPriority <= reqPriority) {
+              throw new ForbiddenException(
+                `You cannot edit a role with equal or higher priority (${role.hierarchyPriority}) than your own highest role's priority (${reqPriority})`,
+              );
+            }
+            if (
+              rd.hierarchyPriority !== undefined &&
+              rd.hierarchyPriority <= reqPriority
+            ) {
+              throw new ForbiddenException(
+                `You cannot set a role hierarchy priority equal to or higher than your own highest role's priority`,
+              );
+            }
+          }
+        }
+      }
+    }
+
+    for (const rd of rolesData) {
+      const role = roleMap.get(rd.id);
+      if (role) {
+        if (rd.hierarchyPriority !== undefined) {
+          role.hierarchyPriority = rd.hierarchyPriority;
+          role.priority = rd.hierarchyPriority;
+        }
+        if (rd.colorPriority !== undefined) {
+          role.colorPriority = rd.colorPriority;
+        }
         await this.groupRoleRepo.save(role);
       }
     }
@@ -1170,7 +1336,11 @@ export class GroupsService {
   async getGroupRoles(groupId: string): Promise<GroupRole[]> {
     return this.groupRoleRepo.find({
       where: { groupId },
-      order: { priority: 'DESC', createdAt: 'ASC' },
+      order: {
+        hierarchyPriority: 'ASC',
+        colorPriority: 'ASC',
+        createdAt: 'ASC',
+      },
     });
   }
 
@@ -1205,30 +1375,11 @@ export class GroupsService {
     }
 
     // Permission hierarchy checks
-    const requesterRank = await this.getMemberHighestManageRank(
-      groupId,
-      requesterId,
-      requester,
-    );
-    if (requesterRank > 0) {
-      // Not owner
-      if (requesterRank >= 4) {
-        throw new ForbiddenException(
-          'You do not have permission to assign roles',
-        );
-      }
-      if (targetUserId !== requesterId) {
-        const targetRank = await this.getMemberHighestManageRank(
-          groupId,
-          targetUserId,
-          target,
-        );
-        if (targetRank <= requesterRank) {
-          throw new ForbiddenException(
-            'You cannot modify roles of a member with equal or higher permissions than your own',
-          );
-        }
-      }
+    if (requester.role !== GroupMemberRole.OWNER) {
+      const reqPriority = await this.getMemberHighestRolePriority(
+        groupId,
+        requester,
+      );
 
       // Verify roles being added/removed
       const groupRoles = await this.groupRoleRepo.find({ where: { groupId } });
@@ -1244,29 +1395,27 @@ export class GroupsService {
 
       for (const roleId of addedRoleIds) {
         const role = rolesMap.get(roleId);
-        if (role) {
-          const roleRank = this.getPermissionsHighestManageRank(
-            role.permissions || [],
+        if (
+          role &&
+          Math.max(role.hierarchyPriority ?? role.priority ?? 1, 1) <=
+            reqPriority
+        ) {
+          throw new ForbiddenException(
+            'You cannot assign a role with equal or higher authority than your own highest role',
           );
-          if (roleRank <= requesterRank) {
-            throw new ForbiddenException(
-              'You cannot assign a role with equal or higher permissions than your own',
-            );
-          }
         }
       }
 
       for (const roleId of removedRoleIds) {
         const role = rolesMap.get(roleId);
-        if (role) {
-          const roleRank = this.getPermissionsHighestManageRank(
-            role.permissions || [],
+        if (
+          role &&
+          Math.max(role.hierarchyPriority ?? role.priority ?? 1, 1) <=
+            reqPriority
+        ) {
+          throw new ForbiddenException(
+            'You cannot remove a role with equal or higher authority than your own highest role',
           );
-          if (roleRank <= requesterRank) {
-            throw new ForbiddenException(
-              'You cannot remove a role with equal or higher permissions than your own',
-            );
-          }
         }
       }
     }

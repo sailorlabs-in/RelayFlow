@@ -12,6 +12,12 @@ const nextConfig = {
   // with only the dependencies it actually uses.
   output: 'standalone',
 
+  // Enable externalDir for monorepo library imports so Next can watch files
+  // outside the app root and keep HMR working during serve-all.
+  experimental: {
+    externalDir: true,
+  },
+
   // NOTE: Turbopack resolves @chat-app/* via tsconfig.json compilerOptions.paths
   // — no extra config needed here. resolveAlias breaks with absolute paths.
 
