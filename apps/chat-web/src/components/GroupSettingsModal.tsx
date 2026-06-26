@@ -72,7 +72,7 @@ export const GroupSettingsModal = ({
   );
 
   const getRequesterRank = (): number => {
-    if (isOwner) {
+    if (isOwner || user?.role === 'admin') {
       return 0;
     }
     if (currentUserMember?.role === 'admin') {
