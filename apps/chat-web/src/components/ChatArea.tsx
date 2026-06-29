@@ -184,12 +184,12 @@ const renderMessageMedia = (
           return (
             <div
               key={idx}
-              className="mt-1 max-w-sm w-fit rounded-lg overflow-hidden border border-theme bg-theme-input hover:scale-[1.01] transition-all duration-200"
+              className="mt-1 max-w-[480px] w-fit rounded-lg overflow-hidden border border-theme bg-theme-input hover:scale-[1.01] transition-all duration-200"
             >
               <img
                 src={displayUrl}
                 alt={item.name || 'Image'}
-                className="h-60 w-90 max-w-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                className="w-full max-w-full h-auto max-h-[480px] object-cover cursor-pointer hover:opacity-90 transition-opacity"
                 onClick={() => onMediaClick(item)}
               />
             </div>
@@ -201,7 +201,7 @@ const renderMessageMedia = (
           return (
             <div
               key={idx}
-              className="mt-1 max-w-sm w-fit rounded-lg overflow-hidden border border-theme bg-theme-input relative cursor-pointer hover:scale-[1.01] transition-all duration-200 group"
+              className="mt-1 max-w-[480px] w-fit rounded-lg overflow-hidden border border-theme bg-theme-input relative cursor-pointer hover:scale-[1.01] transition-all duration-200 group"
               onClick={() => onMediaClick(item)}
             >
               {item.thumbnailUrl ? (
@@ -209,7 +209,7 @@ const renderMessageMedia = (
                   <img
                     src={displayUrl}
                     alt={item.name || 'Video'}
-                    className="h-60 w-90 max-w-full object-cover transition-opacity"
+                    className="w-full max-w-full h-auto max-h-[480px] object-cover transition-opacity"
                   />
                   <div className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-black/25 transition-colors duration-150">
                     <div className="w-12 h-12 rounded-full bg-white/95 flex items-center justify-center text-black shadow-lg hover:scale-105 active:scale-95 transition-all duration-150">
@@ -226,7 +226,7 @@ const renderMessageMedia = (
               ) : (
                 <video
                   src={item.url}
-                  className="h-60 w-90 max-w-full object-cover"
+                  className="w-full max-w-full h-auto max-h-[480px] object-cover"
                   preload="metadata"
                 />
               )}

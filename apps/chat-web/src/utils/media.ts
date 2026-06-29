@@ -15,19 +15,19 @@ export const generateImageThumbnail = (file: File): Promise<Blob> => {
         }
         let width = img.width;
         let height = img.height;
-        const maxW = 360;
-        const maxH = 240;
-
-        const ratioW = width / maxW;
-        const ratioH = height / maxH;
-
-        if (ratioW > 1 || ratioH > 1) {
-          if (ratioW > ratioH) {
-            width = maxW;
-            height = Math.round(img.height / ratioW);
-          } else {
+        if (width > height) {
+          const maxH = 240;
+          const ratioH = height / maxH;
+          if (ratioH > 1) {
             height = maxH;
             width = Math.round(img.width / ratioH);
+          }
+        } else {
+          const maxW = 360;
+          const ratioW = width / maxW;
+          if (ratioW > 1) {
+            width = maxW;
+            height = Math.round(img.height / ratioW);
           }
         }
 
@@ -81,19 +81,19 @@ export const generateVideoThumbnail = (file: File): Promise<Blob> => {
         }
         let width = video.videoWidth;
         let height = video.videoHeight;
-        const maxW = 360;
-        const maxH = 240;
-
-        const ratioW = width / maxW;
-        const ratioH = height / maxH;
-
-        if (ratioW > 1 || ratioH > 1) {
-          if (ratioW > ratioH) {
-            width = maxW;
-            height = Math.round(video.videoHeight / ratioW);
-          } else {
+        if (width > height) {
+          const maxH = 240;
+          const ratioH = height / maxH;
+          if (ratioH > 1) {
             height = maxH;
             width = Math.round(video.videoWidth / ratioH);
+          }
+        } else {
+          const maxW = 360;
+          const ratioW = width / maxW;
+          if (ratioW > 1) {
+            width = maxW;
+            height = Math.round(video.videoHeight / ratioW);
           }
         }
 
