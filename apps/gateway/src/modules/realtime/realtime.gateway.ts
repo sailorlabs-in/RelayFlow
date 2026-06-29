@@ -1228,6 +1228,25 @@ export class RealtimeGateway
     );
 
     const redisClient = this.redisService.getClient();
+
+    // Check if voice channel was empty BEFORE user joins
+    const allVoiceRaw = await redisClient.hgetall('voice_states');
+    let isChannelEmpty = true;
+    for (const [uid, vStateJson] of Object.entries(allVoiceRaw)) {
+      if (uid === userId) {
+        continue;
+      }
+      try {
+        const vState = JSON.parse(vStateJson);
+        if (vState.channelId === channelId) {
+          isChannelEmpty = false;
+          break;
+        }
+      } catch (err) {
+        // Ignore json parse error
+      }
+    }
+
     const voiceState = {
       groupId,
       channelId,
@@ -1243,6 +1262,243 @@ export class RealtimeGateway
       isMuted: false,
       isDeafened: false,
     });
+
+    // If channel was empty, notify all other accessible group members
+    if (isChannelEmpty) {
+      try {
+        const conversation = await this.chatService.getConversation(channelId);
+        const group = await this.groupsService.getGroup(groupId);
+        if (conversation && group) {
+          const channelName = conversation.name || 'voice';
+          const groupName = group.name;
+
+          let joinerName = 'Someone';
+          try {
+            const joiner = await this.usersService.findById(userId);
+            joinerName = joiner.displayName || joiner.email.split('@')[0];
+          } catch {
+            joinerName = socket.data.email
+              ? socket.data.email.split('@')[0]
+              : 'Someone';
+          }
+
+          const members = await this.groupsService.getGroupMembers(groupId);
+          const recipientsToNotify: string[] = [];
+
+          for (const member of members) {
+            if (member.userId === userId) {
+              continue;
+            }
+
+            try {
+              // Check channel access
+              const hasAccess = await this.groupsService.canUserAccessChannel(
+                groupId,
+                channelId,
+                member.userId,
+              );
+              if (!hasAccess) {
+                continue;
+              }
+
+              // Check notification preference - empty voice channel join is not a mention/ping,
+              // so notify only if they have set it to 'all' notifications.
+              const targetUser = await this.usersService.findById(
+                member.userId,
+              );
+              if (targetUser.notificationsGroupEnabled === false) {
+                continue;
+              }
+              if (targetUser.groupNotificationPref !== 'all') {
+                continue;
+              }
+              if (member.notificationPref !== 'all') {
+                continue;
+              }
+
+              let devices: any[] = [];
+              if (targetUser.loggedInDevices) {
+                try {
+                  devices = JSON.parse(targetUser.loggedInDevices);
+                } catch {
+                  devices = [];
+                }
+              }
+
+              if (Array.isArray(devices) && devices.length > 0) {
+                const activeDevices = devices.filter(
+                  (d: any) => d.notificationsEnabled !== false,
+                );
+                for (const d of activeDevices) {
+                  recipientsToNotify.push(`${targetUser.id}:${d.deviceId}`);
+                }
+              } else {
+                recipientsToNotify.push(targetUser.id);
+              }
+            } catch (err) {
+              this.logger.error(
+                `Failed to check notification status for member ${member.userId}`,
+                err,
+              );
+            }
+          }
+
+          if (recipientsToNotify.length > 0) {
+            const pushTitle = `🎙 Voice Channel Active`;
+            const pushBody = `${joinerName} joined #${channelName} in ${groupName}. Join them!`;
+            const metadataPayload = {
+              conversationId: channelId,
+              groupId,
+              groupName,
+              channelName,
+              type: 'voice_active',
+            };
+
+            await this.sendPushNotificationHelper(
+              recipientsToNotify,
+              pushTitle,
+              pushBody,
+              metadataPayload,
+            );
+          }
+        }
+      } catch (err) {
+        this.logger.error(
+          'Failed to trigger voice channel active notification',
+          err,
+        );
+      }
+    }
+  }
+
+  @SubscribeMessage('voice.ping.nonjoined')
+  async handleVoicePingNonJoined(
+    @MessageBody() payload: { groupId: string; channelId: string },
+    @ConnectedSocket() socket: Socket,
+  ): Promise<void> {
+    const userId = socket.data.userId as string;
+    const { groupId, channelId } = payload;
+    this.logger.log(
+      `🎙 User ${userId} pinging all non-joined users in voice channel ${channelId} in group ${groupId}`,
+    );
+
+    // 1. Get current voice states in Redis to find who is joined
+    const redisClient = this.redisService.getClient();
+    const allVoiceRaw = await redisClient.hgetall('voice_states');
+    const joinedUserIds = new Set<string>();
+    for (const [uid, vStateJson] of Object.entries(allVoiceRaw)) {
+      try {
+        const vState = JSON.parse(vStateJson);
+        if (vState.channelId === channelId) {
+          joinedUserIds.add(uid);
+        }
+      } catch (err) {
+        // Ignore json parse error
+      }
+    }
+
+    // 2. Fetch all members of the group
+    const members = await this.groupsService.getGroupMembers(groupId);
+    const recipientsToNotify: string[] = [];
+
+    // Fetch details of group and channel
+    const conversation = await this.chatService.getConversation(channelId);
+    if (!conversation) {
+      return;
+    }
+    const group = await this.groupsService.getGroup(groupId);
+    if (!group) {
+      return;
+    }
+
+    const groupName = group.name;
+    const channelName = conversation.name || 'voice';
+
+    // Fetch sender displayName from database
+    let senderDisplayName = 'Someone';
+    try {
+      const sender = await this.usersService.findById(userId);
+      senderDisplayName = sender.displayName || sender.email.split('@')[0];
+    } catch {
+      senderDisplayName = socket.data.email
+        ? socket.data.email.split('@')[0]
+        : 'Someone';
+    }
+
+    for (const member of members) {
+      if (member.userId === userId || joinedUserIds.has(member.userId)) {
+        continue;
+      }
+
+      try {
+        // Check access
+        const hasAccess = await this.groupsService.canUserAccessChannel(
+          groupId,
+          channelId,
+          member.userId,
+        );
+        if (!hasAccess) {
+          continue;
+        }
+
+        // Check settings
+        const targetUser = await this.usersService.findById(member.userId);
+        if (targetUser.notificationsGroupEnabled === false) {
+          continue;
+        }
+        if (targetUser.groupNotificationPref === 'none') {
+          continue;
+        }
+        if (member.notificationPref === 'none') {
+          continue;
+        }
+
+        // Add recipients
+        let devices: any[] = [];
+        if (targetUser.loggedInDevices) {
+          try {
+            devices = JSON.parse(targetUser.loggedInDevices);
+          } catch {
+            devices = [];
+          }
+        }
+
+        if (Array.isArray(devices) && devices.length > 0) {
+          const activeDevices = devices.filter(
+            (d: any) => d.notificationsEnabled !== false,
+          );
+          for (const d of activeDevices) {
+            recipientsToNotify.push(`${targetUser.id}:${d.deviceId}`);
+          }
+        } else {
+          recipientsToNotify.push(targetUser.id);
+        }
+      } catch (err) {
+        this.logger.error(
+          `Failed to process user ${member.userId} for voice ping notification`,
+          err,
+        );
+      }
+    }
+
+    if (recipientsToNotify.length > 0) {
+      const pushTitle = `🎙 Voice Channel Ping`;
+      const pushBody = `${senderDisplayName} is pinging you to join #${channelName} in ${groupName}`;
+      const metadataPayload = {
+        conversationId: channelId,
+        groupId,
+        groupName,
+        channelName,
+        type: 'voice_ping',
+      };
+
+      await this.sendPushNotificationHelper(
+        recipientsToNotify,
+        pushTitle,
+        pushBody,
+        metadataPayload,
+      );
+    }
   }
 
   @SubscribeMessage('voice.leave')
@@ -1435,5 +1691,26 @@ export class RealtimeGateway
       senderUserId,
       signal,
     });
+  }
+
+  private async sendPushNotificationHelper(
+    recipientsToNotify: string[],
+    title: string,
+    body: string,
+    metadata: any,
+  ) {
+    if (recipientsToNotify.length === 0) {
+      return;
+    }
+    this.notificationsQueue
+      .add('send-push', {
+        title,
+        body,
+        recipients: recipientsToNotify,
+        metadata,
+      })
+      .catch((err) =>
+        this.logger.error('Failed to queue voice notification job', err),
+      );
   }
 }

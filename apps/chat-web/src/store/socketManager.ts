@@ -838,6 +838,15 @@ class SocketManager {
     }
   }
 
+  pingNonJoinedUsers(groupId: string, channelId: string) {
+    if (this.socket?.connected) {
+      PrintLog(
+        `📡 Emitting voice.ping.nonjoined for channel: ${channelId} in group: ${groupId}`,
+      );
+      this.socket.emit('voice.ping.nonjoined', { groupId, channelId });
+    }
+  }
+
   /** Expose the raw socket instance for components that need to subscribe
    *  to events directly (e.g. the admin dashboard for live presence). */
   getSocket() {

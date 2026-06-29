@@ -107,6 +107,19 @@ const BackgroundAudioPlayer = ({
 };
 
 /* ─── SVG Icon Helpers ─── */
+const IconBell = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    className="w-4.5 h-4.5"
+  >
+    <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+    <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+  </svg>
+);
+
 const IconMic = () => (
   <svg
     viewBox="0 0 24 24"
@@ -872,6 +885,13 @@ export const VoiceDashboard = ({
     socketManager.leaveVoice();
   };
 
+  const handlePingNonJoined = () => {
+    socketManager.pingNonJoinedUsers(_groupId, channel.id);
+    showToast.success(
+      'Ping notification sent to all non-joined group members.',
+    );
+  };
+
   // ── Determine who is streaming (has video tracks) ──
   const streamingUsers = useMemo(() => {
     const streaming: string[] = [];
@@ -1576,6 +1596,15 @@ export const VoiceDashboard = ({
                 variant={isScreenSharing ? 'screen-on' : 'off'}
               >
                 <IconScreen />
+              </CtrlBtn>
+
+              {/* Ping Users */}
+              <CtrlBtn
+                label="Ping Users"
+                onClick={handlePingNonJoined}
+                variant="off"
+              >
+                <IconBell />
               </CtrlBtn>
 
               {/* Divider */}
