@@ -481,7 +481,7 @@ export const ChannelSidebar = ({
                     />
                     <span className="text-[12px] text-theme-secondary truncate">
                       {profile.username
-                        ? `@${profile.username}`
+                        ? profile.username
                         : profile.displayName || profile.email.split('@')[0]}
                     </span>
                   </div>
@@ -958,7 +958,7 @@ export const ChannelSidebar = ({
         <div className="flex-1 min-w-0">
           <div className="text-[12.5px] font-semibold text-theme-primary truncate">
             {user?.username
-              ? `@${user.username}`
+              ? user.username
               : user?.displayName || user?.email?.split('@')[0] || 'User'}
           </div>
           <div className="text-[10.5px] text-theme-muted capitalize">

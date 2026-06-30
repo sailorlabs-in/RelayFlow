@@ -4,7 +4,12 @@ import { io } from 'socket.io-client';
 import { PrintLog } from '../utils/logger';
 import { showToast } from '../components/toast';
 
-import { logoutUser, addWarning, updateRole } from './slices/authSlice';
+import {
+  logoutUser,
+  addWarning,
+  updateRole,
+  adminUpdateUserIdentity,
+} from './slices/authSlice';
 import type { Message } from './slices/chatSlice';
 import {
   socketReceiveMessage,
@@ -501,10 +506,14 @@ class SocketManager {
         const friend = isRequester
           ? friendship.addressee
           : friendship.requester;
-        const friendName = friend?.username
-          ? `@${friend.username}`
-          : friend?.displayName || friend?.email.split('@')[0] || 'Someone';
-        showToast.success(`You are now friends with ${friendName}!`);
+        // Only show notification to the requester (the one who sent the request).
+        // The acceptor already sees a toast from the UI action (handleAccept).
+        if (isRequester) {
+          const friendName = friend?.username
+            ? `@${friend.username}`
+            : friend?.displayName || friend?.email.split('@')[0] || 'Someone';
+          showToast.success(`You are now friends with ${friendName}! 🎉`);
+        }
         store.dispatch(
           socketFriendRequestAccepted({ friendshipId: friendship.id, friend }),
         );
@@ -526,9 +535,7 @@ class SocketManager {
       (data: { warnings: string[]; latestWarning: string }) => {
         PrintLog('🚨 Socket user.warned received:', data.latestWarning);
         store.dispatch(addWarning(data.latestWarning));
-        showToast.warning(`⚠️ Administrative Warning: ${data.latestWarning}`, {
-          autoClose: false,
-        });
+        showToast.warning(`⚠️ Administrative Warning: ${data.latestWarning}`);
       },
     );
 
@@ -555,6 +562,36 @@ class SocketManager {
         store.dispatch(socketUpdateUserProfile(data));
         // Update the user in all group member lists
         store.dispatch(socketGroupMemberProfileUpdated(data));
+      },
+    );
+
+    // Admin updated this user's identity (username/displayName)
+    this.socket.on(
+      'admin.identity.updated',
+      (data: {
+        userId: string;
+        changes: Array<{ field: string; value: string }>;
+        reason: string;
+        username?: string;
+        displayName?: string;
+      }) => {
+        PrintLog('🛡️ Socket admin.identity.updated received:', data.userId);
+        const state = store.getState() as { auth: { user: any } };
+        if (state.auth?.user?.id === data.userId) {
+          // Update self in Redux + localStorage
+          store.dispatch(
+            adminUpdateUserIdentity({
+              username: data.username,
+              displayName: data.displayName,
+            }),
+          );
+          // Build a single consolidated toast message
+          const fieldNames = data.changes.map((c) => c.field).join(' and ');
+          showToast.warning(
+            `🛡️ Relay Guardian AI changed your ${fieldNames} due to: ${data.reason}`,
+            { autoClose: 7000 },
+          );
+        }
       },
     );
 

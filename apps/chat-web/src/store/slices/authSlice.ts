@@ -507,6 +507,24 @@ const authSlice = createSlice({
         }
       }
     },
+    adminUpdateUserIdentity: (
+      state,
+      action: {
+        payload: { username?: string; displayName?: string };
+      },
+    ) => {
+      if (state.user) {
+        if (action.payload.username !== undefined) {
+          state.user.username = action.payload.username;
+        }
+        if (action.payload.displayName !== undefined) {
+          state.user.displayName = action.payload.displayName;
+        }
+        if (isBrowser) {
+          localStorage.setItem('chat_user', JSON.stringify(state.user));
+        }
+      }
+    },
   },
   extraReducers: (builder) => {
     // Register
@@ -695,5 +713,6 @@ export const {
   restoreSession,
   addWarning,
   updateRole,
+  adminUpdateUserIdentity,
 } = authSlice.actions;
 export default authSlice.reducer;

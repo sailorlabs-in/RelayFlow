@@ -38,6 +38,16 @@ function NotifCard({
 }: NotifCardProps) {
   const [hovered, setHovered] = useState(false);
 
+  useEffect(() => {
+    if (hovered) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      onDismiss();
+    }, 7000);
+    return () => clearTimeout(timer);
+  }, [onDismiss, hovered]);
+
   return (
     <div
       role={onNavigate ? 'button' : undefined}
@@ -294,6 +304,11 @@ export function useNotificationClient(
     dispatchRef.current = dispatch;
   }, [dispatch]);
 
+  const setIsDMModeRef = useRef(setIsDMMode);
+  useEffect(() => {
+    setIsDMModeRef.current = setIsDMMode;
+  }, [setIsDMMode]);
+
   useEffect(() => {
     activeConversationIdRef.current = activeConversationId;
   }, [activeConversationId]);
@@ -354,6 +369,14 @@ export function useNotificationClient(
           }
         }
 
+        // ── Skip admin identity updates in the foreground to prevent double notifications ──
+        if (meta.type === 'admin_identity_update') {
+          PrintLog(
+            'Suppressed duplicate foreground notification for admin identity update',
+          );
+          return;
+        }
+
         // ── Friend Request Notifications ───────────────────────────────────
         if (meta.type === 'friend_request') {
           if (userRef.current?.notificationsFriendRequestEnabled === false) {
@@ -402,7 +425,7 @@ export function useNotificationClient(
               icon: false,
               closeButton: false,
               className: 'custom-inapp-toast-container',
-              autoClose: 5000,
+              autoClose: 7000,
               hideProgressBar: true,
             },
           );
@@ -509,8 +532,15 @@ export function useNotificationClient(
         const handleNavigate = msgConvoId
           ? () => {
               if (isDm) {
+                if (setIsDMModeRef.current) {
+                  setIsDMModeRef.current(true);
+                }
+                dispatchRef.current(setActiveGroup(null));
                 dispatchRef.current(setActiveConversation(msgConvoId));
               } else {
+                if (setIsDMModeRef.current) {
+                  setIsDMModeRef.current(false);
+                }
                 dispatchRef.current(setActiveGroup(msgGroupId));
                 dispatchRef.current(setActiveChannel(msgConvoId));
               }
@@ -546,7 +576,7 @@ export function useNotificationClient(
             icon: false,
             closeButton: false,
             className: 'custom-inapp-toast-container',
-            autoClose: 5000,
+            autoClose: 7000,
             hideProgressBar: true,
           },
         );

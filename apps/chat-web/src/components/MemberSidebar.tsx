@@ -237,7 +237,7 @@ export const MemberSidebar = ({
   };
 
   const renderMemberRow = (m: any) => {
-    const primaryName = m.username ? `@${m.username}` : m.displayName;
+    const primaryName = m.username ? m.username : m.displayName;
     const isSelected = selectedMember?.id === m.id;
 
     return (

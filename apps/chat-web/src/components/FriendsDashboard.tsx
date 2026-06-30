@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAppDispatch, useAppSelector } from '../store';
 import type { User } from '../store/slices/authSlice';
 import {
@@ -25,7 +25,7 @@ export const FriendsDashboard = ({
   onMenuClick,
 }: FriendsDashboardProps = {}): React.JSX.Element => {
   const dispatch = useAppDispatch();
-  const { user, accessToken } = useAppSelector((s) => s.auth);
+  const { user } = useAppSelector((s) => s.auth);
   const {
     friends,
     pendingRequests,
@@ -43,6 +43,8 @@ export const FriendsDashboard = ({
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [sentRequests, setSentRequests] = useState<Record<string, boolean>>({});
+  const [hasSearched, setHasSearched] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Right profile panel state
   const [selectedFriendId, setSelectedFriendId] = useState<string | null>(null);
@@ -59,35 +61,45 @@ export const FriendsDashboard = ({
     dispatch(fetchPendingRequests());
   }, [dispatch]);
 
-  // Load initial user list when entering Add Friend tab
+  // Clear results when leaving Add Friend tab
   useEffect(() => {
-    if (activeTab === 'add' && accessToken) {
-      const fetchInitialUsers = async () => {
-        setSearchLoading(true);
-        setSearchError(null);
-        try {
-          await dispatch(searchFriendUsers('')).unwrap();
-        } catch (err: any) {
-          setSearchError(err || 'Failed to load users.');
-        } finally {
-          setSearchLoading(false);
-        }
-      };
-      fetchInitialUsers();
+    if (activeTab !== 'add') {
+      setHasSearched(false);
     }
-  }, [activeTab, accessToken, dispatch]);
+  }, [activeTab]);
 
-  const handleSearchUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSearchLoading(true);
-    setSearchError(null);
-    try {
-      await dispatch(searchFriendUsers(searchQuery.trim())).unwrap();
-    } catch (err: any) {
-      setSearchError(err || 'No users found matching query.');
-    } finally {
-      setSearchLoading(false);
+  // Debounced search: triggers when query >= 3 chars
+  const runSearch = useCallback(
+    async (query: string) => {
+      const trimmed = query.trim();
+      if (trimmed.length < 3) {
+        dispatch(clearSearchResults());
+        setSearchError(null);
+        setHasSearched(false);
+        return;
+      }
+      setSearchLoading(true);
+      setSearchError(null);
+      setHasSearched(true);
+      try {
+        await dispatch(searchFriendUsers(trimmed)).unwrap();
+      } catch (err: any) {
+        setSearchError(err || 'No users found matching your search.');
+      } finally {
+        setSearchLoading(false);
+      }
+    },
+    [dispatch],
+  );
+
+  const handleSearchQueryChange = (value: string) => {
+    setSearchQuery(value);
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
     }
+    debounceRef.current = setTimeout(() => {
+      runSearch(value);
+    }, 400);
   };
 
   const handleSendRequest = async (targetUser: User) => {
@@ -357,10 +369,13 @@ export const FriendsDashboard = ({
                   setActiveTab(tab.id as any);
                   setLocalFilterQuery('');
                   setSelectedFriendId(null);
-                  if (tab.id !== 'add') {
-                    setSearchQuery('');
-                    dispatch(clearSearchResults());
-                    setSearchError(null);
+                  // Always reset Add Friend search when switching tabs
+                  setSearchQuery('');
+                  dispatch(clearSearchResults());
+                  setSearchError(null);
+                  setHasSearched(false);
+                  if (debounceRef.current) {
+                    clearTimeout(debounceRef.current);
                   }
                 }}
                 className={`text-[12px] font-semibold px-3 py-1.25 rounded-md border-none cursor-pointer transition-all duration-150 active-press shrink-0 flex items-center gap-1.5
@@ -675,103 +690,277 @@ export const FriendsDashboard = ({
 
           {/* TAB: ADD FRIEND */}
           {activeTab === 'add' && (
-            <div className="space-y-6 max-w-xl animate-fade-in flex-1">
+            <div className="space-y-5 animate-fade-in flex-1 max-w-2xl">
+              {/* Header */}
               <div>
-                <h3 className="text-[15px] font-bold text-theme-primary mb-1 pl-1">
-                  Add Friend
+                <h3 className="text-[16px] font-extrabold text-theme-primary mb-1">
+                  Add a Friend
                 </h3>
-                <p className="text-[12.5px] text-theme-muted pl-1 m-0 leading-relaxed">
-                  Enter their registered email address or unique username.
-                  Search matches are case-sensitive!
+                <p className="text-[12.5px] text-theme-muted m-0 leading-relaxed">
+                  Search by username or email. Type at least{' '}
+                  <span className="font-bold text-theme-primary">
+                    3 characters
+                  </span>{' '}
+                  to see results. Only exact email or username matches are
+                  returned.
                 </p>
               </div>
 
-              <form
-                onSubmit={handleSearchUser}
-                className="flex flex-col sm:flex-row gap-2 bg-theme-sidebar/15 border border-theme p-1.5 rounded-xl shadow-inner shrink-0"
-              >
-                <div className="relative flex-1 flex items-center">
+              {/* Search Input */}
+              <div className="relative flex items-center bg-theme-sidebar/15 border border-theme rounded-xl shadow-inner overflow-hidden focus-within:border-(--accent-primary) focus-within:ring-1 focus-within:ring-(--accent-ring) transition-all duration-200">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  className="w-4.5 h-4.5 absolute left-4 text-theme-muted pointer-events-none shrink-0"
+                >
+                  <circle cx="11" cy="11" r="8" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+                <input
+                  id="add-friend-search"
+                  type="text"
+                  className="w-full rounded-xl pl-11 pr-10 py-3 text-[13.5px] bg-transparent border-none text-theme-primary focus:outline-none placeholder-theme-muted"
+                  placeholder="Search by @username or email address…"
+                  value={searchQuery}
+                  onChange={(e) => handleSearchQueryChange(e.target.value)}
+                  autoFocus
+                  autoComplete="off"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery('');
+                      dispatch(clearSearchResults());
+                      setSearchError(null);
+                      setHasSearched(false);
+                    }}
+                    className="absolute right-3.5 bg-transparent border-none text-theme-muted hover:text-theme-primary cursor-pointer p-1 rounded transition-colors"
+                    title="Clear search"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      className="w-3.5 h-3.5"
+                    >
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+
+              {/* Hint chips */}
+              {!searchQuery && (
+                <div className="flex flex-wrap gap-2 items-center">
+                  <span className="text-[11px] text-theme-muted font-semibold">
+                    Examples:
+                  </span>
+                  {['john_doe', 'jane@example.com', 'alex123'].map((hint) => (
+                    <button
+                      key={hint}
+                      type="button"
+                      onClick={() => handleSearchQueryChange(hint)}
+                      className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-theme-input border border-theme text-theme-muted hover:text-theme-primary hover:border-(--accent-primary) transition-all duration-150 cursor-pointer border-none"
+                    >
+                      {hint}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Loading */}
+              {searchLoading && (
+                <div className="flex items-center justify-center gap-3 py-10 text-[12.5px] text-theme-muted animate-fade-in">
+                  <svg
+                    className="w-4 h-4 animate-spin text-(--accent-primary)"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                    />
+                  </svg>
+                  Searching…
+                </div>
+              )}
+
+              {/* Error */}
+              {!searchLoading && searchError && (
+                <div className="p-3.5 rounded-xl border border-(--danger-border) bg-(--danger-bg) text-(--danger) text-[12.5px] animate-fade-in flex items-start gap-2.5">
                   <svg
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
                     strokeWidth="2.5"
-                    className="w-4 h-4 absolute left-3.5 text-theme-muted pointer-events-none"
+                    className="w-4 h-4 shrink-0 mt-0.5"
                   >
-                    <circle cx="11" cy="11" r="8" />
-                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
                   </svg>
-                  <input
-                    type="text"
-                    className="w-full rounded-lg pl-10 pr-4 py-2.5 text-[13.5px] bg-transparent border-none text-theme-primary focus:outline-none placeholder-theme-muted"
-                    placeholder="Enter email or username (e.g. bob or bob@example.com)"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    autoFocus
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={searchLoading}
-                  className="px-5 py-2.5 rounded-lg border-none cursor-pointer font-bold text-[12.5px] text-white bg-(--accent-primary) hover:opacity-95 disabled:opacity-50 transition-all duration-150 active-press shadow-sm"
-                >
-                  {searchLoading ? 'Searching...' : 'Search'}
-                </button>
-              </form>
-
-              {searchError && (
-                <div className="p-3 rounded-lg border border-(--danger-border) bg-(--danger-bg) text-(--danger) text-[12.5px] animate-fade-in pl-3.5">
                   {searchError}
                 </div>
               )}
 
-              {foundUsers && foundUsers.length > 0 ? (
-                <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
-                  <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-theme-muted pl-1 mb-2">
-                    Search Results ({foundUsers.length})
-                  </h4>
-                  {foundUsers.map((foundUser) => (
-                    <div
-                      key={foundUser.id}
-                      className="p-3.5 rounded-lg border border-theme bg-theme-sidebar/10 hover:bg-theme-sidebar/20 flex items-center justify-between transition-all duration-150"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Avatar
-                          letter={(foundUser.username ||
-                            foundUser.displayName ||
-                            foundUser.email)[0].toUpperCase()}
-                          url={
-                            foundUser.avatarThumbnailUrl || foundUser.avatarUrl
-                          }
-                          size="md"
-                        />
-                        <div>
-                          <div className="font-bold text-[13.5px] text-theme-primary">
-                            {foundUser.username
-                              ? `@${foundUser.username}`
-                              : foundUser.displayName ||
-                                foundUser.email.split('@')[0]}
-                          </div>
-                          <div className="text-[11.5px] text-theme-muted mt-0.5">
-                            {foundUser.username && foundUser.displayName
-                              ? `${foundUser.displayName} • `
-                              : ''}
-                            {foundUser.email}
+              {/* Min-chars prompt */}
+              {!searchLoading &&
+                !searchError &&
+                searchQuery.trim().length > 0 &&
+                searchQuery.trim().length < 3 && (
+                  <div className="py-8 text-center text-[12.5px] text-theme-muted border border-dashed border-theme rounded-xl animate-fade-in">
+                    <span className="font-bold text-theme-primary">
+                      {3 - searchQuery.trim().length}
+                    </span>{' '}
+                    more character
+                    {3 - searchQuery.trim().length !== 1 ? 's' : ''} needed to
+                    search…
+                  </div>
+                )}
+
+              {/* Results */}
+              {!searchLoading &&
+                !searchError &&
+                foundUsers &&
+                foundUsers.length > 0 && (
+                  <div className="space-y-2 animate-fade-in">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-theme-muted pl-0.5">
+                        Results · {foundUsers.length} found
+                      </h4>
+                    </div>
+                    {foundUsers.map((foundUser) => (
+                      <div
+                        key={foundUser.id}
+                        className="group p-3.5 rounded-xl border border-theme bg-theme-sidebar/10 hover:bg-theme-sidebar/20 hover:border-(--accent-primary)/30 flex items-center justify-between gap-3 transition-all duration-150"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <Avatar
+                            letter={(foundUser.username ||
+                              foundUser.displayName ||
+                              foundUser.email)[0].toUpperCase()}
+                            url={
+                              foundUser.avatarThumbnailUrl ||
+                              foundUser.avatarUrl
+                            }
+                            size="md"
+                          />
+                          <div className="min-w-0">
+                            <div className="font-bold text-[13.5px] text-theme-primary truncate">
+                              {foundUser.username
+                                ? `@${foundUser.username}`
+                                : foundUser.displayName ||
+                                  foundUser.email.split('@')[0]}
+                            </div>
+                            <div className="text-[11px] text-theme-muted mt-0.5 truncate">
+                              {foundUser.displayName && foundUser.username
+                                ? `${foundUser.displayName} · `
+                                : ''}
+                              {foundUser.email}
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      {getFriendshipAction(foundUser)}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                !searchLoading &&
-                searchQuery && (
-                  <div className="py-10 text-center text-[12.5px] text-theme-muted border border-dashed border-theme rounded-lg">
-                    No users found matching query.
+                        <div className="shrink-0">
+                          {getFriendshipAction(foundUser)}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                )
+                )}
+
+              {/* No results */}
+              {!searchLoading &&
+                !searchError &&
+                hasSearched &&
+                foundUsers?.length === 0 &&
+                searchQuery.trim().length >= 3 && (
+                  <div className="py-12 text-center text-[12.5px] text-theme-muted border border-dashed border-theme rounded-xl animate-fade-in flex flex-col items-center gap-3">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      className="w-8 h-8 text-theme-muted/50"
+                    >
+                      <circle cx="11" cy="11" r="8" />
+                      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    </svg>
+                    <div>
+                      <p className="font-semibold text-theme-primary m-0">
+                        No users found
+                      </p>
+                      <p className="text-[11.5px] text-theme-muted mt-1 m-0">
+                        No one matches{' '}
+                        <span className="font-semibold text-theme-primary">
+                          &ldquo;{searchQuery}&rdquo;
+                        </span>
+                        . Try an exact username or email.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+              {/* Empty state (nothing typed yet) */}
+              {!searchQuery && (
+                <div className="py-12 border border-dashed border-theme rounded-xl flex flex-col items-center gap-4 text-center bg-theme-sidebar/5 select-none animate-fade-in">
+                  <div className="w-14 h-14 rounded-full bg-theme-sidebar/20 flex items-center justify-center">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      className="w-7 h-7 text-(--accent-primary)"
+                    >
+                      <path
+                        d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"
+                        fill="currentColor"
+                        stroke="none"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-bold text-[14px] text-theme-primary m-0">
+                      Find someone to connect with
+                    </p>
+                    <p className="text-[12px] text-theme-muted mt-1.5 m-0 max-w-[260px] leading-relaxed">
+                      Start typing a username or email above. Results appear
+                      after 3 characters.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 text-[11px] text-theme-muted bg-theme-input/60 px-3 py-1.5 rounded-lg border border-theme">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      className="w-3.5 h-3.5 text-(--accent-primary) shrink-0"
+                    >
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" y1="8" x2="12" y2="12" />
+                      <line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                    Users with{' '}
+                    <span className="font-bold text-theme-primary mx-0.5">
+                      No One
+                    </span>{' '}
+                    visibility won&apos;t appear in results.
+                  </div>
+                </div>
               )}
             </div>
           )}

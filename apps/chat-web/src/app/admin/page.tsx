@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { useRouter } from 'next/navigation';
 import StoreProvider from '../../store/StoreProvider';
 import { useAppSelector, useAppDispatch } from '../../store';
@@ -19,6 +20,7 @@ interface UserData {
   role: string;
   warnings: string[];
   status: string;
+  visibility?: string;
   lastSeen?: string | null;
   createdAt: string;
 }
@@ -104,6 +106,45 @@ function AdminDashboardContent() {
   } | null>(null);
   const [selectedUserId, setSelectedUserId] = useState('');
   const [addMemberSubmitting, setAddMemberSubmitting] = useState(false);
+
+  // Friend Request Modal
+  const [friendRequestModal, setFriendRequestModal] = useState<{
+    isOpen: boolean;
+    userId: string;
+    username: string;
+  } | null>(null);
+  const [friendRequestSubmitting, setFriendRequestSubmitting] = useState(false);
+
+  // Dropdown menu state for user row actions (using React Portals to prevent clipping)
+  const [activeMenu, setActiveMenu] = useState<{
+    userId: string;
+    u: UserData;
+    top: number;
+    left: number;
+  } | null>(null);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setActiveMenu(null);
+    };
+    window.addEventListener('scroll', handleScroll, true);
+    return () => {
+      window.removeEventListener('scroll', handleScroll, true);
+    };
+  }, []);
+
+  // Edit Identity Modal
+  const [editIdentityModal, setEditIdentityModal] = useState<{
+    isOpen: boolean;
+    userId: string;
+    username: string;
+    currentUsername: string;
+    currentDisplayName: string;
+  } | null>(null);
+  const [editUsername, setEditUsername] = useState('');
+  const [editDisplayName, setEditDisplayName] = useState('');
+  const [editReason, setEditReason] = useState('');
+  const [editIdentitySubmitting, setEditIdentitySubmitting] = useState(false);
 
   // Step 1: Restore session from localStorage on first render (synchronous)
   useEffect(() => {
@@ -334,6 +375,69 @@ function AdminDashboardContent() {
       );
     } finally {
       setAddMemberSubmitting(false);
+    }
+  };
+
+  const handleSendFriendRequest = async () => {
+    if (!friendRequestModal) {
+      return;
+    }
+    setFriendRequestSubmitting(true);
+    try {
+      await ApiRequest(
+        `/admin/users/${friendRequestModal.userId}/send-friend-request`,
+        'post',
+      );
+      showToast.success(
+        `Friend request sent to @${friendRequestModal.username}`,
+      );
+      setFriendRequestModal(null);
+    } catch (err: any) {
+      showToast.error(
+        err.response?.data?.message || 'Failed to send friend request',
+      );
+    } finally {
+      setFriendRequestSubmitting(false);
+    }
+  };
+
+  const handleEditIdentity = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editIdentityModal || !editReason.trim()) {
+      return;
+    }
+    if (!editUsername.trim() && !editDisplayName.trim()) {
+      showToast.error('Provide at least a new username or display name.');
+      return;
+    }
+    setEditIdentitySubmitting(true);
+    try {
+      const body: Record<string, string> = { reason: editReason.trim() };
+      if (editUsername.trim()) {
+        body.username = editUsername.trim();
+      }
+      if (editDisplayName.trim()) {
+        body.displayName = editDisplayName.trim();
+      }
+      await ApiRequest(
+        `/admin/users/${editIdentityModal.userId}/identity`,
+        'patch',
+        body,
+      );
+      showToast.success(
+        `Identity updated for @${editIdentityModal.currentUsername}`,
+      );
+      setEditIdentityModal(null);
+      setEditUsername('');
+      setEditDisplayName('');
+      setEditReason('');
+      fetchData();
+    } catch (err: any) {
+      showToast.error(
+        err.response?.data?.message || 'Failed to update user identity',
+      );
+    } finally {
+      setEditIdentitySubmitting(false);
     }
   };
 
@@ -697,8 +801,9 @@ function AdminDashboardContent() {
                       <th className="px-6 py-3 w-[100px]">Role</th>
                       <th className="px-6 py-3 w-[110px]">Warnings</th>
                       <th className="px-6 py-3 w-[180px]">Status</th>
+                      <th className="px-6 py-3 w-[130px]">Visibility</th>
                       <th className="px-6 py-3 w-[110px]">Joined</th>
-                      <th className="px-6 py-3 text-right w-[170px]">
+                      <th className="px-6 py-3 text-right w-[100px]">
                         Actions
                       </th>
                     </tr>
@@ -816,36 +921,124 @@ function AdminDashboardContent() {
                             })()}
                           </td>
 
+                          <td className="px-6 py-3.5">
+                            {(() => {
+                              const vis = u.visibility || 'everyone';
+                              if (vis === 'noone') {
+                                return (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                                    <svg
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth="2.5"
+                                      className="w-2.5 h-2.5 shrink-0"
+                                    >
+                                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                                    </svg>
+                                    Private
+                                  </span>
+                                );
+                              }
+                              if (vis === 'friends_of_friends') {
+                                return (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                                    <svg
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth="2.5"
+                                      className="w-2.5 h-2.5 shrink-0"
+                                    >
+                                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                                      <circle cx="9" cy="7" r="4" />
+                                      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                                      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                                    </svg>
+                                    Mutuals
+                                  </span>
+                                );
+                              }
+                              return (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                  <svg
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2.5"
+                                    className="w-2.5 h-2.5 shrink-0"
+                                  >
+                                    <circle cx="12" cy="12" r="10" />
+                                    <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                                  </svg>
+                                  Everyone
+                                </span>
+                              );
+                            })()}
+                          </td>
+
                           <td className="px-6 py-3.5 text-theme-muted font-medium">
                             {new Date(u.createdAt).toLocaleDateString()}
                           </td>
-                          <td className="px-6 py-3.5 text-right">
-                            <div className="flex items-center justify-end gap-2">
+                          <td className="px-6 py-3.5 text-right overflow-visible">
+                            <div className="relative inline-block text-left">
                               <button
-                                onClick={() => handleToggleRole(u)}
-                                disabled={u.id === user?.id}
-                                className="px-3 py-1.5 rounded-lg border border-glass bg-theme-input hover:bg-theme-input-focus text-theme-primary text-[10px] font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (activeMenu?.userId === u.id) {
+                                    setActiveMenu(null);
+                                  } else {
+                                    const rect =
+                                      e.currentTarget.getBoundingClientRect();
+                                    const menuWidth = 176; // w-44 = 176px
+                                    const menuHeight = 220; // Safe height estimate of dropdown menu
+                                    let left =
+                                      rect.right - menuWidth + window.scrollX;
+                                    if (left < 8) {
+                                      left = 8;
+                                    }
+
+                                    // Collision detection for viewport bottom edge:
+                                    // If menu extends below screen bottom, push it upwards until it fits
+                                    let top = rect.bottom + window.scrollY;
+                                    if (
+                                      rect.bottom + menuHeight >
+                                      window.innerHeight
+                                    ) {
+                                      const overflow =
+                                        rect.bottom +
+                                        menuHeight -
+                                        window.innerHeight;
+                                      top = Math.max(
+                                        8 + window.scrollY,
+                                        top - overflow - 8,
+                                      );
+                                    }
+
+                                    setActiveMenu({
+                                      userId: u.id,
+                                      u,
+                                      top,
+                                      left,
+                                    });
+                                  }
+                                }}
+                                className="p-1.5 rounded-lg border border-glass bg-theme-input hover:bg-theme-input-focus text-theme-primary text-xs font-bold cursor-pointer transition-all flex items-center justify-center shrink-0 active:scale-95"
+                                title="User Actions"
                               >
-                                {u.role === 'admin' ? 'Revoke' : 'Admin'}
-                              </button>
-                              <button
-                                onClick={() =>
-                                  setWarningModal({
-                                    isOpen: true,
-                                    userId: u.id,
-                                    username: u.username || u.email,
-                                  })
-                                }
-                                className="px-3 py-1.5 rounded-lg border border-amber-500/20 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-[10px] font-bold cursor-pointer transition-all"
-                              >
-                                Warn
-                              </button>
-                              <button
-                                onClick={() => handleForceReload(u)}
-                                disabled={u.id === user?.id}
-                                className="px-3 py-1.5 rounded-lg border border-red-500/20 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-[10px] font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                              >
-                                Reset
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                  strokeWidth="2.5"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
+                                  />
+                                </svg>
                               </button>
                             </div>
                           </td>
@@ -1127,6 +1320,290 @@ function AdminDashboardContent() {
           </div>
         </div>
       )}
+
+      {/* Friend Request Confirmation Modal */}
+      {friendRequestModal?.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="glass-panel p-6 max-w-sm w-full animate-slide-up flex flex-col gap-4 border border-glass">
+            <div className="flex items-center gap-3 border-b border-glass pb-3">
+              <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-400">
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
+                  />
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-theme-primary">
+                  Send Friend Request
+                </h2>
+                <p className="text-xs text-theme-muted">
+                  Send a friend request to @{friendRequestModal.username} as the
+                  platform admin.
+                </p>
+              </div>
+            </div>
+            <p className="text-xs text-theme-secondary leading-relaxed">
+              This will send a friend request from your admin account to{' '}
+              <span className="font-bold text-theme-primary">
+                @{friendRequestModal.username}
+              </span>
+              . They will be notified in real-time.
+            </p>
+            <div className="flex justify-end gap-3 pt-2 border-t border-glass">
+              <button
+                type="button"
+                onClick={() => setFriendRequestModal(null)}
+                className="px-4 py-2 text-xs font-semibold text-theme-secondary hover:text-theme-primary bg-transparent border border-glass rounded-lg cursor-pointer transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={friendRequestSubmitting}
+                onClick={handleSendFriendRequest}
+                className="px-4 py-2 text-xs font-bold text-white rounded-lg cursor-pointer active-press disabled:opacity-50 disabled:cursor-not-allowed transition-all bg-emerald-500 hover:bg-emerald-600 border-none"
+              >
+                {friendRequestSubmitting ? 'Sending...' : 'Send Request'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Identity Modal */}
+      {editIdentityModal?.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="glass-panel p-6 max-w-lg w-full animate-slide-up flex flex-col gap-4 border border-glass">
+            <div className="flex items-center gap-3 border-b border-glass pb-3">
+              <div className="p-2 bg-violet-500/10 rounded-lg text-violet-400">
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-theme-primary">
+                  Edit User Identity
+                </h2>
+                <p className="text-xs text-theme-muted">
+                  Modify @{editIdentityModal.currentUsername}&apos;s username or
+                  display name.
+                </p>
+              </div>
+            </div>
+
+            {/* Warning notice */}
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-400 text-[11px]">
+              <svg
+                className="w-3.5 h-3.5 shrink-0 mt-0.5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+              <span>
+                The user will be notified in real-time:{' '}
+                <strong>
+                  &ldquo;Relay Guardian AI changed your [field] due to:
+                  [reason]&rdquo;
+                </strong>
+              </span>
+            </div>
+
+            <form onSubmit={handleEditIdentity} className="flex flex-col gap-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-theme-muted uppercase tracking-wider">
+                    New Username
+                  </label>
+                  <input
+                    type="text"
+                    placeholder={
+                      editIdentityModal.currentUsername || 'username'
+                    }
+                    value={editUsername}
+                    onChange={(e) => setEditUsername(e.target.value)}
+                    className="input-base focus:input-focus bg-theme-input/40 rounded-xl p-3 text-xs text-theme-primary placeholder-theme-muted font-mono"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-theme-muted uppercase tracking-wider">
+                    New Display Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder={
+                      editIdentityModal.currentDisplayName || 'Display Name'
+                    }
+                    value={editDisplayName}
+                    onChange={(e) => setEditDisplayName(e.target.value)}
+                    className="input-base focus:input-focus bg-theme-input/40 rounded-xl p-3 text-xs text-theme-primary placeholder-theme-muted"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-theme-muted uppercase tracking-wider">
+                  Reason <span className="text-red-400">*</span>
+                </label>
+                <textarea
+                  required
+                  placeholder="E.g., Username contained inappropriate language."
+                  value={editReason}
+                  onChange={(e) => setEditReason(e.target.value)}
+                  rows={3}
+                  className="input-base focus:input-focus bg-theme-input/40 rounded-xl p-3 text-xs text-theme-primary placeholder-theme-muted resize-none"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2 border-t border-glass">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditIdentityModal(null);
+                    setEditUsername('');
+                    setEditDisplayName('');
+                    setEditReason('');
+                  }}
+                  className="px-4 py-2 text-xs font-semibold text-theme-secondary hover:text-theme-primary bg-transparent border border-glass rounded-lg cursor-pointer transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={
+                    editIdentitySubmitting ||
+                    (!editUsername.trim() && !editDisplayName.trim()) ||
+                    !editReason.trim()
+                  }
+                  className="btn-send px-4 py-2 text-xs font-bold text-white rounded-lg cursor-pointer active-press disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                  {editIdentitySubmitting ? 'Applying...' : 'Apply Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* React Portal actions dropdown menu to prevent table layout/border clipping */}
+      {activeMenu &&
+        typeof window !== 'undefined' &&
+        ReactDOM.createPortal(
+          <>
+            <div
+              className="fixed inset-0 z-40 bg-transparent"
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveMenu(null);
+              }}
+            />
+            <div
+              style={{
+                position: 'absolute',
+                top: `${activeMenu.top}px`,
+                left: `${activeMenu.left}px`,
+              }}
+              className="w-44 rounded-xl border border-glass bg-[var(--bg-primary)] shadow-2xl py-1 z-50 animate-fade-in text-left"
+            >
+              <button
+                onClick={() => {
+                  setActiveMenu(null);
+                  handleToggleRole(activeMenu.u);
+                }}
+                disabled={activeMenu.u.id === user?.id}
+                className="w-full text-left px-3.5 py-2 text-[11px] font-semibold text-theme-primary hover:bg-theme-input flex items-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed border-none bg-transparent"
+              >
+                {activeMenu.u.role === 'admin' ? 'Revoke Admin' : 'Make Admin'}
+              </button>
+              <button
+                onClick={() => {
+                  setActiveMenu(null);
+                  setWarningModal({
+                    isOpen: true,
+                    userId: activeMenu.u.id,
+                    username: activeMenu.u.username || activeMenu.u.email,
+                  });
+                }}
+                className="w-full text-left px-3.5 py-2 text-[11px] font-semibold text-amber-400 hover:bg-theme-input flex items-center gap-2 cursor-pointer border-none bg-transparent"
+              >
+                Send Warning
+              </button>
+              <button
+                onClick={() => {
+                  setActiveMenu(null);
+                  setFriendRequestModal({
+                    isOpen: true,
+                    userId: activeMenu.u.id,
+                    username: activeMenu.u.username || activeMenu.u.email,
+                  });
+                }}
+                disabled={activeMenu.u.id === user?.id}
+                className="w-full text-left px-3.5 py-2 text-[11px] font-semibold text-emerald-400 hover:bg-theme-input flex items-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed border-none bg-transparent"
+              >
+                Friend Request
+              </button>
+              <button
+                onClick={() => {
+                  setActiveMenu(null);
+                  setEditIdentityModal({
+                    isOpen: true,
+                    userId: activeMenu.u.id,
+                    username: activeMenu.u.username || activeMenu.u.email,
+                    currentUsername: activeMenu.u.username || '',
+                    currentDisplayName: activeMenu.u.displayName || '',
+                  });
+                  setEditUsername(activeMenu.u.username || '');
+                  setEditDisplayName(activeMenu.u.displayName || '');
+                  setEditReason('');
+                }}
+                className="w-full text-left px-3.5 py-2 text-[11px] font-semibold text-violet-400 hover:bg-theme-input flex items-center gap-2 cursor-pointer border-none bg-transparent"
+              >
+                Edit Identity Info
+              </button>
+              <div className="h-[1px] bg-[var(--glass-border)] my-1" />
+              <button
+                onClick={() => {
+                  setActiveMenu(null);
+                  handleForceReload(activeMenu.u);
+                }}
+                disabled={activeMenu.u.id === user?.id}
+                className="w-full text-left px-3.5 py-2 text-[11px] font-semibold text-red-500 hover:bg-theme-input flex items-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed border-none bg-transparent"
+              >
+                Force Reset
+              </button>
+            </div>
+          </>,
+          document.body,
+        )}
     </div>
   );
 }

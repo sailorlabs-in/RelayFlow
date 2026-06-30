@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Param,
   UseGuards,
   Inject,
@@ -10,6 +11,7 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  Request,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -93,6 +95,7 @@ export class AdminController {
         'role',
         'warnings',
         'status',
+        'visibility',
         'createdAt',
       ],
       order: { createdAt: 'DESC' },
@@ -374,6 +377,218 @@ export class AdminController {
     return {
       success: true,
       message: `Silent hard reload command queued for all registered users' devices (${recipientsToNotify.length} targets).`,
+    };
+  }
+
+  /**
+   * Admin sends a friend request on behalf of themselves to another user.
+   * This allows admins to connect with any platform user.
+   */
+  @UseGuards(JwtAuthGuard, PlatformAdminGuard)
+  @Post('users/:userId/send-friend-request')
+  async adminSendFriendRequest(
+    @Param('userId') targetUserId: string,
+    @Request() req: any,
+  ) {
+    const adminUserId = req.user?.userId;
+    if (!adminUserId) {
+      throw new ForbiddenException('Admin user context not found');
+    }
+
+    const targetUser = await this.userRepo.findOne({
+      where: { id: targetUserId },
+    });
+    if (!targetUser) {
+      throw new NotFoundException('Target user not found');
+    }
+    if (targetUserId === adminUserId) {
+      throw new BadRequestException('Cannot send friend request to yourself');
+    }
+
+    const friendship = await this.usersService.sendFriendRequest(
+      adminUserId,
+      targetUser.email,
+    );
+
+    // Notify target user via WebSocket
+    if (friendship.status === 'accepted') {
+      this.realtimeGateway.server
+        .to(`user:${friendship.requesterId}`)
+        .emit('friend.request.accepted', friendship);
+      this.realtimeGateway.server
+        .to(`user:${friendship.addresseeId}`)
+        .emit('friend.request.accepted', friendship);
+    } else {
+      this.realtimeGateway.server
+        .to(`user:${targetUserId}`)
+        .emit('friend.request.received', friendship);
+    }
+
+    return { success: true, friendship };
+  }
+
+  /**
+   * Admin updates a user's username and/or displayName.
+   * The affected user receives a real-time notification with the reason.
+   */
+  @UseGuards(JwtAuthGuard, PlatformAdminGuard)
+  @Patch('users/:userId/identity')
+  async adminUpdateUserIdentity(
+    @Param('userId') targetUserId: string,
+    @Body()
+    body: {
+      username?: string;
+      displayName?: string;
+      reason: string;
+    },
+  ) {
+    if (!body.reason || body.reason.trim() === '') {
+      throw new BadRequestException(
+        'A reason is required when modifying user identity.',
+      );
+    }
+    if (!body.username && !body.displayName) {
+      throw new BadRequestException(
+        'At least one of username or displayName must be provided.',
+      );
+    }
+
+    const user = await this.userRepo.findOne({ where: { id: targetUserId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const changes: string[] = [];
+
+    if (body.displayName !== undefined && body.displayName.trim() !== '') {
+      user.displayName = body.displayName.trim();
+      changes.push(`display name to "${user.displayName}"`);
+    }
+
+    if (body.username !== undefined && body.username.trim() !== '') {
+      const trimmedUsername = body.username.toLowerCase().trim();
+      // Check uniqueness
+      const existing = await this.userRepo.findOne({
+        where: { username: trimmedUsername },
+      });
+      if (existing && existing.id !== targetUserId) {
+        throw new BadRequestException(
+          `Username "${trimmedUsername}" is already taken by another user.`,
+        );
+      }
+      user.username = trimmedUsername;
+      changes.push(`username to "${user.username}"`);
+    }
+
+    const savedUser = await this.userRepo.save(user);
+
+    // Invalidate cache
+    try {
+      const redis = this.redisService.getClient();
+      await redis.del(`user:profile:${targetUserId}`);
+    } catch {
+      // ignore
+    }
+
+    // Build notification messages
+    const reason = body.reason.trim();
+    const notificationMessages: Array<{
+      field: string;
+      event: string;
+      value: string;
+    }> = [];
+
+    if (body.displayName !== undefined && body.displayName.trim() !== '') {
+      notificationMessages.push({
+        field: 'display name',
+        event: 'admin.identity.updated',
+        value: savedUser.displayName ?? '',
+      });
+    }
+    if (body.username !== undefined && body.username.trim() !== '') {
+      notificationMessages.push({
+        field: 'username',
+        event: 'admin.identity.updated',
+        value: savedUser.username ?? '',
+      });
+    }
+
+    // Emit a single consolidated notification to the user
+    this.realtimeGateway.server
+      .to(`user:${targetUserId}`)
+      .emit('admin.identity.updated', {
+        userId: targetUserId,
+        changes: notificationMessages.map((m) => ({
+          field: m.field,
+          value: m.value,
+        })),
+        reason,
+        username: savedUser.username,
+        displayName: savedUser.displayName,
+      });
+
+    // Also broadcast public profile update so all clients see the new name
+    this.realtimeGateway.server.emit('user.profile.updated', {
+      userId: targetUserId,
+      ...(body.displayName !== undefined && {
+        displayName: savedUser.displayName,
+      }),
+      ...(body.username !== undefined && { username: savedUser.username }),
+    });
+
+    // Queue push notification via vibe-message
+    try {
+      if (savedUser.notificationsEnabled !== false) {
+        let devices: any[] = [];
+        if (savedUser.loggedInDevices) {
+          try {
+            devices = JSON.parse(savedUser.loggedInDevices);
+          } catch {
+            devices = [];
+          }
+        }
+
+        const recipientsToNotify: string[] = [];
+        if (Array.isArray(devices) && devices.length > 0) {
+          const activeDevices = devices.filter(
+            (d: any) => d.notificationsEnabled !== false,
+          );
+          for (const d of activeDevices) {
+            recipientsToNotify.push(`${savedUser.id}:${d.deviceId}`);
+          }
+        } else {
+          recipientsToNotify.push(savedUser.id);
+        }
+
+        if (recipientsToNotify.length > 0) {
+          const fieldDesc = changes.join(' and ');
+          await this.notificationsQueue.add('send-push', {
+            title: 'Account Identity Updated',
+            body: `Relay Guardian AI changed your ${fieldDesc} due to: ${reason}`,
+            recipients: recipientsToNotify,
+            metadata: {
+              type: 'admin_identity_update',
+              userId: targetUserId,
+              reason,
+            },
+          });
+        }
+      }
+    } catch (err) {
+      console.error(
+        'Failed to queue admin identity update push notification',
+        err,
+      );
+    }
+
+    return {
+      success: true,
+      changes,
+      user: {
+        id: savedUser.id,
+        username: savedUser.username,
+        displayName: savedUser.displayName,
+      },
     };
   }
 }

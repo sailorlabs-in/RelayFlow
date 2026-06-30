@@ -206,7 +206,51 @@ export const MobileDashboard = ({
     activeVoiceChannelId,
     voiceStates,
   } = useAppSelector((s) => s.groups);
-  const groups = Array.isArray(rawGroups) ? rawGroups : [];
+  const rawGroupsArray = Array.isArray(rawGroups) ? rawGroups : [];
+
+  const [groupOrder, setGroupOrder] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (user?.groupOrder) {
+      try {
+        setGroupOrder(JSON.parse(user.groupOrder));
+      } catch (e) {
+        console.error('Failed to parse group order from user profile:', e);
+      }
+    } else if (user?.id) {
+      const stored = localStorage.getItem(`relayflow_group_order_${user.id}`);
+      if (stored) {
+        try {
+          setGroupOrder(JSON.parse(stored));
+        } catch (e) {
+          console.error('Failed to parse group order from localStorage:', e);
+        }
+      }
+    }
+  }, [user?.id, user?.groupOrder]);
+
+  const groups = React.useMemo(() => {
+    if (!rawGroupsArray.length) {
+      return rawGroupsArray;
+    }
+    if (!groupOrder || !groupOrder.length) {
+      return rawGroupsArray;
+    }
+    return [...rawGroupsArray].sort((a, b) => {
+      const indexA = groupOrder.indexOf(a.id);
+      const indexB = groupOrder.indexOf(b.id);
+      if (indexA === -1 && indexB === -1) {
+        return 0;
+      }
+      if (indexA === -1) {
+        return 1;
+      }
+      if (indexB === -1) {
+        return -1;
+      }
+      return indexA - indexB;
+    });
+  }, [rawGroupsArray, groupOrder]);
 
   // Tab State: 'chats' | 'groups' | 'friends' | 'profile'
   const [activeTab, setActiveTab] = useState<
@@ -358,9 +402,7 @@ export const MobileDashboard = ({
     if (recipientId && userProfiles[recipientId]) {
       const r = userProfiles[recipientId];
       return {
-        name: r.username
-          ? `@${r.username}`
-          : r.displayName || r.email.split('@')[0],
+        name: r.username ? r.username : r.displayName || r.email.split('@')[0],
         letter: (r.username || r.displayName || r.email)[0].toUpperCase(),
         email: r.email,
         id: r.id,
@@ -1264,7 +1306,7 @@ export const MobileDashboard = ({
                                                 />
                                                 <span className="text-[12px] text-theme-secondary truncate">
                                                   {profile.username
-                                                    ? `@${profile.username}`
+                                                    ? profile.username
                                                     : profile.displayName ||
                                                       profile.email.split(
                                                         '@',
@@ -1528,7 +1570,7 @@ export const MobileDashboard = ({
                                                       />
                                                       <span className="text-[12px] text-theme-secondary truncate">
                                                         {profile.username
-                                                          ? `@${profile.username}`
+                                                          ? profile.username
                                                           : profile.displayName ||
                                                             profile.email.split(
                                                               '@',

@@ -1637,9 +1637,7 @@ export const ChatArea = ({
     if (recipientId && userProfiles[recipientId]) {
       const r = userProfiles[recipientId];
       return {
-        name: r.username
-          ? `@${r.username}`
-          : r.displayName || r.email.split('@')[0],
+        name: r.username ? r.username : r.displayName || r.email.split('@')[0],
         letter: (r.username || r.displayName || r.email)[0].toUpperCase(),
         email: r.email,
         id: r.id,
@@ -1910,14 +1908,13 @@ export const ChatArea = ({
                     const isOut = msg.senderId === user.id;
                     const senderProfile = userProfiles[msg.senderId];
                     const senderName = isOut
-                      ? user.username
-                        ? `@${user.username}`
-                        : user.displayName || user.email.split('@')[0]
-                      : senderProfile?.username
-                        ? `@${senderProfile.username}`
-                        : senderProfile?.displayName ||
-                          senderProfile?.email?.split('@')[0] ||
-                          'User';
+                      ? user.username ||
+                        user.displayName ||
+                        user.email.split('@')[0]
+                      : senderProfile?.username ||
+                        senderProfile?.displayName ||
+                        senderProfile?.email?.split('@')[0] ||
+                        'User';
 
                     // Determine sender color if it's channel mode
                     let senderColor = 'inherit';
@@ -1944,10 +1941,7 @@ export const ChatArea = ({
                     }
 
                     if (!isBubbleLayout) {
-                      const letter =
-                        (senderName.startsWith('@')
-                          ? senderName.slice(1)
-                          : senderName)[0]?.toUpperCase() || 'U';
+                      const letter = senderName[0]?.toUpperCase() || 'U';
                       const presenceStatus = isOut
                         ? onlineUsers[user.id] || user.status || 'online'
                         : onlineUsers[msg.senderId] || 'offline';
@@ -1983,6 +1977,30 @@ export const ChatArea = ({
                               />
                             </div>
                             <div className="flex-1 min-w-0">
+                              <div className="flex items-baseline gap-2 mb-1">
+                                <span
+                                  onClick={(e) =>
+                                    handleOpenProfile(e, msg.senderId)
+                                  }
+                                  style={{
+                                    color:
+                                      senderColor !== 'inherit'
+                                        ? senderColor
+                                        : undefined,
+                                  }}
+                                  className={`text-[13.5px] font-bold cursor-pointer hover:underline ${isOut ? 'text-(--accent-primary)' : ''} ${!isOut && senderColor === 'inherit' ? 'text-theme-primary' : ''}`}
+                                >
+                                  {senderName}
+                                </span>
+                                <span className="text-[10.5px] text-theme-muted">
+                                  {formatMessageTimestamp(msg.createdAt)}
+                                </span>
+                                {msg.isEdited && (
+                                  <span className="text-[9.5px] text-theme-muted opacity-85 select-none">
+                                    (edited)
+                                  </span>
+                                )}
+                              </div>
                               {msg.parentMessage && (
                                 <div
                                   onClick={() => {
@@ -2020,10 +2038,8 @@ export const ChatArea = ({
                                   <span className="font-bold text-theme-primary shrink-0">
                                     {userProfiles[msg.parentMessage.senderId]
                                       ?.displayName ||
-                                      (userProfiles[msg.parentMessage.senderId]
-                                        ?.username
-                                        ? `@${userProfiles[msg.parentMessage.senderId].username}`
-                                        : null) ||
+                                      userProfiles[msg.parentMessage.senderId]
+                                        ?.username ||
                                       (msg.parentMessage.senderId === user?.id
                                         ? 'You'
                                         : 'User')}
@@ -2033,30 +2049,6 @@ export const ChatArea = ({
                                   </span>
                                 </div>
                               )}
-                              <div className="flex items-baseline gap-2 mb-1">
-                                <span
-                                  onClick={(e) =>
-                                    handleOpenProfile(e, msg.senderId)
-                                  }
-                                  style={{
-                                    color:
-                                      senderColor !== 'inherit'
-                                        ? senderColor
-                                        : undefined,
-                                  }}
-                                  className={`text-[13.5px] font-bold cursor-pointer hover:underline ${isOut ? 'text-(--accent-primary)' : ''} ${!isOut && senderColor === 'inherit' ? 'text-theme-primary' : ''}`}
-                                >
-                                  {senderName}
-                                </span>
-                                <span className="text-[10.5px] text-theme-muted">
-                                  {formatMessageTimestamp(msg.createdAt)}
-                                </span>
-                                {msg.isEdited && (
-                                  <span className="text-[9.5px] text-theme-muted opacity-85 select-none">
-                                    (edited)
-                                  </span>
-                                )}
-                              </div>
                               {editingMessageId === msg.id ? (
                                 <div className="flex flex-col gap-2 mt-1 max-w-full">
                                   <textarea
@@ -2258,10 +2250,7 @@ export const ChatArea = ({
                       );
                     }
 
-                    const letter =
-                      (senderName.startsWith('@')
-                        ? senderName.slice(1)
-                        : senderName)[0]?.toUpperCase() || 'U';
+                    const letter = senderName[0]?.toUpperCase() || 'U';
                     const presenceStatus = isOut
                       ? onlineUsers[user.id] || user.status || 'online'
                       : onlineUsers[msg.senderId] || 'offline';
@@ -2424,10 +2413,8 @@ export const ChatArea = ({
                               <span className="font-bold text-theme-primary shrink-0">
                                 {userProfiles[msg.parentMessage.senderId]
                                   ?.displayName ||
-                                  (userProfiles[msg.parentMessage.senderId]
-                                    ?.username
-                                    ? `@${userProfiles[msg.parentMessage.senderId].username}`
-                                    : null) ||
+                                  userProfiles[msg.parentMessage.senderId]
+                                    ?.username ||
                                   (msg.parentMessage.senderId === user?.id
                                     ? 'You'
                                     : 'User')}

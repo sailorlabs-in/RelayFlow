@@ -176,9 +176,7 @@ export const ChatSidebar = ({
     if (recipientId && userProfiles[recipientId]) {
       const r = userProfiles[recipientId];
       return {
-        name: r.username
-          ? `@${r.username}`
-          : r.displayName || r.email.split('@')[0],
+        name: r.username ? r.username : r.displayName || r.email.split('@')[0],
         letter: (r.username || r.displayName || r.email)[0].toUpperCase(),
         email: r.email,
         id: r.id,

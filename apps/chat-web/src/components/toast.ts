@@ -6,18 +6,26 @@ import { toast } from 'react-toastify';
  * or checking media queries for system preference.
  */
 export const getActiveTheme = (): 'light' | 'dark' => {
-  if (typeof window === 'undefined') {return 'dark';}
-  
+  if (typeof window === 'undefined') {
+    return 'dark';
+  }
+
   const theme = document.documentElement.getAttribute('data-theme') || 'dark';
   if (theme === 'system') {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    return window.matchMedia('(prefers-color-scheme: dark)').matches
+      ? 'dark'
+      : 'light';
   }
   return theme === 'light' ? 'light' : 'dark';
 };
 
 export const showToast = {
   success: (msg: React.ReactNode, options?: ToastOptions) => {
-    return toast.success(msg as any, { theme: getActiveTheme(), ...options });
+    return toast.success(msg as any, {
+      theme: getActiveTheme(),
+      autoClose: 7000,
+      ...options,
+    });
   },
   error: (msg: React.ReactNode, options?: ToastOptions) => {
     if (typeof msg === 'string') {
@@ -31,17 +39,28 @@ export const showToast = {
         return;
       }
     }
-    return toast.error(msg as any, { theme: getActiveTheme(), ...options });
+    return toast.error(msg as any, {
+      theme: getActiveTheme(),
+      autoClose: 7000,
+      ...options,
+    });
   },
   info: (msg: React.ReactNode, options?: ToastOptions) => {
-    return toast.info(msg as any, { theme: getActiveTheme(), ...options });
+    return toast.info(msg as any, {
+      theme: getActiveTheme(),
+      autoClose: 7000,
+      ...options,
+    });
   },
   warning: (msg: React.ReactNode, options?: ToastOptions) => {
-    return toast.warn(msg as any, { theme: getActiveTheme(), ...options });
+    return toast.warn(msg as any, {
+      theme: getActiveTheme(),
+      autoClose: 7000,
+      ...options,
+    });
   },
   /** Custom notification toast — no Toastify theme applied so CSS variables control all colors */
   notification: (msg: React.ReactNode, options?: ToastOptions) => {
-    return toast(msg as any, { ...options });
+    return toast(msg as any, { autoClose: 7000, ...options });
   },
 };
-
