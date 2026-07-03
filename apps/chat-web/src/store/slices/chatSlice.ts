@@ -60,6 +60,20 @@ export interface ChatState {
   mutedConversationIds: string[];
   status: 'idle' | 'loading' | 'succeeded' | 'failed';
   error: string | null;
+  activeCall: {
+    conversationId: string;
+    callerId: string;
+    callerName: string;
+    targetUserId: string;
+    status:
+      | 'idle'
+      | 'calling'
+      | 'incoming'
+      | 'connected'
+      | 'rejected'
+      | 'disconnected';
+    isInitiator: boolean;
+  } | null;
 }
 
 /** Load muted conversation IDs from localStorage for a given userId. */
@@ -94,6 +108,7 @@ const initialState: ChatState = {
   mutedConversationIds: [],
   status: 'idle',
   error: null,
+  activeCall: null,
 };
 
 // Thunk to fetch conversations a user participates in
@@ -712,6 +727,58 @@ const chatSlice = createSlice({
         state.friends = state.friends.filter((f) => f.id !== friendId);
       }
     },
+    startOutgoingCall: (
+      state,
+      action: PayloadAction<{
+        conversationId: string;
+        targetUserId: string;
+        callerName: string;
+      }>,
+    ) => {
+      state.activeCall = {
+        conversationId: action.payload.conversationId,
+        callerId: '',
+        callerName: action.payload.callerName,
+        targetUserId: action.payload.targetUserId,
+        status: 'calling',
+        isInitiator: true,
+      };
+    },
+    incomingCallReceived: (
+      state,
+      action: PayloadAction<{
+        conversationId: string;
+        callerId: string;
+        callerName: string;
+      }>,
+    ) => {
+      state.activeCall = {
+        conversationId: action.payload.conversationId,
+        callerId: action.payload.callerId,
+        callerName: action.payload.callerName,
+        targetUserId: '',
+        status: 'incoming',
+        isInitiator: false,
+      };
+    },
+    acceptCall: (state) => {
+      if (state.activeCall) {
+        state.activeCall.status = 'connected';
+      }
+    },
+    endCall: (state) => {
+      state.activeCall = null;
+    },
+    socketCallRejected: (state) => {
+      if (state.activeCall) {
+        state.activeCall.status = 'rejected';
+      }
+    },
+    socketCallAccepted: (state) => {
+      if (state.activeCall) {
+        state.activeCall.status = 'connected';
+      }
+    },
   },
   extraReducers: (builder) => {
     // Fetch conversations
@@ -927,6 +994,12 @@ export const {
   socketFriendRemoved,
   loadMutedConversations,
   toggleMuteConversation,
+  startOutgoingCall,
+  incomingCallReceived,
+  acceptCall,
+  endCall,
+  socketCallRejected,
+  socketCallAccepted,
 } = chatSlice.actions;
 
 export default chatSlice.reducer;

@@ -61,6 +61,7 @@ import {
   deleteConversation,
   fetchUserProfile,
   setActiveConversation,
+  startOutgoingCall,
 } from '../store/slices/chatSlice';
 import { socketManager } from '../store/socketManager';
 import { generateImageThumbnail, generateVideoThumbnail } from '../utils/media';
@@ -1453,6 +1454,24 @@ export const ChatArea = ({
     });
   };
 
+  const handleStartCall = () => {
+    if (!activeConversationId || !activeDetails?.id) {
+      return;
+    }
+    dispatch(
+      startOutgoingCall({
+        conversationId: activeConversationId,
+        targetUserId: activeDetails.id,
+        callerName:
+          user?.displayName ||
+          user?.username ||
+          user?.email?.split('@')[0] ||
+          'User',
+      }),
+    );
+    socketManager.startDmCall(activeDetails.id, activeConversationId);
+  };
+
   const handleDeleteMessage = (messageId: string) => {
     if (!activeConversationId) {
       return;
@@ -1714,7 +1733,7 @@ export const ChatArea = ({
           {/* Chat Header — hidden in mobile view since MobileDashboard renders its own header */}
           {!isMobileView && (
             <div
-              className={`flex items-center gap-3 border-b border-theme bg-theme-sidebar/40 backdrop-blur-md rounded-t-2xl shrink-0 ${isMobileScreen ? 'px-3.5 py-2.5' : 'px-5 py-3.5'}`}
+              className={`flex items-center justify-between gap-3 border-b border-theme bg-theme-sidebar/40 backdrop-blur-md rounded-t-2xl shrink-0 ${isMobileScreen ? 'px-3.5 py-2.5' : 'px-5 py-3.5'}`}
             >
               {isChannelMode ? (
                 /* Channel mode header */
@@ -1841,17 +1860,39 @@ export const ChatArea = ({
                   </div>
                 </>
               )}
-              {/* Delete thread — only in DM mode */}
+              {/* Call button & Delete thread — only in DM mode */}
               {!isChannelMode && (
-                <button
-                  id="delete-thread-btn"
-                  title="Delete thread"
-                  className="flex items-center gap-1.5 rounded-[9px] px-3 py-1.5 text-[12px] font-semibold cursor-pointer transition-all duration-200 shrink-0 border-[1.5px] bg-(--danger-bg) text-(--danger) border-(--danger-border) hover:bg-(--danger) hover:text-white hover:border-(--danger) hover:shadow-[0_4px_14px_rgba(239,68,68,0.3)] active-press"
-                  onClick={() => handleDeleteConversation(activeConversationId)}
-                >
-                  <IconTrash />
-                  Delete
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    id="call-user-btn"
+                    title="Start Voice Call"
+                    className="flex items-center gap-1.5 rounded-[9px] px-3 py-1.5 text-[12px] font-semibold cursor-pointer transition-all duration-200 border-[1.5px] bg-(--accent-primary)/10 text-(--accent-primary) border-(--accent-primary)/20 hover:bg-(--accent-primary) hover:text-white hover:border-(--accent-primary) active-press"
+                    onClick={handleStartCall}
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      className="w-4 h-4"
+                    >
+                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                    </svg>
+                    Call
+                  </button>
+
+                  <button
+                    id="delete-thread-btn"
+                    title="Delete thread"
+                    className="flex items-center gap-1.5 rounded-[9px] px-3 py-1.5 text-[12px] font-semibold cursor-pointer transition-all duration-200 border-[1.5px] bg-(--danger-bg) text-(--danger) border-(--danger-border) hover:bg-(--danger) hover:text-white hover:border-(--danger) hover:shadow-[0_4px_14px_rgba(239,68,68,0.3)] active-press"
+                    onClick={() =>
+                      handleDeleteConversation(activeConversationId)
+                    }
+                  >
+                    <IconTrash />
+                    Delete
+                  </button>
+                </div>
               )}
 
               {/* Members Toggle Button — only in Channel mode */}

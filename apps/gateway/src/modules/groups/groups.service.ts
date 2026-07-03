@@ -572,6 +572,9 @@ export class GroupsService {
     hiddenFromUserIds?: string[],
     isReadOnly?: boolean,
     notificationSetting?: 'all' | 'mention' | 'none',
+    hiddenFromRoleIds?: string[],
+    readUserIds?: string[],
+    writeUserIds?: string[],
   ): Promise<Conversation> {
     const membership = await this.groupMemberRepo.findOne({
       where: { groupId, userId: requesterId },
@@ -599,6 +602,9 @@ export class GroupsService {
       readRoleIds: readRoleIds || [],
       writeRoleIds: writeRoleIds || [],
       hiddenFromUserIds: hiddenFromUserIds || [],
+      hiddenFromRoleIds: hiddenFromRoleIds || [],
+      readUserIds: readUserIds || [],
+      writeUserIds: writeUserIds || [],
       sectionId,
       isReadOnly: isReadOnly || false,
       notificationSetting: notificationSetting || 'all',
@@ -632,6 +638,9 @@ export class GroupsService {
     hiddenFromUserIds?: string[],
     isReadOnly?: boolean,
     notificationSetting?: 'all' | 'mention' | 'none',
+    hiddenFromRoleIds?: string[],
+    readUserIds?: string[],
+    writeUserIds?: string[],
   ): Promise<Conversation> {
     const group = await this.groupRepo.findOne({ where: { id: groupId } });
     if (!group) {
@@ -675,6 +684,15 @@ export class GroupsService {
     }
     if (hiddenFromUserIds !== undefined) {
       channel.hiddenFromUserIds = hiddenFromUserIds;
+    }
+    if (hiddenFromRoleIds !== undefined) {
+      channel.hiddenFromRoleIds = hiddenFromRoleIds;
+    }
+    if (readUserIds !== undefined) {
+      channel.readUserIds = readUserIds;
+    }
+    if (writeUserIds !== undefined) {
+      channel.writeUserIds = writeUserIds;
     }
     if (isReadOnly !== undefined) {
       channel.isReadOnly = isReadOnly;
@@ -844,14 +862,24 @@ export class GroupsService {
         return false;
       }
 
+      // Check if user's role is explicitly hidden from this channel
+      const hiddenFromRoles = channel.hiddenFromRoleIds || [];
+      if (hiddenFromRoles.some((roleId) => memberRoleIds.includes(roleId))) {
+        return false;
+      }
+
       const allowed = channel.allowedRoleIds || [];
       const readRoles = channel.readRoleIds || [];
       const writeRoles = channel.writeRoleIds || [];
+      const readUsers = channel.readUserIds || [];
+      const writeUsers = channel.writeUserIds || [];
 
       if (
         allowed.length === 0 &&
         readRoles.length === 0 &&
-        writeRoles.length === 0
+        writeRoles.length === 0 &&
+        readUsers.length === 0 &&
+        writeUsers.length === 0
       ) {
         return true;
       }
@@ -859,7 +887,9 @@ export class GroupsService {
       return (
         allowed.some((roleId) => memberRoleIds.includes(roleId)) ||
         readRoles.some((roleId) => memberRoleIds.includes(roleId)) ||
-        writeRoles.some((roleId) => memberRoleIds.includes(roleId))
+        writeRoles.some((roleId) => memberRoleIds.includes(roleId)) ||
+        readUsers.includes(userId) ||
+        writeUsers.includes(userId)
       );
     });
   }
@@ -902,6 +932,13 @@ export class GroupsService {
       return false;
     }
 
+    // Check if user's role is explicitly hidden from this channel
+    const hiddenFromRoles = channel.hiddenFromRoleIds || [];
+    const memberRoleIds = member.roleIds || [];
+    if (hiddenFromRoles.some((roleId) => memberRoleIds.includes(roleId))) {
+      return false;
+    }
+
     if (channel.sectionId) {
       const section = await this.groupSectionRepo.findOne({
         where: { id: channel.sectionId },
@@ -921,15 +958,22 @@ export class GroupsService {
     const allowed = channel.allowedRoleIds || [];
     const readRoles = channel.readRoleIds || [];
     const writeRoles = channel.writeRoleIds || [];
+    const readUsers = channel.readUserIds || [];
+    const writeUsers = channel.writeUserIds || [];
 
-    if (allowed.length === 0 && readRoles.length === 0) {
+    if (
+      allowed.length === 0 &&
+      readRoles.length === 0 &&
+      readUsers.length === 0 &&
+      writeUsers.length === 0
+    ) {
       return true;
     }
 
-    const memberRoleIds = member.roleIds || [];
     const hasReadRole =
       allowed.some((roleId) => memberRoleIds.includes(roleId)) ||
-      readRoles.some((roleId) => memberRoleIds.includes(roleId));
+      readRoles.some((roleId) => memberRoleIds.includes(roleId)) ||
+      readUsers.includes(userId);
 
     if (hasReadRole) {
       return true;
@@ -937,7 +981,8 @@ export class GroupsService {
 
     if (
       !channel.isReadOnly &&
-      writeRoles.some((roleId) => memberRoleIds.includes(roleId))
+      (writeRoles.some((roleId) => memberRoleIds.includes(roleId)) ||
+        writeUsers.includes(userId))
     ) {
       return true;
     }
@@ -987,15 +1032,23 @@ export class GroupsService {
     }
 
     const writeRoles = channel.writeRoleIds || [];
-    if (channel.isReadOnly && writeRoles.length === 0) {
+    const writeUsers = channel.writeUserIds || [];
+    if (
+      channel.isReadOnly &&
+      writeRoles.length === 0 &&
+      writeUsers.length === 0
+    ) {
       return false;
     }
-    if (writeRoles.length === 0) {
+    if (writeRoles.length === 0 && writeUsers.length === 0) {
       return true;
     }
 
     const memberRoleIds = member.roleIds || [];
-    return writeRoles.some((roleId) => memberRoleIds.includes(roleId));
+    return (
+      writeRoles.some((roleId) => memberRoleIds.includes(roleId)) ||
+      writeUsers.includes(userId)
+    );
   }
 
   // ─── Custom Role Management ─────────────────────────────────────────────────
@@ -2063,6 +2116,17 @@ export class GroupsService {
 
     member.isGhost = !member.isGhost;
     return this.groupMemberRepo.save(member);
+  }
+
+  async isGhostAdmin(groupId: string, userId: string): Promise<boolean> {
+    const isPlatformAdmin = await this.isPlatformAdmin(userId);
+    if (!isPlatformAdmin) {
+      return false;
+    }
+    const member = await this.groupMemberRepo.findOne({
+      where: { groupId, userId },
+    });
+    return member?.isGhost === true;
   }
 
   async directAddMember(groupId: string, userId: string): Promise<any> {

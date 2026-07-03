@@ -42,6 +42,7 @@ import StoreProvider from '../store/StoreProvider';
 import { ProfileSettingsContent } from './profile/page';
 import { useNotificationClient } from './useNotificationClient';
 import { MobileDashboard } from '../components/MobileDashboard';
+import { CallOverlay } from '../components/CallOverlay';
 
 function ChatDashboardContent() {
   const dispatch = useAppDispatch();
@@ -92,10 +93,14 @@ function ChatDashboardContent() {
     'online',
   );
 
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 768;
+    }
+    return false;
+  });
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
-    handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -507,6 +512,7 @@ function ChatDashboardContent() {
             onCancel={() => setConfirmModal(null)}
           />
         )}
+        <CallOverlay />
       </>
     );
   }
@@ -746,6 +752,7 @@ function ChatDashboardContent() {
           onCancel={() => setConfirmModal(null)}
         />
       )}
+      <CallOverlay />
     </div>
   );
 }

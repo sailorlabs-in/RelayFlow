@@ -59,6 +59,9 @@ export interface GroupChannel {
   readRoleIds?: string[];
   writeRoleIds?: string[];
   hiddenFromUserIds?: string[];
+  hiddenFromRoleIds?: string[];
+  readUserIds?: string[];
+  writeUserIds?: string[];
   isReadOnly?: boolean;
   notificationSetting?: 'all' | 'mention' | 'none';
   createdAt: string;
@@ -258,6 +261,9 @@ export const createChannel = createAsyncThunk(
       readRoleIds?: string[];
       writeRoleIds?: string[];
       hiddenFromUserIds?: string[];
+      hiddenFromRoleIds?: string[];
+      readUserIds?: string[];
+      writeUserIds?: string[];
       isReadOnly?: boolean;
       notificationSetting?: 'all' | 'mention' | 'none';
     },
@@ -275,6 +281,9 @@ export const createChannel = createAsyncThunk(
           readRoleIds: payload.readRoleIds || [],
           writeRoleIds: payload.writeRoleIds || [],
           hiddenFromUserIds: payload.hiddenFromUserIds || [],
+          hiddenFromRoleIds: payload.hiddenFromRoleIds || [],
+          readUserIds: payload.readUserIds || [],
+          writeUserIds: payload.writeUserIds || [],
           isReadOnly: payload.isReadOnly || false,
           notificationSetting: payload.notificationSetting || 'all',
         },
@@ -306,6 +315,9 @@ export const updateChannel = createAsyncThunk(
       readRoleIds?: string[];
       writeRoleIds?: string[];
       hiddenFromUserIds?: string[];
+      hiddenFromRoleIds?: string[];
+      readUserIds?: string[];
+      writeUserIds?: string[];
       isReadOnly?: boolean;
       notificationSetting?: 'all' | 'mention' | 'none';
     },
@@ -321,6 +333,9 @@ export const updateChannel = createAsyncThunk(
           readRoleIds: payload.readRoleIds,
           writeRoleIds: payload.writeRoleIds,
           hiddenFromUserIds: payload.hiddenFromUserIds,
+          hiddenFromRoleIds: payload.hiddenFromRoleIds,
+          readUserIds: payload.readUserIds,
+          writeUserIds: payload.writeUserIds,
           isReadOnly: payload.isReadOnly,
           notificationSetting: payload.notificationSetting,
         },

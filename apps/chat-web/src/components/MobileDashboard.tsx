@@ -22,6 +22,7 @@ import {
   fetchUserProfile,
   deleteConversation,
   toggleMuteConversation,
+  startOutgoingCall,
 } from '../store/slices/chatSlice';
 import {
   setActiveGroup,
@@ -755,6 +756,7 @@ export const MobileDashboard = ({
     let headerLetter = '';
     let headerAvatarUrl: string | undefined;
     let headerSubtitle: React.ReactNode = null;
+    let otherUserId = '';
 
     if (isChannelModeEffective && activeGroup) {
       const chan = activeGroup.channels.find((c) => c.id === activeChannelId);
@@ -769,6 +771,7 @@ export const MobileDashboard = ({
         headerName = det.name;
         headerLetter = det.letter;
         headerAvatarUrl = det.avatarThumbnailUrl || det.avatarUrl;
+        otherUserId = det.id || '';
         const recipStatus = det.id
           ? onlineUsers[det.id] || 'offline'
           : 'offline';
@@ -785,6 +788,46 @@ export const MobileDashboard = ({
         );
       }
     }
+
+    const handleStartCall = () => {
+      if (!activeConversationId || !otherUserId) {
+        return;
+      }
+      dispatch(
+        startOutgoingCall({
+          conversationId: activeConversationId,
+          targetUserId: otherUserId,
+          callerName:
+            user?.displayName ||
+            user?.username ||
+            user?.email?.split('@')[0] ||
+            'User',
+        }),
+      );
+      socketManager.startDmCall(otherUserId, activeConversationId);
+    };
+
+    const handleDeleteConversation = () => {
+      if (!activeConversationId) {
+        return;
+      }
+      setLocalConfirmModal({
+        title: 'Delete Chat',
+        message:
+          'Are you sure you want to delete this conversation and all messages for both participants?',
+        onConfirm: async () => {
+          try {
+            await dispatch(deleteConversation(activeConversationId)).unwrap();
+            showToast.success('Conversation deleted.');
+            handleMobileBack();
+          } catch {
+            showToast.error('Failed to delete conversation.');
+          } finally {
+            setLocalConfirmModal(null);
+          }
+        },
+      });
+    };
 
     return (
       <div className="flex flex-col h-screen w-screen bg-theme-primary overflow-hidden">
@@ -844,7 +887,7 @@ export const MobileDashboard = ({
           )}
 
           {/* Action buttons */}
-          {isChannelModeEffective && (
+          {isChannelModeEffective ? (
             <button
               onClick={() => setIsMembersListOpen(!isMembersListOpen)}
               className={`w-8 h-8 flex items-center justify-center rounded-xl active-press shrink-0 ${
@@ -867,6 +910,43 @@ export const MobileDashboard = ({
                 <path d="M16 3.13a4 4 0 0 1 0 7.75" />
               </svg>
             </button>
+          ) : (
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                onClick={handleStartCall}
+                className="w-8 h-8 flex items-center justify-center rounded-xl active-press text-theme-muted hover:bg-theme-input"
+                title="Start Call"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  className="w-4.5 h-4.5"
+                >
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                </svg>
+              </button>
+
+              <button
+                onClick={handleDeleteConversation}
+                className="w-8 h-8 flex items-center justify-center rounded-xl active-press text-red-500 hover:bg-red-500/10"
+                title="Delete Thread"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className="w-4.5 h-4.5"
+                >
+                  <polyline points="3 6 5 6 21 6" />
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                  <line x1="10" y1="11" x2="10" y2="17" />
+                  <line x1="14" y1="11" x2="14" y2="17" />
+                </svg>
+              </button>
+            </div>
           )}
         </header>
 
@@ -888,6 +968,18 @@ export const MobileDashboard = ({
             isMobileView={true}
           />
         </div>
+        {localConfirmModal && (
+          <ConfirmationModal
+            isOpen={true}
+            title={localConfirmModal.title}
+            message={localConfirmModal.message}
+            confirmLabel="Confirm"
+            cancelLabel="Cancel"
+            onConfirm={localConfirmModal.onConfirm}
+            onCancel={() => setLocalConfirmModal(null)}
+            type="danger"
+          />
+        )}
       </div>
     );
   }

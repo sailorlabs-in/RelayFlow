@@ -454,6 +454,9 @@ export class GroupsController {
     @Body('isReadOnly') isReadOnly?: boolean,
     @Body('notificationSetting')
     notificationSetting?: 'all' | 'mention' | 'none',
+    @Body('hiddenFromRoleIds') hiddenFromRoleIds?: string[],
+    @Body('readUserIds') readUserIds?: string[],
+    @Body('writeUserIds') writeUserIds?: string[],
   ) {
     const channel = await this.groupsService.createChannel(
       groupId,
@@ -467,6 +470,9 @@ export class GroupsController {
       hiddenFromUserIds,
       isReadOnly,
       notificationSetting,
+      hiddenFromRoleIds,
+      readUserIds,
+      writeUserIds,
     );
 
     // Notify all group members about the new channel
@@ -513,6 +519,9 @@ export class GroupsController {
     @Body('isReadOnly') isReadOnly?: boolean,
     @Body('notificationSetting')
     notificationSetting?: 'all' | 'mention' | 'none',
+    @Body('hiddenFromRoleIds') hiddenFromRoleIds?: string[],
+    @Body('readUserIds') readUserIds?: string[],
+    @Body('writeUserIds') writeUserIds?: string[],
   ) {
     const channel = await this.groupsService.updateChannel(
       groupId,
@@ -525,6 +534,9 @@ export class GroupsController {
       hiddenFromUserIds,
       isReadOnly,
       notificationSetting,
+      hiddenFromRoleIds,
+      readUserIds,
+      writeUserIds,
     );
 
     // Notify all group members about the channel update

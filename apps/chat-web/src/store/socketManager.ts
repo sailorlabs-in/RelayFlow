@@ -27,6 +27,10 @@ import {
   socketFriendRequestDeclined,
   socketFriendRemoved,
   setActiveConversation,
+  incomingCallReceived,
+  socketCallAccepted,
+  socketCallRejected,
+  endCall,
 } from './slices/chatSlice';
 import type { Group } from './slices/groupsSlice';
 import {
@@ -491,6 +495,57 @@ class SocketManager {
       },
     );
 
+    // DM Calling socket events
+    this.socket.on(
+      'dm.call.incoming',
+      (data: {
+        callerId: string;
+        callerName: string;
+        conversationId: string;
+      }) => {
+        PrintLog('📞 Socket dm.call.incoming:', data);
+        store.dispatch(incomingCallReceived(data));
+      },
+    );
+
+    this.socket.on(
+      'dm.call.accepted',
+      (data: { accepterId: string; conversationId: string }) => {
+        PrintLog('📞 Socket dm.call.accepted:', data);
+        store.dispatch(socketCallAccepted());
+      },
+    );
+
+    this.socket.on(
+      'dm.call.rejected',
+      (data: { rejecterId: string; conversationId: string }) => {
+        PrintLog('📞 Socket dm.call.rejected:', data);
+        store.dispatch(socketCallRejected());
+        showToast.info('Call rejected.');
+        setTimeout(() => {
+          store.dispatch(endCall());
+        }, 3000);
+      },
+    );
+
+    this.socket.on(
+      'dm.call.hungup',
+      (data: { hangerId: string; conversationId: string }) => {
+        PrintLog('📞 Socket dm.call.hungup:', data);
+        store.dispatch(endCall());
+        showToast.info('Call ended.');
+      },
+    );
+
+    this.socket.on(
+      'dm.call.disconnected',
+      (data: { userId: string; userName: string; conversationId: string }) => {
+        PrintLog('📞 Socket dm.call.disconnected:', data);
+        store.dispatch(endCall());
+        showToast.error(`${data.userName} disconnected.`);
+      },
+    );
+
     // Friend / relationship socket events
     this.socket.on('friend.request.received', (friendship: any) => {
       PrintLog('👤 Socket friend.request.received:', friendship.id);
@@ -881,6 +936,42 @@ class SocketManager {
         `📡 Emitting voice.ping.nonjoined for channel: ${channelId} in group: ${groupId}`,
       );
       this.socket.emit('voice.ping.nonjoined', { groupId, channelId });
+    }
+  }
+
+  startDmCall(targetUserId: string, conversationId: string) {
+    if (this.socket?.connected) {
+      PrintLog(
+        `📡 Emitting dm.call.start to: ${targetUserId} in: ${conversationId}`,
+      );
+      this.socket.emit('dm.call.start', { targetUserId, conversationId });
+    }
+  }
+
+  acceptDmCall(targetUserId: string, conversationId: string) {
+    if (this.socket?.connected) {
+      PrintLog(
+        `📡 Emitting dm.call.accept to: ${targetUserId} in: ${conversationId}`,
+      );
+      this.socket.emit('dm.call.accept', { targetUserId, conversationId });
+    }
+  }
+
+  rejectDmCall(targetUserId: string, conversationId: string) {
+    if (this.socket?.connected) {
+      PrintLog(
+        `📡 Emitting dm.call.reject to: ${targetUserId} in: ${conversationId}`,
+      );
+      this.socket.emit('dm.call.reject', { targetUserId, conversationId });
+    }
+  }
+
+  hangupDmCall(targetUserId: string, conversationId: string) {
+    if (this.socket?.connected) {
+      PrintLog(
+        `📡 Emitting dm.call.hangup to: ${targetUserId} in: ${conversationId}`,
+      );
+      this.socket.emit('dm.call.hangup', { targetUserId, conversationId });
     }
   }
 

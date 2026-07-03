@@ -31,7 +31,10 @@ export const ChannelSettingsModal = ({
   const [isPrivate, setIsPrivate] = useState(
     !!channel.allowedRoleIds?.length ||
       !!channel.readRoleIds?.length ||
-      !!channel.hiddenFromUserIds?.length,
+      !!channel.hiddenFromUserIds?.length ||
+      !!channel.hiddenFromRoleIds?.length ||
+      !!channel.readUserIds?.length ||
+      !!channel.writeUserIds?.length,
   );
   const [isReadOnly, setIsReadOnly] = useState(channel.isReadOnly || false);
   const [notificationSetting, setNotificationSetting] = useState<
@@ -49,7 +52,18 @@ export const ChannelSettingsModal = ({
   const [hiddenFromUserIds, setHiddenFromUserIds] = useState<string[]>(
     channel.hiddenFromUserIds || [],
   );
+  const [hiddenFromRoleIds, setHiddenFromRoleIds] = useState<string[]>(
+    channel.hiddenFromRoleIds || [],
+  );
+  const [readUserIds, setReadUserIds] = useState<string[]>(
+    channel.readUserIds || [],
+  );
+  const [writeUserIds, setWriteUserIds] = useState<string[]>(
+    channel.writeUserIds || [],
+  );
   const [memberSearchQuery, setMemberSearchQuery] = useState('');
+  const [readMemberSearchQuery, setReadMemberSearchQuery] = useState('');
+  const [writeMemberSearchQuery, setWriteMemberSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{
@@ -88,6 +102,9 @@ export const ChannelSettingsModal = ({
           readRoleIds: isPrivate ? readRoleIds : [],
           writeRoleIds: isPrivate || isReadOnly ? writeRoleIds : [],
           hiddenFromUserIds: isPrivate ? hiddenFromUserIds : [],
+          hiddenFromRoleIds: isPrivate ? hiddenFromRoleIds : [],
+          readUserIds: isPrivate ? readUserIds : [],
+          writeUserIds: isPrivate || isReadOnly ? writeUserIds : [],
           isReadOnly,
           notificationSetting,
         }),
@@ -132,7 +149,10 @@ export const ChannelSettingsModal = ({
   const originalIsPrivate =
     !!channel.allowedRoleIds?.length ||
     !!channel.readRoleIds?.length ||
-    !!channel.hiddenFromUserIds?.length;
+    !!channel.hiddenFromUserIds?.length ||
+    !!channel.hiddenFromRoleIds?.length ||
+    !!channel.readUserIds?.length ||
+    !!channel.writeUserIds?.length;
 
   const isNameChanged = name !== channel.name;
   const isPrivateChanged = isPrivate !== originalIsPrivate;
@@ -160,6 +180,21 @@ export const ChannelSettingsModal = ({
     JSON.stringify([...hiddenFromUserIds].sort()) !==
       JSON.stringify([...(channel.hiddenFromUserIds || [])].sort());
 
+  const areHiddenRolesChanged =
+    isPrivate &&
+    JSON.stringify([...hiddenFromRoleIds].sort()) !==
+      JSON.stringify([...(channel.hiddenFromRoleIds || [])].sort());
+
+  const areReadUsersChanged =
+    isPrivate &&
+    JSON.stringify([...readUserIds].sort()) !==
+      JSON.stringify([...(channel.readUserIds || [])].sort());
+
+  const areWriteUsersChanged =
+    (isPrivate || isReadOnly) &&
+    JSON.stringify([...writeUserIds].sort()) !==
+      JSON.stringify([...(channel.writeUserIds || [])].sort());
+
   const isModified =
     isNameChanged ||
     isPrivateChanged ||
@@ -168,7 +203,10 @@ export const ChannelSettingsModal = ({
     areAllowedRolesChanged ||
     areReadRolesChanged ||
     areWriteRolesChanged ||
-    areHiddenUsersChanged;
+    areHiddenUsersChanged ||
+    areHiddenRolesChanged ||
+    areReadUsersChanged ||
+    areWriteUsersChanged;
 
   return (
     <div className="fixed inset-0 z-1100 flex items-center justify-center p-4 bg-[rgba(4,6,12,0.65)] backdrop-blur-xs">
@@ -252,18 +290,16 @@ export const ChannelSettingsModal = ({
 
               {isPrivate && (
                 <div className="flex flex-col gap-4 mt-2 border-t border-theme pt-3">
-                  {/* Read Access Roles */}
+                  {/* Read Access Roles & Persons */}
                   <div>
                     <span className="block text-[11px] font-bold uppercase tracking-wider text-theme-secondary mb-2">
                       Who can read / view
                     </span>
-                    {roles.length === 0 ? (
-                      <p className="m-0 text-xs text-theme-muted italic">
-                        No custom roles exist. Create roles in Server Settings
-                        first.
-                      </p>
-                    ) : (
-                      <div className="flex flex-col gap-2 max-h-25 overflow-y-auto pr-1">
+                    {roles.length > 0 && (
+                      <div className="flex flex-col gap-2 max-h-25 overflow-y-auto pr-1 mb-3">
+                        <span className="text-[10px] font-bold text-theme-muted uppercase tracking-wider mb-1">
+                          Roles
+                        </span>
                         {roles.map((role) => (
                           <label
                             key={role.id}
@@ -302,12 +338,126 @@ export const ChannelSettingsModal = ({
                         ))}
                       </div>
                     )}
+
+                    <span className="text-[10px] font-bold text-theme-muted uppercase tracking-wider mb-1 block">
+                      Persons
+                    </span>
+                    <div className="mb-2">
+                      <input
+                        type="text"
+                        placeholder="Search members..."
+                        value={readMemberSearchQuery}
+                        onChange={(e) =>
+                          setReadMemberSearchQuery(e.target.value)
+                        }
+                        className="input-base w-full py-1.5 px-3 rounded-lg bg-theme-input border border-glass text-theme-primary text-xs box-border focus:outline-none focus:border-(--accent-primary)"
+                      />
+                    </div>
+                    {group?.members.length === 0 ? (
+                      <p className="m-0 text-xs text-theme-muted italic">
+                        No members exist in this server.
+                      </p>
+                    ) : (
+                      <div className="flex flex-col gap-2 max-h-25 overflow-y-auto pr-1">
+                        {group?.members
+                          .filter((m) => {
+                            const name =
+                              m.user?.displayName ||
+                              m.user?.username ||
+                              m.user?.email ||
+                              '';
+                            return name
+                              .toLowerCase()
+                              .includes(readMemberSearchQuery.toLowerCase());
+                          })
+                          .map((m) => {
+                            const isSelected = readUserIds.includes(m.userId);
+                            const name =
+                              m.user?.displayName ||
+                              m.user?.username ||
+                              m.user?.email ||
+                              m.userId;
+                            return (
+                              <label
+                                key={m.userId}
+                                className="flex items-center gap-2.5 text-sm cursor-pointer select-none"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setReadUserIds([
+                                        ...readUserIds,
+                                        m.userId,
+                                      ]);
+                                    } else {
+                                      setReadUserIds(
+                                        readUserIds.filter(
+                                          (id) => id !== m.userId,
+                                        ),
+                                      );
+                                    }
+                                  }}
+                                  className="rounded border-glass text-(--accent-primary) focus:ring-(--accent-primary)"
+                                />
+                                <span className="text-theme-primary truncate">
+                                  {name}
+                                </span>
+                              </label>
+                            );
+                          })}
+                      </div>
+                    )}
                   </div>
 
                   {/* Hide Channel From */}
                   <div className="border-t border-theme pt-3">
                     <span className="block text-[11px] font-bold uppercase tracking-wider text-theme-secondary mb-2">
                       Hide channel from
+                    </span>
+                    {roles.length > 0 && (
+                      <div className="flex flex-col gap-2 max-h-25 overflow-y-auto pr-1 mb-3">
+                        <span className="text-[10px] font-bold text-theme-muted uppercase tracking-wider mb-1">
+                          Roles
+                        </span>
+                        {roles.map((role) => (
+                          <label
+                            key={role.id}
+                            className="flex items-center gap-2.5 text-sm cursor-pointer select-none"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={hiddenFromRoleIds.includes(role.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setHiddenFromRoleIds([
+                                    ...hiddenFromRoleIds,
+                                    role.id,
+                                  ]);
+                                } else {
+                                  setHiddenFromRoleIds(
+                                    hiddenFromRoleIds.filter(
+                                      (id) => id !== role.id,
+                                    ),
+                                  );
+                                }
+                              }}
+                              className="rounded border-glass text-(--accent-primary) focus:ring-(--accent-primary)"
+                            />
+                            <span
+                              style={{ color: role.color }}
+                              className="font-semibold text-theme-primary"
+                            >
+                              {role.name}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+
+                    <span className="text-[10px] font-bold text-theme-muted uppercase tracking-wider mb-1 block">
+                      Persons
                     </span>
                     <div className="mb-2">
                       <input
@@ -408,18 +558,16 @@ export const ChannelSettingsModal = ({
 
               {(isPrivate || isReadOnly) && (
                 <div className="flex flex-col gap-4 mt-2 border-t border-theme pt-3">
-                  {/* Write Access Roles */}
+                  {/* Write Access Roles & Persons */}
                   <div>
                     <span className="block text-[11px] font-bold uppercase tracking-wider text-theme-secondary mb-2">
                       Who can message / write
                     </span>
-                    {roles.length === 0 ? (
-                      <p className="m-0 text-xs text-theme-muted italic">
-                        No custom roles exist. Create roles in Server Settings
-                        first.
-                      </p>
-                    ) : (
-                      <div className="flex flex-col gap-2 max-h-25 overflow-y-auto pr-1">
+                    {roles.length > 0 && (
+                      <div className="flex flex-col gap-2 max-h-25 overflow-y-auto pr-1 mb-3">
+                        <span className="text-[10px] font-bold text-theme-muted uppercase tracking-wider mb-1">
+                          Roles
+                        </span>
                         {roles.map((role) => (
                           <label
                             key={role.id}
@@ -447,6 +595,77 @@ export const ChannelSettingsModal = ({
                             </span>
                           </label>
                         ))}
+                      </div>
+                    )}
+
+                    <span className="text-[10px] font-bold text-theme-muted uppercase tracking-wider mb-1 block">
+                      Persons
+                    </span>
+                    <div className="mb-2">
+                      <input
+                        type="text"
+                        placeholder="Search members..."
+                        value={writeMemberSearchQuery}
+                        onChange={(e) =>
+                          setWriteMemberSearchQuery(e.target.value)
+                        }
+                        className="input-base w-full py-1.5 px-3 rounded-lg bg-theme-input border border-glass text-theme-primary text-xs box-border focus:outline-none focus:border-(--accent-primary)"
+                      />
+                    </div>
+                    {group?.members.length === 0 ? (
+                      <p className="m-0 text-xs text-theme-muted italic">
+                        No members exist in this server.
+                      </p>
+                    ) : (
+                      <div className="flex flex-col gap-2 max-h-25 overflow-y-auto pr-1">
+                        {group?.members
+                          .filter((m) => {
+                            const name =
+                              m.user?.displayName ||
+                              m.user?.username ||
+                              m.user?.email ||
+                              '';
+                            return name
+                              .toLowerCase()
+                              .includes(writeMemberSearchQuery.toLowerCase());
+                          })
+                          .map((m) => {
+                            const isSelected = writeUserIds.includes(m.userId);
+                            const name =
+                              m.user?.displayName ||
+                              m.user?.username ||
+                              m.user?.email ||
+                              m.userId;
+                            return (
+                              <label
+                                key={m.userId}
+                                className="flex items-center gap-2.5 text-sm cursor-pointer select-none"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setWriteUserIds([
+                                        ...writeUserIds,
+                                        m.userId,
+                                      ]);
+                                    } else {
+                                      setWriteUserIds(
+                                        writeUserIds.filter(
+                                          (id) => id !== m.userId,
+                                        ),
+                                      );
+                                    }
+                                  }}
+                                  className="rounded border-glass text-(--accent-primary) focus:ring-(--accent-primary)"
+                                />
+                                <span className="text-theme-primary truncate">
+                                  {name}
+                                </span>
+                              </label>
+                            );
+                          })}
                       </div>
                     )}
                   </div>
