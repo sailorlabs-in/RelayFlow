@@ -26,6 +26,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { RedisService } from '@chat-app/redis';
 import { Permissions } from '../../common/decorators/permissions.decorator';
 import {
   GroupPermission,
@@ -45,6 +46,7 @@ export class GroupsController {
     private readonly groupsService: GroupsService,
     @Inject(forwardRef(() => RealtimeGateway))
     private readonly realtimeGateway: RealtimeGateway,
+    private readonly redisService: RedisService,
   ) {}
 
   // ─── Resolve and Accept invite links (must be placed before generic :id routes) ───
@@ -362,6 +364,55 @@ export class GroupsController {
     @CurrentUser() currentUser: { userId: string },
   ) {
     await this.groupsService.toggleGhostMode(groupId, currentUser.userId);
+
+    // Sync voice channel presence if active in this group
+    try {
+      const redisClient = this.redisService.getClient();
+      const voiceRaw = await redisClient.hget(
+        'voice_states',
+        currentUser.userId,
+      );
+      if (voiceRaw) {
+        const voiceState = JSON.parse(voiceRaw);
+        if (voiceState.groupId === groupId) {
+          const isGhost = await this.groupsService.isGhostAdmin(
+            groupId,
+            currentUser.userId,
+          );
+          if (isGhost) {
+            // Broadcast that the user has left the channel to everyone
+            this.realtimeGateway.server.emit('voice.state.changed', {
+              userId: currentUser.userId,
+              groupId,
+              channelId: null,
+              isMuted: false,
+              isDeafened: false,
+            });
+            // Send the true voice state privately to the admin user
+            this.realtimeGateway.server
+              .to(`user:${currentUser.userId}`)
+              .emit('voice.state.changed', {
+                userId: currentUser.userId,
+                groupId,
+                channelId: voiceState.channelId,
+                isMuted: voiceState.isMuted,
+                isDeafened: voiceState.isDeafened,
+              });
+          } else {
+            // Broadcast the true voice presence back to everyone
+            this.realtimeGateway.server.emit('voice.state.changed', {
+              userId: currentUser.userId,
+              groupId,
+              channelId: voiceState.channelId,
+              isMuted: voiceState.isMuted,
+              isDeafened: voiceState.isDeafened,
+            });
+          }
+        }
+      }
+    } catch (err) {
+      // ignore or log
+    }
 
     // Notify all members of the group about the update via socket
     const members = await this.groupsService.getGroupMembers(groupId);

@@ -671,6 +671,47 @@ const chatSlice = createSlice({
           : [...currentReadBy, { userId: readBy, name: nameToUse }];
       }
     },
+    syncGroupGhostMembers: (
+      state,
+      action: PayloadAction<{
+        channelIds: string[];
+        visibleMemberIds: string[];
+      }>,
+    ) => {
+      const { channelIds, visibleMemberIds } = action.payload;
+      const visibleSet = new Set(visibleMemberIds);
+
+      // Clean active messages readBy lists
+      for (const channelId of channelIds) {
+        if (state.messages[channelId]) {
+          state.messages[channelId] = state.messages[channelId].map((m) => {
+            const currentReadBy = m.readBy || [];
+            const filteredReadBy = currentReadBy.filter(
+              (r) => visibleSet.has(r.userId) || r.userId === m.senderId,
+            );
+            if (filteredReadBy.length !== currentReadBy.length) {
+              return {
+                ...m,
+                readBy: filteredReadBy,
+              };
+            }
+            return m;
+          });
+        }
+      }
+
+      // Clean last messages readBy lists on active conversations list
+      for (const convo of state.conversations) {
+        if (channelIds.includes(convo.id) && convo.lastMessage) {
+          const lastMsg = convo.lastMessage;
+          const currentReadBy = lastMsg.readBy || [];
+          const filteredReadBy = currentReadBy.filter(
+            (r) => visibleSet.has(r.userId) || r.userId === lastMsg.senderId,
+          );
+          lastMsg.readBy = filteredReadBy;
+        }
+      }
+    },
     socketReceiveFriendRequest: (state, action: PayloadAction<any>) => {
       const request = action.payload;
       if (!state.pendingRequests) {
@@ -1000,6 +1041,7 @@ export const {
   endCall,
   socketCallRejected,
   socketCallAccepted,
+  syncGroupGhostMembers,
 } = chatSlice.actions;
 
 export default chatSlice.reducer;

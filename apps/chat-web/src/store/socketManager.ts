@@ -31,6 +31,7 @@ import {
   socketCallAccepted,
   socketCallRejected,
   endCall,
+  syncGroupGhostMembers,
 } from './slices/chatSlice';
 import type { Group } from './slices/groupsSlice';
 import {
@@ -317,6 +318,11 @@ class SocketManager {
     this.socket.on('group.updated', (group: Group) => {
       PrintLog('🏠 Socket group.updated:', group.id);
       store.dispatch(socketGroupUpdated(group));
+      if (group.channels && group.members) {
+        const channelIds = group.channels.map((c: any) => c.id);
+        const visibleMemberIds = group.members.map((m: any) => m.userId);
+        store.dispatch(syncGroupGhostMembers({ channelIds, visibleMemberIds }));
+      }
     });
 
     this.socket.on('group.deleted', (data: { groupId: string }) => {
