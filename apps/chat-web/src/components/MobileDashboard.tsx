@@ -31,6 +31,8 @@ import {
   removeGroupMember,
   deleteGroup,
   updateGroupNotificationPref,
+  deleteChannel,
+  deleteSection,
   reorderSections,
   reorderChannels,
 } from '../store/slices/groupsSlice';
@@ -108,21 +110,6 @@ const IconChevronRight = (): React.JSX.Element => (
     <polyline points="9 18 15 12 9 6" />
   </svg>
 );
-
-const IconFolderPlus = (): React.JSX.Element => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    className="w-[18px] h-[18px]"
-  >
-    <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8L10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z" />
-    <line x1="12" y1="10" x2="12" y2="16" />
-    <line x1="9" y1="13" x2="15" y2="13" />
-  </svg>
-);
-
 const IconGrip = (): React.JSX.Element => (
   <svg
     viewBox="0 0 24 24"
@@ -169,6 +156,7 @@ interface MobileDashboardProps {
   setIsInviteMembersOpen: (open: boolean) => void;
   isMembersListOpen: boolean;
   setIsMembersListOpen: (open: boolean) => void;
+  onEditChannel: (channel: any) => void;
 }
 
 export const MobileDashboard = ({
@@ -180,11 +168,12 @@ export const MobileDashboard = ({
   setIsCreateChannelOpen,
   setCreateChannelSectionId,
   setIsCreateSectionOpen,
-  setSectionToEdit,
+  setSectionToEdit: _setSectionToEdit,
   setIsGroupSettingsOpen,
   setIsInviteMembersOpen,
   isMembersListOpen,
   setIsMembersListOpen,
+  onEditChannel,
 }: MobileDashboardProps): React.JSX.Element => {
   const dispatch = useAppDispatch();
 
@@ -519,6 +508,54 @@ export const MobileDashboard = ({
     } else {
       socketManager.joinConversation(channel.id);
     }
+  };
+
+  const handleDeleteChannel = (channel: any) => {
+    if (!activeGroup) {
+      return;
+    }
+    setLocalConfirmModal({
+      title: 'Delete Channel',
+      message: `Are you sure you want to delete channel #${channel.name}? This will permanently erase all message history in this channel.`,
+      onConfirm: async () => {
+        try {
+          await dispatch(
+            deleteChannel({ groupId: activeGroup.id, channelId: channel.id }),
+          ).unwrap();
+          showToast.success(`Channel #${channel.name} deleted.`);
+          if (activeChannelId === channel.id) {
+            dispatch(setActiveChannel(null));
+            dispatch(setActiveConversation(null));
+          }
+        } catch (err: any) {
+          showToast.error(err || 'Failed to delete channel.');
+        } finally {
+          setLocalConfirmModal(null);
+        }
+      },
+    });
+  };
+
+  const handleDeleteSection = (section: any) => {
+    if (!activeGroup) {
+      return;
+    }
+    setLocalConfirmModal({
+      title: 'Delete Category',
+      message: `Are you sure you want to delete the category "${section.name}"? Channels inside this category will remain, but the category itself will be deleted.`,
+      onConfirm: async () => {
+        try {
+          await dispatch(
+            deleteSection({ groupId: activeGroup.id, sectionId: section.id }),
+          ).unwrap();
+          showToast.success(`Category "${section.name}" deleted.`);
+        } catch (err: any) {
+          showToast.error(err || 'Failed to delete category.');
+        } finally {
+          setLocalConfirmModal(null);
+        }
+      },
+    });
   };
 
   const [draggedId, setDraggedId] = useState<string | null>(null);
@@ -1020,72 +1057,6 @@ export const MobileDashboard = ({
               </div>
             </div>
           </div>
-        ) : selectedGroupId && activeGroup && activeTab === 'groups' ? (
-          // Header details for channel view
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <button
-              onClick={() => {
-                setSelectedGroupId(null);
-                dispatch(setActiveGroup(null));
-              }}
-              className="flex items-center justify-center p-1.5 rounded-lg text-theme-muted hover:bg-theme-input active-press mr-1"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                className="w-5 h-5"
-              >
-                <line x1="19" y1="12" x2="5" y2="12" />
-                <polyline points="12 19 5 12 12 5" />
-              </svg>
-            </button>
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <Avatar
-                letter={activeGroup.iconLetter || activeGroup.name[0]}
-                url={activeGroup.avatarThumbnailUrl || activeGroup.avatarUrl}
-                size="sm"
-              />
-              <div className="flex-1 min-w-0">
-                <h1 className="text-[15px] font-bold truncate leading-tight">
-                  {activeGroup.name}
-                </h1>
-                <p className="text-[10px] text-theme-muted leading-none">
-                  {activeGroup.members?.length || 0} members
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-1.5">
-              {canManage && (
-                <button
-                  onClick={() => {
-                    setSectionToEdit(null);
-                    setIsCreateSectionOpen(true);
-                  }}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg text-theme-muted hover:bg-theme-input active-press"
-                  title="Add Category"
-                >
-                  <IconFolderPlus />
-                </button>
-              )}
-              <button
-                onClick={() => setIsInviteMembersOpen(true)}
-                className="w-7 h-7 flex items-center justify-center rounded-lg text-theme-muted hover:bg-theme-input active-press"
-                title="Invite Members"
-              >
-                <IconPeople />
-              </button>
-              <button
-                onClick={() => setIsGroupSettingsOpen(true)}
-                className="w-7 h-7 flex items-center justify-center rounded-lg text-theme-muted hover:bg-theme-input active-press"
-                title="Group Settings"
-              >
-                <IconSettingsSmall />
-              </button>
-            </div>
-          </div>
         ) : (
           // Default tab header
           <>
@@ -1124,10 +1095,10 @@ export const MobileDashboard = ({
       </header>
 
       {/* ── CORE VIEW CONTENT CONTAINER ── */}
-      <main className="flex-1 overflow-y-auto min-h-0 px-3 py-3 relative">
+      <main className="flex-1 overflow-hidden min-h-0 relative">
         {/* TAB 1: CHATS LIST */}
         {activeTab === 'chats' && (
-          <div className="flex flex-col gap-2 h-full pb-1">
+          <div className="flex flex-col gap-2 h-full pb-1 overflow-y-auto px-3 py-3">
             {conversations.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-center text-theme-muted">
                 <IconChat />
@@ -1221,543 +1192,758 @@ export const MobileDashboard = ({
           </div>
         )}
 
-        {/* TAB 2: GROUPS / SERVERS VIEW */}
+        {/* TAB 2: GROUPS – Discord-style two-pane layout */}
         {activeTab === 'groups' && (
-          <div className="flex flex-col gap-2 h-full pb-1">
-            {!selectedGroupId ? (
-              // 1. Group list view
-              groups.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 text-center text-theme-muted">
+          <div className="flex h-full">
+            {/* ── Left rail: Groups list ── */}
+            <div
+              className="flex flex-col gap-1.5 overflow-y-auto py-3 px-2 shrink-0"
+              style={{
+                width: '76px',
+                borderRight: '1px solid var(--border-glass)',
+              }}
+            >
+              {groups.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-4 gap-2 text-center text-theme-muted">
                   <IconServer />
-                  <p className="mt-4 text-[13px]">
-                    No servers yet. Create one!
-                  </p>
                 </div>
               ) : (
-                groups.map((g) => (
-                  <div
-                    key={g.id}
-                    onClick={() => {
-                      setSelectedGroupId(g.id);
-                      dispatch(setActiveGroup(g.id));
-                    }}
-                    onTouchStart={(e) => handleTouchStart('group', g.id, e)}
-                    onTouchEnd={handleTouchEnd}
-                    className="glass-panel flex items-center gap-3.5 p-3.5 rounded-[20px] cursor-pointer border border-glass hover:bg-theme-input transition-all duration-200 shadow-sm active:scale-[0.98]"
-                  >
-                    <Avatar
-                      letter={g.iconLetter || g.name[0]}
-                      url={g.avatarThumbnailUrl || g.avatarUrl}
-                      size="md"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-[14px] truncate text-theme-primary">
+                groups.map((g) => {
+                  const isSelected = selectedGroupId === g.id;
+                  return (
+                    <button
+                      key={g.id}
+                      onClick={() => {
+                        setSelectedGroupId(g.id);
+                        dispatch(setActiveGroup(g.id));
+                      }}
+                      className={`relative flex flex-col items-center gap-1 p-1.5 rounded-2xl transition-all duration-200 active:scale-95 w-full border-none cursor-pointer
+                        ${isSelected ? 'bg-(--accent-primary)/15 ' : 'bg-transparent hover:bg-theme-input/60'}
+                      `}
+                      style={{ outline: 'none' }}
+                      title={g.name}
+                    >
+                      {isSelected && (
+                        <span
+                          className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full bg-(--accent-primary)"
+                          style={{ left: '-8px' }}
+                        />
+                      )}
+                      <div
+                        className={`w-11 h-11 rounded-[14px] overflow-hidden flex items-center justify-center shrink-0 shadow-sm transition-all duration-200
+                          ${isSelected ? 'rounded-xl shadow-md' : 'rounded-[14px]'}
+                        `}
+                        style={{
+                          background: isSelected
+                            ? 'var(--accent-primary)'
+                            : 'var(--glass-bg)',
+                          border: isSelected
+                            ? '2px solid var(--accent-primary)'
+                            : '1.5px solid var(--border-glass)',
+                        }}
+                      >
+                        {g.avatarThumbnailUrl || g.avatarUrl ? (
+                          <img
+                            src={g.avatarThumbnailUrl || g.avatarUrl}
+                            alt={g.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span
+                            className="text-[15px] font-black"
+                            style={{
+                              color: isSelected
+                                ? '#fff'
+                                : 'var(--text-primary)',
+                            }}
+                          >
+                            {(g.iconLetter || g.name[0]).toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+                      <span
+                        className="text-[9px] font-bold truncate w-full text-center leading-tight"
+                        style={{
+                          color: isSelected
+                            ? 'var(--accent-primary)'
+                            : 'var(--text-muted)',
+                          maxWidth: '60px',
+                        }}
+                      >
                         {g.name}
+                      </span>
+                    </button>
+                  );
+                })
+              )}
+
+              {/* Create Group button at bottom */}
+              <button
+                onClick={() => setIsCreateGroupOpen(true)}
+                className="flex flex-col items-center gap-1 p-1.5 rounded-2xl hover:bg-theme-input/60 active:scale-95 transition-all duration-200 w-full border-none cursor-pointer mt-1"
+                style={{ outline: 'none' }}
+                title="Create Server"
+              >
+                <div
+                  className="w-11 h-11 rounded-[14px] flex items-center justify-center"
+                  style={{
+                    background: 'var(--glass-bg)',
+                    border: '1.5px dashed var(--border-glass)',
+                    color: 'var(--accent-primary)',
+                  }}
+                >
+                  <IconPlus />
+                </div>
+                <span className="text-[9px] font-bold text-theme-muted">
+                  New
+                </span>
+              </button>
+            </div>
+
+            {/* ── Right pane: Channels for selected group ── */}
+            <div className="flex-1 overflow-y-auto py-3 px-2 min-w-0">
+              {!selectedGroupId ? (
+                <div className="flex flex-col items-center justify-center h-full text-center text-theme-muted gap-3 px-4">
+                  <IconServer />
+                  <p className="text-[12px] font-medium">
+                    Select a server from the left to see its channels.
+                  </p>
+                </div>
+              ) : !activeGroup ? (
+                <div className="flex flex-col items-center justify-center h-full text-center text-theme-muted gap-3 px-4">
+                  <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin border-(--accent-primary)" />
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3 animate-fade-in pb-4">
+                  {/* Group Header */}
+                  <div
+                    className="flex items-center gap-2.5 px-1 pb-1"
+                    style={{ borderBottom: '1px solid var(--border-glass)' }}
+                  >
+                    <div
+                      className="w-9 h-9 rounded-xl overflow-hidden flex items-center justify-center shrink-0"
+                      style={{
+                        background: 'var(--accent-primary)',
+                        border: '2px solid var(--accent-primary)',
+                      }}
+                    >
+                      {activeGroup.avatarThumbnailUrl ||
+                      activeGroup.avatarUrl ? (
+                        <img
+                          src={
+                            activeGroup.avatarThumbnailUrl ||
+                            activeGroup.avatarUrl
+                          }
+                          alt={activeGroup.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-[13px] font-black text-white">
+                          {(
+                            activeGroup.iconLetter || activeGroup.name[0]
+                          ).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-[13px] font-extrabold text-theme-primary truncate leading-tight">
+                        {activeGroup.name}
                       </h3>
-                      <p className="text-[11px] text-theme-muted truncate mt-0.5">
-                        {g.description || `${g.members?.length || 0} members`}
+                      <p className="text-[10px] text-theme-muted leading-none mt-0.5">
+                        {activeGroup.members?.length || 0} members
                       </p>
                     </div>
-
-                    <div className="shrink-0 w-7 h-7 flex items-center justify-center rounded-full bg-theme-input text-theme-muted">
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        className="w-3.5 h-3.5"
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={() => setIsInviteMembersOpen(true)}
+                        className="w-7 h-7 flex items-center justify-center rounded-lg text-theme-muted hover:bg-theme-input hover:text-theme-primary active-press border-none cursor-pointer"
+                        title="Invite Members"
                       >
-                        <polyline points="9 18 15 12 9 6" />
-                      </svg>
+                        <IconPeople />
+                      </button>
+                      <button
+                        onClick={() => setIsGroupSettingsOpen(true)}
+                        className="w-7 h-7 flex items-center justify-center rounded-lg text-theme-muted hover:bg-theme-input hover:text-theme-primary active-press border-none cursor-pointer"
+                        title="Group Settings"
+                      >
+                        <IconSettingsSmall />
+                      </button>
                     </div>
                   </div>
-                ))
-              )
-            ) : (
-              // 2. Channels list for selected group
-              activeGroup && (
-                <div className="flex flex-col h-full animate-fade-in">
-                  {/* Category Sections & Channels */}
-                  <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-4">
-                    {/* Uncategorized channels */}
-                    {activeGroup.channels.filter((c) => !c.sectionId).length >
-                      0 && (
-                      <div
-                        data-drag-type="category"
-                        data-drag-id="uncategorized"
-                        className={`glass-panel p-3 border rounded-[24px] flex flex-col gap-1.5 shadow-sm bg-theme-sidebar/10 transition-all duration-200
-                          ${dragOverSectionId === 'uncategorized' && dragType === 'channel' ? 'ring-2 ring-(--accent-primary)/50 bg-theme-input/20 border-(--accent-primary)/30' : 'border-glass'}
-                        `}
+
+                  {/* Quick actions for managers */}
+                  {canManage && (
+                    <div className="flex gap-2 px-1">
+                      <button
+                        onClick={() => setIsCreateSectionOpen(true)}
+                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-theme-muted hover:text-theme-primary hover:bg-theme-input/40 cursor-pointer transition-all border border-glass bg-transparent text-[11px] font-semibold"
+                        title="Add Category"
                       >
-                        <div className="px-1 py-0.5 text-[11px] font-extrabold tracking-wider uppercase text-theme-primary">
-                          Channels
-                        </div>
-                        <div className="flex flex-col gap-1">
-                          {activeGroup.channels
-                            .filter((c) => !c.sectionId)
-                            .sort((a, b) => a.position - b.position)
-                            .map((channel) => {
-                              const isChanActive =
-                                channel.id === activeChannelId;
-                              const isVoice = channel.layout === 'voice';
-                              const isDraggingThisChan =
-                                draggedId === channel.id &&
-                                dragType === 'channel';
-                              const isOverThisChan =
-                                dragOverChannelId === channel.id &&
-                                dragType === 'channel';
-                              const channelVoiceStates = Object.values(
-                                voiceStates || {},
-                              ).filter((vs) => vs.channelId === channel.id);
-                              return (
+                        <svg
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          className="w-3.5 h-3.5"
+                        >
+                          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                          <line x1="12" y1="11" x2="12" y2="17" />
+                          <line x1="9" y1="14" x2="15" y2="14" />
+                        </svg>
+                        <span>Add Category</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Uncategorized channels */}
+                  {activeGroup.channels.filter((c) => !c.sectionId).length >
+                    0 && (
+                    <div
+                      data-drag-type="category"
+                      data-drag-id="uncategorized"
+                      className={`flex flex-col gap-0.5 transition-all duration-200
+                        ${dragOverSectionId === 'uncategorized' && dragType === 'channel' ? 'ring-2 ring-(--accent-primary)/50 bg-theme-input/20 border-(--accent-primary)/30 rounded-xl' : ''}
+                      `}
+                    >
+                      <div className="px-2 py-1 text-[10px] font-extrabold tracking-wider uppercase text-theme-muted">
+                        Channels
+                      </div>
+                      <div className="flex flex-col gap-0.5">
+                        {activeGroup.channels
+                          .filter((c) => !c.sectionId)
+                          .sort((a, b) => a.position - b.position)
+                          .map((channel) => {
+                            const isChanActive = channel.id === activeChannelId;
+                            const isVoice = channel.layout === 'voice';
+                            const channelVoiceStates = Object.values(
+                              voiceStates || {},
+                            ).filter((vs) => vs.channelId === channel.id);
+                            return (
+                              <div
+                                key={channel.id}
+                                className="flex flex-col w-full"
+                                data-drag-type="channel"
+                                data-drag-id={channel.id}
+                              >
                                 <div
-                                  key={channel.id}
-                                  className="flex flex-col w-full"
+                                  onClick={() => {
+                                    handleSelectChannel(channel);
+                                  }}
+                                  className={`flex items-center gap-2 px-3 py-2 rounded-xl cursor-pointer transition-all duration-150 active:scale-[0.98]
+                                    ${
+                                      isChanActive
+                                        ? 'text-theme-primary font-bold'
+                                        : 'text-theme-muted hover:text-theme-primary'
+                                    }
+                                    ${draggedId === channel.id && dragType === 'channel' ? 'opacity-40 scale-[0.97] border-dashed border-theme-muted' : ''}
+                                    ${dragOverChannelId === channel.id && dragType === 'channel' ? 'border-t-2 border-t-(--accent-primary)' : ''}
+                                  `}
+                                  style={{
+                                    background: isChanActive
+                                      ? 'var(--theme-btn-active)'
+                                      : 'transparent',
+                                  }}
                                 >
-                                  <div
-                                    data-drag-type="channel"
-                                    data-drag-id={channel.id}
-                                    onClick={() => {
-                                      if (isDraggingRef.current) {
-                                        return;
+                                  {canManage && (
+                                    <div
+                                      onTouchStart={(e) =>
+                                        handleDragTouchStart(
+                                          e,
+                                          'channel',
+                                          channel.id,
+                                        )
                                       }
-                                      handleSelectChannel(channel);
-                                    }}
-                                    className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer border transition-all duration-150 active:scale-[0.98] 
-                                      ${isChanActive ? 'bg-(--theme-btn-active) border-(--accent-primary)/30 text-theme-primary font-bold shadow-xs' : 'bg-transparent border-transparent hover:bg-theme-input/30 text-theme-muted hover:text-theme-primary'}
-                                      ${isDraggingThisChan ? 'opacity-40 scale-[0.97] border-dashed border-theme-muted' : ''}
-                                      ${isOverThisChan ? 'border-t-2 border-(--accent-primary)' : ''}
-                                    `}
-                                  >
-                                    {canManage && (
-                                      <div
-                                        onTouchStart={(e) =>
-                                          handleDragTouchStart(
-                                            e,
-                                            'channel',
-                                            channel.id,
-                                          )
-                                        }
-                                        className="p-1 -ml-1 text-theme-muted cursor-grab active:cursor-grabbing"
-                                        onClick={(e) => e.stopPropagation()}
-                                      >
-                                        <IconGrip />
-                                      </div>
-                                    )}
-                                    {isVoice ? (
-                                      <svg
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2.2"
-                                        className="w-4 h-4 shrink-0 text-(--accent-primary)"
-                                      >
-                                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                                        <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-                                      </svg>
-                                    ) : (
-                                      <span className="text-(--accent-primary) opacity-80">
-                                        <IconHash />
-                                      </span>
-                                    )}
-                                    <span className="text-[13px] font-semibold truncate">
-                                      {channel.name}
+                                      className="p-1 -ml-1 text-theme-muted cursor-grab active:cursor-grabbing"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <IconGrip />
+                                    </div>
+                                  )}
+                                  {isVoice ? (
+                                    <svg
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth="2.2"
+                                      className="w-4 h-4 shrink-0"
+                                      style={{ color: 'var(--accent-primary)' }}
+                                    >
+                                      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                                      <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                                    </svg>
+                                  ) : (
+                                    <span
+                                      style={{
+                                        color: 'var(--accent-primary)',
+                                        opacity: 0.85,
+                                      }}
+                                    >
+                                      <IconHash />
                                     </span>
-                                  </div>
-
-                                  {/* Connected voice participants nested list */}
-                                  {channel.layout === 'voice' &&
-                                    channelVoiceStates.length > 0 && (
-                                      <div className="pl-6 pr-2.5 py-1.5 flex flex-col gap-2 mt-1 border-l border-[rgba(255,255,255,0.06)] ml-4">
-                                        {channelVoiceStates.map((vs) => {
-                                          const member =
-                                            activeGroup.members.find(
-                                              (m) => m.userId === vs.userId,
-                                            );
-                                          const profile = member?.user;
-                                          if (!profile) {
-                                            return null;
-                                          }
-
-                                          return (
-                                            <div
-                                              key={vs.userId}
-                                              className="flex items-center justify-between py-0.5 animate-fade-in"
-                                            >
-                                              <div className="flex items-center gap-2 min-w-0">
-                                                <Avatar
-                                                  letter={(profile.username ||
-                                                    profile.displayName ||
-                                                    profile.email ||
-                                                    'U')[0].toUpperCase()}
-                                                  url={
-                                                    profile.avatarThumbnailUrl ||
-                                                    profile.avatarUrl
-                                                  }
-                                                  size="xs"
-                                                />
-                                                <span className="text-[12px] text-theme-secondary truncate">
-                                                  {profile.username
-                                                    ? profile.username
-                                                    : profile.displayName ||
-                                                      profile.email.split(
-                                                        '@',
-                                                      )[0]}
-                                                </span>
-                                              </div>
-                                              <div className="flex items-center gap-1.5 shrink-0">
-                                                {canDisconnect &&
-                                                  vs.userId !== user?.id && (
-                                                    <button
-                                                      title="Disconnect from voice channel"
-                                                      onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleDisconnectParticipant(
-                                                          vs.userId,
-                                                        );
-                                                      }}
-                                                      className="bg-transparent border-none cursor-pointer text-(--danger) hover:text-red-500 p-0.5 rounded flex items-center transition-colors focus:outline-none"
-                                                    >
-                                                      <svg
-                                                        viewBox="0 0 24 24"
-                                                        fill="none"
-                                                        stroke="currentColor"
-                                                        strokeWidth="2.5"
-                                                        className="w-3 h-3"
-                                                      >
-                                                        <line
-                                                          x1="18"
-                                                          y1="6"
-                                                          x2="6"
-                                                          y2="18"
-                                                        />
-                                                        <line
-                                                          x1="6"
-                                                          y1="6"
-                                                          x2="18"
-                                                          y2="18"
-                                                        />
-                                                      </svg>
-                                                    </button>
-                                                  )}
-                                                {vs.isMuted && (
+                                  )}
+                                  <span className="text-[13px] font-semibold truncate flex-1">
+                                    {channel.name}
+                                  </span>
+                                  {isVoice && channelVoiceStates.length > 0 && (
+                                    <span className="text-[10px] font-bold text-theme-muted shrink-0 mr-1.5">
+                                      {channelVoiceStates.length}
+                                    </span>
+                                  )}
+                                  {canManage && (
+                                    <div className="flex gap-1 items-center shrink-0">
+                                      <button
+                                        title="Channel Settings"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          onEditChannel(channel);
+                                        }}
+                                        className="bg-transparent border-none cursor-pointer text-theme-muted p-1 rounded hover:text-theme-primary hover:bg-theme-input flex items-center transition-all duration-150 active-press shrink-0"
+                                      >
+                                        <IconSettingsSmall />
+                                      </button>
+                                      <button
+                                        title="Delete Channel"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDeleteChannel(channel);
+                                        }}
+                                        className="bg-transparent border-none cursor-pointer text-(--danger) p-1 rounded hover:bg-(--danger-bg) flex items-center transition-all duration-150 active-press shrink-0"
+                                      >
+                                        <IconTrash />
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                                {/* Voice participants */}
+                                {isVoice && channelVoiceStates.length > 0 && (
+                                  <div className="pl-8 pr-2 py-1 flex flex-col gap-1.5">
+                                    {channelVoiceStates.map((vs) => {
+                                      const member = activeGroup.members.find(
+                                        (m) => m.userId === vs.userId,
+                                      );
+                                      const profile = member?.user;
+                                      if (!profile) {
+                                        return null;
+                                      }
+                                      return (
+                                        <div
+                                          key={vs.userId}
+                                          className="flex items-center justify-between py-0.5"
+                                        >
+                                          <div className="flex items-center gap-1.5 min-w-0">
+                                            <Avatar
+                                              letter={(profile.username ||
+                                                profile.displayName ||
+                                                profile.email ||
+                                                'U')[0].toUpperCase()}
+                                              url={
+                                                profile.avatarThumbnailUrl ||
+                                                profile.avatarUrl
+                                              }
+                                              size="xs"
+                                            />
+                                            <span className="text-[11px] text-theme-muted truncate">
+                                              {profile.username ||
+                                                profile.displayName ||
+                                                profile.email.split('@')[0]}
+                                            </span>
+                                          </div>
+                                          <div className="flex items-center gap-1 shrink-0">
+                                            {canDisconnect &&
+                                              vs.userId !== user?.id && (
+                                                <button
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDisconnectParticipant(
+                                                      vs.userId,
+                                                    );
+                                                  }}
+                                                  className="text-(--danger) p-0.5 rounded hover:bg-red-500/10 border-none cursor-pointer bg-transparent flex items-center"
+                                                  title="Disconnect"
+                                                >
                                                   <svg
                                                     viewBox="0 0 24 24"
                                                     fill="none"
-                                                    stroke="var(--danger)"
-                                                    strokeWidth="2.2"
-                                                    className="w-3.25 h-3.25 opacity-80"
+                                                    stroke="currentColor"
+                                                    strokeWidth="2.5"
+                                                    className="w-3 h-3"
                                                   >
                                                     <line
-                                                      x1="1"
-                                                      y1="1"
-                                                      x2="23"
-                                                      y2="23"
-                                                      stroke="currentColor"
-                                                      strokeWidth="2.5"
+                                                      x1="18"
+                                                      y1="6"
+                                                      x2="6"
+                                                      y2="18"
                                                     />
-                                                    <path
-                                                      d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"
-                                                      stroke="currentColor"
-                                                      strokeWidth="2.5"
-                                                    />
-                                                    <path
-                                                      d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"
-                                                      stroke="currentColor"
-                                                      strokeWidth="2.5"
+                                                    <line
+                                                      x1="6"
+                                                      y1="6"
+                                                      x2="18"
+                                                      y2="18"
                                                     />
                                                   </svg>
-                                                )}
-                                              </div>
-                                            </div>
-                                          );
-                                        })}
-                                      </div>
-                                    )}
-                                </div>
-                              );
-                            })}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Categorized channels */}
-                    {[...activeGroup.sections]
-                      .sort((a, b) => a.position - b.position)
-                      .map((section) => {
-                        const sectionChannels = activeGroup.channels
-                          .filter((c) => c.sectionId === section.id)
-                          .sort((a, b) => a.position - b.position);
-                        const isCollapsed = collapsedSections[section.id];
-
-                        return (
-                          <div
-                            key={section.id}
-                            data-drag-type="category"
-                            data-drag-id={section.id}
-                            className={`glass-panel p-3 border rounded-[24px] flex flex-col gap-2 shadow-sm bg-theme-sidebar/10 transition-all duration-200
-                              ${draggedId === section.id && dragType === 'category' ? 'opacity-40 scale-[0.97] border-dashed border-theme-muted' : 'border-glass'}
-                              ${dragOverSectionId === section.id && dragType === 'category' ? 'border-t-2 border-t-(--accent-primary)' : ''}
-                              ${dragOverSectionId === section.id && dragType === 'channel' ? 'ring-2 ring-(--accent-primary)/50 bg-theme-input/20 border-(--accent-primary)/30' : ''}
-                            `}
-                          >
-                            {/* Section header */}
-                            <div className="flex items-center justify-between px-1 py-0.5 text-theme-muted">
-                              <div
-                                onClick={() => {
-                                  if (isDraggingRef.current) {
-                                    return;
-                                  }
-                                  toggleSection(section.id);
-                                }}
-                                className="flex items-center gap-1.5 cursor-pointer flex-1 min-w-0"
-                              >
-                                {canManage && (
-                                  <div
-                                    onTouchStart={(e) =>
-                                      handleDragTouchStart(
-                                        e,
-                                        'category',
-                                        section.id,
-                                      )
-                                    }
-                                    className="p-1 -ml-1 text-theme-muted cursor-grab active:cursor-grabbing"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    <IconGrip />
-                                  </div>
-                                )}
-                                <span
-                                  className={`transition-transform duration-200 text-(--accent-primary) ${isCollapsed ? '-rotate-90' : ''}`}
-                                >
-                                  <IconChevronDown />
-                                </span>
-                                <span className="text-[11px] font-extrabold tracking-wider uppercase truncate text-theme-primary">
-                                  {section.name}
-                                </span>
-                              </div>
-                              <button
-                                onClick={() => {
-                                  setCreateChannelSectionId(section.id);
-                                  setIsCreateChannelOpen(true);
-                                }}
-                                className="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-theme-input/50 text-theme-muted hover:text-theme-primary active-press border border-glass/30"
-                              >
-                                <IconPlus />
-                              </button>
-                            </div>
-
-                            {/* Section channels list */}
-                            {!isCollapsed && (
-                              <div className="flex flex-col gap-1 pl-1">
-                                {sectionChannels.length === 0 ? (
-                                  <div className="text-[11px] text-theme-muted italic px-4 py-1.5">
-                                    No channels yet.
-                                  </div>
-                                ) : (
-                                  sectionChannels.map((channel) => {
-                                    const isChanActive =
-                                      channel.id === activeChannelId;
-                                    const isVoice = channel.layout === 'voice';
-                                    const isDraggingThisChan =
-                                      draggedId === channel.id &&
-                                      dragType === 'channel';
-                                    const isOverThisChan =
-                                      dragOverChannelId === channel.id &&
-                                      dragType === 'channel';
-                                    const channelVoiceStates = Object.values(
-                                      voiceStates || {},
-                                    ).filter(
-                                      (vs) => vs.channelId === channel.id,
-                                    );
-                                    return (
-                                      <div
-                                        key={channel.id}
-                                        className="flex flex-col w-full"
-                                      >
-                                        <div
-                                          data-drag-type="channel"
-                                          data-drag-id={channel.id}
-                                          onClick={() => {
-                                            if (isDraggingRef.current) {
-                                              return;
-                                            }
-                                            handleSelectChannel(channel);
-                                          }}
-                                          className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer border transition-all duration-150 active:scale-[0.98] 
-                                            ${isChanActive ? 'bg-(--theme-btn-active) border-(--accent-primary)/30 text-theme-primary font-bold shadow-xs' : 'bg-transparent border-transparent hover:bg-theme-input/30 text-theme-muted hover:text-theme-primary'}
-                                            ${isDraggingThisChan ? 'opacity-40 scale-[0.97] border-dashed border-theme-muted' : ''}
-                                            ${isOverThisChan ? 'border-t-2 border-(--accent-primary)' : ''}
-                                          `}
-                                        >
-                                          {canManage && (
-                                            <div
-                                              onTouchStart={(e) =>
-                                                handleDragTouchStart(
-                                                  e,
-                                                  'channel',
-                                                  channel.id,
-                                                )
-                                              }
-                                              className="p-1 -ml-1 text-theme-muted cursor-grab active:cursor-grabbing"
-                                              onClick={(e) =>
-                                                e.stopPropagation()
-                                              }
-                                            >
-                                              <IconGrip />
-                                            </div>
-                                          )}
-                                          {isVoice ? (
-                                            <svg
-                                              viewBox="0 0 24 24"
-                                              fill="none"
-                                              stroke="currentColor"
-                                              strokeWidth="2.2"
-                                              className="w-4 h-4 shrink-0 text-(--accent-primary)"
-                                            >
-                                              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                                              <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-                                            </svg>
-                                          ) : (
-                                            <span className="text-(--accent-primary) opacity-80">
-                                              <IconHash />
-                                            </span>
-                                          )}
-                                          <span className="text-[13px] font-semibold truncate">
-                                            {channel.name}
-                                          </span>
+                                                </button>
+                                              )}
+                                            {vs.isMuted && (
+                                              <svg
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="var(--danger)"
+                                                strokeWidth="2.2"
+                                                className="w-3 h-3 opacity-80"
+                                              >
+                                                <line
+                                                  x1="1"
+                                                  y1="1"
+                                                  x2="23"
+                                                  y2="23"
+                                                  stroke="currentColor"
+                                                  strokeWidth="2.5"
+                                                />
+                                                <path
+                                                  d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"
+                                                  stroke="currentColor"
+                                                  strokeWidth="2.5"
+                                                />
+                                                <path
+                                                  d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"
+                                                  stroke="currentColor"
+                                                  strokeWidth="2.5"
+                                                />
+                                              </svg>
+                                            )}
+                                          </div>
                                         </div>
-
-                                        {/* Connected voice participants nested list */}
-                                        {channel.layout === 'voice' &&
-                                          channelVoiceStates.length > 0 && (
-                                            <div className="pl-6 pr-2.5 py-1.5 flex flex-col gap-2 mt-1 border-l border-[rgba(255,255,255,0.06)] ml-4">
-                                              {channelVoiceStates.map((vs) => {
-                                                const member =
-                                                  activeGroup.members.find(
-                                                    (m) =>
-                                                      m.userId === vs.userId,
-                                                  );
-                                                const profile = member?.user;
-                                                if (!profile) {
-                                                  return null;
-                                                }
-
-                                                return (
-                                                  <div
-                                                    key={vs.userId}
-                                                    className="flex items-center justify-between py-0.5 animate-fade-in"
-                                                  >
-                                                    <div className="flex items-center gap-2 min-w-0">
-                                                      <Avatar
-                                                        letter={(profile.username ||
-                                                          profile.displayName ||
-                                                          profile.email ||
-                                                          'U')[0].toUpperCase()}
-                                                        url={
-                                                          profile.avatarThumbnailUrl ||
-                                                          profile.avatarUrl
-                                                        }
-                                                        size="xs"
-                                                      />
-                                                      <span className="text-[12px] text-theme-secondary truncate">
-                                                        {profile.username
-                                                          ? profile.username
-                                                          : profile.displayName ||
-                                                            profile.email.split(
-                                                              '@',
-                                                            )[0]}
-                                                      </span>
-                                                    </div>
-                                                    <div className="flex items-center gap-1.5 shrink-0">
-                                                      {canDisconnect &&
-                                                        vs.userId !==
-                                                          user?.id && (
-                                                          <button
-                                                            title="Disconnect from voice channel"
-                                                            onClick={(e) => {
-                                                              e.stopPropagation();
-                                                              handleDisconnectParticipant(
-                                                                vs.userId,
-                                                              );
-                                                            }}
-                                                            className="bg-transparent border-none cursor-pointer text-(--danger) hover:text-red-500 p-0.5 rounded flex items-center transition-colors focus:outline-none"
-                                                          >
-                                                            <svg
-                                                              viewBox="0 0 24 24"
-                                                              fill="none"
-                                                              stroke="currentColor"
-                                                              strokeWidth="2.5"
-                                                              className="w-3 h-3"
-                                                            >
-                                                              <line
-                                                                x1="18"
-                                                                y1="6"
-                                                                x2="6"
-                                                                y2="18"
-                                                              />
-                                                              <line
-                                                                x1="6"
-                                                                y1="6"
-                                                                x2="18"
-                                                                y2="18"
-                                                              />
-                                                            </svg>
-                                                          </button>
-                                                        )}
-                                                      {vs.isMuted && (
-                                                        <svg
-                                                          viewBox="0 0 24 24"
-                                                          fill="none"
-                                                          stroke="var(--danger)"
-                                                          strokeWidth="2.2"
-                                                          className="w-3.25 h-3.25 opacity-80"
-                                                        >
-                                                          <line
-                                                            x1="1"
-                                                            y1="1"
-                                                            x2="23"
-                                                            y2="23"
-                                                            stroke="currentColor"
-                                                            strokeWidth="2.5"
-                                                          />
-                                                          <path
-                                                            d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"
-                                                            stroke="currentColor"
-                                                            strokeWidth="2.5"
-                                                          />
-                                                          <path
-                                                            d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"
-                                                            stroke="currentColor"
-                                                            strokeWidth="2.5"
-                                                          />
-                                                        </svg>
-                                                      )}
-                                                    </div>
-                                                  </div>
-                                                );
-                                              })}
-                                            </div>
-                                          )}
-                                      </div>
-                                    );
-                                  })
+                                      );
+                                    })}
+                                  </div>
                                 )}
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Categorized sections */}
+                  {[...activeGroup.sections]
+                    .sort((a, b) => a.position - b.position)
+                    .map((section) => {
+                      const sectionChannels = activeGroup.channels
+                        .filter((c) => c.sectionId === section.id)
+                        .sort((a, b) => a.position - b.position);
+                      const isCollapsed = collapsedSections[section.id];
+                      return (
+                        <div
+                          key={section.id}
+                          data-drag-type="category"
+                          data-drag-id={section.id}
+                          className={`flex flex-col gap-0.5 transition-all duration-200
+                            ${draggedId === section.id && dragType === 'category' ? 'opacity-40 scale-[0.97] border-dashed border-theme-muted' : ''}
+                            ${dragOverSectionId === section.id && dragType === 'category' ? 'border-t-2 border-t-(--accent-primary)' : ''}
+                            ${dragOverSectionId === section.id && dragType === 'channel' ? 'ring-2 ring-(--accent-primary)/50 bg-theme-input/20 border-(--accent-primary)/30 rounded-xl' : ''}
+                          `}
+                        >
+                          {/* Section header */}
+                          <div
+                            onClick={() => {
+                              toggleSection(section.id);
+                            }}
+                            className="flex items-center gap-1.5 px-2 py-1 cursor-pointer rounded-lg hover:bg-theme-input/30 transition-all"
+                          >
+                            {canManage && (
+                              <div
+                                onTouchStart={(e) =>
+                                  handleDragTouchStart(
+                                    e,
+                                    'category',
+                                    section.id,
+                                  )
+                                }
+                                className="p-1 -ml-1 text-theme-muted cursor-grab active:cursor-grabbing"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <IconGrip />
                               </div>
                             )}
+                            <span
+                              className={`text-(--accent-primary) transition-transform duration-200 ${isCollapsed ? '-rotate-90' : ''}`}
+                            >
+                              <IconChevronDown />
+                            </span>
+                            <span className="text-[10px] font-extrabold tracking-wider uppercase text-theme-muted flex-1 truncate">
+                              {section.name}
+                            </span>
+                            {canManage && (
+                              <div className="flex gap-1 items-center shrink-0 mr-1">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    _setSectionToEdit(section);
+                                    setIsCreateSectionOpen(true);
+                                  }}
+                                  className="w-5 h-5 flex items-center justify-center rounded text-theme-muted hover:text-theme-primary border-none bg-transparent cursor-pointer"
+                                  title="Category Settings"
+                                >
+                                  <IconSettingsSmall />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteSection(section);
+                                  }}
+                                  className="w-5 h-5 flex items-center justify-center rounded text-(--danger) hover:text-red-500 border-none bg-transparent cursor-pointer"
+                                  title="Delete Category"
+                                >
+                                  <IconTrash />
+                                </button>
+                              </div>
+                            )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCreateChannelSectionId(section.id);
+                                setIsCreateChannelOpen(true);
+                              }}
+                              className="w-5 h-5 flex items-center justify-center rounded text-theme-muted hover:text-theme-primary border-none bg-transparent cursor-pointer"
+                            >
+                              <IconPlus />
+                            </button>
                           </div>
-                        );
-                      })}
-                  </div>
+
+                          {/* Section channels */}
+                          {!isCollapsed && (
+                            <div className="flex flex-col gap-0.5">
+                              {sectionChannels.length === 0 ? (
+                                <div className="text-[11px] text-theme-muted italic px-4 py-1">
+                                  No channels yet.
+                                </div>
+                              ) : (
+                                sectionChannels.map((channel) => {
+                                  const isChanActive =
+                                    channel.id === activeChannelId;
+                                  const isVoice = channel.layout === 'voice';
+                                  const channelVoiceStates = Object.values(
+                                    voiceStates || {},
+                                  ).filter((vs) => vs.channelId === channel.id);
+                                  return (
+                                    <div
+                                      key={channel.id}
+                                      className="flex flex-col"
+                                      data-drag-type="channel"
+                                      data-drag-id={channel.id}
+                                    >
+                                      <div
+                                        onClick={() => {
+                                          handleSelectChannel(channel);
+                                        }}
+                                        className={`flex items-center gap-2 px-3 py-2 rounded-xl cursor-pointer transition-all duration-150 active:scale-[0.98]
+                                          ${isChanActive ? 'text-theme-primary font-bold' : 'text-theme-muted hover:text-theme-primary'}
+                                          ${draggedId === channel.id && dragType === 'channel' ? 'opacity-40 scale-[0.97] border-dashed border-theme-muted' : ''}
+                                          ${dragOverChannelId === channel.id && dragType === 'channel' ? 'border-t-2 border-t-(--accent-primary)' : ''}
+                                        `}
+                                        style={{
+                                          background: isChanActive
+                                            ? 'var(--theme-btn-active)'
+                                            : 'transparent',
+                                        }}
+                                      >
+                                        {canManage && (
+                                          <div
+                                            onTouchStart={(e) =>
+                                              handleDragTouchStart(
+                                                e,
+                                                'channel',
+                                                channel.id,
+                                              )
+                                            }
+                                            className="p-1 -ml-1 text-theme-muted cursor-grab active:cursor-grabbing"
+                                            onClick={(e) => e.stopPropagation()}
+                                          >
+                                            <IconGrip />
+                                          </div>
+                                        )}
+                                        {isVoice ? (
+                                          <svg
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="2.2"
+                                            className="w-4 h-4 shrink-0"
+                                            style={{
+                                              color: 'var(--accent-primary)',
+                                            }}
+                                          >
+                                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                                            <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                                          </svg>
+                                        ) : (
+                                          <span
+                                            style={{
+                                              color: 'var(--accent-primary)',
+                                              opacity: 0.85,
+                                            }}
+                                          >
+                                            <IconHash />
+                                          </span>
+                                        )}
+                                        <span className="text-[13px] font-semibold truncate flex-1">
+                                          {channel.name}
+                                        </span>
+                                        {isVoice &&
+                                          channelVoiceStates.length > 0 && (
+                                            <span className="text-[10px] font-bold text-theme-muted shrink-0 mr-1.5">
+                                              {channelVoiceStates.length}
+                                            </span>
+                                          )}
+                                        {canManage && (
+                                          <div className="flex gap-1 items-center shrink-0">
+                                            <button
+                                              title="Channel Settings"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                onEditChannel(channel);
+                                              }}
+                                              className="bg-transparent border-none cursor-pointer text-theme-muted p-1 rounded hover:text-theme-primary hover:bg-theme-input flex items-center transition-all duration-150 active-press shrink-0"
+                                            >
+                                              <IconSettingsSmall />
+                                            </button>
+                                            <button
+                                              title="Delete Channel"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDeleteChannel(channel);
+                                              }}
+                                              className="bg-transparent border-none cursor-pointer text-(--danger) p-1 rounded hover:bg-(--danger-bg) flex items-center transition-all duration-150 active-press shrink-0"
+                                            >
+                                              <IconTrash />
+                                            </button>
+                                          </div>
+                                        )}
+                                      </div>
+                                      {isVoice &&
+                                        channelVoiceStates.length > 0 && (
+                                          <div className="pl-8 pr-2 py-1 flex flex-col gap-1.5">
+                                            {channelVoiceStates.map((vs) => {
+                                              const member =
+                                                activeGroup.members.find(
+                                                  (m) => m.userId === vs.userId,
+                                                );
+                                              const profile = member?.user;
+                                              if (!profile) {
+                                                return null;
+                                              }
+                                              return (
+                                                <div
+                                                  key={vs.userId}
+                                                  className="flex items-center justify-between py-0.5"
+                                                >
+                                                  <div className="flex items-center gap-1.5 min-w-0">
+                                                    <Avatar
+                                                      letter={(profile.username ||
+                                                        profile.displayName ||
+                                                        profile.email ||
+                                                        'U')[0].toUpperCase()}
+                                                      url={
+                                                        profile.avatarThumbnailUrl ||
+                                                        profile.avatarUrl
+                                                      }
+                                                      size="xs"
+                                                    />
+                                                    <span className="text-[11px] text-theme-muted truncate">
+                                                      {profile.username ||
+                                                        profile.displayName ||
+                                                        profile.email.split(
+                                                          '@',
+                                                        )[0]}
+                                                    </span>
+                                                  </div>
+                                                  <div className="flex items-center gap-1 shrink-0">
+                                                    {canDisconnect &&
+                                                      vs.userId !==
+                                                        user?.id && (
+                                                        <button
+                                                          onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDisconnectParticipant(
+                                                              vs.userId,
+                                                            );
+                                                          }}
+                                                          className="text-(--danger) p-0.5 rounded hover:bg-red-500/10 border-none cursor-pointer bg-transparent flex items-center"
+                                                        >
+                                                          <svg
+                                                            viewBox="0 0 24 24"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            strokeWidth="2.5"
+                                                            className="w-3 h-3"
+                                                          >
+                                                            <line
+                                                              x1="18"
+                                                              y1="6"
+                                                              x2="6"
+                                                              y2="18"
+                                                            />
+                                                            <line
+                                                              x1="6"
+                                                              y1="6"
+                                                              x2="18"
+                                                              y2="18"
+                                                            />
+                                                          </svg>
+                                                        </button>
+                                                      )}
+                                                    {vs.isMuted && (
+                                                      <svg
+                                                        viewBox="0 0 24 24"
+                                                        fill="none"
+                                                        stroke="var(--danger)"
+                                                        strokeWidth="2.2"
+                                                        className="w-3 h-3 opacity-80"
+                                                      >
+                                                        <line
+                                                          x1="1"
+                                                          y1="1"
+                                                          x2="23"
+                                                          y2="23"
+                                                          stroke="currentColor"
+                                                          strokeWidth="2.5"
+                                                        />
+                                                        <path
+                                                          d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"
+                                                          stroke="currentColor"
+                                                          strokeWidth="2.5"
+                                                        />
+                                                        <path
+                                                          d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"
+                                                          stroke="currentColor"
+                                                          strokeWidth="2.5"
+                                                        />
+                                                      </svg>
+                                                    )}
+                                                  </div>
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                        )}
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                 </div>
-              )
-            )}
+              )}
+            </div>
           </div>
         )}
 
         {/* TAB 3: FRIENDS TAB */}
         {activeTab === 'friends' && (
-          <div className="h-full pb-10 flex flex-col">
+          <div className="h-full pb-10 flex flex-col overflow-y-auto px-3 py-3">
             <div className="flex-1 h-full min-h-0">
               <FriendsDashboard />
             </div>
@@ -1766,7 +1952,11 @@ export const MobileDashboard = ({
 
         {/* TAB 4: PROFILE/ME TAB */}
         {activeTab === 'profile' && (
-          <div className="flex flex-col gap-4 pb-14 animate-fade-in">
+          <div
+            className={`flex flex-col gap-4 h-full pb-14 animate-fade-in px-3 py-3
+              ${profileSubPage === 'root' ? 'overflow-y-auto' : 'overflow-hidden'}
+            `}
+          >
             {profileSubPage === 'root' ? (
               <>
                 {/* User Profile Card */}
@@ -1877,7 +2067,7 @@ export const MobileDashboard = ({
                 </div>
               </>
             ) : (
-              <div className="glass-panel p-4 border border-glass rounded-[28px] flex flex-col shadow-md min-h-[50vh] animate-fade-in">
+              <div className="glass-panel p-4 border border-glass rounded-[28px] flex flex-col shadow-md h-full min-h-[calc(100vh-200px)] overflow-hidden animate-fade-in">
                 <ProfileSettingsContent
                   isModal={false}
                   isMobileView={true}

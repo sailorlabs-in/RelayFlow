@@ -365,6 +365,10 @@ function ChatDashboardContent() {
           setIsInviteMembersOpen={setIsInviteMembersOpen}
           isMembersListOpen={isMembersListOpen}
           setIsMembersListOpen={setIsMembersListOpen}
+          onEditChannel={(c) => {
+            setChannelToEdit(c);
+            setIsChannelSettingsOpen(true);
+          }}
         />
 
         {/* Backdrop for mobile member sidebar */}
