@@ -38,6 +38,16 @@ function NotifCard({
 }: NotifCardProps) {
   const [hovered, setHovered] = useState(false);
 
+  useEffect(() => {
+    if (hovered) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      onDismiss();
+    }, 7000);
+    return () => clearTimeout(timer);
+  }, [onDismiss, hovered]);
+
   return (
     <div
       role={onNavigate ? 'button' : undefined}
@@ -265,7 +275,10 @@ export function getNotificationClient() {
   }
 }
 
-export function useNotificationClient(user: User | null) {
+export function useNotificationClient(
+  user: User | null,
+  setIsDMMode?: (val: boolean) => void,
+) {
   const [client, setClient] = useState<any>(null);
   const registeredUserIdRef = useRef<string | null>(null);
   const dispatch = useAppDispatch();
@@ -290,6 +303,11 @@ export function useNotificationClient(user: User | null) {
   useEffect(() => {
     dispatchRef.current = dispatch;
   }, [dispatch]);
+
+  const setIsDMModeRef = useRef(setIsDMMode);
+  useEffect(() => {
+    setIsDMModeRef.current = setIsDMMode;
+  }, [setIsDMMode]);
 
   useEffect(() => {
     activeConversationIdRef.current = activeConversationId;
@@ -351,6 +369,14 @@ export function useNotificationClient(user: User | null) {
           }
         }
 
+        // ── Skip admin identity updates in the foreground to prevent double notifications ──
+        if (meta.type === 'admin_identity_update') {
+          PrintLog(
+            'Suppressed duplicate foreground notification for admin identity update',
+          );
+          return;
+        }
+
         // ── Friend Request Notifications ───────────────────────────────────
         if (meta.type === 'friend_request') {
           if (userRef.current?.notificationsFriendRequestEnabled === false) {
@@ -399,7 +425,7 @@ export function useNotificationClient(user: User | null) {
               icon: false,
               closeButton: false,
               className: 'custom-inapp-toast-container',
-              autoClose: 5000,
+              autoClose: 7000,
               hideProgressBar: true,
             },
           );
@@ -408,6 +434,10 @@ export function useNotificationClient(user: User | null) {
 
         const msgConvoId = meta.conversationId || payload.data?.conversationId;
         const msgGroupId = meta.groupId || '';
+        // isMention: backend sets this true when the push is for a direct @mention.
+        // We never suppress @mention pushes even if the channel is active — the user
+        // should always be alerted when someone pings them.
+        const isMention = meta.isMention === true || meta.isMention === 'true';
 
         // ── Mute Check — suppress if this thread is muted by the local user ──
         if (
@@ -419,19 +449,30 @@ export function useNotificationClient(user: User | null) {
         }
 
         // Suppress if user is currently viewing this DM conversation
-        if (msgConvoId && msgConvoId === activeConversationIdRef.current) {
+        // (never suppress @mention pings)
+        if (
+          !isMention &&
+          msgConvoId &&
+          msgConvoId === activeConversationIdRef.current
+        ) {
           PrintLog('Suppressed: user is viewing DM conversation', msgConvoId);
           return;
         }
 
         // Suppress if user is currently viewing this group channel
-        if (msgConvoId && msgConvoId === activeChannelIdRef.current) {
+        // (never suppress @mention pings — user should always see when mentioned)
+        if (
+          !isMention &&
+          msgConvoId &&
+          msgConvoId === activeChannelIdRef.current
+        ) {
           PrintLog('Suppressed: user is viewing group channel', msgConvoId);
           return;
         }
 
         // Suppress if user is in the same group and channel matches
         if (
+          !isMention &&
           msgGroupId &&
           msgGroupId === activeGroupIdRef.current &&
           msgConvoId === activeChannelIdRef.current
@@ -491,8 +532,15 @@ export function useNotificationClient(user: User | null) {
         const handleNavigate = msgConvoId
           ? () => {
               if (isDm) {
+                if (setIsDMModeRef.current) {
+                  setIsDMModeRef.current(true);
+                }
+                dispatchRef.current(setActiveGroup(null));
                 dispatchRef.current(setActiveConversation(msgConvoId));
               } else {
+                if (setIsDMModeRef.current) {
+                  setIsDMModeRef.current(false);
+                }
                 dispatchRef.current(setActiveGroup(msgGroupId));
                 dispatchRef.current(setActiveChannel(msgConvoId));
               }
@@ -528,7 +576,7 @@ export function useNotificationClient(user: User | null) {
             icon: false,
             closeButton: false,
             className: 'custom-inapp-toast-container',
-            autoClose: 5000,
+            autoClose: 7000,
             hideProgressBar: true,
           },
         );
@@ -536,10 +584,55 @@ export function useNotificationClient(user: User | null) {
 
       c.onBackgroundMessage((payload: any) => {
         PrintLog('Vibe Message Background click payload:', payload);
+        if (payload) {
+          const msgConvoId = payload.conversationId;
+          const msgGroupId = payload.groupId || '';
+          const isDm = payload.isDm === 'true' || payload.isDm === true;
+
+          if (msgConvoId) {
+            if (isDm) {
+              if (setIsDMMode) {
+                setIsDMMode(true);
+              }
+              dispatchRef.current(setActiveGroup(null));
+              dispatchRef.current(setActiveConversation(msgConvoId));
+            } else {
+              if (setIsDMMode) {
+                setIsDMMode(false);
+              }
+              dispatchRef.current(setActiveGroup(msgGroupId));
+              dispatchRef.current(setActiveChannel(msgConvoId));
+            }
+          }
+        }
       });
 
       c.onSilentMessage((data: any) => {
         PrintLog('Vibe Message Silent payload:', data);
+        if (data && data.action === 'clear-cache-reload') {
+          PrintLog(
+            'Received clear-cache-reload silent message in foreground. Executing...',
+          );
+          if ('caches' in window) {
+            caches.keys().then((keys) => {
+              Promise.all(keys.map((key) => caches.delete(key))).catch(
+                console.error,
+              );
+            });
+          }
+          navigator.serviceWorker
+            ?.getRegistrations()
+            .then((registrations) => {
+              Promise.all(
+                registrations.map((registration) => registration.unregister()),
+              ).then(() => {
+                window.location.reload();
+              });
+            })
+            .catch(() => {
+              window.location.reload();
+            });
+        }
       });
     }
   }, []);
@@ -551,18 +644,82 @@ export function useNotificationClient(user: User | null) {
     }
 
     const register = async () => {
-      if (user && user.id && user.notificationsEnabled !== false) {
-        if (registeredUserIdRef.current === user.id) {
-          return;
+      if (typeof window === 'undefined') {
+        return;
+      }
+
+      const deviceId = localStorage.getItem('rf_device_id');
+
+      // Determine if platform notifications are enabled for this user + device
+      let platformNotificationsEnabled = true;
+      if (user) {
+        if (user.notificationsEnabled === false) {
+          platformNotificationsEnabled = false;
+        } else if (user.loggedInDevices && deviceId) {
+          try {
+            const devices = JSON.parse(user.loggedInDevices);
+            if (Array.isArray(devices)) {
+              const currentDevice = devices.find(
+                (d: any) => d.deviceId === deviceId,
+              );
+              if (
+                currentDevice &&
+                currentDevice.notificationsEnabled === false
+              ) {
+                platformNotificationsEnabled = false;
+              }
+            }
+          } catch {
+            // ignore
+          }
+        }
+      }
+
+      // Check browser permission status
+      const permission =
+        'Notification' in window ? Notification.permission : 'default';
+      const compositeId =
+        user && deviceId ? `${user.id}:${deviceId}` : user?.id;
+
+      // Handle logout / unregistration of previous session
+      if (!user || !user.id || !compositeId) {
+        const oldCompositeId = registeredUserIdRef.current;
+        if (oldCompositeId && permission === 'granted') {
+          try {
+            PrintLog(
+              `User logged out. Unregistering device: ${oldCompositeId}`,
+            );
+            await client.unregisterDevice(oldCompositeId);
+            registeredUserIdRef.current = null;
+          } catch (error) {
+            console.error('Failed to unregister device on logout:', error);
+          }
+        }
+        return;
+      }
+
+      // Case 3: Notification permission is denied
+      if (permission === 'denied') {
+        PrintLog(
+          'Push notifications browser permission is denied. Skipping Vibe Message API calls.',
+        );
+        registeredUserIdRef.current = null;
+        return;
+      }
+
+      // Case 1: Notifications enabled (both globally/device on platform AND browser permission granted)
+      if (platformNotificationsEnabled && permission === 'granted') {
+        if (registeredUserIdRef.current === compositeId) {
+          return; // Already registered
         }
         try {
-          PrintLog(`Registering device for user: ${user.id}`);
+          PrintLog(`Registering device for user composite ID: ${compositeId}`);
           await client.registerDevice({
-            externalUserId: user.id,
+            externalUserId: compositeId,
             serviceWorkerPath: '/push-sw.js',
             serviceWorkerScope: '/',
           });
-          registeredUserIdRef.current = user.id;
+          registeredUserIdRef.current = compositeId;
           PrintLog('Device registered successfully for notifications.');
         } catch (error) {
           console.error(
@@ -570,24 +727,70 @@ export function useNotificationClient(user: User | null) {
             error,
           );
         }
-      } else {
-        const oldUserId = registeredUserIdRef.current;
-        if (oldUserId) {
-          try {
-            PrintLog(`Unregistering device for user: ${oldUserId}`);
-            await client.unregisterDevice(oldUserId);
-            registeredUserIdRef.current = null;
-            PrintLog('Device unregistered successfully.');
-          } catch (error) {
-            console.error(
-              'Failed to unregister device for push notifications:',
-              error,
-            );
-          }
+      }
+      // Case 2: Notification permission is granted, but user manually turned off notifications on the platform
+      else if (!platformNotificationsEnabled && permission === 'granted') {
+        // If we were previously registered (or we want to make sure it's clean), unregister
+        try {
+          PrintLog(
+            `Platform notifications are disabled but permission is granted. Unregistering device: ${compositeId}`,
+          );
+          await client.unregisterDevice(compositeId);
+          registeredUserIdRef.current = null;
+          PrintLog('Device unregistered successfully.');
+        } catch (error) {
+          console.error(
+            'Failed to unregister device for push notifications:',
+            error,
+          );
         }
+      }
+      // Case 4: Permission is 'default' (not granted, not denied) - do not register, do not unregister
+      else {
+        PrintLog(
+          `Browser permission is 'default'. Skipping register/unregister.`,
+        );
+        registeredUserIdRef.current = null;
       }
     };
 
     register();
   }, [client, user]);
+
+  // Handle URL redirection query params from push notifications on mount/hydration
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const searchParams = new URLSearchParams(window.location.search);
+    const convoId = searchParams.get('notificationConvoId');
+    const groupId = searchParams.get('notificationGroupId');
+    const isDm = searchParams.get('isDm') === 'true';
+
+    if (convoId) {
+      PrintLog('Redirecting via query params:', { convoId, groupId, isDm });
+
+      if (isDm) {
+        if (setIsDMMode) {
+          setIsDMMode(true);
+        }
+        dispatch(setActiveGroup(null));
+        dispatch(setActiveConversation(convoId));
+      } else if (groupId) {
+        if (setIsDMMode) {
+          setIsDMMode(false);
+        }
+        dispatch(setActiveGroup(groupId));
+        dispatch(setActiveChannel(convoId));
+      }
+
+      // Clean up search parameters from URL so they don't trigger again on refresh
+      const url = new URL(window.location.href);
+      url.searchParams.delete('notificationConvoId');
+      url.searchParams.delete('notificationGroupId');
+      url.searchParams.delete('isDm');
+      window.history.replaceState({}, '', url.pathname + url.search);
+    }
+  }, [dispatch, setIsDMMode]);
 }

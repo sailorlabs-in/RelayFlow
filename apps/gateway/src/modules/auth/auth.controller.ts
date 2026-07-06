@@ -1,5 +1,12 @@
 import { User } from '@chat-app/database';
-import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  HttpCode,
+  HttpStatus,
+  Req,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 
 import { AuthService } from './auth.service';
@@ -69,8 +76,11 @@ export class AuthController {
     @Body('email') email: string,
     @Body('password') password: string,
     @Body('deviceId') deviceId?: string,
+    @Req() req?: any,
   ): Promise<any> {
-    return this.authService.login(email, password, deviceId);
+    const userAgent = req?.headers['user-agent'] || 'Unknown';
+    const ip = req?.ip || 'Unknown';
+    return this.authService.login(email, password, deviceId, userAgent, ip);
   }
 
   @Post('verify-email')
@@ -91,8 +101,12 @@ export class AuthController {
   async verifyEmail(
     @Body('email') email: string,
     @Body('otp') otp: string,
+    @Body('deviceId') deviceId?: string,
+    @Req() req?: any,
   ): Promise<any> {
-    return this.authService.verifyEmail(email, otp);
+    const userAgent = req?.headers['user-agent'] || 'Unknown';
+    const ip = req?.ip || 'Unknown';
+    return this.authService.verifyEmail(email, otp, deviceId, userAgent, ip);
   }
 
   @Post('resend-verification')
@@ -131,8 +145,18 @@ export class AuthController {
     @Body('otp') otp: string,
     @Body('deviceId') deviceId?: string,
     @Body('rememberDevice') rememberDevice?: boolean,
+    @Req() req?: any,
   ): Promise<any> {
-    return this.authService.verify2Fa(userId, otp, deviceId, rememberDevice);
+    const userAgent = req?.headers['user-agent'] || 'Unknown';
+    const ip = req?.ip || 'Unknown';
+    return this.authService.verify2Fa(
+      userId,
+      otp,
+      deviceId,
+      rememberDevice,
+      userAgent,
+      ip,
+    );
   }
 
   @Post('forgot-password')

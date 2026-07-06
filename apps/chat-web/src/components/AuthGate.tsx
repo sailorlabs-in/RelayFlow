@@ -15,7 +15,7 @@ import { ResetPasswordForm } from './auth/ResetPasswordForm';
 import { SignUpForm } from './auth/SignUpForm';
 import { TwoFactorForm } from './auth/TwoFactorForm';
 import { VerifyEmailForm } from './auth/VerifyEmailForm';
-import { IconBolt, IconZap, IconShield, IconGlobe } from './Icons';
+import { IconZap, IconShield, IconGlobe } from './Icons';
 import type { Theme } from './ThemeSwitcher';
 import { ThemeSwitcher } from './ThemeSwitcher';
 
@@ -141,27 +141,31 @@ export const AuthGate = (): React.JSX.Element => {
   };
 
   return (
-    <div className="relative grid place-items-center min-h-screen w-screen p-4 sm:p-6 overflow-y-auto bg-[var(--bg-primary)]">
+    <div className="relative grid place-items-center min-h-screen w-screen p-4 sm:p-6 overflow-y-auto bg-theme-primary">
       {/* Theme switcher in corner */}
       <div className="absolute top-5 right-5 z-50 md:fixed md:top-5 md:right-5">
         <ThemeSwitcher theme={theme} onChange={handleThemeChange} />
       </div>
 
-      <div className="flex flex-col md:flex-row w-full max-w-[450px] md:w-[900px] md:max-w-full min-h-0 md:min-h-[580px] overflow-hidden glass-panel animate-fade-in">
+      <div className="flex flex-col md:flex-row w-full max-w-112.5 md:w-225 md:max-w-full min-h-0 md:min-h-145 overflow-hidden glass-panel animate-fade-in">
         {/* Left Branding Panel */}
-        <div className="hidden md:flex relative flex-[1.1] flex-col justify-center items-center p-12 text-white text-center overflow-hidden bg-gradient-to-br from-[var(--accent-primary)] to-[var(--accent-secondary)]">
+        <div className="hidden md:flex relative flex-[1.1] flex-col justify-center items-center p-12 text-white text-center overflow-hidden bg-linear-to-br from-(--accent-primary) to-(--accent-secondary)">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.18)_0%,transparent_65%)]" />
           <div className="absolute -bottom-14 -right-14 w-56 h-56 rounded-full bg-[rgba(255,255,255,0.06)]" />
 
           {/* Brand icon */}
-          <div className="relative z-10 w-14 h-14 rounded-2xl flex items-center justify-center mb-6 bg-[rgba(255,255,255,0.18)] backdrop-blur-[8px]">
-            <IconBolt />
+          <div className="relative z-10 w-14 h-14 rounded-2xl overflow-hidden mb-6 bg-[rgba(255,255,255,0.1)] border border-[rgba(255,255,255,0.15)] backdrop-blur-sm">
+            <img
+              src="/logo.png"
+              alt="RelayFlow Logo"
+              className="w-full h-full object-cover"
+            />
           </div>
 
           <h1 className="relative z-10 text-[38px] font-bold tracking-tight mb-3">
             RelayFlow
           </h1>
-          <p className="relative z-10 text-[15px] leading-relaxed opacity-85 max-w-[260px]">
+          <p className="relative z-10 text-[15px] leading-relaxed opacity-85 max-w-65">
             Ultra-fast, real-time messaging with NestJS WebSocket Gateway.
           </p>
 
@@ -173,7 +177,7 @@ export const AuthGate = (): React.JSX.Element => {
             ].map(({ icon, text }) => (
               <div
                 key={text}
-                className="flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-[13px] text-left bg-[rgba(255,255,255,0.12)] backdrop-blur-[8px]"
+                className="flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-[13px] text-left bg-[rgba(255,255,255,0.12)] backdrop-blur-sm"
               >
                 {icon}
                 <span>{text}</span>
@@ -183,7 +187,7 @@ export const AuthGate = (): React.JSX.Element => {
         </div>
 
         {/* Right Form Panel */}
-        <div className="flex-1 flex flex-col justify-center p-6 sm:p-12 bg-[var(--bg-chat)]">
+        <div className="flex-1 flex flex-col justify-center p-6 sm:p-12 bg-theme-chat">
           {renderActiveForm()}
         </div>
       </div>

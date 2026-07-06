@@ -34,6 +34,10 @@ export interface Message {
   updatedAt: string;
   media?: MessageMediaItem[];
   readBy?: { userId: string; name: string }[];
+  parentId?: string | null;
+  parentMessage?: Message | null;
+  reactions?: { emoji: string; userIds: string[] }[] | null;
+  isMarkdown?: boolean;
 }
 
 export interface ChatState {
@@ -56,6 +60,20 @@ export interface ChatState {
   mutedConversationIds: string[];
   status: 'idle' | 'loading' | 'succeeded' | 'failed';
   error: string | null;
+  activeCall: {
+    conversationId: string;
+    callerId: string;
+    callerName: string;
+    targetUserId: string;
+    status:
+      | 'idle'
+      | 'calling'
+      | 'incoming'
+      | 'connected'
+      | 'rejected'
+      | 'disconnected';
+    isInitiator: boolean;
+  } | null;
 }
 
 /** Load muted conversation IDs from localStorage for a given userId. */
@@ -90,19 +108,15 @@ const initialState: ChatState = {
   mutedConversationIds: [],
   status: 'idle',
   error: null,
+  activeCall: null,
 };
 
 // Thunk to fetch conversations a user participates in
 export const fetchConversations = createAsyncThunk(
   'chat/fetchConversations',
-  async (userId: string, { rejectWithValue }) => {
+  async (_userId: string, { rejectWithValue }) => {
     try {
-      const response = await ApiRequest(
-        `/chat/conversations?userId=${userId}`,
-        'get',
-        {},
-        true,
-      );
+      const response = await ApiRequest(`/chat/conversations`, 'get', {}, true);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(
@@ -435,6 +449,53 @@ const chatSlice = createSlice({
       state.onlineUsers[userId] =
         status === 'online' ? autoStatus || 'online' : status;
     },
+    // Real-time user profile update (displayName, avatar, etc.)
+    socketUpdateUserProfile: (
+      state,
+      action: PayloadAction<{
+        userId: string;
+        displayName?: string;
+        username?: string;
+        avatarUrl?: string;
+        avatarThumbnailUrl?: string;
+      }>,
+    ) => {
+      const { userId, displayName, username, avatarUrl, avatarThumbnailUrl } =
+        action.payload;
+
+      // Patch the userProfiles cache
+      if (state.userProfiles[userId]) {
+        if (displayName !== undefined) {
+          state.userProfiles[userId].displayName = displayName;
+        }
+        if (username !== undefined) {
+          state.userProfiles[userId].username = username;
+        }
+        if (avatarUrl !== undefined) {
+          state.userProfiles[userId].avatarUrl = avatarUrl;
+        }
+        if (avatarThumbnailUrl !== undefined) {
+          state.userProfiles[userId].avatarThumbnailUrl = avatarThumbnailUrl;
+        }
+      }
+
+      // Patch the friends list
+      const friend = state.friends.find((f) => f.id === userId);
+      if (friend) {
+        if (displayName !== undefined) {
+          friend.displayName = displayName;
+        }
+        if (username !== undefined) {
+          friend.username = username;
+        }
+        if (avatarUrl !== undefined) {
+          friend.avatarUrl = avatarUrl;
+        }
+        if (avatarThumbnailUrl !== undefined) {
+          friend.avatarThumbnailUrl = avatarThumbnailUrl;
+        }
+      }
+    },
     socketUpdateTyping: (
       state,
       action: PayloadAction<{
@@ -610,6 +671,47 @@ const chatSlice = createSlice({
           : [...currentReadBy, { userId: readBy, name: nameToUse }];
       }
     },
+    syncGroupGhostMembers: (
+      state,
+      action: PayloadAction<{
+        channelIds: string[];
+        visibleMemberIds: string[];
+      }>,
+    ) => {
+      const { channelIds, visibleMemberIds } = action.payload;
+      const visibleSet = new Set(visibleMemberIds);
+
+      // Clean active messages readBy lists
+      for (const channelId of channelIds) {
+        if (state.messages[channelId]) {
+          state.messages[channelId] = state.messages[channelId].map((m) => {
+            const currentReadBy = m.readBy || [];
+            const filteredReadBy = currentReadBy.filter(
+              (r) => visibleSet.has(r.userId) || r.userId === m.senderId,
+            );
+            if (filteredReadBy.length !== currentReadBy.length) {
+              return {
+                ...m,
+                readBy: filteredReadBy,
+              };
+            }
+            return m;
+          });
+        }
+      }
+
+      // Clean last messages readBy lists on active conversations list
+      for (const convo of state.conversations) {
+        if (channelIds.includes(convo.id) && convo.lastMessage) {
+          const lastMsg = convo.lastMessage;
+          const currentReadBy = lastMsg.readBy || [];
+          const filteredReadBy = currentReadBy.filter(
+            (r) => visibleSet.has(r.userId) || r.userId === lastMsg.senderId,
+          );
+          lastMsg.readBy = filteredReadBy;
+        }
+      }
+    },
     socketReceiveFriendRequest: (state, action: PayloadAction<any>) => {
       const request = action.payload;
       if (!state.pendingRequests) {
@@ -664,6 +766,58 @@ const chatSlice = createSlice({
       const { friendId } = action.payload;
       if (state.friends) {
         state.friends = state.friends.filter((f) => f.id !== friendId);
+      }
+    },
+    startOutgoingCall: (
+      state,
+      action: PayloadAction<{
+        conversationId: string;
+        targetUserId: string;
+        callerName: string;
+      }>,
+    ) => {
+      state.activeCall = {
+        conversationId: action.payload.conversationId,
+        callerId: '',
+        callerName: action.payload.callerName,
+        targetUserId: action.payload.targetUserId,
+        status: 'calling',
+        isInitiator: true,
+      };
+    },
+    incomingCallReceived: (
+      state,
+      action: PayloadAction<{
+        conversationId: string;
+        callerId: string;
+        callerName: string;
+      }>,
+    ) => {
+      state.activeCall = {
+        conversationId: action.payload.conversationId,
+        callerId: action.payload.callerId,
+        callerName: action.payload.callerName,
+        targetUserId: '',
+        status: 'incoming',
+        isInitiator: false,
+      };
+    },
+    acceptCall: (state) => {
+      if (state.activeCall) {
+        state.activeCall.status = 'connected';
+      }
+    },
+    endCall: (state) => {
+      state.activeCall = null;
+    },
+    socketCallRejected: (state) => {
+      if (state.activeCall) {
+        state.activeCall.status = 'rejected';
+      }
+    },
+    socketCallAccepted: (state) => {
+      if (state.activeCall) {
+        state.activeCall.status = 'connected';
       }
     },
   },
@@ -868,6 +1022,7 @@ export const {
   socketReceiveMessage,
   socketUpdatePresence,
   socketUpdateUserStatus,
+  socketUpdateUserProfile,
   socketUpdateTyping,
   socketDeleteMessage,
   socketUpdateMessage,
@@ -880,6 +1035,13 @@ export const {
   socketFriendRemoved,
   loadMutedConversations,
   toggleMuteConversation,
+  startOutgoingCall,
+  incomingCallReceived,
+  acceptCall,
+  endCall,
+  socketCallRejected,
+  socketCallAccepted,
+  syncGroupGhostMembers,
 } = chatSlice.actions;
 
 export default chatSlice.reducer;

@@ -4,6 +4,8 @@ import {
   Message,
   ConversationType,
   ReadReceipt,
+  GroupMember,
+  User,
 } from '@chat-app/database';
 import {
   Injectable,
@@ -230,6 +232,8 @@ export class ChatService {
     isRead = false,
     media?: any[],
     readReceiptUserIds: string[] = [],
+    parentId?: string,
+    isMarkdown = false,
   ): Promise<Message> {
     const isMember = await this.memberRepository.findOne({
       where: { conversationId, userId: senderId },
@@ -246,9 +250,21 @@ export class ChatService {
       content,
       isRead,
       media,
+      parentId: parentId || undefined,
+      isMarkdown,
     });
 
     const savedMessage = await this.messageRepository.save(message);
+
+    if (parentId) {
+      const reloaded = await this.messageRepository.findOne({
+        where: { id: savedMessage.id },
+        relations: ['parentMessage'],
+      });
+      if (reloaded) {
+        savedMessage.parentMessage = reloaded.parentMessage;
+      }
+    }
 
     // Save initial read receipts if any
     const readBy: { userId: string; name: string }[] = [];
@@ -272,7 +288,8 @@ export class ChatService {
       readBy.push(...receipts);
     }
 
-    savedMessage.readBy = readBy;
+    const ghostAdmins = await this.getGhostAdminUserIds(conversationId);
+    savedMessage.readBy = readBy.filter((r) => !ghostAdmins.has(r.userId));
     return savedMessage;
   }
 
@@ -330,6 +347,7 @@ export class ChatService {
     const messages = await this.messageRepository.find({
       where: { conversationId },
       order: { createdAt: 'DESC' },
+      relations: ['parentMessage'],
       take: limit,
       skip: offset,
     });
@@ -362,8 +380,10 @@ export class ChatService {
       }
     }
 
+    const ghostAdmins = await this.getGhostAdminUserIds(conversationId);
     for (const m of messages) {
-      m.readBy = receiptsByMessageId[m.id] || [];
+      const allReceipts = receiptsByMessageId[m.id] || [];
+      m.readBy = allReceipts.filter((r) => !ghostAdmins.has(r.userId));
     }
 
     return messages;
@@ -372,6 +392,7 @@ export class ChatService {
   async getMessage(messageId: string): Promise<Message | null> {
     const message = await this.messageRepository.findOne({
       where: { id: messageId },
+      relations: ['parentMessage'],
     });
     if (!message) {
       return null;
@@ -382,6 +403,7 @@ export class ChatService {
       relations: ['user'],
     });
 
+    const ghostAdmins = await this.getGhostAdminUserIds(message.conversationId);
     message.readBy = receipts
       .map((r) => {
         if (!r.user) {
@@ -392,7 +414,8 @@ export class ChatService {
           : `@${r.user.email.split('@')[0]}`;
         return { userId: r.userId, name };
       })
-      .filter((x): x is { userId: string; name: string } => x !== null);
+      .filter((x): x is { userId: string; name: string } => x !== null)
+      .filter((r) => !ghostAdmins.has(r.userId));
 
     return message;
   }
@@ -416,6 +439,41 @@ export class ChatService {
     message.isEdited = true;
     message.editedAt = new Date();
 
+    return this.messageRepository.save(message);
+  }
+
+  async toggleMessageReaction(
+    messageId: string,
+    userId: string,
+    emoji: string,
+  ): Promise<Message> {
+    const message = await this.getMessage(messageId);
+    if (!message) {
+      throw new NotFoundException('Message not found');
+    }
+
+    let reactions = message.reactions || [];
+    if (!Array.isArray(reactions)) {
+      reactions = [];
+    }
+
+    const idx = reactions.findIndex((r) => r.emoji === emoji);
+    if (idx > -1) {
+      const r = reactions[idx];
+      const uIdx = r.userIds.indexOf(userId);
+      if (uIdx > -1) {
+        r.userIds.splice(uIdx, 1);
+      } else {
+        r.userIds.push(userId);
+      }
+      if (r.userIds.length === 0) {
+        reactions.splice(idx, 1);
+      }
+    } else {
+      reactions.push({ emoji, userIds: [userId] });
+    }
+
+    message.reactions = reactions;
     return this.messageRepository.save(message);
   }
 
@@ -477,5 +535,26 @@ export class ChatService {
 
   async getConversation(id: string): Promise<Conversation | null> {
     return this.conversationRepository.findOne({ where: { id } });
+  }
+
+  async getGhostAdminUserIds(conversationId: string): Promise<Set<string>> {
+    const conversation = await this.conversationRepository.findOne({
+      where: { id: conversationId },
+      select: ['groupId'],
+    });
+    if (!conversation || !conversation.groupId) {
+      return new Set();
+    }
+
+    const ghostMembers = await this.conversationRepository.manager
+      .createQueryBuilder(GroupMember, 'gm')
+      .innerJoin(User, 'u', 'u.id = gm.userId')
+      .where('gm.groupId = :groupId', { groupId: conversation.groupId })
+      .andWhere('gm.isGhost = true')
+      .andWhere('u.role = :role', { role: 'admin' })
+      .select('gm.userId', 'userId')
+      .getRawMany();
+
+    return new Set(ghostMembers.map((gm) => gm.userId));
   }
 }

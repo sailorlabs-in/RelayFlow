@@ -107,13 +107,26 @@ const BackgroundAudioPlayer = ({
 };
 
 /* ─── SVG Icon Helpers ─── */
+const IconBell = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    className="w-4.5 h-4.5"
+  >
+    <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+    <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+  </svg>
+);
+
 const IconMic = () => (
   <svg
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
     strokeWidth="2"
-    className="w-[18px] h-[18px]"
+    className="w-4.5 h-4.5"
   >
     <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
     <path d="M19 10v1a7 7 0 0 1-14 0v-1M12 19v3M8 22h8" />
@@ -125,7 +138,7 @@ const IconMicOff = () => (
     fill="none"
     stroke="currentColor"
     strokeWidth="2"
-    className="w-[18px] h-[18px]"
+    className="w-4.5 h-4.5"
   >
     <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
     <path d="M19 10v1a7 7 0 0 1-14 0v-1M12 19v3M8 22h8" />
@@ -138,7 +151,7 @@ const IconHeadphones = () => (
     fill="none"
     stroke="currentColor"
     strokeWidth="2"
-    className="w-[18px] h-[18px]"
+    className="w-4.5 h-4.5"
   >
     <path d="M3 18v-6a9 9 0 0 1 18 0v6M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3" />
   </svg>
@@ -149,7 +162,7 @@ const IconHeadphonesOff = () => (
     fill="none"
     stroke="currentColor"
     strokeWidth="2"
-    className="w-[18px] h-[18px]"
+    className="w-4.5 h-4.5"
   >
     <path d="M3 18v-6a9 9 0 0 1 18 0v6M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3" />
     <line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" strokeWidth="2" />
@@ -161,7 +174,7 @@ const IconCamera = () => (
     fill="none"
     stroke="currentColor"
     strokeWidth="2"
-    className="w-[18px] h-[18px]"
+    className="w-4.5 h-4.5"
   >
     <path d="M23 7l-7 5 7 5V7z" />
     <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
@@ -173,7 +186,7 @@ const IconScreen = () => (
     fill="none"
     stroke="currentColor"
     strokeWidth="2"
-    className="w-[18px] h-[18px]"
+    className="w-4.5 h-4.5"
   >
     <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
     <polyline points="8 21 12 17 16 21" />
@@ -872,6 +885,13 @@ export const VoiceDashboard = ({
     socketManager.leaveVoice();
   };
 
+  const handlePingNonJoined = () => {
+    socketManager.pingNonJoinedUsers(_groupId, channel.id);
+    showToast.success(
+      'Ping notification sent to all non-joined group members.',
+    );
+  };
+
   // ── Determine who is streaming (has video tracks) ──
   const streamingUsers = useMemo(() => {
     const streaming: string[] = [];
@@ -952,22 +972,22 @@ export const VoiceDashboard = ({
       {isViewed &&
         portalTarget &&
         ReactDOM.createPortal(
-          <div className="flex-1 flex flex-col overflow-hidden bg-[var(--bg-chat)] relative select-none">
+          <div className="flex-1 flex flex-col overflow-hidden bg-theme-chat relative select-none">
             {/* Decorative backdrop glow */}
-            <div className="absolute top-[20%] left-[30%] w-[300px] h-[300px] rounded-full bg-[var(--accent-primary)] opacity-5 blur-[120px] pointer-events-none" />
-            <div className="absolute bottom-[20%] right-[30%] w-[350px] h-[350px] rounded-full bg-[rgba(114,137,218,0.15)] opacity-5 blur-[140px] pointer-events-none" />
+            <div className="absolute top-[20%] left-[30%] w-75 h-75 rounded-full bg-(--accent-primary) opacity-5 blur-[120px] pointer-events-none" />
+            <div className="absolute bottom-[20%] right-[30%] w-87.5 h-87.5 rounded-full bg-[rgba(114,137,218,0.15)] opacity-5 blur-[140px] pointer-events-none" />
 
             {/* Main Content Area */}
             <div className="flex-1 overflow-hidden flex items-center justify-center p-2.5">
               {channelVoiceStates.length === 0 ? (
                 /* ── Empty Channel State ── */
-                <div className="text-center text-[var(--text-muted)] flex flex-col items-center gap-3 animate-fade-in">
+                <div className="text-center text-theme-muted flex flex-col items-center gap-3 animate-fade-in">
                   <svg
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
                     strokeWidth="1.5"
-                    className="w-12 h-12 stroke-[var(--accent-primary)] opacity-60"
+                    className="w-12 h-12 stroke-(--accent-primary) opacity-60"
                   >
                     <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
                     <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" />
@@ -983,7 +1003,7 @@ export const VoiceDashboard = ({
                 <div className="flex flex-col md:flex-row flex-1 gap-2.5 overflow-hidden min-h-0 w-full h-full">
                   {/* ── Focus View (large stream area) ── */}
                   <div
-                    className="flex-1 relative rounded-2xl overflow-hidden bg-[rgba(0,0,0,0.35)] border border-[var(--glass-border)] flex items-center justify-center min-h-0"
+                    className="flex-1 relative rounded-2xl overflow-hidden bg-[rgba(0,0,0,0.35)] border border-glass flex items-center justify-center min-h-0"
                     style={{
                       animation:
                         'voiceFocusIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards',
@@ -1012,7 +1032,7 @@ export const VoiceDashboard = ({
                             {/* Self-sharing overlay (when you're the focused user and screen sharing) */}
                             {isMe && isScreenSharing && !hasVideo && (
                               <div
-                                className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-[4]"
+                                className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-4"
                                 style={{
                                   animation: 'voiceFocusIn 0.4s ease forwards',
                                 }}
@@ -1022,7 +1042,7 @@ export const VoiceDashboard = ({
                                   fill="none"
                                   stroke="currentColor"
                                   strokeWidth="1.5"
-                                  className="w-12 h-12 stroke-[var(--accent-primary)] opacity-60"
+                                  className="w-12 h-12 stroke-(--accent-primary) opacity-60"
                                 >
                                   <rect
                                     x="2"
@@ -1035,7 +1055,7 @@ export const VoiceDashboard = ({
                                   <polyline points="8 21 12 17 16 21" />
                                   <line x1="12" y1="17" x2="12" y2="21" />
                                 </svg>
-                                <span className="text-[15px] font-semibold text-[var(--text-muted)] tracking-wide">
+                                <span className="text-[15px] font-semibold text-theme-muted tracking-wide">
                                   You are screen sharing
                                 </span>
                               </div>
@@ -1048,7 +1068,7 @@ export const VoiceDashboard = ({
                                   {speakingUsers[focusedUserId] &&
                                     !focusedVs?.isMuted && (
                                       <div
-                                        className="absolute inset-[-4px] rounded-full border-[2.5px] border-[var(--accent-primary)] pointer-events-none"
+                                        className="absolute -inset-1 rounded-full border-[2.5px] border-(--accent-primary) pointer-events-none"
                                         style={{
                                           animation:
                                             'voiceSpeakingGlow 1.5s ease-in-out infinite',
@@ -1075,7 +1095,7 @@ export const VoiceDashboard = ({
                             )}
 
                             {/* Bottom overlay — name + badges */}
-                            <div className="absolute bottom-0 left-0 right-0 px-4 py-3.5 bg-gradient-to-t from-[rgba(0,0,0,0.72)] to-transparent flex items-end justify-between pointer-events-none z-[5]">
+                            <div className="absolute bottom-0 left-0 right-0 px-4 py-3.5 bg-linear-to-t from-[rgba(0,0,0,0.72)] to-transparent flex items-end justify-between pointer-events-none z-5">
                               <div className="flex items-center gap-2 pointer-events-auto">
                                 <span className="text-[14px] font-bold text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.5)]">
                                   {getUserDisplay(focusedUserId)}
@@ -1097,15 +1117,15 @@ export const VoiceDashboard = ({
                                 {speakingUsers[focusedUserId] &&
                                   !focusedVs?.isMuted && (
                                     <div className="flex gap-0.5 items-end h-3 bg-[rgba(0,0,0,0.45)] px-1.5 py-1 rounded-md pointer-events-auto">
-                                      <span className="w-[2px] bg-[var(--accent-primary)] animate-sound-bar-1 rounded-full" />
-                                      <span className="w-[2px] bg-[var(--accent-primary)] animate-sound-bar-2 rounded-full" />
-                                      <span className="w-[2px] bg-[var(--accent-primary)] animate-sound-bar-3 rounded-full" />
+                                      <span className="w-0.5 bg-(--accent-primary) animate-sound-bar-1 rounded-full" />
+                                      <span className="w-0.5 bg-(--accent-primary) animate-sound-bar-2 rounded-full" />
+                                      <span className="w-0.5 bg-(--accent-primary) animate-sound-bar-3 rounded-full" />
                                     </div>
                                   )}
                               </div>
                               <div className="flex items-center gap-1.5 pointer-events-auto">
                                 {focusedVs?.isMuted && (
-                                  <span className="p-1 rounded-lg bg-[var(--danger-bg)] text-[var(--danger)] flex items-center justify-center border border-[var(--danger-border)]">
+                                  <span className="p-1 rounded-lg bg-(--danger-bg) text-(--danger) flex items-center justify-center border border-(--danger-border)">
                                     <svg
                                       viewBox="0 0 24 24"
                                       fill="none"
@@ -1127,7 +1147,7 @@ export const VoiceDashboard = ({
                                   </span>
                                 )}
                                 {focusedVs?.isDeafened && (
-                                  <span className="p-1 rounded-lg bg-[var(--danger-bg)] text-[var(--danger)] flex items-center justify-center border border-[var(--danger-border)]">
+                                  <span className="p-1 rounded-lg bg-(--danger-bg) text-(--danger) flex items-center justify-center border border-(--danger-border)">
                                     <svg
                                       viewBox="0 0 24 24"
                                       fill="none"
@@ -1156,7 +1176,7 @@ export const VoiceDashboard = ({
 
                   {/* ── Participant Strip (right sidebar) ── */}
                   <div
-                    className="w-full md:w-[220px] md:min-w-[220px] flex flex-row md:flex-col gap-1.5 overflow-x-auto md:overflow-y-auto pr-0.5 custom-scrollbar no-scrollbar"
+                    className="w-full md:w-55 md:min-w-55 flex flex-row md:flex-col gap-1.5 overflow-x-auto md:overflow-y-auto pr-0.5 custom-scrollbar no-scrollbar"
                     style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                   >
                     {channelVoiceStates.map((vs) => {
@@ -1184,13 +1204,13 @@ export const VoiceDashboard = ({
                         <div
                           key={vs.userId}
                           onClick={() => setFocusedUserId(vs.userId)}
-                          className={`voice-card relative flex flex-col items-center justify-center aspect-[16/10] rounded-[10px] overflow-hidden cursor-pointer shrink-0 transition-all duration-200 w-[140px] md:w-auto
+                          className={`voice-card relative flex flex-col items-center justify-center aspect-16/10 rounded-[10px] overflow-hidden cursor-pointer shrink-0 transition-all duration-200 w-35 md:w-auto
                       ${
                         isFocused
-                          ? 'border-2 border-[var(--accent-primary)] bg-[rgba(56,189,248,0.08)]'
-                          : 'border-[1.5px] border-[var(--glass-border)] bg-[var(--glass-bg)] hover:border-[rgba(255,255,255,0.12)] hover:bg-[rgba(255,255,255,0.025)] hover:scale-[1.015]'
+                          ? 'border-2 border-(--accent-primary) bg-[rgba(56,189,248,0.08)]'
+                          : 'border-[1.5px] border-glass bg-(--glass-bg) hover:border-[rgba(255,255,255,0.12)] hover:bg-[rgba(255,255,255,0.025)] hover:scale-[1.015]'
                       }
-                      ${isSpeaking && !isFocused ? 'border-[var(--accent-primary)] shadow-[0_0_12px_rgba(56,189,248,0.2)]' : ''}
+                      ${isSpeaking && !isFocused ? 'border-(--accent-primary) shadow-[0_0_12px_rgba(56,189,248,0.2)]' : ''}
                     `}
                         >
                           {/* Video preview */}
@@ -1203,10 +1223,10 @@ export const VoiceDashboard = ({
                           {/* Avatar fallback when no video */}
                           {(!hasVideo ||
                             (isMe && !isCameraOn && !isScreenSharing)) && (
-                            <div className="relative flex items-center justify-center z-[2]">
+                            <div className="relative flex items-center justify-center z-2">
                               {isSpeaking && (
                                 <div
-                                  className="absolute inset-[-3px] rounded-full border-[2.5px] border-[var(--accent-primary)] pointer-events-none"
+                                  className="absolute -inset-0.75 rounded-full border-[2.5px] border-(--accent-primary) pointer-events-none"
                                   style={{
                                     animation:
                                       'voiceSpeakingGlow 1.5s ease-in-out infinite',
@@ -1234,7 +1254,7 @@ export const VoiceDashboard = ({
                                 e.stopPropagation();
                                 handleDisconnectParticipant(vs.userId);
                               }}
-                              className="voice-disconnect-btn absolute top-1.5 left-1.5 w-[26px] h-[26px] rounded-md border-none bg-[rgba(237,66,69,0.85)] hover:bg-[#ed4245] text-white cursor-pointer flex items-center justify-center opacity-0 scale-[0.85] transition-all duration-150 z-[4]"
+                              className="voice-disconnect-btn absolute top-1.5 left-1.5 w-6.5 h-6.5 rounded-md border-none bg-[rgba(237,66,69,0.85)] hover:bg-[#ed4245] text-white cursor-pointer flex items-center justify-center opacity-0 scale-[0.85] transition-all duration-150 z-4"
                               title="Disconnect user"
                             >
                               <IconDisconnect size={14} />
@@ -1247,17 +1267,17 @@ export const VoiceDashboard = ({
                               e.stopPropagation();
                               setFocusedUserId(vs.userId);
                             }}
-                            className="voice-expand-btn absolute top-1.5 right-1.5 w-[26px] h-[26px] rounded-md border-none bg-[rgba(0,0,0,0.55)] backdrop-blur-sm text-white cursor-pointer flex items-center justify-center opacity-0 scale-[0.85] transition-all duration-150 z-[4]"
+                            className="voice-expand-btn absolute top-1.5 right-1.5 w-6.5 h-6.5 rounded-md border-none bg-[rgba(0,0,0,0.55)] backdrop-blur-sm text-white cursor-pointer flex items-center justify-center opacity-0 scale-[0.85] transition-all duration-150 z-4"
                             title="Focus on this user"
                           >
                             <IconExpand />
                           </button>
 
                           {/* Card Footer — name + badges */}
-                          <div className="absolute bottom-0 left-0 right-0 flex flex-col gap-1 px-1.5 py-1 bg-gradient-to-t from-[rgba(0,0,0,0.7)] to-transparent z-[3]">
+                          <div className="absolute bottom-0 left-0 right-0 flex flex-col gap-1 px-1.5 py-1 bg-linear-to-t from-[rgba(0,0,0,0.7)] to-transparent z-3">
                             <div className="flex items-center justify-between w-full">
                               <div className="flex items-center gap-1 min-w-0">
-                                <span className="text-[10px] font-semibold text-white truncate max-w-[80px] drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]">
+                                <span className="text-[10px] font-semibold text-white truncate max-w-20 drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]">
                                   {isMe
                                     ? 'You'
                                     : profile.username
@@ -1266,17 +1286,17 @@ export const VoiceDashboard = ({
                                         profile.email.split('@')[0]}
                                 </span>
                                 {isSpeaking && (
-                                  <div className="flex gap-[2px] items-end h-2.5">
-                                    <span className="w-[2px] bg-[var(--accent-primary)] animate-sound-bar-1 rounded-full" />
-                                    <span className="w-[2px] bg-[var(--accent-primary)] animate-sound-bar-2 rounded-full" />
-                                    <span className="w-[2px] bg-[var(--accent-primary)] animate-sound-bar-3 rounded-full" />
+                                  <div className="flex gap-0.5 items-end h-2.5">
+                                    <span className="w-0.5 bg-(--accent-primary) animate-sound-bar-1 rounded-full" />
+                                    <span className="w-0.5 bg-(--accent-primary) animate-sound-bar-2 rounded-full" />
+                                    <span className="w-0.5 bg-(--accent-primary) animate-sound-bar-3 rounded-full" />
                                   </div>
                                 )}
                               </div>
                               <div className="flex items-center gap-1">
                                 {isStreaming && (
                                   <span
-                                    className="voice-live-badge inline-flex items-center gap-[3px] px-1 py-[1px] rounded bg-[#ed4245] text-[8px] font-extrabold uppercase text-white leading-none"
+                                    className="voice-live-badge inline-flex items-center gap-0.75 px-1 py-px rounded bg-[#ed4245] text-[8px] font-extrabold uppercase text-white leading-none"
                                     style={{
                                       animation:
                                         'voiceLivePulse 2s ease-in-out infinite',
@@ -1293,7 +1313,7 @@ export const VoiceDashboard = ({
                                     fill="none"
                                     stroke="var(--danger)"
                                     strokeWidth="2.5"
-                                    className="w-[11px] h-[11px] opacity-80"
+                                    className="w-2.75 h-2.75 opacity-80"
                                   >
                                     <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
                                     <path d="M19 10v1a7 7 0 0 1-14 0v-1M12 19v3M8 22h8" />
@@ -1313,7 +1333,7 @@ export const VoiceDashboard = ({
                                     fill="none"
                                     stroke="var(--danger)"
                                     strokeWidth="2.5"
-                                    className="w-[11px] h-[11px] opacity-80"
+                                    className="w-2.75 h-2.75 opacity-80"
                                   >
                                     <path d="M3 18v-6a9 9 0 0 1 18 0v6M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3" />
                                     <line
@@ -1361,7 +1381,7 @@ export const VoiceDashboard = ({
                                       [vs.userId]: val,
                                     }));
                                   }}
-                                  className="w-14 h-0.5 bg-[rgba(255,255,255,0.2)] rounded-lg appearance-none cursor-pointer accent-[var(--accent-primary)]"
+                                  className="w-14 h-0.5 bg-[rgba(255,255,255,0.2)] rounded-lg appearance-none cursor-pointer accent-(--accent-primary)"
                                 />
                                 <span className="w-4 text-right font-mono text-[8px] opacity-80">
                                   {Math.round(
@@ -1382,7 +1402,7 @@ export const VoiceDashboard = ({
                 /* ════════════════════════════════════════════════════
              GRID MODE — No one streaming, standard avatar grid
              ════════════════════════════════════════════════════ */
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 w-full max-w-[900px] content-center">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 w-full max-w-225 content-center">
                   {channelVoiceStates.map((vs) => {
                     const member = groupMembers.find(
                       (m) => m.userId === vs.userId,
@@ -1401,11 +1421,11 @@ export const VoiceDashboard = ({
                     return (
                       <div
                         key={vs.userId}
-                        className={`relative flex flex-col items-center justify-center aspect-[4/3] rounded-2xl border overflow-hidden backdrop-blur-md transition-all duration-300
+                        className={`relative flex flex-col items-center justify-center aspect-4/3 rounded-2xl border overflow-hidden backdrop-blur-md transition-all duration-300
                     ${
                       isSpeaking
-                        ? 'border-[var(--accent-primary)] shadow-[0_0_15px_rgba(114,137,218,0.2)] bg-[rgba(114,137,218,0.08)] scale-[1.02]'
-                        : 'border-[var(--glass-border)] bg-[var(--glass-bg)] hover:border-[rgba(255,255,255,0.12)] hover:bg-[rgba(255,255,255,0.015)]'
+                        ? 'border-(--accent-primary) shadow-[0_0_15px_rgba(114,137,218,0.2)] bg-[rgba(114,137,218,0.08)] scale-[1.02]'
+                        : 'border-glass bg-(--glass-bg) hover:border-[rgba(255,255,255,0.12)] hover:bg-[rgba(255,255,255,0.015)]'
                     }`}
                       >
                         {/* Dynamic Audio/Video Render element */}
@@ -1420,7 +1440,7 @@ export const VoiceDashboard = ({
                           activeStream.getVideoTracks().length === 0) && (
                           <div className="relative flex items-center justify-center">
                             {isSpeaking && (
-                              <div className="absolute inset-0 rounded-full border-2 border-[var(--accent-primary)] animate-ping opacity-60 scale-[1.1]" />
+                              <div className="absolute inset-0 rounded-full border-2 border-(--accent-primary) animate-ping opacity-60 scale-[1.1]" />
                             )}
                             <Avatar
                               letter={(profile.username ||
@@ -1438,7 +1458,7 @@ export const VoiceDashboard = ({
                         {/* Badges */}
                         <div className="absolute top-3 right-3 flex items-center gap-1.5 z-10">
                           {vs.isMuted && (
-                            <span className="p-1 rounded-lg bg-[var(--danger-bg)] text-[var(--danger)] flex items-center justify-center border border-[var(--danger-border)]">
+                            <span className="p-1 rounded-lg bg-(--danger-bg) text-(--danger) flex items-center justify-center border border-(--danger-border)">
                               <svg
                                 viewBox="0 0 24 24"
                                 fill="none"
@@ -1460,7 +1480,7 @@ export const VoiceDashboard = ({
                             </span>
                           )}
                           {vs.isDeafened && (
-                            <span className="p-1 rounded-lg bg-[var(--danger-bg)] text-[var(--danger)] flex items-center justify-center border border-[var(--danger-border)]">
+                            <span className="p-1 rounded-lg bg-(--danger-bg) text-(--danger) flex items-center justify-center border border-(--danger-border)">
                               <svg
                                 viewBox="0 0 24 24"
                                 fill="none"
@@ -1485,7 +1505,7 @@ export const VoiceDashboard = ({
                         {/* Left Bottom Name & Speaker indicator */}
                         <div className="absolute bottom-3 left-3 flex flex-col gap-1.5 max-w-[85%] z-10">
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold text-[var(--text-primary)] truncate bg-[rgba(0,0,0,0.45)] px-2.5 py-1 rounded-lg backdrop-blur-sm shadow-sm">
+                            <span className="text-xs font-semibold text-theme-primary truncate bg-[rgba(0,0,0,0.45)] px-2.5 py-1 rounded-lg backdrop-blur-sm shadow-sm">
                               {isMe
                                 ? 'You'
                                 : profile.username
@@ -1497,9 +1517,9 @@ export const VoiceDashboard = ({
                             {/* Speaking Soundbar visualizer */}
                             {isSpeaking && (
                               <div className="flex gap-0.5 items-end h-3 bg-[rgba(0,0,0,0.45)] px-1.5 py-1 rounded-md">
-                                <span className="w-[2px] bg-[var(--accent-primary)] animate-sound-bar-1 rounded-full" />
-                                <span className="w-[2px] bg-[var(--accent-primary)] animate-sound-bar-2 rounded-full" />
-                                <span className="w-[2px] bg-[var(--accent-primary)] animate-sound-bar-3 rounded-full" />
+                                <span className="w-0.5 bg-(--accent-primary) animate-sound-bar-1 rounded-full" />
+                                <span className="w-0.5 bg-(--accent-primary) animate-sound-bar-2 rounded-full" />
+                                <span className="w-0.5 bg-(--accent-primary) animate-sound-bar-3 rounded-full" />
                               </div>
                             )}
                           </div>
@@ -1536,7 +1556,7 @@ export const VoiceDashboard = ({
                                     [vs.userId]: val,
                                   }));
                                 }}
-                                className="w-16 h-1 bg-[rgba(255,255,255,0.2)] rounded-lg appearance-none cursor-pointer accent-[var(--accent-primary)]"
+                                className="w-16 h-1 bg-[rgba(255,255,255,0.2)] rounded-lg appearance-none cursor-pointer accent-(--accent-primary)"
                               />
                               <span className="w-5 text-right font-mono text-[9px] opacity-90">
                                 {Math.round(
@@ -1559,7 +1579,7 @@ export const VoiceDashboard = ({
             {/* ════════════════════════════════════════════════════
          CONTROL BAR — Refined Discord-style
          ════════════════════════════════════════════════════ */}
-            <div className="voice-control-bar relative flex items-center justify-center gap-1.5 px-4 py-2.5 mx-auto mb-2.5 rounded-2xl bg-[var(--bg-sidebar)] border border-[var(--glass-border)] shadow-[var(--glass-shadow)] backdrop-blur-md z-20">
+            <div className="voice-control-bar relative flex items-center justify-center gap-1.5 px-4 py-2.5 mx-auto mb-2.5 rounded-2xl bg-theme-sidebar border border-glass shadow-(--glass-shadow) backdrop-blur-md z-20">
               {/* Camera */}
               <CtrlBtn
                 label={isCameraOn ? 'Turn Camera Off' : 'Turn Camera On'}
@@ -1578,8 +1598,17 @@ export const VoiceDashboard = ({
                 <IconScreen />
               </CtrlBtn>
 
+              {/* Ping Users */}
+              <CtrlBtn
+                label="Ping Users"
+                onClick={handlePingNonJoined}
+                variant="off"
+              >
+                <IconBell />
+              </CtrlBtn>
+
               {/* Divider */}
-              <div className="w-px h-6 bg-[var(--glass-border)] mx-1 shrink-0" />
+              <div className="w-px h-6 bg-(--glass-border) mx-1 shrink-0" />
 
               {/* Mic */}
               <div className="flex items-center gap-1.5">
@@ -1590,7 +1619,7 @@ export const VoiceDashboard = ({
                 >
                   {isSelfMuted ? <IconMicOff /> : <IconMic />}
                 </CtrlBtn>
-                <div className="hidden sm:flex items-center gap-1.5 bg-[rgba(0,0,0,0.2)] px-2 py-1.5 rounded-xl border border-[var(--glass-border)] h-[42px]">
+                <div className="hidden sm:flex items-center gap-1.5 bg-[rgba(0,0,0,0.2)] px-2 py-1.5 rounded-xl border border-glass h-10.5">
                   <input
                     type="range"
                     min="0"
@@ -1599,9 +1628,9 @@ export const VoiceDashboard = ({
                     value={micVolume}
                     onChange={(e) => setMicVolume(parseFloat(e.target.value))}
                     title="Microphone Input Gain (0% - 200%)"
-                    className="w-14 h-1 bg-[rgba(255,255,255,0.2)] rounded-lg appearance-none cursor-pointer accent-[var(--accent-primary)]"
+                    className="w-14 h-1 bg-[rgba(255,255,255,0.2)] rounded-lg appearance-none cursor-pointer accent-(--accent-primary)"
                   />
-                  <span className="text-[9px] font-mono text-[var(--text-muted)] w-6 text-right">
+                  <span className="text-[9px] font-mono text-theme-muted w-6 text-right">
                     {Math.round(micVolume * 100)}%
                   </span>
                 </div>
@@ -1617,7 +1646,7 @@ export const VoiceDashboard = ({
               </CtrlBtn>
 
               {/* Divider */}
-              <div className="w-px h-6 bg-[var(--glass-border)] mx-1 shrink-0" />
+              <div className="w-px h-6 bg-(--glass-border) mx-1 shrink-0" />
 
               {/* Disconnect */}
               <CtrlBtn

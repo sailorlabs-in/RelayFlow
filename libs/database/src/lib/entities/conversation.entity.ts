@@ -68,8 +68,43 @@ export class Conversation {
   })
   hiddenFromUserIds?: string[];
 
+  @Column({
+    name: 'hidden_from_role_ids',
+    type: 'jsonb',
+    nullable: true,
+    default: [],
+  })
+  hiddenFromRoleIds?: string[];
+
+  @Column({
+    name: 'read_user_ids',
+    type: 'jsonb',
+    nullable: true,
+    default: [],
+  })
+  readUserIds?: string[];
+
+  @Column({
+    name: 'write_user_ids',
+    type: 'jsonb',
+    nullable: true,
+    default: [],
+  })
+  writeUserIds?: string[];
+
   @Column({ name: 'section_id', type: 'uuid', nullable: true })
   sectionId?: string;
+
+  @Column({ name: 'is_read_only', type: 'boolean', default: false })
+  isReadOnly!: boolean;
+
+  @Column({
+    name: 'notification_setting',
+    type: 'varchar',
+    length: 20,
+    default: 'all',
+  })
+  notificationSetting!: 'all' | 'mention' | 'none';
 
   @ManyToOne(() => GroupSection, (section) => section.conversations, {
     onDelete: 'SET NULL',

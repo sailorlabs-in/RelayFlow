@@ -50,6 +50,14 @@ export class User {
   @Column({ name: 'notifications_group_enabled', default: true })
   notificationsGroupEnabled!: boolean;
 
+  @Column({
+    name: 'group_notification_pref',
+    type: 'varchar',
+    length: 20,
+    default: 'all',
+  })
+  groupNotificationPref!: 'all' | 'mention' | 'none';
+
   @Column({ name: 'notifications_in_app_enabled', default: true })
   notificationsInAppEnabled!: boolean;
 
@@ -68,6 +76,15 @@ export class User {
   @Column({ name: 'remembered_devices', type: 'text', nullable: true })
   rememberedDevices?: string;
 
+  @Column({ name: 'logged_in_devices', type: 'text', nullable: true })
+  loggedInDevices?: string;
+
+  @Column({ name: 'group_order', type: 'text', nullable: true })
+  groupOrder?: string;
+
+  @Column({ name: 'custom_themes', type: 'text', nullable: true })
+  customThemes?: string;
+
   @Column({ name: 'reset_password_token', nullable: true })
   resetPasswordToken?: string;
 
@@ -77,6 +94,12 @@ export class User {
     nullable: true,
   })
   resetPasswordExpiresAt?: Date;
+
+  @Column({ name: 'role', type: 'varchar', default: 'user' })
+  role!: string;
+
+  @Column({ name: 'warnings', type: 'jsonb', default: [] })
+  warnings!: string[];
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;

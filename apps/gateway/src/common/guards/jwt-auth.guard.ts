@@ -1,4 +1,11 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException, Inject, forwardRef } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  UnauthorizedException,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 
 import { AuthService } from '../../modules/auth/auth.service';
 
@@ -6,7 +13,7 @@ import { AuthService } from '../../modules/auth/auth.service';
 export class JwtAuthGuard implements CanActivate {
   constructor(
     @Inject(forwardRef(() => AuthService))
-    private readonly authService: AuthService
+    private readonly authService: AuthService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -22,10 +29,21 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     try {
-      const payload = await this.authService.validateToken(token);
-      request.user = payload; // { userId, email }
+      const reqDeviceId = request.headers['x-device-id'] as string;
+      const userAgent = request.headers['user-agent'] as string;
+      const ip = request.ip;
+      const payload = await this.authService.validateTokenAndSession(
+        token,
+        reqDeviceId,
+        userAgent,
+        ip,
+      );
+      request.user = payload; // { userId, email, deviceId }
       return true;
     } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
       throw new UnauthorizedException('❌ Invalid or expired token');
     }
   }

@@ -34,7 +34,11 @@ export const VerifyEmailForm = ({
       setLocalError('Please enter a valid 6-digit code.');
       return;
     }
-    dispatch(verifyEmailOtp({ email, otp }));
+    const dId =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('rf_device_id') || undefined
+        : undefined;
+    dispatch(verifyEmailOtp({ email, otp, deviceId: dId }));
   };
 
   const handleResend = () => {

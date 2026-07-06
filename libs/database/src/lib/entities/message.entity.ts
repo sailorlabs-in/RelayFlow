@@ -35,6 +35,9 @@ export class Message {
   @Column({ name: 'is_read', type: 'boolean', default: false })
   isRead!: boolean;
 
+  @Column({ name: 'is_markdown', type: 'boolean', default: false })
+  isMarkdown!: boolean;
+
   @Column({ name: 'is_edited', type: 'boolean', default: false })
   isEdited!: boolean;
 
@@ -50,6 +53,16 @@ export class Message {
     type: string;
     size: number;
   }[];
+
+  @Column({ name: 'parent_id', type: 'uuid', nullable: true })
+  parentId?: string | null;
+
+  @ManyToOne(() => Message, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'parent_id' })
+  parentMessage?: Message | null;
+
+  @Column({ name: 'reactions', type: 'jsonb', nullable: true })
+  reactions?: { emoji: string; userIds: string[] }[] | null;
 
   readBy?: { userId: string; name: string }[];
 

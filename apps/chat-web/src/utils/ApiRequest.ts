@@ -39,6 +39,9 @@ const ApiRequest = async (
     }
   }
 
+  const deviceId =
+    typeof window !== 'undefined' ? localStorage.getItem('rf_device_id') : null;
+
   const apiRequestPayload: AxiosRequestConfig = {
     url:
       url.startsWith('http://') || url.startsWith('https://')
@@ -49,6 +52,7 @@ const ApiRequest = async (
     params: method.toLowerCase() === 'get' ? data : undefined,
     headers: {
       Authorization: token ? `Bearer ${token}` : undefined,
+      'x-device-id': deviceId || undefined,
     },
     responseType: 'json',
     signal: requestSignal,

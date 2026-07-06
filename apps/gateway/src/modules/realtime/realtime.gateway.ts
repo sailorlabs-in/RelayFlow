@@ -28,6 +28,38 @@ import { ChatService } from '../chat/chat.service';
 import { UsersService } from '../users/users.service';
 import { GroupsService } from '../groups/groups.service';
 
+function isUserMentioned(content: string, user: any): boolean {
+  if (!content) {
+    return false;
+  }
+  const lowerContent = content.toLowerCase();
+
+  if (lowerContent.includes('@everyone')) {
+    return true;
+  }
+
+  if (
+    user.username &&
+    lowerContent.includes(`@${user.username.toLowerCase()}`)
+  ) {
+    return true;
+  }
+
+  if (
+    user.displayName &&
+    lowerContent.includes(`@${user.displayName.toLowerCase()}`)
+  ) {
+    return true;
+  }
+
+  const emailPrefix = user.email.split('@')[0].toLowerCase();
+  if (lowerContent.includes(`@${emailPrefix}`)) {
+    return true;
+  }
+
+  return false;
+}
+
 @WebSocketGateway({
   cors: { origin: '*' },
   namespace: 'chat',
@@ -127,11 +159,17 @@ export class RealtimeGateway
       }
 
       const token = authHeader.split(' ')[1];
-      const payload = await this.authService.validateToken(token);
+      const payload = await this.authService.validateTokenAndSession(
+        token,
+        undefined,
+        socket.handshake.headers['user-agent'] as string,
+        socket.handshake.address,
+      );
 
       // Bind connection identity
       socket.data.userId = payload.userId;
       socket.data.email = payload.email;
+      socket.data.deviceId = payload.deviceId;
 
       // Join private user room (allows targeting all devices owned by user)
       const userRoom = `user:${payload.userId}`;
@@ -181,6 +219,7 @@ export class RealtimeGateway
         userId: payload.userId,
         status: currentStatus,
         autoStatus: currentAutoStatus,
+        lastSeen: new Date().toISOString(),
       });
       // Legacy backward-compat event
       if (currentStatus === 'online' && currentAutoStatus === 'online') {
@@ -193,6 +232,7 @@ export class RealtimeGateway
         userId: string;
         status: string;
         autoStatus: string;
+        lastSeen?: string;
       }[] = [];
       for (const [uid, presenceJson] of Object.entries(allPresence)) {
         try {
@@ -201,6 +241,7 @@ export class RealtimeGateway
             userId: uid,
             status: presence.status || 'offline',
             autoStatus: presence.autoStatus || 'online',
+            lastSeen: presence.lastSeen || undefined,
           });
         } catch {
           // Ignore invalid presence payloads from Redis.
@@ -226,6 +267,13 @@ export class RealtimeGateway
       for (const [uid, vStateJson] of Object.entries(allVoiceRaw)) {
         try {
           const vState = JSON.parse(vStateJson);
+          const isGhost = await this.groupsService.isGhostAdmin(
+            vState.groupId,
+            uid,
+          );
+          if (isGhost && uid !== payload.userId) {
+            continue;
+          }
           voiceStatesList.push({
             userId: uid,
             groupId: vState.groupId,
@@ -244,6 +292,25 @@ export class RealtimeGateway
     }
   }
 
+  async disconnectDevice(userId: string, deviceId: string): Promise<void> {
+    try {
+      const sockets = await this.server.in(`user:${userId}`).fetchSockets();
+      for (const socket of sockets) {
+        if (socket.data.deviceId === deviceId) {
+          this.logger.log(
+            `🔌 Disconnecting revoked session for user ${userId} on device ${deviceId}`,
+          );
+          socket.disconnect(true);
+        }
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to disconnect sockets for user ${userId} device ${deviceId}`,
+        error,
+      );
+    }
+  }
+
   async handleDisconnect(socket: Socket): Promise<void> {
     const userId = socket.data.userId as string | undefined;
     if (userId) {
@@ -252,8 +319,87 @@ export class RealtimeGateway
         `✔ Socket disconnected: User ${userId} left room ${userRoom}`,
       );
 
-      // Update presence status to away on disconnect (not fully offline - could be a tab refresh)
+      // Check if user still has other active connections open
+      const sockets = await this.server.in(userRoom).fetchSockets();
+      const activeSockets = sockets.filter((s) => s.id !== socket.id);
+      if (activeSockets.length > 0) {
+        this.logger.log(
+          `🔄 User ${userId} disconnected a socket, but has ${activeSockets.length} active sockets remaining. Skipping presence/voice cleanup.`,
+        );
+        return;
+      }
+
       const redisClient = this.redisService.getClient();
+
+      // Clean up voice state immediately if no active connections remain
+      const voiceRaw = await redisClient.hget('voice_states', userId);
+      if (voiceRaw) {
+        try {
+          const voiceState = JSON.parse(voiceRaw);
+          await redisClient.hdel('voice_states', userId);
+          // Broadcast that user left voice channel
+          const isGhost = await this.groupsService.isGhostAdmin(
+            voiceState.groupId,
+            userId,
+          );
+          if (isGhost) {
+            this.server.to(`user:${userId}`).emit('voice.state.changed', {
+              userId,
+              groupId: voiceState.groupId,
+              channelId: null,
+              isMuted: false,
+              isDeafened: false,
+            });
+          } else {
+            this.server.emit('voice.state.changed', {
+              userId,
+              groupId: voiceState.groupId,
+              channelId: null,
+              isMuted: false,
+              isDeafened: false,
+            });
+          }
+        } catch (err) {
+          this.logger.error(
+            `Failed to handle voice state cleanup on disconnect for user ${userId}`,
+            err,
+          );
+        }
+      }
+
+      // Clean up DM call if user is in one
+      const callRaw = await redisClient.hget('active_dm_calls', userId);
+      if (callRaw) {
+        try {
+          const callData = JSON.parse(callRaw);
+          const otherUserId = callData.targetUserId || callData.callerId;
+          const conversationId = callData.conversationId;
+
+          await redisClient.hdel('active_dm_calls', userId);
+          if (otherUserId) {
+            await redisClient.hdel('active_dm_calls', otherUserId);
+
+            const caller = await this.usersService.findById(userId);
+            const callerName =
+              caller.displayName ||
+              caller.username ||
+              caller.email.split('@')[0];
+
+            this.server.to(`user:${otherUserId}`).emit('dm.call.disconnected', {
+              userId,
+              userName: callerName,
+              conversationId,
+            });
+          }
+        } catch (err) {
+          this.logger.error(
+            `Failed to clean up DM call on disconnect for user ${userId}`,
+            err,
+          );
+        }
+      }
+
+      // Update presence status to away immediately (if they reconnect, it will go back to online; if they don't, it will become offline after 10s)
       await redisClient.hset(
         'presence:status',
         userId,
@@ -270,31 +416,75 @@ export class RealtimeGateway
         userId,
         status: 'away',
         autoStatus: 'away',
+        lastSeen: new Date().toISOString(),
       });
       // Legacy backward-compat event
       this.server.emit('user.offline', { userId });
 
-      // Check if user was in a voice channel
-      const voiceRaw = await redisClient.hget('voice_states', userId);
-      if (voiceRaw) {
+      // Debounce checking if they reconnect within 10 seconds before marking fully offline
+      setTimeout(async () => {
         try {
-          const voiceState = JSON.parse(voiceRaw);
-          await redisClient.hdel('voice_states', userId);
-          // Broadcast that user left voice channel
-          this.server.emit('voice.state.changed', {
-            userId,
-            groupId: voiceState.groupId,
-            channelId: null,
-            isMuted: false,
-            isDeafened: false,
-          });
-        } catch (err) {
+          const checkSockets = await this.server.in(userRoom).fetchSockets();
+          const remainingSockets = checkSockets.filter(
+            (s) => s.id !== socket.id,
+          );
+          if (remainingSockets.length === 0) {
+            const redisCheck = this.redisService.getClient();
+            const existingRaw = await redisCheck.hget(
+              'presence:status',
+              userId,
+            );
+            let currentStatus = 'offline';
+            const currentAutoStatus = 'offline';
+
+            if (existingRaw) {
+              try {
+                const existing = JSON.parse(existingRaw);
+                // Keep manual status like 'dnd' if they set it
+                if (existing.status === 'dnd') {
+                  currentStatus = 'dnd';
+                }
+              } catch {
+                //error
+              }
+            }
+
+            const lastSeenTime = new Date().toISOString();
+
+            await redisCheck.hset(
+              'presence:status',
+              userId,
+              JSON.stringify({
+                userId,
+                status: currentStatus,
+                autoStatus: currentAutoStatus,
+                lastSeen: lastSeenTime,
+              }),
+            );
+
+            this.server.emit('user.status.changed', {
+              userId,
+              status: currentStatus,
+              autoStatus: currentAutoStatus,
+              lastSeen: lastSeenTime,
+            });
+            this.server.emit('user.offline', { userId });
+
+            this.logger.log(
+              `🔄 User ${userId} did not reconnect within 10s. Marked ${currentStatus}.`,
+            );
+          } else {
+            this.logger.log(
+              `🔄 User ${userId} reconnected within 10s (${remainingSockets.length} sockets active). Keeping status online.`,
+            );
+          }
+        } catch (error) {
           this.logger.error(
-            `Failed to handle voice state cleanup on disconnect for user ${userId}`,
-            err,
+            `Error in handleDisconnect delayed offline check for user ${userId}`,
+            error,
           );
         }
-      }
+      }, 10000); // 10 seconds delay
     }
   }
 
@@ -378,11 +568,15 @@ export class RealtimeGateway
         : `@${readerUser.email.split('@')[0]}`;
 
       // Notify others in the room that messages are read
-      this.server.to(roomName).emit('messages.read', {
-        conversationId: targetConvoId,
-        readBy: userId,
-        readByName: readerName,
-      });
+      const ghostAdmins =
+        await this.chatService.getGhostAdminUserIds(targetConvoId);
+      if (!ghostAdmins.has(userId)) {
+        this.server.to(roomName).emit('messages.read', {
+          conversationId: targetConvoId,
+          readBy: userId,
+          readByName: readerName,
+        });
+      }
     } else {
       this.logger.log(
         `Skipping marking messages as read for user ${userId} because user is away (join.conversation)`,
@@ -444,11 +638,15 @@ export class RealtimeGateway
 
     // Notify others in the room that messages are read
     const roomName = `conv:${targetConvoId}`;
-    this.server.to(roomName).emit('messages.read', {
-      conversationId: targetConvoId,
-      readBy: userId,
-      readByName: readerName,
-    });
+    const ghostAdmins =
+      await this.chatService.getGhostAdminUserIds(targetConvoId);
+    if (!ghostAdmins.has(userId)) {
+      this.server.to(roomName).emit('messages.read', {
+        conversationId: targetConvoId,
+        readBy: userId,
+        readByName: readerName,
+      });
+    }
   }
 
   @SubscribeMessage('send.message')
@@ -458,6 +656,7 @@ export class RealtimeGateway
     body: {
       conversationId: string;
       content: string;
+      parentId?: string;
       media?: {
         name: string;
         thumbnailName?: string;
@@ -466,13 +665,14 @@ export class RealtimeGateway
         type: string;
         size: number;
       }[];
+      isMarkdown?: boolean;
     },
     @ConnectedSocket() socket: Socket,
   ): Promise<void> {
     const userId = socket.data.userId as string;
-    const { conversationId, content, media } = body;
+    const { conversationId, content, media, parentId, isMarkdown } = body;
     this.logger.log(
-      `📥 Received send.message for: ${conversationId} from user ${userId}`,
+      `📥 Received send.message for: ${conversationId} from user ${userId} (parentId: ${parentId})`,
     );
 
     const mediaItems = media || undefined;
@@ -600,8 +800,20 @@ export class RealtimeGateway
       isRead,
       mediaItems,
       readReceiptUserIds,
+      parentId,
+      isMarkdown,
     );
     for (const member of members) {
+      if (conversation && conversation.groupId) {
+        const hasAccess = await this.groupsService.canUserAccessChannel(
+          conversation.groupId,
+          conversationId,
+          member.userId,
+        );
+        if (!hasAccess) {
+          continue;
+        }
+      }
       const memberRoom = `user:${member.userId}`;
       this.server.to(memberRoom).emit('message.new', message);
     }
@@ -612,7 +824,12 @@ export class RealtimeGateway
     // For each active reader, emit messages.read to the SENDER so their Redux
     // state immediately reflects the read receipt on the newly sent message.
     if (readReceiptUserIds.length > 0) {
+      const ghostAdmins =
+        await this.chatService.getGhostAdminUserIds(conversationId);
       for (const readerId of readReceiptUserIds) {
+        if (ghostAdmins.has(readerId)) {
+          continue;
+        }
         try {
           const readerUser = await this.usersService.findById(readerId, true);
           const readerName = readerUser.username
@@ -645,17 +862,100 @@ export class RealtimeGateway
         : true;
 
       const recipientsToNotify: string[] = [];
+      // Track whether each recipient was notified due to a direct @mention
+      // so the frontend can surface the notification even if the channel is active
+      let notificationIsMention = false;
       for (const memberId of otherMemberIds) {
         try {
           const targetUser = await this.usersService.findById(memberId);
-          if (targetUser.notificationsEnabled !== false) {
-            if (isDm && targetUser.notificationsDmEnabled !== false) {
-              recipientsToNotify.push(memberId);
-            } else if (
-              !isDm &&
-              targetUser.notificationsGroupEnabled !== false
-            ) {
-              recipientsToNotify.push(memberId);
+          if (targetUser.notificationsEnabled === false) {
+            continue;
+          }
+
+          let shouldNotify = false;
+          let wasMentioned = false;
+          if (isDm) {
+            if (targetUser.notificationsDmEnabled !== false) {
+              shouldNotify = true;
+            }
+          } else if (conversation && conversation.groupId) {
+            // 1. Channel read access check
+            const hasAccess = await this.groupsService.canUserAccessChannel(
+              conversation.groupId,
+              conversation.id,
+              memberId,
+            );
+            if (!hasAccess) {
+              continue;
+            }
+
+            // 2. Channel notification preference permission
+            const channelSetting = conversation.notificationSetting || 'all';
+            if (channelSetting === 'none') {
+              continue;
+            }
+
+            // 3. Group notification setting check
+            const groupMember = await this.groupsService.getGroupMember(
+              conversation.groupId,
+              memberId,
+            );
+            const groupPref = groupMember?.notificationPref || 'all';
+            if (groupPref === 'none') {
+              continue;
+            }
+
+            // 4. User overall group notification enablement check
+            if (targetUser.notificationsGroupEnabled === false) {
+              continue;
+            }
+
+            // 5. User overall group notification preference check
+            const userPref = targetUser.groupNotificationPref || 'all';
+            if (userPref === 'none') {
+              continue;
+            }
+
+            // Decide notification based on preferences
+            const isMentionOnly =
+              channelSetting === 'mention' ||
+              groupPref === 'mention' ||
+              userPref === 'mention';
+            if (isMentionOnly) {
+              if (isUserMentioned(content, targetUser)) {
+                shouldNotify = true;
+                wasMentioned = true;
+              }
+            } else {
+              // Still flag if the content happens to mention them even in 'all' mode
+              wasMentioned = isUserMentioned(content, targetUser);
+              shouldNotify = true;
+            }
+          }
+
+          if (shouldNotify) {
+            if (wasMentioned) {
+              notificationIsMention = true;
+            }
+            let devices: any[] = [];
+            if (targetUser.loggedInDevices) {
+              try {
+                devices = JSON.parse(targetUser.loggedInDevices);
+              } catch {
+                devices = [];
+              }
+            }
+
+            if (Array.isArray(devices) && devices.length > 0) {
+              const activeDevices = devices.filter(
+                (d: any) => d.notificationsEnabled !== false,
+              );
+              for (const d of activeDevices) {
+                recipientsToNotify.push(`${targetUser.id}:${d.deviceId}`);
+              }
+            } else {
+              // Fallback for backward compatibility
+              recipientsToNotify.push(targetUser.id);
             }
           }
         } catch (err) {
@@ -704,7 +1004,10 @@ export class RealtimeGateway
           pushTitle = `${senderDisplayName} at ${channelName}, ${groupName || 'Group'}`;
         }
 
-        // Structured metadata payload — FE reads this to identify active threads
+        // Structured metadata payload — FE reads this to identify active threads.
+        // isMention=true tells the frontend to bypass active-channel suppression
+        // so the user always sees an @mention notification even if they are
+        // currently viewing the channel.
         const metadataPayload = {
           message: content,
           conversationId,
@@ -715,6 +1018,7 @@ export class RealtimeGateway
           groupId,
           groupName,
           channelName,
+          isMention: notificationIsMention,
         };
 
         this.notificationsQueue
@@ -780,8 +1084,8 @@ export class RealtimeGateway
       `🟡 User ${userId} set status to '${safeStatus}' (autoStatus: '${safeAutoStatus}')`,
     );
 
-    // Persist in Redis
     const redisClient = this.redisService.getClient();
+    const lastSeenTime = new Date().toISOString();
     await redisClient.hset(
       'presence:status',
       userId,
@@ -789,7 +1093,7 @@ export class RealtimeGateway
         userId,
         status: safeStatus,
         autoStatus: safeAutoStatus,
-        lastSeen: new Date().toISOString(),
+        lastSeen: lastSeenTime,
       }),
     );
 
@@ -798,6 +1102,7 @@ export class RealtimeGateway
       userId,
       status: safeStatus,
       autoStatus: safeAutoStatus,
+      lastSeen: lastSeenTime,
     });
 
     // Acknowledge back to the requesting socket
@@ -823,11 +1128,15 @@ export class RealtimeGateway
             ? `@${readerUser.username}`
             : `@${readerUser.email.split('@')[0]}`;
 
-          this.server.to(activeConvoRoom).emit('messages.read', {
-            conversationId: activeConvoId,
-            readBy: userId,
-            readByName: readerName,
-          });
+          const ghostAdmins =
+            await this.chatService.getGhostAdminUserIds(activeConvoId);
+          if (!ghostAdmins.has(userId)) {
+            this.server.to(activeConvoRoom).emit('messages.read', {
+              conversationId: activeConvoId,
+              readBy: userId,
+              readByName: readerName,
+            });
+          }
         } catch (err) {
           this.logger.error(
             `Failed to mark messages as read on status return for user ${userId}`,
@@ -935,6 +1244,48 @@ export class RealtimeGateway
     );
   }
 
+  @SubscribeMessage('toggle.reaction')
+  async handleToggleReaction(
+    @MessageBody()
+    body: { messageId: string; conversationId: string; emoji: string },
+    @ConnectedSocket() socket: Socket,
+  ): Promise<void> {
+    const userId = socket.data.userId as string;
+    const { messageId, conversationId, emoji } = body;
+
+    if (!emoji) {
+      throw new BadRequestException('Emoji cannot be empty');
+    }
+
+    const message = await this.chatService.getMessage(messageId);
+    if (!message) {
+      throw new NotFoundException('Message not found');
+    }
+
+    if (message.conversationId !== conversationId) {
+      throw new BadRequestException(
+        'Message does not belong to this conversation',
+      );
+    }
+
+    const updatedMessage = await this.chatService.toggleMessageReaction(
+      messageId,
+      userId,
+      emoji,
+    );
+
+    // Broadcast to all conversation members
+    const members =
+      await this.chatService.getConversationMembers(conversationId);
+    for (const member of members) {
+      const memberRoom = `user:${member.userId}`;
+      this.server.to(memberRoom).emit('message.updated', updatedMessage);
+    }
+    this.logger.log(
+      `✔ Broadcasted updated reactions on message ${messageId} in conversation ${conversationId} to ${members.length} members`,
+    );
+  }
+
   @SubscribeMessage('voice.join')
   async handleVoiceJoin(
     @MessageBody() payload: { groupId: string; channelId: string },
@@ -947,6 +1298,25 @@ export class RealtimeGateway
     );
 
     const redisClient = this.redisService.getClient();
+
+    // Check if voice channel was empty BEFORE user joins
+    const allVoiceRaw = await redisClient.hgetall('voice_states');
+    let isChannelEmpty = true;
+    for (const [uid, vStateJson] of Object.entries(allVoiceRaw)) {
+      if (uid === userId) {
+        continue;
+      }
+      try {
+        const vState = JSON.parse(vStateJson);
+        if (vState.channelId === channelId) {
+          isChannelEmpty = false;
+          break;
+        }
+      } catch (err) {
+        // Ignore json parse error
+      }
+    }
+
     const voiceState = {
       groupId,
       channelId,
@@ -955,13 +1325,261 @@ export class RealtimeGateway
     };
     await redisClient.hset('voice_states', userId, JSON.stringify(voiceState));
 
-    this.server.emit('voice.state.changed', {
-      userId,
-      groupId,
-      channelId,
-      isMuted: false,
-      isDeafened: false,
-    });
+    const isGhost = await this.groupsService.isGhostAdmin(groupId, userId);
+    if (isGhost) {
+      this.server.to(`user:${userId}`).emit('voice.state.changed', {
+        userId,
+        groupId,
+        channelId,
+        isMuted: false,
+        isDeafened: false,
+      });
+    } else {
+      this.server.emit('voice.state.changed', {
+        userId,
+        groupId,
+        channelId,
+        isMuted: false,
+        isDeafened: false,
+      });
+    }
+
+    // If channel was empty, notify all other accessible group members
+    if (isChannelEmpty && !isGhost) {
+      try {
+        const conversation = await this.chatService.getConversation(channelId);
+        const group = await this.groupsService.getGroup(groupId);
+        if (conversation && group) {
+          const channelName = conversation.name || 'voice';
+          const groupName = group.name;
+
+          let joinerName = 'Someone';
+          try {
+            const joiner = await this.usersService.findById(userId);
+            joinerName = joiner.displayName || joiner.email.split('@')[0];
+          } catch {
+            joinerName = socket.data.email
+              ? socket.data.email.split('@')[0]
+              : 'Someone';
+          }
+
+          const members = await this.groupsService.getGroupMembers(groupId);
+          const recipientsToNotify: string[] = [];
+
+          for (const member of members) {
+            if (member.userId === userId) {
+              continue;
+            }
+
+            try {
+              // Check channel access
+              const hasAccess = await this.groupsService.canUserAccessChannel(
+                groupId,
+                channelId,
+                member.userId,
+              );
+              if (!hasAccess) {
+                continue;
+              }
+
+              // Check notification preference - empty voice channel join is not a mention/ping,
+              // so notify only if they have set it to 'all' notifications.
+              const targetUser = await this.usersService.findById(
+                member.userId,
+              );
+              if (targetUser.notificationsGroupEnabled === false) {
+                continue;
+              }
+              if (targetUser.groupNotificationPref !== 'all') {
+                continue;
+              }
+              if (member.notificationPref !== 'all') {
+                continue;
+              }
+
+              let devices: any[] = [];
+              if (targetUser.loggedInDevices) {
+                try {
+                  devices = JSON.parse(targetUser.loggedInDevices);
+                } catch {
+                  devices = [];
+                }
+              }
+
+              if (Array.isArray(devices) && devices.length > 0) {
+                const activeDevices = devices.filter(
+                  (d: any) => d.notificationsEnabled !== false,
+                );
+                for (const d of activeDevices) {
+                  recipientsToNotify.push(`${targetUser.id}:${d.deviceId}`);
+                }
+              } else {
+                recipientsToNotify.push(targetUser.id);
+              }
+            } catch (err) {
+              this.logger.error(
+                `Failed to check notification status for member ${member.userId}`,
+                err,
+              );
+            }
+          }
+
+          if (recipientsToNotify.length > 0) {
+            const pushTitle = `🎙 Voice Channel Active`;
+            const pushBody = `${joinerName} joined #${channelName} in ${groupName}. Join them!`;
+            const metadataPayload = {
+              conversationId: channelId,
+              groupId,
+              groupName,
+              channelName,
+              type: 'voice_active',
+            };
+
+            await this.sendPushNotificationHelper(
+              recipientsToNotify,
+              pushTitle,
+              pushBody,
+              metadataPayload,
+            );
+          }
+        }
+      } catch (err) {
+        this.logger.error(
+          'Failed to trigger voice channel active notification',
+          err,
+        );
+      }
+    }
+  }
+
+  @SubscribeMessage('voice.ping.nonjoined')
+  async handleVoicePingNonJoined(
+    @MessageBody() payload: { groupId: string; channelId: string },
+    @ConnectedSocket() socket: Socket,
+  ): Promise<void> {
+    const userId = socket.data.userId as string;
+    const { groupId, channelId } = payload;
+    this.logger.log(
+      `🎙 User ${userId} pinging all non-joined users in voice channel ${channelId} in group ${groupId}`,
+    );
+
+    // 1. Get current voice states in Redis to find who is joined
+    const redisClient = this.redisService.getClient();
+    const allVoiceRaw = await redisClient.hgetall('voice_states');
+    const joinedUserIds = new Set<string>();
+    for (const [uid, vStateJson] of Object.entries(allVoiceRaw)) {
+      try {
+        const vState = JSON.parse(vStateJson);
+        if (vState.channelId === channelId) {
+          joinedUserIds.add(uid);
+        }
+      } catch (err) {
+        // Ignore json parse error
+      }
+    }
+
+    // 2. Fetch all members of the group
+    const members = await this.groupsService.getGroupMembers(groupId);
+    const recipientsToNotify: string[] = [];
+
+    // Fetch details of group and channel
+    const conversation = await this.chatService.getConversation(channelId);
+    if (!conversation) {
+      return;
+    }
+    const group = await this.groupsService.getGroup(groupId);
+    if (!group) {
+      return;
+    }
+
+    const groupName = group.name;
+    const channelName = conversation.name || 'voice';
+
+    // Fetch sender displayName from database
+    let senderDisplayName = 'Someone';
+    try {
+      const sender = await this.usersService.findById(userId);
+      senderDisplayName = sender.displayName || sender.email.split('@')[0];
+    } catch {
+      senderDisplayName = socket.data.email
+        ? socket.data.email.split('@')[0]
+        : 'Someone';
+    }
+
+    for (const member of members) {
+      if (member.userId === userId || joinedUserIds.has(member.userId)) {
+        continue;
+      }
+
+      try {
+        // Check access
+        const hasAccess = await this.groupsService.canUserAccessChannel(
+          groupId,
+          channelId,
+          member.userId,
+        );
+        if (!hasAccess) {
+          continue;
+        }
+
+        // Check settings
+        const targetUser = await this.usersService.findById(member.userId);
+        if (targetUser.notificationsGroupEnabled === false) {
+          continue;
+        }
+        if (targetUser.groupNotificationPref === 'none') {
+          continue;
+        }
+        if (member.notificationPref === 'none') {
+          continue;
+        }
+
+        // Add recipients
+        let devices: any[] = [];
+        if (targetUser.loggedInDevices) {
+          try {
+            devices = JSON.parse(targetUser.loggedInDevices);
+          } catch {
+            devices = [];
+          }
+        }
+
+        if (Array.isArray(devices) && devices.length > 0) {
+          const activeDevices = devices.filter(
+            (d: any) => d.notificationsEnabled !== false,
+          );
+          for (const d of activeDevices) {
+            recipientsToNotify.push(`${targetUser.id}:${d.deviceId}`);
+          }
+        } else {
+          recipientsToNotify.push(targetUser.id);
+        }
+      } catch (err) {
+        this.logger.error(
+          `Failed to process user ${member.userId} for voice ping notification`,
+          err,
+        );
+      }
+    }
+
+    if (recipientsToNotify.length > 0) {
+      const pushTitle = `🎙 Voice Channel Ping`;
+      const pushBody = `${senderDisplayName} is pinging you to join #${channelName} in ${groupName}`;
+      const metadataPayload = {
+        conversationId: channelId,
+        groupId,
+        groupName,
+        channelName,
+        type: 'voice_ping',
+      };
+
+      await this.sendPushNotificationHelper(
+        recipientsToNotify,
+        pushTitle,
+        pushBody,
+        metadataPayload,
+      );
+    }
   }
 
   @SubscribeMessage('voice.leave')
@@ -976,13 +1594,27 @@ export class RealtimeGateway
         const voiceState = JSON.parse(voiceRaw);
         await redisClient.hdel('voice_states', userId);
 
-        this.server.emit('voice.state.changed', {
+        const isGhost = await this.groupsService.isGhostAdmin(
+          voiceState.groupId,
           userId,
-          groupId: voiceState.groupId,
-          channelId: null,
-          isMuted: false,
-          isDeafened: false,
-        });
+        );
+        if (isGhost) {
+          this.server.to(`user:${userId}`).emit('voice.state.changed', {
+            userId,
+            groupId: voiceState.groupId,
+            channelId: null,
+            isMuted: false,
+            isDeafened: false,
+          });
+        } else {
+          this.server.emit('voice.state.changed', {
+            userId,
+            groupId: voiceState.groupId,
+            channelId: null,
+            isMuted: false,
+            isDeafened: false,
+          });
+        }
       } catch (err) {
         this.logger.error(`Error on voice.leave for user ${userId}`, err);
       }
@@ -1011,13 +1643,27 @@ export class RealtimeGateway
           JSON.stringify(voiceState),
         );
 
-        this.server.emit('voice.state.changed', {
+        const isGhost = await this.groupsService.isGhostAdmin(
+          voiceState.groupId,
           userId,
-          groupId: voiceState.groupId,
-          channelId: voiceState.channelId,
-          isMuted,
-          isDeafened,
-        });
+        );
+        if (isGhost) {
+          this.server.to(`user:${userId}`).emit('voice.state.changed', {
+            userId,
+            groupId: voiceState.groupId,
+            channelId: voiceState.channelId,
+            isMuted,
+            isDeafened,
+          });
+        } else {
+          this.server.emit('voice.state.changed', {
+            userId,
+            groupId: voiceState.groupId,
+            channelId: voiceState.channelId,
+            isMuted,
+            isDeafened,
+          });
+        }
       } catch (err) {
         this.logger.error(
           `Error on voice.state.update for user ${userId}`,
@@ -1154,5 +1800,155 @@ export class RealtimeGateway
       senderUserId,
       signal,
     });
+  }
+
+  @SubscribeMessage('dm.call.start')
+  async handleDmCallStart(
+    @MessageBody() payload: { targetUserId: string; conversationId: string },
+    @ConnectedSocket() socket: Socket,
+  ): Promise<void> {
+    const userId = socket.data.userId as string;
+    const { targetUserId, conversationId } = payload;
+    this.logger.log(
+      `📞 User ${userId} starting DM call with user ${targetUserId} in conversation ${conversationId}`,
+    );
+
+    const caller = await this.usersService.findById(userId);
+    const callerName =
+      caller.displayName || caller.username || caller.email.split('@')[0];
+
+    const redisClient = this.redisService.getClient();
+    await redisClient.hset(
+      'active_dm_calls',
+      userId,
+      JSON.stringify({ targetUserId, conversationId }),
+    );
+    await redisClient.hset(
+      'active_dm_calls',
+      targetUserId,
+      JSON.stringify({ callerId: userId, conversationId }),
+    );
+
+    this.server.to(`user:${targetUserId}`).emit('dm.call.incoming', {
+      callerId: userId,
+      callerName,
+      conversationId,
+    });
+
+    try {
+      const targetUser = await this.usersService.findById(targetUserId);
+      let devices: any[] = [];
+      if (targetUser.loggedInDevices) {
+        try {
+          devices = JSON.parse(targetUser.loggedInDevices);
+        } catch {
+          devices = [];
+        }
+      }
+
+      const recipientsToNotify: string[] = [];
+      if (Array.isArray(devices) && devices.length > 0) {
+        const activeDevices = devices.filter(
+          (d: any) => d.notificationsEnabled !== false,
+        );
+        for (const d of activeDevices) {
+          recipientsToNotify.push(`${targetUser.id}:${d.deviceId}`);
+        }
+      } else {
+        recipientsToNotify.push(targetUser.id);
+      }
+
+      if (recipientsToNotify.length > 0) {
+        await this.sendPushNotificationHelper(
+          recipientsToNotify,
+          `📞 Incoming Call`,
+          `${callerName} is calling you.`,
+          {
+            type: 'dm_call',
+            callerId: userId,
+            conversationId,
+          },
+        );
+      }
+    } catch (err) {
+      this.logger.error(
+        `Failed to send call push notification to user ${targetUserId}`,
+        err,
+      );
+    }
+  }
+
+  @SubscribeMessage('dm.call.accept')
+  async handleDmCallAccept(
+    @MessageBody() payload: { targetUserId: string; conversationId: string },
+    @ConnectedSocket() socket: Socket,
+  ): Promise<void> {
+    const userId = socket.data.userId as string;
+    const { targetUserId, conversationId } = payload;
+    this.logger.log(`📞 User ${userId} accepted DM call from ${targetUserId}`);
+
+    this.server.to(`user:${targetUserId}`).emit('dm.call.accepted', {
+      accepterId: userId,
+      conversationId,
+    });
+  }
+
+  @SubscribeMessage('dm.call.reject')
+  async handleDmCallReject(
+    @MessageBody() payload: { targetUserId: string; conversationId: string },
+    @ConnectedSocket() socket: Socket,
+  ): Promise<void> {
+    const userId = socket.data.userId as string;
+    const { targetUserId, conversationId } = payload;
+    this.logger.log(`📞 User ${userId} rejected DM call from ${targetUserId}`);
+
+    const redisClient = this.redisService.getClient();
+    await redisClient.hdel('active_dm_calls', userId);
+    await redisClient.hdel('active_dm_calls', targetUserId);
+
+    this.server.to(`user:${targetUserId}`).emit('dm.call.rejected', {
+      rejecterId: userId,
+      conversationId,
+    });
+  }
+
+  @SubscribeMessage('dm.call.hangup')
+  async handleDmCallHangup(
+    @MessageBody() payload: { targetUserId: string; conversationId: string },
+    @ConnectedSocket() socket: Socket,
+  ): Promise<void> {
+    const userId = socket.data.userId as string;
+    const { targetUserId, conversationId } = payload;
+    this.logger.log(`📞 User ${userId} hung up DM call with ${targetUserId}`);
+
+    const redisClient = this.redisService.getClient();
+    await redisClient.hdel('active_dm_calls', userId);
+    await redisClient.hdel('active_dm_calls', targetUserId);
+
+    this.server.to(`user:${targetUserId}`).emit('dm.call.hungup', {
+      hangerId: userId,
+      conversationId,
+    });
+  }
+
+  private async sendPushNotificationHelper(
+    recipientsToNotify: string[],
+    title: string,
+    body: string,
+    metadata: any,
+  ) {
+    if (recipientsToNotify.length === 0) {
+      return;
+    }
+    this.notificationsQueue
+      .add('send-push', {
+        title,
+        body,
+        recipients: recipientsToNotify,
+        metadata,
+      })
+      .catch((err) =>
+        this.logger.error('Failed to queue voice notification job', err),
+      );
   }
 }

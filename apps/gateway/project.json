@@ -9,23 +9,17 @@
       "executor": "nx:run-commands",
       "options": {
         "command": "webpack-cli build",
-        "args": [
-          "--node-env=production"
-        ],
+        "args": ["--node-env=production"],
         "cwd": "apps/gateway"
       },
       "configurations": {
         "development": {
-          "args": [
-            "--node-env=development"
-          ]
+          "args": ["--node-env=development"]
         }
       }
     },
     "prune-lockfile": {
-      "dependsOn": [
-        "build"
-      ],
+      "dependsOn": ["build"],
       "cache": true,
       "executor": "@nx/js:prune-lockfile",
       "outputs": [
@@ -37,42 +31,36 @@
       }
     },
     "copy-workspace-modules": {
-      "dependsOn": [
-        "build"
-      ],
+      "dependsOn": ["build"],
       "cache": true,
-      "outputs": [
-        "{workspaceRoot}/apps/gateway/dist/workspace_modules"
-      ],
+      "outputs": ["{workspaceRoot}/apps/gateway/dist/workspace_modules"],
       "executor": "@nx/js:copy-workspace-modules",
       "options": {
         "buildTarget": "build"
       }
     },
     "prune": {
-      "dependsOn": [
-        "prune-lockfile",
-        "copy-workspace-modules"
-      ],
+      "dependsOn": ["prune-lockfile", "copy-workspace-modules"],
       "executor": "nx:noop"
     },
     "serve": {
-      "continuous": true,
-      "executor": "@nx/js:node",
+      "executor": "nx:run-commands",
       "defaultConfiguration": "development",
-      "dependsOn": [
-        "build"
-      ],
       "options": {
-        "buildTarget": "@chat-app/gateway:build",
-        "runBuildTargetDependencies": false
+        "cwd": "apps/gateway",
+        "commands": [
+          "webpack-cli build --watch --node-env=development",
+          "node --watch dist/main.js"
+        ],
+        "parallel": true
       },
       "configurations": {
-        "development": {
-          "buildTarget": "@chat-app/gateway:build:development"
-        },
+        "development": {},
         "production": {
-          "buildTarget": "@chat-app/gateway:build:production"
+          "commands": [
+            "webpack-cli build --watch --node-env=production",
+            "node --watch dist/main.js"
+          ]
         }
       }
     }

@@ -9,16 +9,32 @@ export interface GroupRole {
   color: string;
   permissions?: string[];
   priority?: number;
+  colorPriority?: number;
+  hierarchyPriority?: number;
   createdAt: string;
 }
 
 const sortRoles = (roles: GroupRole[]) => {
   return [...roles].sort((a, b) => {
-    const pA = a.priority ?? 0;
-    const pB = b.priority ?? 0;
-    if (pB !== pA) {
-      return pB - pA;
+    const hpA = a.hierarchyPriority ?? a.priority ?? 1000000;
+    const hpB = b.hierarchyPriority ?? b.priority ?? 1000000;
+    if (hpA !== hpB) {
+      return hpA - hpB;
     }
+
+    // Sort by colorPriority ASC, but 0/unset goes to the end
+    const cpA = a.colorPriority ?? 0;
+    const cpB = b.colorPriority ?? 0;
+    if (cpA !== cpB) {
+      if (cpA <= 0) {
+        return 1;
+      }
+      if (cpB <= 0) {
+        return -1;
+      }
+      return cpA - cpB;
+    }
+
     return a.createdAt.localeCompare(b.createdAt);
   });
 };
@@ -43,6 +59,11 @@ export interface GroupChannel {
   readRoleIds?: string[];
   writeRoleIds?: string[];
   hiddenFromUserIds?: string[];
+  hiddenFromRoleIds?: string[];
+  readUserIds?: string[];
+  writeUserIds?: string[];
+  isReadOnly?: boolean;
+  notificationSetting?: 'all' | 'mention' | 'none';
   createdAt: string;
   updatedAt: string;
   sectionId?: string;
@@ -56,6 +77,9 @@ export interface GroupMember {
   role: 'owner' | 'admin' | 'member';
   roleIds?: string[];
   permissions?: string[];
+  isMuted?: boolean;
+  notificationPref?: 'all' | 'mention' | 'none';
+  isGhost?: boolean;
   createdAt: string;
   user?: {
     id: string;
@@ -65,6 +89,7 @@ export interface GroupMember {
     avatarUrl?: string;
     avatarThumbnailUrl?: string;
     status?: string;
+    role?: string;
   };
 }
 
@@ -236,6 +261,11 @@ export const createChannel = createAsyncThunk(
       readRoleIds?: string[];
       writeRoleIds?: string[];
       hiddenFromUserIds?: string[];
+      hiddenFromRoleIds?: string[];
+      readUserIds?: string[];
+      writeUserIds?: string[];
+      isReadOnly?: boolean;
+      notificationSetting?: 'all' | 'mention' | 'none';
     },
     { rejectWithValue },
   ) => {
@@ -251,6 +281,11 @@ export const createChannel = createAsyncThunk(
           readRoleIds: payload.readRoleIds || [],
           writeRoleIds: payload.writeRoleIds || [],
           hiddenFromUserIds: payload.hiddenFromUserIds || [],
+          hiddenFromRoleIds: payload.hiddenFromRoleIds || [],
+          readUserIds: payload.readUserIds || [],
+          writeUserIds: payload.writeUserIds || [],
+          isReadOnly: payload.isReadOnly || false,
+          notificationSetting: payload.notificationSetting || 'all',
         },
         true,
       );
@@ -280,6 +315,11 @@ export const updateChannel = createAsyncThunk(
       readRoleIds?: string[];
       writeRoleIds?: string[];
       hiddenFromUserIds?: string[];
+      hiddenFromRoleIds?: string[];
+      readUserIds?: string[];
+      writeUserIds?: string[];
+      isReadOnly?: boolean;
+      notificationSetting?: 'all' | 'mention' | 'none';
     },
     { rejectWithValue },
   ) => {
@@ -293,6 +333,11 @@ export const updateChannel = createAsyncThunk(
           readRoleIds: payload.readRoleIds,
           writeRoleIds: payload.writeRoleIds,
           hiddenFromUserIds: payload.hiddenFromUserIds,
+          hiddenFromRoleIds: payload.hiddenFromRoleIds,
+          readUserIds: payload.readUserIds,
+          writeUserIds: payload.writeUserIds,
+          isReadOnly: payload.isReadOnly,
+          notificationSetting: payload.notificationSetting,
         },
         true,
       );
@@ -330,6 +375,39 @@ export const deleteChannel = createAsyncThunk(
         error.response?.data?.error?.message ||
           error.response?.data?.message ||
           'Failed to delete channel.',
+      );
+    }
+  },
+);
+
+// ── Update Group Notification Preference ──────────────────────────────────────
+export const updateGroupNotificationPref = createAsyncThunk(
+  'groups/updateGroupNotificationPref',
+  async (
+    payload: {
+      groupId: string;
+      userId: string;
+      notificationPref: 'all' | 'mention' | 'none';
+    },
+    { rejectWithValue },
+  ) => {
+    try {
+      await ApiRequest(
+        `/groups/${payload.groupId}/notification-pref`,
+        'put',
+        { notificationPref: payload.notificationPref },
+        true,
+      );
+      return {
+        groupId: payload.groupId,
+        userId: payload.userId,
+        notificationPref: payload.notificationPref,
+      };
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.error?.message ||
+          error.response?.data?.message ||
+          'Failed to update group notification preference.',
       );
     }
   },
@@ -532,6 +610,8 @@ export const createGroupRole = createAsyncThunk(
       name: string;
       color?: string;
       permissions?: string[];
+      colorPriority?: number;
+      hierarchyPriority?: number;
     },
     { rejectWithValue },
   ) => {
@@ -543,6 +623,8 @@ export const createGroupRole = createAsyncThunk(
           name: payload.name,
           color: payload.color,
           permissions: payload.permissions,
+          colorPriority: payload.colorPriority,
+          hierarchyPriority: payload.hierarchyPriority,
         },
         true,
       );
@@ -567,6 +649,8 @@ export const updateGroupRole = createAsyncThunk(
       name: string;
       color?: string;
       permissions?: string[];
+      colorPriority?: number;
+      hierarchyPriority?: number;
     },
     { rejectWithValue },
   ) => {
@@ -578,6 +662,8 @@ export const updateGroupRole = createAsyncThunk(
           name: payload.name,
           color: payload.color,
           permissions: payload.permissions,
+          colorPriority: payload.colorPriority,
+          hierarchyPriority: payload.hierarchyPriority,
         },
         true,
       );
@@ -637,6 +723,38 @@ export const reorderGroupRoles = createAsyncThunk(
         error.response?.data?.error?.message ||
           error.response?.data?.message ||
           'Failed to reorder roles.',
+      );
+    }
+  },
+);
+
+// ── Batch update group roles priorities ──────────────────────────────────────
+export const batchUpdateGroupRoles = createAsyncThunk(
+  'groups/batchUpdateGroupRoles',
+  async (
+    payload: {
+      groupId: string;
+      roles: {
+        id: string;
+        hierarchyPriority?: number;
+        colorPriority?: number;
+      }[];
+    },
+    { rejectWithValue },
+  ) => {
+    try {
+      const response = await ApiRequest(
+        `/groups/${payload.groupId}/roles/batch`,
+        'post',
+        { roles: payload.roles },
+        true,
+      );
+      return { groupId: payload.groupId, roles: response.data as GroupRole[] };
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.error?.message ||
+          error.response?.data?.message ||
+          'Failed to batch update roles.',
       );
     }
   },
@@ -843,14 +961,9 @@ const groupsSlice = createSlice({
   reducers: {
     setActiveGroup: (state, action: PayloadAction<string | null>) => {
       state.activeGroupId = action.payload;
-      // Auto-select first channel when switching groups
-      if (action.payload) {
-        const groupList = Array.isArray(state.groups) ? state.groups : [];
-        const group = groupList.find((g) => g.id === action.payload);
-        state.activeChannelId = group?.channels?.[0]?.id || null;
-      } else {
-        state.activeChannelId = null;
-      }
+      // Always clear the active channel when switching groups so the user
+      // lands on the empty landing page instead of auto-opening a thread.
+      state.activeChannelId = null;
     },
     setActiveChannel: (state, action: PayloadAction<string | null>) => {
       state.activeChannelId = action.payload;
@@ -905,6 +1018,38 @@ const groupsSlice = createSlice({
       if (state.activeGroupId === action.payload.groupId) {
         state.activeGroupId = null;
         state.activeChannelId = null;
+      }
+    },
+    socketGroupMemberProfileUpdated: (
+      state,
+      action: PayloadAction<{
+        userId: string;
+        displayName?: string;
+        username?: string;
+        avatarUrl?: string;
+        avatarThumbnailUrl?: string;
+      }>,
+    ) => {
+      const { userId, displayName, username, avatarUrl, avatarThumbnailUrl } =
+        action.payload;
+      // Walk every group and patch the matching member's embedded user object
+      for (const group of state.groups) {
+        for (const member of group.members) {
+          if (member.userId === userId && member.user) {
+            if (displayName !== undefined) {
+              member.user.displayName = displayName;
+            }
+            if (username !== undefined) {
+              member.user.username = username;
+            }
+            if (avatarUrl !== undefined) {
+              member.user.avatarUrl = avatarUrl;
+            }
+            if (avatarThumbnailUrl !== undefined) {
+              member.user.avatarThumbnailUrl = avatarThumbnailUrl;
+            }
+          }
+        }
       }
     },
     socketChannelCreated: (
@@ -1356,6 +1501,15 @@ const groupsSlice = createSlice({
       }
     });
 
+    // Batch update group roles
+    builder.addCase(batchUpdateGroupRoles.fulfilled, (state, action) => {
+      const { groupId, roles } = action.payload;
+      const group = state.groups.find((g) => g.id === groupId);
+      if (group) {
+        group.roles = sortRoles(roles);
+      }
+    });
+
     // Delete group role
     builder.addCase(deleteGroupRole.fulfilled, (state, action) => {
       const { groupId, roleId } = action.payload;
@@ -1398,6 +1552,19 @@ const groupsSlice = createSlice({
             roleIds,
             ...(member || {}),
           };
+        }
+      }
+    });
+
+    // Update group notification preference
+    builder.addCase(updateGroupNotificationPref.fulfilled, (state, action) => {
+      const { groupId, userId, notificationPref } = action.payload;
+      const group = state.groups.find((g) => g.id === groupId);
+      if (group && Array.isArray(group.members)) {
+        const mIdx = group.members.findIndex((m) => m.userId === userId);
+        if (mIdx !== -1) {
+          group.members[mIdx].notificationPref = notificationPref;
+          group.members[mIdx].isMuted = notificationPref === 'none';
         }
       }
     });
@@ -1472,6 +1639,7 @@ export const {
   socketGroupDeleted,
   socketGroupMemberAdded,
   socketGroupMemberRemoved,
+  socketGroupMemberProfileUpdated,
   socketChannelCreated,
   socketChannelUpdated,
   socketChannelDeleted,

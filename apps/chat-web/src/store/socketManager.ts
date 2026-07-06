@@ -4,12 +4,18 @@ import { io } from 'socket.io-client';
 import { PrintLog } from '../utils/logger';
 import { showToast } from '../components/toast';
 
-import { logoutUser } from './slices/authSlice';
+import {
+  logoutUser,
+  addWarning,
+  updateRole,
+  adminUpdateUserIdentity,
+} from './slices/authSlice';
 import type { Message } from './slices/chatSlice';
 import {
   socketReceiveMessage,
   socketUpdatePresence,
   socketUpdateUserStatus,
+  socketUpdateUserProfile,
   socketUpdateTyping,
   socketDeleteMessage,
   socketUpdateMessage,
@@ -21,6 +27,11 @@ import {
   socketFriendRequestDeclined,
   socketFriendRemoved,
   setActiveConversation,
+  incomingCallReceived,
+  socketCallAccepted,
+  socketCallRejected,
+  endCall,
+  syncGroupGhostMembers,
 } from './slices/chatSlice';
 import type { Group } from './slices/groupsSlice';
 import {
@@ -29,6 +40,7 @@ import {
   socketGroupDeleted,
   socketGroupMemberAdded,
   socketGroupMemberRemoved,
+  socketGroupMemberProfileUpdated,
   socketChannelCreated,
   socketChannelUpdated,
   socketChannelDeleted,
@@ -306,6 +318,11 @@ class SocketManager {
     this.socket.on('group.updated', (group: Group) => {
       PrintLog('🏠 Socket group.updated:', group.id);
       store.dispatch(socketGroupUpdated(group));
+      if (group.channels && group.members) {
+        const channelIds = group.channels.map((c: any) => c.id);
+        const visibleMemberIds = group.members.map((m: any) => m.userId);
+        store.dispatch(syncGroupGhostMembers({ channelIds, visibleMemberIds }));
+      }
     });
 
     this.socket.on('group.deleted', (data: { groupId: string }) => {
@@ -321,10 +338,18 @@ class SocketManager {
       },
     );
 
-    this.socket.on('group.member.removed', (data: { groupId: string }) => {
-      PrintLog('👤 Socket group.member.removed:', data.groupId);
-      store.dispatch(socketGroupMemberRemoved(data));
-    });
+    this.socket.on(
+      'group.member.removed',
+      (data: { groupId: string; groupName?: string; kickerRole?: string }) => {
+        PrintLog('👤 Socket group.member.removed:', data.groupId);
+        if (data.groupName && data.kickerRole) {
+          showToast.error(
+            `${data.kickerRole} kicked you out from ${data.groupName}`,
+          );
+        }
+        store.dispatch(socketGroupMemberRemoved(data));
+      },
+    );
 
     this.socket.on(
       'group.channel.created',
@@ -476,6 +501,57 @@ class SocketManager {
       },
     );
 
+    // DM Calling socket events
+    this.socket.on(
+      'dm.call.incoming',
+      (data: {
+        callerId: string;
+        callerName: string;
+        conversationId: string;
+      }) => {
+        PrintLog('📞 Socket dm.call.incoming:', data);
+        store.dispatch(incomingCallReceived(data));
+      },
+    );
+
+    this.socket.on(
+      'dm.call.accepted',
+      (data: { accepterId: string; conversationId: string }) => {
+        PrintLog('📞 Socket dm.call.accepted:', data);
+        store.dispatch(socketCallAccepted());
+      },
+    );
+
+    this.socket.on(
+      'dm.call.rejected',
+      (data: { rejecterId: string; conversationId: string }) => {
+        PrintLog('📞 Socket dm.call.rejected:', data);
+        store.dispatch(socketCallRejected());
+        showToast.info('Call rejected.');
+        setTimeout(() => {
+          store.dispatch(endCall());
+        }, 3000);
+      },
+    );
+
+    this.socket.on(
+      'dm.call.hungup',
+      (data: { hangerId: string; conversationId: string }) => {
+        PrintLog('📞 Socket dm.call.hungup:', data);
+        store.dispatch(endCall());
+        showToast.info('Call ended.');
+      },
+    );
+
+    this.socket.on(
+      'dm.call.disconnected',
+      (data: { userId: string; userName: string; conversationId: string }) => {
+        PrintLog('📞 Socket dm.call.disconnected:', data);
+        store.dispatch(endCall());
+        showToast.error(`${data.userName} disconnected.`);
+      },
+    );
+
     // Friend / relationship socket events
     this.socket.on('friend.request.received', (friendship: any) => {
       PrintLog('👤 Socket friend.request.received:', friendship.id);
@@ -491,10 +567,14 @@ class SocketManager {
         const friend = isRequester
           ? friendship.addressee
           : friendship.requester;
-        const friendName = friend?.username
-          ? `@${friend.username}`
-          : friend?.displayName || friend?.email.split('@')[0] || 'Someone';
-        showToast.success(`You are now friends with ${friendName}!`);
+        // Only show notification to the requester (the one who sent the request).
+        // The acceptor already sees a toast from the UI action (handleAccept).
+        if (isRequester) {
+          const friendName = friend?.username
+            ? `@${friend.username}`
+            : friend?.displayName || friend?.email.split('@')[0] || 'Someone';
+          showToast.success(`You are now friends with ${friendName}! 🎉`);
+        }
         store.dispatch(
           socketFriendRequestAccepted({ friendshipId: friendship.id, friend }),
         );
@@ -510,6 +590,71 @@ class SocketManager {
       PrintLog('👤 Socket friend.removed:', data.friendId);
       store.dispatch(socketFriendRemoved({ friendId: data.friendId }));
     });
+
+    this.socket.on(
+      'user.warned',
+      (data: { warnings: string[]; latestWarning: string }) => {
+        PrintLog('🚨 Socket user.warned received:', data.latestWarning);
+        store.dispatch(addWarning(data.latestWarning));
+        showToast.warning(`⚠️ Administrative Warning: ${data.latestWarning}`);
+      },
+    );
+
+    this.socket.on('user.role.updated', (data: { role: string }) => {
+      PrintLog('👑 Socket user.role.updated received:', data.role);
+      store.dispatch(updateRole(data.role));
+      showToast.info(
+        `System Update: Your platform role is now ${data.role.toUpperCase()}`,
+      );
+    });
+
+    // Broadcast from server when any user updates their profile
+    this.socket.on(
+      'user.profile.updated',
+      (data: {
+        userId: string;
+        displayName?: string;
+        username?: string;
+        avatarUrl?: string;
+        avatarThumbnailUrl?: string;
+      }) => {
+        PrintLog('👤 Socket user.profile.updated received:', data.userId);
+        // Update the user in chat slice (userProfiles cache + friends list)
+        store.dispatch(socketUpdateUserProfile(data));
+        // Update the user in all group member lists
+        store.dispatch(socketGroupMemberProfileUpdated(data));
+      },
+    );
+
+    // Admin updated this user's identity (username/displayName)
+    this.socket.on(
+      'admin.identity.updated',
+      (data: {
+        userId: string;
+        changes: Array<{ field: string; value: string }>;
+        reason: string;
+        username?: string;
+        displayName?: string;
+      }) => {
+        PrintLog('🛡️ Socket admin.identity.updated received:', data.userId);
+        const state = store.getState() as { auth: { user: any } };
+        if (state.auth?.user?.id === data.userId) {
+          // Update self in Redux + localStorage
+          store.dispatch(
+            adminUpdateUserIdentity({
+              username: data.username,
+              displayName: data.displayName,
+            }),
+          );
+          // Build a single consolidated toast message
+          const fieldNames = data.changes.map((c) => c.field).join(' and ');
+          showToast.warning(
+            `🛡️ Relay Guardian AI changed your ${fieldNames} due to: ${data.reason}`,
+            { autoClose: 7000 },
+          );
+        }
+      },
+    );
 
     // Start connection attempt sequence
     this.reconnectWithRetry();
@@ -668,17 +813,23 @@ class SocketManager {
       name: string;
       size: number;
     }[],
+    parentId?: string,
+    isMarkdown?: boolean,
   ) {
     if (this.socket?.connected) {
       PrintLog(
         `📡 Emitting send.message for room ${conversationId}:`,
         content,
         media,
+        parentId,
+        isMarkdown,
       );
       this.socket.emit('send.message', {
         conversationId,
         content,
         media,
+        parentId,
+        isMarkdown,
       });
     } else {
       console.error('❌ Cannot send message: Socket is not connected');
@@ -716,6 +867,15 @@ class SocketManager {
         `📡 Emitting edit.message for messageId=${messageId} in conversationId=${conversationId}`,
       );
       this.socket.emit('edit.message', { messageId, conversationId, content });
+    }
+  }
+
+  toggleReaction(messageId: string, conversationId: string, emoji: string) {
+    if (this.socket?.connected) {
+      PrintLog(
+        `📡 Emitting toggle.reaction for messageId=${messageId} in conversationId=${conversationId} with emoji=${emoji}`,
+      );
+      this.socket.emit('toggle.reaction', { messageId, conversationId, emoji });
     }
   }
 
@@ -774,6 +934,57 @@ class SocketManager {
       );
       this.socket.emit('voice.disconnect.user', { groupId, targetUserId });
     }
+  }
+
+  pingNonJoinedUsers(groupId: string, channelId: string) {
+    if (this.socket?.connected) {
+      PrintLog(
+        `📡 Emitting voice.ping.nonjoined for channel: ${channelId} in group: ${groupId}`,
+      );
+      this.socket.emit('voice.ping.nonjoined', { groupId, channelId });
+    }
+  }
+
+  startDmCall(targetUserId: string, conversationId: string) {
+    if (this.socket?.connected) {
+      PrintLog(
+        `📡 Emitting dm.call.start to: ${targetUserId} in: ${conversationId}`,
+      );
+      this.socket.emit('dm.call.start', { targetUserId, conversationId });
+    }
+  }
+
+  acceptDmCall(targetUserId: string, conversationId: string) {
+    if (this.socket?.connected) {
+      PrintLog(
+        `📡 Emitting dm.call.accept to: ${targetUserId} in: ${conversationId}`,
+      );
+      this.socket.emit('dm.call.accept', { targetUserId, conversationId });
+    }
+  }
+
+  rejectDmCall(targetUserId: string, conversationId: string) {
+    if (this.socket?.connected) {
+      PrintLog(
+        `📡 Emitting dm.call.reject to: ${targetUserId} in: ${conversationId}`,
+      );
+      this.socket.emit('dm.call.reject', { targetUserId, conversationId });
+    }
+  }
+
+  hangupDmCall(targetUserId: string, conversationId: string) {
+    if (this.socket?.connected) {
+      PrintLog(
+        `📡 Emitting dm.call.hangup to: ${targetUserId} in: ${conversationId}`,
+      );
+      this.socket.emit('dm.call.hangup', { targetUserId, conversationId });
+    }
+  }
+
+  /** Expose the raw socket instance for components that need to subscribe
+   *  to events directly (e.g. the admin dashboard for live presence). */
+  getSocket() {
+    return this.socket;
   }
 
   disconnect() {

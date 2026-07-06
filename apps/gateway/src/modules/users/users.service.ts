@@ -153,12 +153,15 @@ export class UsersService {
       notificationsEnabled?: boolean;
       notificationsDmEnabled?: boolean;
       notificationsGroupEnabled?: boolean;
+      groupNotificationPref?: 'all' | 'mention' | 'none';
       notificationsInAppEnabled?: boolean;
       notificationsFriendRequestEnabled?: boolean;
       isTwoFactorEnabled?: boolean;
       twoFactorOnlyNewDevice?: boolean;
       avatarUrl?: string;
       avatarThumbnailUrl?: string;
+      groupOrder?: string;
+      customThemes?: string;
     },
   ): Promise<User> {
     const user = await this.findById(id);
@@ -210,6 +213,10 @@ export class UsersService {
       user.notificationsGroupEnabled = data.notificationsGroupEnabled;
     }
 
+    if (data.groupNotificationPref !== undefined) {
+      user.groupNotificationPref = data.groupNotificationPref;
+    }
+
     if (data.notificationsInAppEnabled !== undefined) {
       user.notificationsInAppEnabled = data.notificationsInAppEnabled;
     }
@@ -233,6 +240,14 @@ export class UsersService {
 
     if (data.avatarThumbnailUrl !== undefined) {
       user.avatarThumbnailUrl = data.avatarThumbnailUrl;
+    }
+
+    if (data.groupOrder !== undefined) {
+      user.groupOrder = data.groupOrder;
+    }
+
+    if (data.customThemes !== undefined) {
+      user.customThemes = data.customThemes;
     }
 
     const updatedUser = await this.userRepository.save(user);
@@ -592,6 +607,137 @@ export class UsersService {
     user.passwordHash = passwordHash;
     user.resetPasswordToken = undefined;
     user.resetPasswordExpiresAt = undefined;
+    const saved = await this.userRepository.save(user);
+    await this.updateRedisCache(saved);
+    return saved;
+  }
+
+  async registerLoggedInDevice(
+    userId: string,
+    device: { deviceId: string; userAgent: string; ip: string },
+  ): Promise<User> {
+    if (!device.deviceId) {
+      return this.findById(userId);
+    }
+    const user = await this.findById(userId);
+    let devices: any[] = [];
+    if (user.loggedInDevices) {
+      try {
+        devices = JSON.parse(user.loggedInDevices);
+        if (!Array.isArray(devices)) {
+          devices = [];
+        }
+      } catch {
+        devices = [];
+      }
+    }
+
+    const cleanUA = (ua: string): string => {
+      if (!ua) {
+        return 'Unknown Device';
+      }
+      let browser = 'Unknown Browser';
+      let os = 'Unknown OS';
+      if (/windows/i.test(ua)) {
+        os = 'Windows';
+      } else if (/macintosh|mac os x/i.test(ua)) {
+        os = 'macOS';
+      } else if (/linux/i.test(ua)) {
+        os = 'Linux';
+      } else if (/android/i.test(ua)) {
+        os = 'Android';
+      } else if (/iphone|ipad|ipod/i.test(ua)) {
+        os = 'iOS';
+      }
+
+      if (
+        /chrome|crios/i.test(ua) &&
+        !/edge|edg/i.test(ua) &&
+        !/opr/i.test(ua)
+      ) {
+        browser = 'Chrome';
+      } else if (/safari/i.test(ua) && !/chrome|crios/i.test(ua)) {
+        browser = 'Safari';
+      } else if (/firefox|fxios/i.test(ua)) {
+        browser = 'Firefox';
+      } else if (/edge|edg/i.test(ua)) {
+        browser = 'Edge';
+      } else if (/opr|opera/i.test(ua)) {
+        browser = 'Opera';
+      }
+
+      return `${browser} on ${os}`;
+    };
+
+    const deviceInfo = cleanUA(device.userAgent);
+    const existing = devices.find((d) => d.deviceId === device.deviceId);
+    if (existing) {
+      existing.userAgent = device.userAgent;
+      existing.deviceInfo = deviceInfo;
+      existing.ip = device.ip;
+      existing.lastActive = new Date().toISOString();
+    } else {
+      devices.push({
+        deviceId: device.deviceId,
+        userAgent: device.userAgent,
+        deviceInfo: deviceInfo,
+        ip: device.ip,
+        lastActive: new Date().toISOString(),
+        notificationsEnabled: true,
+      });
+    }
+
+    user.loggedInDevices = JSON.stringify(devices);
+    const saved = await this.userRepository.save(user);
+    await this.updateRedisCache(saved);
+    return saved;
+  }
+
+  async logoutDevice(userId: string, deviceId: string): Promise<User> {
+    const user = await this.findById(userId);
+    let devices: any[] = [];
+    if (user.loggedInDevices) {
+      try {
+        devices = JSON.parse(user.loggedInDevices);
+        if (!Array.isArray(devices)) {
+          devices = [];
+        }
+      } catch {
+        devices = [];
+      }
+    }
+
+    devices = devices.filter((d) => d.deviceId !== deviceId);
+    user.loggedInDevices = JSON.stringify(devices);
+    const saved = await this.userRepository.save(user);
+    await this.updateRedisCache(saved);
+    return saved;
+  }
+
+  async toggleDeviceNotification(
+    userId: string,
+    deviceId: string,
+    enabled: boolean,
+  ): Promise<User> {
+    const user = await this.findById(userId);
+    let devices: any[] = [];
+    if (user.loggedInDevices) {
+      try {
+        devices = JSON.parse(user.loggedInDevices);
+        if (!Array.isArray(devices)) {
+          devices = [];
+        }
+      } catch {
+        devices = [];
+      }
+    }
+
+    const device = devices.find((d) => d.deviceId === deviceId);
+    if (device) {
+      device.notificationsEnabled = enabled;
+    }
+
+    user.loggedInDevices = JSON.stringify(devices);
     const saved = await this.userRepository.save(user);
     await this.updateRedisCache(saved);
     return saved;

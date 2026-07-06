@@ -46,7 +46,7 @@ export const Avatar = ({
       </div>
       {size !== 'xs' && (
         <span
-          className="absolute rounded-full border-2 border-[var(--glass-bg)] transition-colors duration-300"
+          className="absolute rounded-full border-2 border-(--glass-bg) transition-colors duration-300"
           style={{
             bottom: -1,
             right: -1,

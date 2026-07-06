@@ -15,6 +15,8 @@ import { showToast } from './toast';
 import { ConfirmationModal } from './ConfirmationModal';
 import { formatMessageTimestamp } from '../utils/date';
 
+import { formatLastMessagePreview } from '../utils/chat';
+
 interface ContextMenuState {
   conversationId: string;
   x: number;
@@ -176,9 +178,7 @@ export const ChatSidebar = ({
     if (recipientId && userProfiles[recipientId]) {
       const r = userProfiles[recipientId];
       return {
-        name: r.username
-          ? `@${r.username}`
-          : r.displayName || r.email.split('@')[0],
+        name: r.username ? r.username : r.displayName || r.email.split('@')[0],
         letter: (r.username || r.displayName || r.email)[0].toUpperCase(),
         email: r.email,
         id: r.id,
@@ -198,7 +198,7 @@ export const ChatSidebar = ({
   };
 
   if (!user) {
-    return <div className="w-[300px]" />;
+    return <div className="w-75" />;
   }
 
   // --- SVG icons for context menu ---
@@ -266,95 +266,66 @@ export const ChatSidebar = ({
 
   return (
     <>
-      <div className="glass-panel flex flex-col overflow-hidden h-full w-[300px] max-w-[calc(100vw-130px)] md:max-w-none flex-shrink-0">
-        {/* Profile Card */}
-        <div className="flex items-center gap-2.5 p-3.5 border-b border-[var(--border-muted)]">
-          {/* Rail toggle — always first, acts like a nav handle */}
-          <button
-            id="rail-toggle-btn"
-            title={
-              isRailCollapsed ? 'Show navigation rail' : 'Hide navigation rail'
-            }
-            onClick={onToggleRail}
-            className={`w-[30px] h-[30px] rounded-[8px] flex items-center justify-center cursor-pointer transition-all duration-200 flex-shrink-0 border-none active-press ${isRailCollapsed ? 'bg-[var(--theme-btn-active)] text-[var(--theme-btn-active-text)]' : 'bg-transparent text-[var(--text-muted)] hover:bg-[var(--theme-btn-hover)] hover:text-[var(--text-primary)]'}`}
-          >
-            {/* Sidebar panels icon — two vertical bars */}
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              className="w-[15px] h-[15px]"
+      <div className="glass-panel w-60 min-w-45 max-w-[calc(100vw-130px)] md:w-60 md:min-w-60 lg:w-80 lg:min-w-80 h-full flex flex-col overflow-hidden select-none transition-all duration-300 ease-in-out">
+        {/* Sidebar Header */}
+        <div className="px-4 py-3.5 border-b-[1.5px] border-theme bg-theme-sidebar flex items-center justify-between gap-3.5 shrink-0 shadow-sm">
+          <div className="flex items-center gap-2">
+            {/* Rail toggle — always first, acts like a nav handle */}
+            <button
+              id="rail-toggle-btn"
+              title={
+                isRailCollapsed
+                  ? 'Show navigation rail'
+                  : 'Hide navigation rail'
+              }
+              onClick={onToggleRail}
+              className={`w-7.5 h-7.5 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 shrink-0 border-none active-press ${isRailCollapsed ? 'bg-(--theme-btn-active) text-(--theme-btn-active-text)' : 'bg-transparent text-theme-muted hover:bg-(--theme-btn-hover) hover:text-theme-primary'}`}
             >
-              <rect x="3" y="3" width="18" height="18" rx="2" />
-              <line x1="9" y1="3" x2="9" y2="21" />
-            </svg>
-          </button>
-
-          <Avatar
-            letter={(user.username ||
-              user.displayName ||
-              user.email)[0].toUpperCase()}
-            url={user.avatarThumbnailUrl || user.avatarUrl}
-            status={ownStatus}
-            size="md"
-          />
-          <div className="flex-1 min-w-0">
-            <div className="font-semibold text-[13.5px] truncate text-[var(--text-primary)]">
-              {user.username
-                ? `@${user.username}`
-                : user.displayName || 'Active User'}
-            </div>
-            <div className="text-[11px] truncate mt-0.5 text-[var(--text-muted)]">
-              {user.email}
-            </div>
+              {/* Sidebar panels icon — two vertical bars */}
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                className="w-3.75 h-3.75"
+              >
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <line x1="9" y1="3" x2="9" y2="21" />
+              </svg>
+            </button>
+            <span className="font-bold text-[14px] tracking-tight text-theme-primary">
+              Direct Messages
+            </span>
           </div>
 
-          {/* Profile settings */}
           <button
-            type="button"
-            onClick={() => setIsProfileOpen(true)}
-            id="profile-settings-btn"
-            title="Profile Settings"
-            className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center cursor-pointer transition-all duration-200 flex-shrink-0 border-none bg-transparent text-[var(--text-muted)] hover:bg-[var(--theme-btn-hover)] hover:text-[var(--text-primary)] spin-hover active-press"
+            id="compose-btn"
+            title="New Direct Message"
+            className="w-7.5 h-7.5 rounded-lg flex items-center justify-center cursor-pointer border-none transition-all duration-200 bg-(--theme-btn-active) text-(--theme-btn-active-text) hover:opacity-90 active-press"
+            onClick={() => setIsComposeOpen(true)}
           >
-            <IconSettings />
-          </button>
-
-          {/* Logout */}
-          <button
-            id="logout-btn"
-            title="Sign out"
-            className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center cursor-pointer transition-all duration-200 flex-shrink-0 border-none bg-transparent text-[var(--text-muted)] hover:bg-[var(--danger-bg)] hover:text-[var(--danger)] active-press"
-            onClick={handleLogout}
-          >
-            <IconLogout />
+            <IconCompose />
           </button>
         </div>
 
         {/* Permanent Friends Navigation Item */}
-        <div className="px-1.5 pt-2 flex-shrink-0">
+        <div className="px-2 pt-3 shrink-0">
           <div
             id="sidebar-friends-tab"
-            className={`relative flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl cursor-pointer transition-all duration-200 mb-1 border active-press ${
+            className={`relative flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer transition-all duration-150 mb-0.5 active-press ${
               activeConversationId === 'friends'
-                ? 'bg-[var(--theme-btn-active)] border-[var(--accent-primary)] shadow-[var(--btn-shadow)]'
-                : 'bg-transparent border-transparent hover:bg-[var(--bg-input)] hover:border-[var(--glass-border)]'
+                ? 'bg-(--theme-btn-active) text-(--theme-btn-active-text)'
+                : 'bg-transparent text-theme-primary hover:bg-theme-input'
             }`}
             onClick={() => dispatch(setActiveConversation('friends'))}
           >
-            {/* Left active glow bar */}
-            <span
-              className={`absolute left-0 w-[3.5px] rounded-r bg-[var(--accent-primary)] transition-all duration-200
-              ${activeConversationId === 'friends' ? 'h-7 top-[7.5px]' : 'h-0 top-[21px] opacity-0'}`}
-            />
-            <div className="w-[30px] h-[30px] rounded-lg flex items-center justify-center bg-[var(--theme-btn)] text-[var(--accent-primary)] flex-shrink-0">
+            <div className="w-7.5 h-7.5 rounded-lg flex items-center justify-center bg-(--theme-btn) text-(--accent-primary) shrink-0">
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="2.5"
-                className="w-[15px] h-[15px]"
+                className="w-3.75 h-3.75"
               >
                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
                 <circle cx="9" cy="7" r="4" />
@@ -363,50 +334,32 @@ export const ChatSidebar = ({
               </svg>
             </div>
             <div className="flex-1 min-w-0">
-              <span
-                className={`font-semibold text-[13px] ${
-                  activeConversationId === 'friends'
-                    ? 'text-[var(--theme-btn-active-text)]'
-                    : 'text-[var(--text-primary)]'
-                }`}
-              >
-                Friends
-              </span>
+              <span className="font-semibold text-[13px]">Friends</span>
             </div>
             {pendingRequests?.incoming?.length > 0 && (
-              <span className="bg-[var(--danger)] text-white text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 animate-pulse">
+              <span className="bg-(--danger) text-white text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 animate-pulse">
                 {pendingRequests.incoming.length}
               </span>
             )}
           </div>
         </div>
 
-        {/* Direct Messages Label + New DM button */}
-        <div className="flex items-center justify-between px-3.5 pt-2 pb-1.5">
-          <span className="text-[10.5px] font-bold uppercase tracking-widest text-[var(--text-muted)]">
-            Direct Messages
+        {/* DM List Label */}
+        <div className="flex items-center justify-between px-3.5 pt-3 pb-1 shrink-0">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-theme-muted">
+            Recent Chats
           </span>
-          <button
-            id="compose-btn"
-            title="New Direct Message"
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-[7px] text-[11px] font-semibold cursor-pointer border-none transition-all duration-200 bg-[var(--theme-btn-active)] text-[var(--theme-btn-active-text)] hover:opacity-90 active-press"
-            onClick={() => setIsComposeOpen(true)}
-          >
-            <IconCompose />
-            <span>New DM</span>
-          </button>
         </div>
 
         {/* Conversation List */}
-        <div className="flex-1 overflow-y-auto px-1.5 pb-2">
+        <div className="flex-1 overflow-y-auto px-2 pb-3 custom-scrollbar">
           {conversations.length === 0 ? (
-            <div className="py-10 px-5 text-center text-[13px] leading-relaxed text-theme-muted flex items-center justify-center flex-col h-full">
+            <div className="py-10 px-5 text-center text-[13px] leading-relaxed text-theme-muted flex items-center justify-center flex-col h-full opacity-60">
               <IconChat />
               <p className="mt-3">
                 No conversations yet.
                 <br />
-                Click &quot;New DM&quot; to start one.
-                <br />
+                Create a DM to start chatting!
               </p>
             </div>
           ) : (
@@ -433,15 +386,15 @@ export const ChatSidebar = ({
                 <div
                   key={convo.id}
                   id={`convo-${convo.id}`}
-                  className={`relative flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl cursor-pointer transition-all duration-200 mb-0.5 border active-press fade-in-list ${isActive ? 'bg-[var(--theme-btn-active)] border-[var(--accent-primary)] shadow-[var(--btn-shadow)]' : 'bg-transparent border-transparent hover:bg-[var(--bg-input)] hover:border-[var(--glass-border)]'}`}
+                  className={`relative flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer transition-all duration-150 mb-0.5 active-press fade-in-list
+                    ${
+                      isActive
+                        ? 'bg-(--theme-btn-active)'
+                        : 'bg-transparent hover:bg-theme-input'
+                    }`}
                   onClick={() => dispatch(setActiveConversation(convo.id))}
                   onContextMenu={(e) => handleContextMenu(e, convo.id)}
                 >
-                  {/* Left active glow bar */}
-                  <span
-                    className={`absolute left-0 w-[3.5px] rounded-r bg-[var(--accent-primary)] transition-all duration-200
-                    ${isActive ? 'h-7 top-[11.5px]' : 'h-0 top-[25px] opacity-0'}`}
-                  />
                   <Avatar
                     letter={details.letter}
                     url={details.avatarThumbnailUrl || details.avatarUrl}
@@ -451,11 +404,11 @@ export const ChatSidebar = ({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-baseline justify-between mb-0.5">
                       <span
-                        className={`font-semibold text-[13px] truncate ${isActive ? 'text-[var(--theme-btn-active-text)]' : 'text-[var(--text-primary)]'} ${hasUnread ? 'font-bold text-[var(--text-primary)]' : ''}`}
+                        className={`font-semibold text-[13px] truncate ${isActive ? 'text-(--theme-btn-active-text)' : 'text-theme-primary'} ${hasUnread ? 'font-bold text-theme-primary' : ''}`}
                       >
                         {details.name}
                       </span>
-                      <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
+                      <div className="flex items-center gap-1.5 ml-2 shrink-0">
                         {/* Mute badge */}
                         {isMuted && (
                           <span
@@ -466,17 +419,17 @@ export const ChatSidebar = ({
                           </span>
                         )}
                         {hasUnread && (
-                          <span className="w-2 h-2 rounded-full bg-[var(--accent-primary)] animate-pulse shrink-0" />
+                          <span className="w-2 h-2 rounded-full bg-(--accent-primary) animate-pulse shrink-0" />
                         )}
                         {lastMsg && (
-                          <span className="text-[10px] text-[var(--text-muted)]">
+                          <span className="text-[10px] text-theme-muted">
                             {formatMessageTimestamp(lastMsg.createdAt)}
                           </span>
                         )}
                       </div>
                     </div>
                     {isTyping ? (
-                      <div className="flex items-center gap-1 text-[11.5px] font-medium text-[var(--accent-secondary)]">
+                      <div className="flex items-center gap-1 text-[11.5px] font-medium text-(--accent-secondary)">
                         <span>typing</span>
                         <span
                           className="typing-dot"
@@ -488,17 +441,8 @@ export const ChatSidebar = ({
                         />
                       </div>
                     ) : (
-                      <div className="text-[11.5px] truncate text-[var(--text-secondary)]">
-                        {lastMsg
-                          ? lastMsg.content ||
-                            (lastMsg.media && lastMsg.media.length > 0
-                              ? lastMsg.media[0].type?.startsWith('image/')
-                                ? '📷 Photo'
-                                : lastMsg.media[0].type?.startsWith('video/')
-                                  ? '🎥 Video'
-                                  : '📁 Attachment'
-                              : '📁 Attachment')
-                          : 'No messages yet'}
+                      <div className="text-[11.5px] truncate text-theme-secondary">
+                        {formatLastMessagePreview(lastMsg, user.id)}
                       </div>
                     )}
                   </div>
@@ -506,6 +450,51 @@ export const ChatSidebar = ({
               );
             })
           )}
+        </div>
+
+        {/* Bottom Profile Card */}
+        <div className="p-3 border-t-[1.5px] border-theme flex items-center gap-2 bg-[rgba(0,0,0,0.05)] dark:bg-[rgba(255,255,255,0.015)] shadow-inner shrink-0">
+          <Avatar
+            letter={(user.username ||
+              user.displayName ||
+              user.email)[0].toUpperCase()}
+            url={user.avatarThumbnailUrl || user.avatarUrl}
+            status={ownStatus}
+            size="md"
+          />
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold text-[13px] truncate text-theme-primary leading-tight">
+              {user.username
+                ? `@${user.username}`
+                : user.displayName || 'Active User'}
+            </div>
+            <div className="text-[10px] truncate text-theme-muted mt-0.5 leading-none">
+              {user.email}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-0.5 shrink-0">
+            {/* Profile settings */}
+            <button
+              type="button"
+              onClick={() => setIsProfileOpen(true)}
+              id="profile-settings-btn"
+              title="Profile Settings"
+              className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 border-none bg-transparent text-theme-muted hover:bg-(--theme-btn-hover) hover:text-theme-primary spin-hover active-press"
+            >
+              <IconSettings />
+            </button>
+
+            {/* Logout */}
+            <button
+              id="logout-btn"
+              title="Sign out"
+              className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 border-none bg-transparent text-theme-muted hover:bg-(--danger-bg) hover:text-(--danger) active-press"
+              onClick={handleLogout}
+            >
+              <IconLogout />
+            </button>
+          </div>
         </div>
       </div>
 

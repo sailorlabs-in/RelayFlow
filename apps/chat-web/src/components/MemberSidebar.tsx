@@ -2,41 +2,19 @@ import React, { useState } from 'react';
 
 import { useAppDispatch, useAppSelector } from '../store';
 import type { Group, GroupMember } from '../store/slices/groupsSlice';
-import {
-  removeGroupMember,
-  assignMemberRoles,
-} from '../store/slices/groupsSlice';
-import {
-  sendFriendRequest,
-  acceptFriendRequest,
-  fetchFriends,
-  fetchPendingRequests,
-} from '../store/slices/chatSlice';
+import { removeGroupMember } from '../store/slices/groupsSlice';
 
 import { Avatar } from './Avatar';
 import { IconCrown, IconPeople, IconTrash, IconPlus } from './Icons';
 import { showToast } from './toast';
 import { ConfirmationModal } from './ConfirmationModal';
 import { hasGroupPermission } from '../utils/permissions';
-
-const IconAddFriend = (): React.JSX.Element => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2.5"
-    className="w-3.5 h-3.5"
-  >
-    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-    <circle cx="9" cy="7" r="4" />
-    <line x1="19" y1="8" x2="19" y2="14" />
-    <line x1="16" y1="11" x2="22" y2="11" />
-  </svg>
-);
+import { MemberProfilePopover } from './MemberProfilePopover';
 
 interface MemberSidebarProps {
   group: Group;
   onInviteClick?: () => void;
+  isOpen: boolean;
 }
 
 type PresenceStatus = 'online' | 'away' | 'dnd' | 'offline';
@@ -44,15 +22,12 @@ type PresenceStatus = 'online' | 'away' | 'dnd' | 'offline';
 export const MemberSidebar = ({
   group,
   onInviteClick,
+  isOpen,
 }: MemberSidebarProps): React.JSX.Element => {
   const dispatch = useAppDispatch();
-  const {
-    onlineUsers,
-    typingUsers,
-    activeConversationId,
-    friends,
-    pendingRequests,
-  } = useAppSelector((s) => s.chat);
+  const { onlineUsers, typingUsers, activeConversationId } = useAppSelector(
+    (s) => s.chat,
+  );
   const { user: currentUser } = useAppSelector((s) => s.auth);
 
   // Get active group from redux to keep state in sync
@@ -74,7 +49,8 @@ export const MemberSidebar = ({
   const [selectedMember, setSelectedMember] = useState<any | null>(null);
   const [popoverPosition, setPopoverPosition] = useState<{
     top: number;
-    right: number;
+    right?: number;
+    left?: number;
   } | null>(null);
 
   const handleMemberClick = (
@@ -87,54 +63,20 @@ export const MemberSidebar = ({
       setPopoverPosition(null);
     } else {
       const rect = e.currentTarget.getBoundingClientRect();
-      setPopoverPosition({
-        top: rect.top + rect.height / 2,
-        right: window.innerWidth - rect.left + 8,
-      });
-      setSelectedMember(member);
-    }
-  };
-
-  const handleSendFriendRequest = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!selectedMember) {
-      return;
-    }
-    try {
-      await dispatch(
-        sendFriendRequest(selectedMember.username || selectedMember.email),
-      ).unwrap();
-      showToast.success(
-        `Friend request sent to ${selectedMember.displayName || selectedMember.email}`,
-      );
-      dispatch(fetchPendingRequests());
-    } catch (err: any) {
-      showToast.error(err || 'Failed to send friend request.');
-    }
-  };
-
-  const handleAcceptFriendRequest = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!selectedMember) {
-      return;
-    }
-    try {
-      const incomingPending = pendingRequests?.incoming || [];
-      const incomingReq = incomingPending.find(
-        (req) =>
-          req.requesterId === selectedMember.id ||
-          req.requester?.id === selectedMember.id,
-      );
-      if (incomingReq) {
-        await dispatch(acceptFriendRequest(incomingReq.id)).unwrap();
-        showToast.success(
-          `Friend request from ${selectedMember.displayName} accepted!`,
-        );
-        dispatch(fetchFriends());
-        dispatch(fetchPendingRequests());
+      const popoverWidth = 260; // w-65 is 260px
+      const fitsOnLeft = rect.left - 8 - popoverWidth >= 16;
+      if (fitsOnLeft) {
+        setPopoverPosition({
+          top: rect.top + rect.height / 2,
+          right: window.innerWidth - rect.left + 8,
+        });
+      } else {
+        setPopoverPosition({
+          top: rect.top + rect.height / 2,
+          left: rect.right + 8,
+        });
       }
-    } catch (err: any) {
-      showToast.error(err || 'Failed to accept friend request.');
+      setSelectedMember(member);
     }
   };
 
@@ -161,25 +103,68 @@ export const MemberSidebar = ({
       targetUserId === currentUser?.id
         ? (currentUser?.status as PresenceStatus) || 'online'
         : (onlineUsers[targetUserId] as PresenceStatus) || 'offline';
-    const isOwner = activeGroup.ownerId === targetUserId;
+    const targetIsPlatformAdmin = userDetail?.role === 'admin';
+    const currentUserIsPlatformAdmin = currentUser?.role === 'admin';
+    const isOwner = m.role === 'owner' || activeGroup.ownerId === targetUserId;
     const isTyping = activeConversationId
       ? !!typingUsers[activeConversationId]?.[targetUserId]
       : false;
     const canKick =
       targetUserId !== currentUser?.id &&
-      !isOwner &&
-      (isCurrentUserOwner ||
-        (m.role !== 'owner' &&
-          m.role !== 'admin' &&
-          (currentUserRole === 'admin' ||
-            hasGroupPermission(activeGroup, currentUser?.id, 'kick_members'))));
+      (!targetIsPlatformAdmin || currentUserIsPlatformAdmin) &&
+      (currentUserIsPlatformAdmin ||
+        (!isOwner &&
+          (isCurrentUserOwner ||
+            (m.role !== 'owner' &&
+              m.role !== 'admin' &&
+              (currentUserRole === 'admin' ||
+                hasGroupPermission(
+                  activeGroup,
+                  currentUser?.id,
+                  'kick_members',
+                ))))));
 
     const memberRoleIds = m.roleIds || [];
     const groupRoles = activeGroup.roles || [];
-    const matchingRoles = groupRoles.filter((r) =>
-      memberRoleIds.includes(r.id),
-    );
-    const color = matchingRoles[0]?.color || (isOwner ? '#eab308' : 'inherit');
+    const matchingRoles = [...groupRoles]
+      .filter((r) => memberRoleIds.includes(r.id))
+      .sort((a, b) => {
+        const hpA = a.hierarchyPriority ?? a.priority ?? 1000000;
+        const hpB = b.hierarchyPriority ?? b.priority ?? 1000000;
+        if (hpA !== hpB) {
+          return hpA - hpB;
+        }
+        const cpA = a.colorPriority ?? 0;
+        const cpB = b.colorPriority ?? 0;
+        if (cpA !== cpB) {
+          if (cpA <= 0) {
+            return 1;
+          }
+          if (cpB <= 0) {
+            return -1;
+          }
+          return cpA - cpB;
+        }
+        return a.createdAt.localeCompare(b.createdAt);
+      });
+
+    const colorRoles = [...matchingRoles].sort((a, b) => {
+      const cpA = a.colorPriority ?? 0;
+      const cpB = b.colorPriority ?? 0;
+      if (cpA !== cpB) {
+        if (cpA <= 0) {
+          return 1;
+        }
+        if (cpB <= 0) {
+          return -1;
+        }
+        return cpA - cpB;
+      }
+      return 0;
+    });
+
+    // Owner color always wins over any role color
+    const color = isOwner ? '#eab308' : colorRoles[0]?.color || 'inherit';
 
     return {
       id: targetUserId,
@@ -196,10 +181,12 @@ export const MemberSidebar = ({
       matchingRoles,
       color,
       canKick,
+      isGhost: m.isGhost,
     };
   };
 
-  const membersWithDetails = members.map((m) => getMemberDetails(m));
+  const visibleMembers = members.filter((m) => !m.isGhost);
+  const membersWithDetails = visibleMembers.map((m) => getMemberDetails(m));
 
   const onlineMembers = membersWithDetails.filter(
     (m) => m.presence === 'online',
@@ -250,7 +237,7 @@ export const MemberSidebar = ({
   };
 
   const renderMemberRow = (m: any) => {
-    const primaryName = m.username ? `@${m.username}` : m.displayName;
+    const primaryName = m.username ? m.username : m.displayName;
     const isSelected = selectedMember?.id === m.id;
 
     return (
@@ -258,6 +245,7 @@ export const MemberSidebar = ({
         key={m.id}
         id={`member-row-${m.id}`}
         className={`group flex items-center justify-between gap-2.5 px-2.5 py-2 rounded-xl transition-all duration-150 mb-1 cursor-pointer hover:bg-theme-input hover:translate-x-0.5 fade-in-list ${isSelected ? 'bg-theme-input translate-x-0.5' : ''}`}
+        style={m.isGhost ? { opacity: 0.45 } : undefined}
         onClick={(e) => handleMemberClick(e, m)}
       >
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
@@ -270,12 +258,15 @@ export const MemberSidebar = ({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1">
               <span
-                style={{ color: m.color !== 'inherit' ? m.color : undefined }}
-                className={`text-[13px] font-semibold truncate ${
-                  m.presence === 'offline' && m.color === 'inherit'
-                    ? 'text-theme-muted'
-                    : ''
-                } ${m.color === 'inherit' && m.presence !== 'offline' ? 'text-theme-primary' : ''}`}
+                className={`text-[13px] font-semibold truncate ${m.color === 'inherit' ? (m.presence !== 'offline' ? 'text-theme-primary' : '') : ''}`}
+                style={{
+                  color:
+                    m.color !== 'inherit'
+                      ? m.color
+                      : m.presence === 'offline'
+                        ? '#6b7280'
+                        : undefined,
+                }}
               >
                 {primaryName}
               </span>
@@ -357,12 +348,21 @@ export const MemberSidebar = ({
 
   return (
     <>
-      <div className="glass-panel h-full flex flex-col overflow-hidden w-60 min-w-60 fixed right-0 top-0 bottom-0 z-50 md:relative bg-[var(--bg-sidebar)] md:bg-transparent border-l border-[var(--border-muted)] md:border-none shadow-2xl md:shadow-none p-3.5 md:p-0">
+      <div
+        className={`glass-panel h-full flex flex-col overflow-hidden select-none transition-all duration-300 ease-in-out
+          fixed right-0 top-0 bottom-0 z-50 bg-theme-sidebar shadow-2xl p-3.5
+          md:relative md:right-auto md:top-auto md:bottom-auto md:z-auto md:bg-transparent md:shadow-none md:p-0
+          ${
+            isOpen
+              ? 'translate-x-0 opacity-100 w-60 min-w-60 border-[1.5px]'
+              : 'translate-x-full opacity-0 pointer-events-none w-0 min-w-0 md:translate-x-0 border-0'
+          }`}
+      >
         {/* Title */}
         <div className="px-4 py-3.5 border-b-[1.5px] border-theme flex items-center justify-between text-theme-primary text-sm font-bold bg-theme-sidebar rounded-t-2xl">
           <div className="flex items-center gap-1.5">
             <IconPeople />
-            <span>Group Members ({members.length})</span>
+            <span>Group Members ({visibleMembers.length})</span>
           </div>
           {onInviteClick && canInvite && (
             <button
@@ -448,223 +448,18 @@ export const MemberSidebar = ({
       )}
 
       {selectedMember && popoverPosition && (
-        <div
-          className="fixed z-9999 w-65 bg-(--glass-bg) border-[1.5px] border-glass backdrop-blur-[20px] rounded-2xl shadow-(--glass-shadow) p-4 flex flex-col gap-3 animate-fade-in pointer-events-auto text-left"
-          style={{
-            top: `${popoverPosition.top}px`,
-            right: `${popoverPosition.right}px`,
-            transform: 'translateY(-50%)',
+        <MemberProfilePopover
+          selectedMember={selectedMember}
+          popoverPosition={popoverPosition}
+          onClose={() => {
+            setSelectedMember(null);
+            setPopoverPosition(null);
           }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Header with Avatar and Status */}
-          <div className="flex items-center gap-3">
-            <Avatar
-              letter={selectedMember.displayName[0].toUpperCase()}
-              url={
-                selectedMember.avatarThumbnailUrl || selectedMember.avatarUrl
-              }
-              status={selectedMember.presence}
-              size="md"
-            />
-            <div className="flex-1 min-w-0">
-              <h3
-                className="m-0 text-[14px] font-bold text-theme-primary truncate"
-                style={{
-                  color:
-                    selectedMember.color !== 'inherit'
-                      ? selectedMember.color
-                      : undefined,
-                }}
-              >
-                {selectedMember.displayName}
-              </h3>
-              <div className="text-[10.5px] text-theme-muted mt-0.5 capitalize">
-                {selectedMember.role}
-              </div>
-            </div>
-          </div>
-
-          <hr className="m-0 border-none h-px bg-(--border-muted)" />
-
-          {/* Details */}
-          <div className="flex flex-col gap-2.5 text-[12px]">
-            <div>
-              <span className="text-theme-muted font-bold block mb-0.5 uppercase tracking-wide text-[9.5px]">
-                Username
-              </span>
-              <span className="text-theme-secondary font-medium font-mono">
-                {selectedMember.username ? `@${selectedMember.username}` : '@-'}
-              </span>
-            </div>
-            <div>
-              <span className="text-theme-muted font-bold block mb-0.5 uppercase tracking-wide text-[9.5px]">
-                Email Address
-              </span>
-              <span className="text-theme-secondary font-medium break-all">
-                {selectedMember.email || 'No email shared'}
-              </span>
-            </div>
-            <div>
-              <span className="text-theme-muted font-bold block mb-0.5 uppercase tracking-wide text-[9.5px]">
-                Presence Status
-              </span>
-              <span className="text-theme-secondary font-medium flex items-center gap-1.5 capitalize">
-                <span
-                  className="w-2 h-2 rounded-full inline-block animate-pulse"
-                  style={{
-                    backgroundColor:
-                      selectedMember.presence === 'online'
-                        ? '#10b981'
-                        : selectedMember.presence === 'away'
-                          ? '#f59e0b'
-                          : selectedMember.presence === 'dnd'
-                            ? '#ef4444'
-                            : '#6b7280',
-                  }}
-                />
-                {selectedMember.presence === 'dnd'
-                  ? 'Do Not Disturb'
-                  : selectedMember.presence}
-              </span>
-            </div>
-
-            {/* Display Member matching roles */}
-            {selectedMember.matchingRoles &&
-              selectedMember.matchingRoles.length > 0 && (
-                <div>
-                  <span className="text-theme-muted font-bold block mb-1 uppercase tracking-wide text-[9.5px]">
-                    Roles
-                  </span>
-                  <div className="flex flex-wrap gap-1">
-                    {selectedMember.matchingRoles.map((role: any) => (
-                      <span
-                        key={role.id}
-                        style={{
-                          backgroundColor: `${role.color}15`,
-                          color: role.color,
-                          borderColor: `${role.color}30`,
-                        }}
-                        className="text-[10px] px-2 py-0.5 rounded-[4px] border font-bold"
-                      >
-                        {role.name}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-          </div>
-
-          {/* Roles Assignment (For Owner/Admin) */}
-          {(currentUserRole === 'owner' ||
-            currentUserRole === 'admin' ||
-            hasGroupPermission(activeGroup, currentUser?.id, 'manage_roles')) &&
-            activeGroup.roles &&
-            activeGroup.roles.length > 0 && (
-              <div className="flex flex-col gap-1.5 text-[12px] mt-1 border-t border-[var(--border-muted)] pt-2.5">
-                <span className="text-theme-muted font-bold block mb-1 uppercase tracking-wide text-[9.5px]">
-                  Assign Roles
-                </span>
-                <div className="flex flex-wrap gap-1.5 max-h-[100px] overflow-y-auto pr-1">
-                  {activeGroup.roles.map((role) => {
-                    const isAssigned = selectedMember.roleIds?.includes(
-                      role.id,
-                    );
-                    return (
-                      <button
-                        key={role.id}
-                        type="button"
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          const newRoleIds = isAssigned
-                            ? selectedMember.roleIds.filter(
-                                (id: string) => id !== role.id,
-                              )
-                            : [...(selectedMember.roleIds || []), role.id];
-                          try {
-                            await dispatch(
-                              assignMemberRoles({
-                                groupId: activeGroup.id,
-                                userId: selectedMember.id,
-                                roleIds: newRoleIds,
-                              }),
-                            ).unwrap();
-
-                            // Update the selected member state
-                            setSelectedMember({
-                              ...selectedMember,
-                              roleIds: newRoleIds,
-                              matchingRoles: activeGroup.roles.filter((r) =>
-                                newRoleIds.includes(r.id),
-                              ),
-                              color:
-                                activeGroup.roles.filter((r) =>
-                                  newRoleIds.includes(r.id),
-                                )[0]?.color || 'inherit',
-                            });
-                            showToast.success('Member roles updated!');
-                          } catch (err: any) {
-                            showToast.error(err || 'Failed to assign role.');
-                          }
-                        }}
-                        style={{
-                          borderColor: role.color,
-                          backgroundColor: isAssigned
-                            ? `${role.color}15`
-                            : 'transparent',
-                          color: role.color,
-                        }}
-                        className="px-2 py-1 rounded-[6px] border text-[10.5px] font-bold cursor-pointer hover:bg-black/10 transition-all select-none active-press"
-                      >
-                        {isAssigned ? '✓ ' : ''}
-                        {role.name}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-          {/* Friendship Actions */}
-          {selectedMember.id !== currentUser?.id && (
-            <div className="mt-1 flex flex-col gap-2 border-t border-[var(--border-muted)] pt-2.5">
-              {friends?.some((f) => f.id === selectedMember.id) ? (
-                <div className="flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-bold text-emerald-500 bg-[rgba(16,185,129,0.08)] border border-emerald-500/20">
-                  <span>✓ Friends</span>
-                </div>
-              ) : (pendingRequests?.outgoing || []).some(
-                  (req) =>
-                    req.addresseeId === selectedMember.id ||
-                    req.addressee?.id === selectedMember.id,
-                ) ? (
-                <div className="flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-bold text-amber-500 bg-[rgba(245,158,11,0.08)] border border-amber-500/20">
-                  <span>Pending Request</span>
-                </div>
-              ) : (pendingRequests?.incoming || []).some(
-                  (req) =>
-                    req.requesterId === selectedMember.id ||
-                    req.requester?.id === selectedMember.id,
-                ) ? (
-                <button
-                  type="button"
-                  onClick={handleAcceptFriendRequest}
-                  className="w-full py-1.5 px-3 rounded-lg text-xs font-bold cursor-pointer transition-all duration-150 border-none bg-emerald-500 hover:bg-emerald-600 text-white active-press"
-                >
-                  Accept Request
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleSendFriendRequest}
-                  className="w-full py-1.5 px-3 rounded-lg text-xs font-bold cursor-pointer transition-all duration-150 border-none bg-(--accent-primary) hover:opacity-95 text-white active-press flex items-center justify-center gap-1.5"
-                >
-                  <IconAddFriend />
-                  <span>Add Friend</span>
-                </button>
-              )}
-            </div>
-          )}
-        </div>
+          onUpdate={(updated) => {
+            setSelectedMember(updated);
+          }}
+          groupId={activeGroup.id}
+        />
       )}
     </>
   );

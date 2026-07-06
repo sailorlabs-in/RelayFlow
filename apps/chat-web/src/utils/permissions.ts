@@ -14,8 +14,12 @@ export const hasGroupPermission = (
     return false;
   }
 
-  // Group owner and admin bypass all permission checks
-  if (member.role === 'owner' || member.role === 'admin') {
+  // Group owner, admin, or platform admin bypass all permission checks
+  if (
+    member.role === 'owner' ||
+    member.role === 'admin' ||
+    member.user?.role === 'admin'
+  ) {
     return true;
   }
 
