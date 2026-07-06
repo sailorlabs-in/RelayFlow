@@ -1804,7 +1804,7 @@ export function ProfileSettingsContent({
                           </div>
 
                           <div
-                            className="flex items-center gap-2.5 text-[11px] mt-1"
+                            className="flex md:flex-row flex-col items-start md:items-center gap-2.5 text-[11px] mt-1"
                             style={{ color: 'var(--text-muted)' }}
                           >
                             <span>
@@ -1813,7 +1813,7 @@ export function ProfileSettingsContent({
                                 {option.lightName}
                               </span>
                             </span>
-                            <span>•</span>
+                            <span className="hidden md:block">•</span>
                             <span>
                               Dark:{' '}
                               <span className="font-semibold">
@@ -2293,7 +2293,7 @@ export function ProfileSettingsContent({
                             dispatch(setReduxThemeSchema(theme.id));
                             applyThemePreview(theme.id, customThemes);
                           }}
-                          className={`flex items-center justify-between p-4 rounded-xl cursor-pointer text-left transition-all duration-200 border ${
+                          className={`flex gap-2 flex-col md:flex-row items-start md:items-center justify-between p-4 rounded-xl cursor-pointer text-left transition-all duration-200 border ${
                             themeSchema === theme.id
                               ? 'border-[var(--accent-primary)] bg-[var(--theme-btn-active)]'
                               : 'border-[var(--glass-border)] bg-[var(--theme-btn)]'
@@ -2311,7 +2311,7 @@ export function ProfileSettingsContent({
                             }
                           }}
                         >
-                          <div className="flex-1 pr-4">
+                          <div className="flex-1">
                             <div className="flex items-center gap-2">
                               <span
                                 className="font-bold text-[13.5px]"
@@ -2350,7 +2350,7 @@ export function ProfileSettingsContent({
                             </span>
                           </div>
 
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3 w-full md:w-auto justify-between">
                             {/* Colors preview pills */}
                             <div className="flex gap-1.5 bg-black/10 dark:bg-white/5 p-1.5 rounded-lg">
                               {[

@@ -15,6 +15,8 @@ import { showToast } from './toast';
 import { ConfirmationModal } from './ConfirmationModal';
 import { formatMessageTimestamp } from '../utils/date';
 
+import { formatLastMessagePreview } from '../utils/chat';
+
 interface ContextMenuState {
   conversationId: string;
   x: number;
@@ -440,16 +442,7 @@ export const ChatSidebar = ({
                       </div>
                     ) : (
                       <div className="text-[11.5px] truncate text-theme-secondary">
-                        {lastMsg
-                          ? lastMsg.content ||
-                            (lastMsg.media && lastMsg.media.length > 0
-                              ? lastMsg.media[0].type?.startsWith('image/')
-                                ? '📷 Photo'
-                                : lastMsg.media[0].type?.startsWith('video/')
-                                  ? '🎥 Video'
-                                  : '📁 Attachment'
-                              : '📁 Attachment')
-                          : 'No messages yet'}
+                        {formatLastMessagePreview(lastMsg, user.id)}
                       </div>
                     )}
                   </div>

@@ -961,14 +961,9 @@ const groupsSlice = createSlice({
   reducers: {
     setActiveGroup: (state, action: PayloadAction<string | null>) => {
       state.activeGroupId = action.payload;
-      // Auto-select first channel when switching groups
-      if (action.payload) {
-        const groupList = Array.isArray(state.groups) ? state.groups : [];
-        const group = groupList.find((g) => g.id === action.payload);
-        state.activeChannelId = group?.channels?.[0]?.id || null;
-      } else {
-        state.activeChannelId = null;
-      }
+      // Always clear the active channel when switching groups so the user
+      // lands on the empty landing page instead of auto-opening a thread.
+      state.activeChannelId = null;
     },
     setActiveChannel: (state, action: PayloadAction<string | null>) => {
       state.activeChannelId = action.payload;
