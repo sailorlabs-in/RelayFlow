@@ -64,7 +64,7 @@ export class Message {
   @Column({ name: 'reactions', type: 'jsonb', nullable: true })
   reactions?: { emoji: string; userIds: string[] }[] | null;
 
-  readBy?: { userId: string; name: string }[];
+  readBy?: { userId: string; name: string; readAt?: Date }[];
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;

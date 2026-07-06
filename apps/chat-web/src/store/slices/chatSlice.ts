@@ -33,7 +33,7 @@ export interface Message {
   createdAt: string;
   updatedAt: string;
   media?: MessageMediaItem[];
-  readBy?: { userId: string; name: string }[];
+  readBy?: { userId: string; name: string; readAt?: string }[];
   parentId?: string | null;
   parentMessage?: Message | null;
   reactions?: { emoji: string; userIds: string[] }[] | null;
@@ -605,9 +605,10 @@ const chatSlice = createSlice({
         conversationId: string;
         readBy: string;
         readByName?: string;
+        readAt?: string;
       }>,
     ) => {
-      const { conversationId, readBy, readByName } = action.payload;
+      const { conversationId, readBy, readByName, readAt } = action.payload;
       if (state.messages[conversationId]) {
         state.messages[conversationId] = state.messages[conversationId].map(
           (m) => {
@@ -633,7 +634,14 @@ const chatSlice = createSlice({
 
               const updatedReadBy = alreadyRead
                 ? currentReadBy
-                : [...currentReadBy, { userId: readBy, name: nameToUse }];
+                : [
+                    ...currentReadBy,
+                    {
+                      userId: readBy,
+                      name: nameToUse,
+                      readAt: readAt || new Date().toISOString(),
+                    },
+                  ];
 
               return {
                 ...m,
@@ -668,7 +676,14 @@ const chatSlice = createSlice({
 
         convo.lastMessage.readBy = alreadyRead
           ? currentReadBy
-          : [...currentReadBy, { userId: readBy, name: nameToUse }];
+          : [
+              ...currentReadBy,
+              {
+                userId: readBy,
+                name: nameToUse,
+                readAt: readAt || new Date().toISOString(),
+              },
+            ];
       }
     },
     syncGroupGhostMembers: (

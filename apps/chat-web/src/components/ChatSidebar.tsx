@@ -32,6 +32,24 @@ interface ChatSidebarProps {
   onToggleRail: () => void;
 }
 
+const getLatestActivityTime = (
+  convo: any,
+  messages: Record<string, any[]>,
+): number => {
+  const convoMsgs = messages[convo.id] || [];
+  const lastMsg = convoMsgs[convoMsgs.length - 1] ?? convo.lastMessage;
+  if (lastMsg && lastMsg.createdAt) {
+    return new Date(lastMsg.createdAt).getTime();
+  }
+  if (convo.updatedAt) {
+    return new Date(convo.updatedAt).getTime();
+  }
+  if (convo.createdAt) {
+    return new Date(convo.createdAt).getTime();
+  }
+  return 0;
+};
+
 export const ChatSidebar = ({
   ownStatus,
   setIsProfileOpen,
@@ -53,6 +71,14 @@ export const ChatSidebar = ({
     pendingRequests,
     mutedConversationIds,
   } = useAppSelector((s) => s.chat);
+
+  const sortedConversations = React.useMemo(() => {
+    return [...conversations].sort((a, b) => {
+      return (
+        getLatestActivityTime(b, messages) - getLatestActivityTime(a, messages)
+      );
+    });
+  }, [conversations, messages]);
 
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
@@ -353,7 +379,7 @@ export const ChatSidebar = ({
 
         {/* Conversation List */}
         <div className="flex-1 overflow-y-auto px-2 pb-3 custom-scrollbar">
-          {conversations.length === 0 ? (
+          {sortedConversations.length === 0 ? (
             <div className="py-10 px-5 text-center text-[13px] leading-relaxed text-theme-muted flex items-center justify-center flex-col h-full opacity-60">
               <IconChat />
               <p className="mt-3">
@@ -363,7 +389,7 @@ export const ChatSidebar = ({
               </p>
             </div>
           ) : (
-            conversations.map((convo) => {
+            sortedConversations.map((convo) => {
               const details = getConversationDetails(convo);
               const isActive = convo.id === activeConversationId;
               const isMuted = mutedConversationIds.includes(convo.id);
