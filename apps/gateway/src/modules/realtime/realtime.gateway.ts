@@ -575,6 +575,7 @@ export class RealtimeGateway
           conversationId: targetConvoId,
           readBy: userId,
           readByName: readerName,
+          readAt: new Date().toISOString(),
         });
       }
     } else {
@@ -645,6 +646,7 @@ export class RealtimeGateway
         conversationId: targetConvoId,
         readBy: userId,
         readByName: readerName,
+        readAt: new Date().toISOString(),
       });
     }
   }

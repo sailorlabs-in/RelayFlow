@@ -267,7 +267,7 @@ export class ChatService {
     }
 
     // Save initial read receipts if any
-    const readBy: { userId: string; name: string }[] = [];
+    const readBy: { userId: string; name: string; readAt?: Date }[] = [];
     if (readReceiptUserIds && readReceiptUserIds.length > 0) {
       const receipts = await Promise.all(
         readReceiptUserIds.map(async (uid) => {
@@ -282,7 +282,7 @@ export class ChatService {
             ? `@${u.username}`
             : `@${u.email.split('@')[0]}`;
 
-          return { userId: uid, name: readerName };
+          return { userId: uid, name: readerName, readAt: receipt.readAt };
         }),
       );
       readBy.push(...receipts);
@@ -366,7 +366,7 @@ export class ChatService {
     // Group receipts by message ID
     const receiptsByMessageId: Record<
       string,
-      { userId: string; name: string }[]
+      { userId: string; name: string; readAt?: Date }[]
     > = {};
     for (const r of receipts) {
       if (!receiptsByMessageId[r.messageId]) {
@@ -376,7 +376,11 @@ export class ChatService {
         const name = r.user.username
           ? `@${r.user.username}`
           : `@${r.user.email.split('@')[0]}`;
-        receiptsByMessageId[r.messageId].push({ userId: r.userId, name });
+        receiptsByMessageId[r.messageId].push({
+          userId: r.userId,
+          name,
+          readAt: r.readAt,
+        });
       }
     }
 
@@ -412,9 +416,11 @@ export class ChatService {
         const name = r.user.username
           ? `@${r.user.username}`
           : `@${r.user.email.split('@')[0]}`;
-        return { userId: r.userId, name };
+        return { userId: r.userId, name, readAt: r.readAt };
       })
-      .filter((x): x is { userId: string; name: string } => x !== null)
+      .filter(
+        (x): x is { userId: string; name: string; readAt?: Date } => x !== null,
+      )
       .filter((r) => !ghostAdmins.has(r.userId));
 
     return message;

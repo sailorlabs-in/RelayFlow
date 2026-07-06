@@ -41,3 +41,37 @@ export const formatMessageTimestamp = (
     return `${dateStr} ${timeStr}`;
   }
 };
+
+export const formatReadAtTimestamp = (
+  dateInput: string | Date | number,
+): string => {
+  const date = new Date(dateInput);
+
+  const timeStr = date.toLocaleTimeString([], {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+
+  const now = new Date();
+
+  // Normalize dates to midnight to do proper day-difference checks
+  const dDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const dNow = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diffTime = dNow.getTime() - dDate.getTime();
+  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) {
+    return timeStr; // sameday no date
+  } else if (diffDays === 1) {
+    return `Yesterday ${timeStr}`;
+  } else if (diffDays === 2) {
+    return `Day before yesterday ${timeStr}`; // 1daybefore yesterday
+  } else {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const dateStr = `${day}/${month}/${year}`;
+    return `${dateStr} ${timeStr}`;
+  }
+};

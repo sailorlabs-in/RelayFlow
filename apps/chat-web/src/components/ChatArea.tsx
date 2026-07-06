@@ -66,7 +66,7 @@ import {
 import { socketManager } from '../store/socketManager';
 import { generateImageThumbnail, generateVideoThumbnail } from '../utils/media';
 import { hasGroupPermission } from '../utils/permissions';
-import { formatMessageTimestamp } from '../utils/date';
+import { formatMessageTimestamp, formatReadAtTimestamp } from '../utils/date';
 
 import { Avatar } from './Avatar';
 import { MemberProfilePopover } from './MemberProfilePopover';
@@ -3594,7 +3594,7 @@ export const ChatArea = ({
                 <polyline points="9 18 15 12 9 6" />
               </svg>
               <div
-                className="hidden group-hover:block absolute w-40 bg-(--dropdown-bg) border border-glass rounded-[10px] p-1 shadow-[0_16px_40px_rgba(0,0,0,0.35),0_0_0_1px_var(--glass-border)] backdrop-blur-lg z-10000 animate-[fadeIn_0.15s_ease-out_forwards]"
+                className="hidden group-hover:block absolute w-64 bg-(--dropdown-bg) border border-glass rounded-[10px] p-1 shadow-[0_16px_40px_rgba(0,0,0,0.35),0_0_0_1px_var(--glass-border)] backdrop-blur-lg z-10000 animate-[fadeIn_0.15s_ease-out_forwards]"
                 style={{
                   ...(adjustedContextMenu?.subMenuLeft
                     ? { right: '100%', left: 'auto', marginRight: '4px' }
@@ -3613,11 +3613,14 @@ export const ChatArea = ({
                     liveContextMenuMsg.readBy.map((reader) => (
                       <div
                         key={reader.userId}
-                        className="flex items-center px-3 py-1.5 rounded-md text-[12px] font-medium text-theme-primary break-all"
+                        className="flex items-center justify-between gap-3 px-3 py-1.5 rounded-md text-[12px] font-medium text-theme-primary"
                       >
-                        <span className="whitespace-nowrap overflow-hidden text-ellipsis w-full">
-                          {reader.name}
-                        </span>
+                        <span className="truncate flex-1">{reader.name}</span>
+                        {reader.readAt && (
+                          <span className="text-[10.5px] text-theme-muted shrink-0">
+                            {formatReadAtTimestamp(reader.readAt)}
+                          </span>
+                        )}
                       </div>
                     ))
                   ) : (
