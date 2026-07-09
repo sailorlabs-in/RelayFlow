@@ -353,23 +353,82 @@ export const ChatArea = ({
     'manage_group',
   );
 
-  const isChannelWriteRestricted =
-    activeChannel?.isReadOnly ||
-    (activeChannel?.writeRoleIds && activeChannel.writeRoleIds.length > 0);
-
   let hasChannelWriteAccess = true;
-  if (isChannelWriteRestricted) {
+  if (isGroupChannel && activeChannel && user?.id) {
     if (isOwnerOrAdmin || hasManageGroup) {
       hasChannelWriteAccess = true;
     } else {
-      const writeRoles = activeChannel?.writeRoleIds || [];
-      if (writeRoles.length === 0) {
+      const userId = user.id;
+      const hiddenFromUsers = activeChannel.hiddenFromUserIds || [];
+      const readUsers = activeChannel.readUserIds || [];
+      const writeUsers = activeChannel.writeUserIds || [];
+
+      // 1. User-level overrides (highest priority)
+      if (hiddenFromUsers.includes(userId)) {
         hasChannelWriteAccess = false;
+      } else if (writeUsers.includes(userId)) {
+        hasChannelWriteAccess = true;
+      } else if (readUsers.includes(userId)) {
+        const isChannelReadOnly =
+          activeChannel.isReadOnly ||
+          (activeChannel.writeRoleIds &&
+            activeChannel.writeRoleIds.length > 0) ||
+          writeUsers.length > 0;
+        hasChannelWriteAccess = !isChannelReadOnly;
       } else {
+        // 2. Role-level evaluation (second priority)
         const memberRoleIds = member?.roleIds || [];
-        hasChannelWriteAccess = writeRoles.some((roleId) =>
-          memberRoleIds.includes(roleId),
-        );
+        const hiddenFromRoles = activeChannel.hiddenFromRoleIds || [];
+        const allowedRoles = activeChannel.allowedRoleIds || [];
+        const readRoles = activeChannel.readRoleIds || [];
+        const writeRoles = activeChannel.writeRoleIds || [];
+
+        const isChannelReadOnly =
+          activeChannel.isReadOnly ||
+          writeRoles.length > 0 ||
+          writeUsers.length > 0;
+
+        let roleMatched = false;
+        if (memberRoleIds.length > 0 && activeGroup.roles) {
+          // Find custom roles the member has
+          const userRoles = activeGroup.roles.filter((role) =>
+            memberRoleIds.includes(role.id),
+          );
+
+          // Sort roles by priority ascending (smallest level is high)
+          const sortedRoles = [...userRoles].sort((a, b) => {
+            const hpA = a.hierarchyPriority ?? a.priority ?? 1000000;
+            const hpB = b.hierarchyPriority ?? b.priority ?? 1000000;
+            return hpA - hpB;
+          });
+
+          const configuredRole = sortedRoles.find(
+            (role) =>
+              hiddenFromRoles.includes(role.id) ||
+              writeRoles.includes(role.id) ||
+              readRoles.includes(role.id) ||
+              allowedRoles.includes(role.id),
+          );
+
+          if (configuredRole) {
+            roleMatched = true;
+            if (hiddenFromRoles.includes(configuredRole.id)) {
+              hasChannelWriteAccess = false;
+            } else if (writeRoles.includes(configuredRole.id)) {
+              hasChannelWriteAccess = true;
+            } else if (
+              readRoles.includes(configuredRole.id) ||
+              allowedRoles.includes(configuredRole.id)
+            ) {
+              hasChannelWriteAccess = false;
+            }
+          }
+        }
+
+        // 3. Fallback/Default
+        if (!roleMatched) {
+          hasChannelWriteAccess = !isChannelReadOnly;
+        }
       }
     }
   }
@@ -2845,9 +2904,7 @@ export const ChatArea = ({
                             ? 'Choose an emoji'
                             : isChannelMode &&
                                 activeChannel &&
-                                (activeChannel.isReadOnly ||
-                                  (activeChannel.writeRoleIds &&
-                                    activeChannel.writeRoleIds.length > 0))
+                                !hasChannelWriteAccess
                               ? 'This channel is read-only'
                               : 'You do not have permission to send messages'
                         }
@@ -2880,9 +2937,7 @@ export const ChatArea = ({
                         !canSendMessages
                           ? isChannelMode &&
                             activeChannel &&
-                            (activeChannel.isReadOnly ||
-                              (activeChannel.writeRoleIds &&
-                                activeChannel.writeRoleIds.length > 0))
+                            !hasChannelWriteAccess
                             ? 'This channel is read-only'
                             : 'You do not have permission to send messages'
                           : !canAttachFiles
@@ -3201,9 +3256,7 @@ export const ChatArea = ({
                                   : 'Type a message… (Enter to send)'
                                 : isChannelMode &&
                                     activeChannel &&
-                                    (activeChannel.isReadOnly ||
-                                      (activeChannel.writeRoleIds &&
-                                        activeChannel.writeRoleIds.length > 0))
+                                    !hasChannelWriteAccess
                                   ? 'This channel is read-only.'
                                   : 'You do not have permission to send messages in this group.'
                           }
