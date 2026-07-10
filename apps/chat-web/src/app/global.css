@@ -3108,56 +3108,67 @@ em-emoji-picker {
 /* Markdown Message Styles */
 .markdown-body {
   font-family: inherit;
-  color: inherit;
+  color: var(--text-primary);
+  line-height: 1.6;
 }
 .markdown-body p {
-  margin-bottom: 0.5em;
+  margin-bottom: 0.8em;
   margin-top: 0;
+  color: var(--text-primary);
 }
 .markdown-body p:last-child {
   margin-bottom: 0;
 }
 .markdown-body code {
-  background-color: rgba(0, 0, 0, 0.2);
+  background-color: var(--bg-input);
+  color: var(--accent-primary, #5865f2);
   padding: 0.2em 0.4em;
   border-radius: 6px;
   font-size: 85%;
+  border: 1px solid var(--border-muted);
   font-family:
     ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
     'Courier New', monospace;
 }
 .markdown-body pre {
-  background-color: rgba(0, 0, 0, 0.3);
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-muted);
   padding: 12px;
-  border-radius: 8px;
+  border-radius: 10px;
   overflow-x: auto;
-  margin: 8px 0;
+  margin: 12px 0;
 }
 .markdown-body pre code {
   background-color: transparent;
+  color: var(--text-primary);
+  border: none;
   padding: 0;
   font-size: 13px;
 }
 .markdown-body blockquote {
   border-left: 4px solid var(--accent-primary, #5865f2);
-  margin: 8px 0;
-  padding-left: 12px;
-  color: rgba(255, 255, 255, 0.7);
+  margin: 12px 0;
+  padding: 4px 0 4px 16px;
+  color: var(--text-muted);
+  background-color: var(--theme-btn);
+  border-radius: 0 8px 8px 0;
 }
 .markdown-body a {
   color: var(--accent-primary, #5865f2);
-  text-decoration: hover;
+  text-decoration: none;
+  font-weight: 600;
 }
 .markdown-body a:hover {
   text-decoration: underline;
 }
 .markdown-body ul,
 .markdown-body ol {
-  padding-left: 1.5em;
-  margin-bottom: 0.5em;
+  padding-left: 1.8em;
+  margin-bottom: 0.8em;
+  color: var(--text-primary);
 }
 .markdown-body li {
-  margin-bottom: 0.25em;
+  margin-bottom: 0.35em;
 }
 .markdown-body h1,
 .markdown-body h2,
@@ -3165,19 +3176,24 @@ em-emoji-picker {
 .markdown-body h4,
 .markdown-body h5,
 .markdown-body h6 {
-  margin-top: 0.5em;
+  margin-top: 1em;
   margin-bottom: 0.5em;
-  font-weight: 600;
-  line-height: 1.25;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--text-primary);
 }
 .markdown-body h1 {
-  font-size: 1.5em;
+  font-size: 1.6em;
+  border-bottom: 1px solid var(--border-muted);
+  padding-bottom: 0.3em;
 }
 .markdown-body h2 {
-  font-size: 1.3em;
+  font-size: 1.35em;
+  border-bottom: 1px solid var(--border-muted);
+  padding-bottom: 0.25em;
 }
 .markdown-body h3 {
-  font-size: 1.1em;
+  font-size: 1.15em;
 }
 
 /* Mobile Redesign - Rounded Corners & Native Feel overrides */
