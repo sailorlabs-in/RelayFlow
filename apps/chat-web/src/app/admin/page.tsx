@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -12,6 +12,15 @@ import ApiRequest from '../../utils/ApiRequest';
 import { showToast } from '../../components/toast';
 import { Avatar } from '../../components/Avatar';
 import { socketManager } from '../../store/socketManager';
+import {
+  IconBold,
+  IconItalic,
+  IconStrikethrough,
+  IconCode,
+  IconLink,
+  IconList,
+  IconQuote,
+} from '../../components/Icons';
 
 interface UserData {
   id: string;
@@ -444,7 +453,7 @@ function AdminDashboardContent() {
       return;
     }
     if (!editUsername.trim() && !editDisplayName.trim()) {
-      showToast.error('Provide at least a new username or display name.');
+      showToast.error('Provide at least a new username or Name.');
       return;
     }
     setEditIdentitySubmitting(true);
@@ -939,7 +948,7 @@ function AdminDashboardContent() {
                               />
                               <div className="min-w-0">
                                 <p className="font-bold text-theme-primary truncate leading-tight">
-                                  {u.displayName || 'No Display Name'}
+                                  {u.displayName || 'No Name'}
                                 </p>
                                 <p className="text-[10px] text-theme-muted font-mono truncate mt-0.5">
                                   @{u.username || 'unknown'}
@@ -1229,7 +1238,7 @@ function AdminDashboardContent() {
                             {g.owner ? (
                               <div className="min-w-0">
                                 <p className="font-bold text-theme-primary truncate leading-tight">
-                                  {g.owner.displayName || 'No Display Name'}
+                                  {g.owner.displayName || 'No Name'}
                                 </p>
                                 <p className="text-[10px] text-theme-muted font-mono truncate mt-0.5">
                                   @{g.owner.username || 'unknown'}
@@ -1389,7 +1398,7 @@ function AdminDashboardContent() {
               </div>
             </div>
             <form onSubmit={handleSendWarning} className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col p-2 gap-1.5">
                 <label className="text-[10px] font-bold text-theme-muted uppercase tracking-wider">
                   Warning Message
                 </label>
@@ -1597,7 +1606,7 @@ function AdminDashboardContent() {
                 </h2>
                 <p className="text-xs text-theme-muted">
                   Modify @{editIdentityModal.currentUsername}&apos;s username or
-                  display name.
+                  Name.
                 </p>
               </div>
             </div>
@@ -1644,13 +1653,11 @@ function AdminDashboardContent() {
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[10px] font-bold text-theme-muted uppercase tracking-wider">
-                    New Display Name
+                    New Name
                   </label>
                   <input
                     type="text"
-                    placeholder={
-                      editIdentityModal.currentDisplayName || 'Display Name'
-                    }
+                    placeholder={editIdentityModal.currentDisplayName || 'Name'}
                     value={editDisplayName}
                     onChange={(e) => setEditDisplayName(e.target.value)}
                     className="input-base focus:input-focus bg-theme-input/40 rounded-xl p-3 text-xs text-theme-primary placeholder-theme-muted"
@@ -1915,6 +1922,49 @@ function AdminNoteModal({
   const [title, setTitle] = useState(initialTitle);
   const [content, setContent] = useState(initialContent);
   const [editorTab, setEditorTab] = useState<'write' | 'preview'>('write');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const applyFormat = (prefix: string, suffix = '') => {
+    if (!textareaRef.current) {
+      return;
+    }
+    const start = textareaRef.current.selectionStart;
+    const end = textareaRef.current.selectionEnd;
+    const text = content;
+    const selectedText = text.substring(start, end);
+
+    if (!suffix) {
+      const before = text.substring(0, start);
+      const after = text.substring(end);
+      const newText = before + prefix + selectedText + after;
+      setContent(newText);
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+          textareaRef.current.setSelectionRange(
+            start + prefix.length,
+            end + prefix.length,
+          );
+        }
+      }, 0);
+      return;
+    }
+
+    const before = text.substring(0, start);
+    const after = text.substring(end);
+    const newText = before + prefix + selectedText + suffix + after;
+    setContent(newText);
+
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        textareaRef.current.setSelectionRange(
+          start + prefix.length,
+          end + prefix.length,
+        );
+      }
+    }, 0);
+  };
 
   useEffect(() => {
     setTitle(initialTitle);
@@ -1979,10 +2029,7 @@ function AdminNoteModal({
           </button>
         </div>
 
-        <form
-          onSubmit={handleSubmit}
-          className="flex flex-col gap-4 overflow-hidden"
-        >
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <label className="text-[10px] font-bold text-theme-muted uppercase tracking-wider">
               Title <span className="text-red-400">*</span>
@@ -2030,14 +2077,105 @@ function AdminNoteModal({
             </div>
 
             {editorTab === 'write' ? (
-              <textarea
-                required
-                placeholder="### What's New&#10;- Added super cool voice dashboards&#10;- Improved security layers&#10;&#10;Use markdown syntax like **bold**, *italics*, [links](url), lists, code blocks."
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                rows={12}
-                className="input-base focus:input-focus bg-theme-input/40 rounded-xl p-3 text-xs text-theme-primary placeholder-theme-muted font-mono resize-none flex-1 overflow-y-auto"
-              />
+              <div className="flex flex-col flex-1 min-h-0">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-theme-input/20 border border-glass border-b-0 rounded-t-xl overflow-x-auto min-h-[36px]">
+                  <button
+                    type="button"
+                    onClick={() => applyFormat('# ')}
+                    className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors flex items-center justify-center min-w-[24px] cursor-pointer"
+                    title="Heading 1"
+                  >
+                    <span className="text-[11px] font-bold">H1</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyFormat('## ')}
+                    className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors flex items-center justify-center min-w-[24px] cursor-pointer"
+                    title="Heading 2"
+                  >
+                    <span className="text-[11px] font-bold">H2</span>
+                  </button>
+                  <div className="w-px h-4 bg-theme/20 mx-1" />
+                  <button
+                    type="button"
+                    onClick={() => applyFormat('**', '**')}
+                    className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors cursor-pointer"
+                    title="Bold"
+                  >
+                    <IconBold />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyFormat('*', '*')}
+                    className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors cursor-pointer"
+                    title="Italic"
+                  >
+                    <IconItalic />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyFormat('~~', '~~')}
+                    className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors cursor-pointer"
+                    title="Strikethrough"
+                  >
+                    <IconStrikethrough />
+                  </button>
+                  <div className="w-px h-4 bg-theme/20 mx-1" />
+                  <button
+                    type="button"
+                    onClick={() => applyFormat('`', '`')}
+                    className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors cursor-pointer"
+                    title="Inline Code"
+                  >
+                    <IconCode />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyFormat('```\n', '\n```')}
+                    className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors flex items-center justify-center w-6 h-6 cursor-pointer"
+                    title="Code Block"
+                  >
+                    <span className="text-[10px] font-bold mt-0.5">
+                      {'</>'}
+                    </span>
+                  </button>
+                  <div className="w-px h-4 bg-theme/20 mx-1" />
+                  <button
+                    type="button"
+                    onClick={() => applyFormat('[', '](url)')}
+                    className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors cursor-pointer"
+                    title="Link"
+                  >
+                    <IconLink />
+                  </button>
+                  <div className="w-px h-4 bg-theme/20 mx-1" />
+                  <button
+                    type="button"
+                    onClick={() => applyFormat('- ')}
+                    className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors cursor-pointer"
+                    title="List"
+                  >
+                    <IconList />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyFormat('> ')}
+                    className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors cursor-pointer"
+                    title="Quote"
+                  >
+                    <IconQuote />
+                  </button>
+                </div>
+                <textarea
+                  ref={textareaRef}
+                  required
+                  placeholder="### What's New&#10;- Added super cool voice dashboards&#10;- Improved security layers&#10;&#10;Use markdown syntax like **bold**, *italics*, [links](url), lists, code blocks."
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  rows={12}
+                  className="input-base focus:input-focus bg-theme-input/40 rounded-b-xl rounded-t-none p-3 text-xs text-theme-primary placeholder-theme-muted font-mono resize-none flex-1 overflow-y-auto border-t-0"
+                />
+              </div>
             ) : (
               <div className="flex-1 overflow-y-auto border border-glass bg-theme-input/20 rounded-xl p-3 max-h-[300px]">
                 <div className="markdown-body text-xs text-theme-primary leading-relaxed">

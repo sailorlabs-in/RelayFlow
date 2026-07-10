@@ -54,7 +54,7 @@ export class UsersController {
   ) {}
 
   @Get('search')
-  @ApiOperation({ summary: 'Search for active users by email or display name' })
+  @ApiOperation({ summary: 'Search for active users by email or Name' })
   @ApiQuery({
     name: 'query',
     required: true,

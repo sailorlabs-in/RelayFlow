@@ -473,7 +473,7 @@ export class AdminController {
 
     if (body.displayName !== undefined && body.displayName.trim() !== '') {
       user.displayName = body.displayName.trim();
-      changes.push(`display name to "${user.displayName}"`);
+      changes.push(`Name to "${user.displayName}"`);
     }
 
     if (body.username !== undefined && body.username.trim() !== '') {
@@ -511,7 +511,7 @@ export class AdminController {
 
     if (body.displayName !== undefined && body.displayName.trim() !== '') {
       notificationMessages.push({
-        field: 'display name',
+        field: 'Name',
         event: 'admin.identity.updated',
         value: savedUser.displayName ?? '',
       });

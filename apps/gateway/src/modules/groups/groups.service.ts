@@ -1704,7 +1704,7 @@ export class GroupsService {
       throw new BadRequestException('You are already the owner of this group');
     }
 
-    // Load new owner user details to get display name & email
+    // Load new owner user details to get Name & email
     const newOwnerUser = await this.groupRepo.manager.findOne(User, {
       where: { id: newOwnerId },
     });

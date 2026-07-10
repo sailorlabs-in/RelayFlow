@@ -1619,7 +1619,7 @@ export const ChatArea = ({
     setShowEmojiPicker((prev) => !prev);
   };
 
-  // ---- Conversation display name helper ----
+  // ---- Conversation Name helper ----
   const getConversationDetails = (convo: any) => {
     if (!user) {
       return null;

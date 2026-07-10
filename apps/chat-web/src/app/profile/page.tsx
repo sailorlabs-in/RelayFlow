@@ -1194,7 +1194,7 @@ export function ProfileSettingsContent({
               Settings
             </h1>
             <p className="text-[11.5px] mt-0.5 text-[var(--text-muted)]">
-              Configure your display name, theme layouts, and active status.
+              Configure your Name, theme layouts, and active status.
             </p>
           </div>
 
@@ -1497,7 +1497,7 @@ export function ProfileSettingsContent({
                     className="text-[11.5px] font-bold uppercase tracking-wider"
                     style={{ color: 'var(--text-secondary)' }}
                   >
-                    Display Name
+                    Name
                   </label>
                   <input
                     type="text"
