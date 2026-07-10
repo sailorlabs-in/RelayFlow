@@ -508,6 +508,8 @@ export class GroupsController {
     @Body('hiddenFromRoleIds') hiddenFromRoleIds?: string[],
     @Body('readUserIds') readUserIds?: string[],
     @Body('writeUserIds') writeUserIds?: string[],
+    @Body('denyWriteRoleIds') denyWriteRoleIds?: string[],
+    @Body('denyWriteUserIds') denyWriteUserIds?: string[],
   ) {
     const channel = await this.groupsService.createChannel(
       groupId,
@@ -524,6 +526,8 @@ export class GroupsController {
       hiddenFromRoleIds,
       readUserIds,
       writeUserIds,
+      denyWriteRoleIds,
+      denyWriteUserIds,
     );
 
     // Notify all group members about the new channel
@@ -573,6 +577,8 @@ export class GroupsController {
     @Body('hiddenFromRoleIds') hiddenFromRoleIds?: string[],
     @Body('readUserIds') readUserIds?: string[],
     @Body('writeUserIds') writeUserIds?: string[],
+    @Body('denyWriteRoleIds') denyWriteRoleIds?: string[],
+    @Body('denyWriteUserIds') denyWriteUserIds?: string[],
   ) {
     const channel = await this.groupsService.updateChannel(
       groupId,
@@ -588,6 +594,8 @@ export class GroupsController {
       hiddenFromRoleIds,
       readUserIds,
       writeUserIds,
+      denyWriteRoleIds,
+      denyWriteUserIds,
     );
 
     // Notify all group members about the channel update

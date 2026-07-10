@@ -575,6 +575,8 @@ export class GroupsService {
     hiddenFromRoleIds?: string[],
     readUserIds?: string[],
     writeUserIds?: string[],
+    denyWriteRoleIds?: string[],
+    denyWriteUserIds?: string[],
   ): Promise<Conversation> {
     const membership = await this.groupMemberRepo.findOne({
       where: { groupId, userId: requesterId },
@@ -605,6 +607,8 @@ export class GroupsService {
       hiddenFromRoleIds: hiddenFromRoleIds || [],
       readUserIds: readUserIds || [],
       writeUserIds: writeUserIds || [],
+      denyWriteRoleIds: denyWriteRoleIds || [],
+      denyWriteUserIds: denyWriteUserIds || [],
       sectionId,
       isReadOnly: isReadOnly || false,
       notificationSetting: notificationSetting || 'all',
@@ -641,6 +645,8 @@ export class GroupsService {
     hiddenFromRoleIds?: string[],
     readUserIds?: string[],
     writeUserIds?: string[],
+    denyWriteRoleIds?: string[],
+    denyWriteUserIds?: string[],
   ): Promise<Conversation> {
     const group = await this.groupRepo.findOne({ where: { id: groupId } });
     if (!group) {
@@ -693,6 +699,12 @@ export class GroupsService {
     }
     if (writeUserIds !== undefined) {
       channel.writeUserIds = writeUserIds;
+    }
+    if (denyWriteRoleIds !== undefined) {
+      channel.denyWriteRoleIds = denyWriteRoleIds;
+    }
+    if (denyWriteUserIds !== undefined) {
+      channel.denyWriteUserIds = denyWriteUserIds;
     }
     if (isReadOnly !== undefined) {
       channel.isReadOnly = isReadOnly;
@@ -916,7 +928,19 @@ export class GroupsService {
         }
       }
 
-      // 3. Fallback/Default for users with no matching role configurations
+      // 3. Everyone override (third priority)
+      if (hiddenFromRoles.includes('everyone')) {
+        return false;
+      }
+      if (
+        allowedRoles.includes('everyone') ||
+        readRoles.includes('everyone') ||
+        writeRoles.includes('everyone')
+      ) {
+        return true;
+      }
+
+      // 4. Fallback/Default
       if (isChannelPrivate) {
         return false;
       }
@@ -1031,7 +1055,19 @@ export class GroupsService {
       }
     }
 
-    // 3. Fallback/Default
+    // 3. Everyone override (third priority)
+    if (hiddenFromRoles.includes('everyone')) {
+      return false;
+    }
+    if (
+      allowedRoles.includes('everyone') ||
+      readRoles.includes('everyone') ||
+      writeRoles.includes('everyone')
+    ) {
+      return true;
+    }
+
+    // 4. Fallback/Default
     if (isChannelPrivate) {
       return false;
     }
@@ -1082,34 +1118,20 @@ export class GroupsService {
 
     // 1. User-level overrides (highest priority)
     const hiddenFromUsers = channel.hiddenFromUserIds || [];
-    const readUsers = channel.readUserIds || [];
     const writeUsers = channel.writeUserIds || [];
+    const denyWriteUsers = channel.denyWriteUserIds || [];
 
-    if (hiddenFromUsers.includes(userId)) {
+    if (hiddenFromUsers.includes(userId) || denyWriteUsers.includes(userId)) {
       return false;
     }
     if (writeUsers.includes(userId)) {
       return true;
     }
-    if (readUsers.includes(userId)) {
-      // Since they are individually selected, we don't consider their roles.
-      // They can write only if the channel has no write restrictions.
-      const isChannelReadOnly =
-        channel.isReadOnly ||
-        (channel.writeRoleIds && channel.writeRoleIds.length > 0) ||
-        writeUsers.length > 0;
-      return !isChannelReadOnly;
-    }
 
     // 2. Role-level evaluation (second priority)
     const memberRoleIds = member.roleIds || [];
-    const hiddenFromRoles = channel.hiddenFromRoleIds || [];
-    const allowedRoles = channel.allowedRoleIds || [];
-    const readRoles = channel.readRoleIds || [];
     const writeRoles = channel.writeRoleIds || [];
-
-    const isChannelReadOnly =
-      channel.isReadOnly || writeRoles.length > 0 || writeUsers.length > 0;
+    const denyWriteRoles = channel.denyWriteRoleIds || [];
 
     if (memberRoleIds.length > 0) {
       const roles = await this.groupRoleRepo.find({
@@ -1123,30 +1145,33 @@ export class GroupsService {
 
       const configuredRole = sortedRoles.find(
         (role) =>
-          hiddenFromRoles.includes(role.id) ||
-          writeRoles.includes(role.id) ||
-          readRoles.includes(role.id) ||
-          allowedRoles.includes(role.id),
+          denyWriteRoles.includes(role.id) || writeRoles.includes(role.id),
       );
 
       if (configuredRole) {
-        if (hiddenFromRoles.includes(configuredRole.id)) {
+        if (denyWriteRoles.includes(configuredRole.id)) {
           return false;
         }
         if (writeRoles.includes(configuredRole.id)) {
           return true;
         }
-        if (
-          readRoles.includes(configuredRole.id) ||
-          allowedRoles.includes(configuredRole.id)
-        ) {
-          return false;
-        }
       }
     }
 
-    // 3. Fallback/Default
-    return !isChannelReadOnly;
+    // 3. Everyone override (third priority)
+    if (denyWriteRoles.includes('everyone')) {
+      return false;
+    }
+    if (writeRoles.includes('everyone')) {
+      return true;
+    }
+
+    // 4. Fallback/Default
+    if (channel.isReadOnly) {
+      return false;
+    }
+
+    return true;
   }
 
   // ─── Custom Role Management ─────────────────────────────────────────────────

@@ -62,6 +62,8 @@ export interface GroupChannel {
   hiddenFromRoleIds?: string[];
   readUserIds?: string[];
   writeUserIds?: string[];
+  denyWriteRoleIds?: string[];
+  denyWriteUserIds?: string[];
   isReadOnly?: boolean;
   notificationSetting?: 'all' | 'mention' | 'none';
   createdAt: string;
@@ -264,6 +266,8 @@ export const createChannel = createAsyncThunk(
       hiddenFromRoleIds?: string[];
       readUserIds?: string[];
       writeUserIds?: string[];
+      denyWriteRoleIds?: string[];
+      denyWriteUserIds?: string[];
       isReadOnly?: boolean;
       notificationSetting?: 'all' | 'mention' | 'none';
     },
@@ -284,6 +288,8 @@ export const createChannel = createAsyncThunk(
           hiddenFromRoleIds: payload.hiddenFromRoleIds || [],
           readUserIds: payload.readUserIds || [],
           writeUserIds: payload.writeUserIds || [],
+          denyWriteRoleIds: payload.denyWriteRoleIds || [],
+          denyWriteUserIds: payload.denyWriteUserIds || [],
           isReadOnly: payload.isReadOnly || false,
           notificationSetting: payload.notificationSetting || 'all',
         },
@@ -318,6 +324,8 @@ export const updateChannel = createAsyncThunk(
       hiddenFromRoleIds?: string[];
       readUserIds?: string[];
       writeUserIds?: string[];
+      denyWriteRoleIds?: string[];
+      denyWriteUserIds?: string[];
       isReadOnly?: boolean;
       notificationSetting?: 'all' | 'mention' | 'none';
     },
@@ -336,6 +344,8 @@ export const updateChannel = createAsyncThunk(
           hiddenFromRoleIds: payload.hiddenFromRoleIds,
           readUserIds: payload.readUserIds,
           writeUserIds: payload.writeUserIds,
+          denyWriteRoleIds: payload.denyWriteRoleIds,
+          denyWriteUserIds: payload.denyWriteUserIds,
           isReadOnly: payload.isReadOnly,
           notificationSetting: payload.notificationSetting,
         },
@@ -1054,11 +1064,18 @@ const groupsSlice = createSlice({
     },
     socketChannelCreated: (
       state,
-      action: PayloadAction<{ groupId: string; channel: GroupChannel }>,
+      action: PayloadAction<{
+        groupId: string;
+        channel: GroupChannel;
+        userId?: string;
+      }>,
     ) => {
-      const { groupId, channel } = action.payload;
+      const { groupId, channel, userId } = action.payload;
       const group = state.groups.find((g) => g.id === groupId);
       if (group) {
+        if (userId && !canUserAccessChannelLocal(group, channel, userId)) {
+          return;
+        }
         const exists = group.channels.some((c) => c.id === channel.id);
         if (!exists) {
           group.channels.push(channel);
@@ -1067,14 +1084,39 @@ const groupsSlice = createSlice({
     },
     socketChannelUpdated: (
       state,
-      action: PayloadAction<{ groupId: string; channel: GroupChannel }>,
+      action: PayloadAction<{
+        groupId: string;
+        channel: GroupChannel;
+        userId?: string;
+      }>,
     ) => {
-      const { groupId, channel } = action.payload;
+      const { groupId, channel, userId } = action.payload;
       const group = state.groups.find((g) => g.id === groupId);
       if (group && Array.isArray(group.channels)) {
         const cIdx = group.channels.findIndex((c) => c.id === channel.id);
-        if (cIdx !== -1) {
-          group.channels[cIdx] = channel;
+        const canAccess = userId
+          ? canUserAccessChannelLocal(group, channel, userId)
+          : true;
+
+        if (canAccess) {
+          if (cIdx !== -1) {
+            group.channels[cIdx] = channel;
+          } else {
+            group.channels.push(channel);
+          }
+        } else {
+          if (cIdx !== -1) {
+            group.channels.splice(cIdx, 1);
+          }
+          if (
+            state.activeGroupId === groupId &&
+            state.activeChannelId === channel.id
+          ) {
+            const remainingChannels = group.channels.filter((c) =>
+              userId ? canUserAccessChannelLocal(group, c, userId) : true,
+            );
+            state.activeChannelId = remainingChannels[0]?.id || null;
+          }
         }
       }
     },
@@ -1659,3 +1701,119 @@ export const {
 } = groupsSlice.actions;
 
 export default groupsSlice.reducer;
+
+function canUserAccessChannelLocal(
+  group: Group,
+  channel: GroupChannel,
+  userId: string,
+): boolean {
+  const member = group.members.find((m) => m.userId === userId);
+  if (!member) {
+    return false;
+  }
+
+  // Group owner, admin, or manage_group/manage_channels bypasses visibility checks
+  const hasManageGroup =
+    member.permissions && member.permissions.includes('manage_group');
+  const hasManageChannels =
+    member.permissions && member.permissions.includes('manage_channels');
+
+  if (
+    member.role === 'owner' ||
+    member.role === 'admin' ||
+    member.user?.role === 'admin' ||
+    hasManageGroup ||
+    hasManageChannels
+  ) {
+    return true;
+  }
+
+  // Check parent section/category access first
+  if (channel.sectionId && group.sections) {
+    const section = group.sections.find((s) => s.id === channel.sectionId);
+    if (
+      section &&
+      section.allowedRoleIds &&
+      section.allowedRoleIds.length > 0
+    ) {
+      const allowedRoles = section.allowedRoleIds;
+      const memberRoleIds = member.roleIds || [];
+      const hasSectionAccess = allowedRoles.some((roleId) =>
+        memberRoleIds.includes(roleId),
+      );
+      if (!hasSectionAccess) {
+        return false;
+      }
+    }
+  }
+
+  const hiddenFromUsers = channel.hiddenFromUserIds || [];
+  const readUsers = channel.readUserIds || [];
+  const writeUsers = channel.writeUserIds || [];
+
+  // 1. User-level overrides (highest priority)
+  if (hiddenFromUsers.includes(userId)) {
+    return false;
+  }
+  if (writeUsers.includes(userId) || readUsers.includes(userId)) {
+    return true;
+  }
+
+  // 2. Role-level evaluation (second priority)
+  const memberRoleIds = member.roleIds || [];
+  const hiddenFromRoles = channel.hiddenFromRoleIds || [];
+  const allowedRoles = channel.allowedRoleIds || [];
+  const readRoles = channel.readRoleIds || [];
+  const writeRoles = channel.writeRoleIds || [];
+
+  if (memberRoleIds.length > 0 && group.roles) {
+    const userRoles = group.roles.filter((role) =>
+      memberRoleIds.includes(role.id),
+    );
+    const sortedRoles = [...userRoles].sort((a, b) => {
+      const hpA = a.hierarchyPriority ?? a.priority ?? 1000000;
+      const hpB = b.hierarchyPriority ?? b.priority ?? 1000000;
+      return hpA - hpB;
+    });
+
+    const configuredRole = sortedRoles.find(
+      (role) =>
+        hiddenFromRoles.includes(role.id) ||
+        writeRoles.includes(role.id) ||
+        readRoles.includes(role.id) ||
+        allowedRoles.includes(role.id),
+    );
+
+    if (configuredRole) {
+      if (hiddenFromRoles.includes(configuredRole.id)) {
+        return false;
+      }
+      if (
+        writeRoles.includes(configuredRole.id) ||
+        readRoles.includes(configuredRole.id) ||
+        allowedRoles.includes(configuredRole.id)
+      ) {
+        return true;
+      }
+    }
+  }
+
+  // 3. Everyone override (third priority)
+  if (hiddenFromRoles.includes('everyone')) {
+    return false;
+  }
+  if (
+    allowedRoles.includes('everyone') ||
+    readRoles.includes('everyone') ||
+    writeRoles.includes('everyone')
+  ) {
+    return true;
+  }
+
+  // 4. Fallback/Default
+  if (hiddenFromRoles.includes('everyone')) {
+    return false;
+  }
+
+  return true;
+}
