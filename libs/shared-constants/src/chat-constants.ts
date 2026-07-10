@@ -8,5 +8,5 @@ export const PRESENCE_DOT_COLORS = {
   online: '#22c55e', // green
   away: '#eab308', // amber
   dnd: '#ef4444', // red
-  offline: 'var(--text-muted)', // gray
+  offline: '#8e9bae', // gray
 };
