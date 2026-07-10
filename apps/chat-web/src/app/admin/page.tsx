@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useRouter } from 'next/navigation';
 import StoreProvider from '../../store/StoreProvider';
 import { useAppSelector, useAppDispatch } from '../../store';
@@ -73,6 +75,20 @@ interface GroupData {
   } | null;
 }
 
+interface UpdateNoteData {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+  author: {
+    id: string;
+    displayName?: string;
+    username?: string;
+    email: string;
+  } | null;
+}
+
 function AdminDashboardContent() {
   const router = useRouter();
   const dispatch = useAppDispatch();
@@ -81,9 +97,12 @@ function AdminDashboardContent() {
   // hydrated = true once restoreSession has synchronously read localStorage
   const [hydrated, setHydrated] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<'users' | 'groups'>('users');
+  const [activeTab, setActiveTab] = useState<
+    'users' | 'groups' | 'update-notes'
+  >('users');
   const [users, setUsers] = useState<UserData[]>([]);
   const [groups, setGroups] = useState<GroupData[]>([]);
+  const [updateNotes, setUpdateNotes] = useState<UpdateNoteData[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Search queries
@@ -146,6 +165,22 @@ function AdminDashboardContent() {
   const [editReason, setEditReason] = useState('');
   const [editIdentitySubmitting, setEditIdentitySubmitting] = useState(false);
 
+  // Update Notes modals
+  const [noteModal, setNoteModal] = useState<{
+    isOpen: boolean;
+    mode: 'create' | 'edit';
+    noteId?: string;
+  } | null>(null);
+  const [noteTitle, setNoteTitle] = useState('');
+  const [noteContent, setNoteContent] = useState('');
+  const [noteSubmitting, setNoteSubmitting] = useState(false);
+  const [deleteNoteModal, setDeleteNoteModal] = useState<{
+    isOpen: boolean;
+    noteId: string;
+    noteTitle: string;
+  } | null>(null);
+  const [deleteNoteSubmitting, setDeleteNoteSubmitting] = useState(false);
+
   // Step 1: Restore session from localStorage on first render (synchronous)
   useEffect(() => {
     dispatch(restoreSession());
@@ -163,12 +198,14 @@ function AdminDashboardContent() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [fetchedUsers, fetchedGroups] = await Promise.all([
+      const [fetchedUsers, fetchedGroups, fetchedNotes] = await Promise.all([
         ApiRequest('/admin/users', 'get'),
         ApiRequest('/admin/groups', 'get'),
+        ApiRequest('/admin/update-notes', 'get'),
       ]);
       setUsers(fetchedUsers?.data || []);
       setGroups(fetchedGroups?.data || []);
+      setUpdateNotes(fetchedNotes?.data || []);
     } catch (err: any) {
       showToast.error(
         err.response?.data?.message || 'Failed to fetch administration data',
@@ -441,6 +478,29 @@ function AdminDashboardContent() {
     }
   };
 
+  // ── Update Notes CRUD ──────────────────────────────────────────────────────
+  const handleDeleteNote = async () => {
+    if (!deleteNoteModal) {
+      return;
+    }
+    setDeleteNoteSubmitting(true);
+    try {
+      await ApiRequest(
+        `/admin/update-notes/${deleteNoteModal.noteId}`,
+        'delete',
+      );
+      showToast.success('Update note deleted');
+      setDeleteNoteModal(null);
+      fetchData();
+    } catch (err: any) {
+      showToast.error(
+        err.response?.data?.message || 'Failed to delete update note',
+      );
+    } finally {
+      setDeleteNoteSubmitting(false);
+    }
+  };
+
   // ── Loading / redirecting ───────────────────────────────────────────────────
   if (!hydrated || (hydrated && !accessToken)) {
     return (
@@ -597,6 +657,29 @@ function AdminDashboardContent() {
               </svg>
               Groups
             </button>
+            <button
+              onClick={() => setActiveTab('update-notes')}
+              className={`flex-1 md:flex-none flex items-center justify-center md:justify-start gap-3 px-4 py-3 text-xs font-bold uppercase tracking-wider rounded-xl border transition-all cursor-pointer ${
+                activeTab === 'update-notes'
+                  ? 'bg-theme-input border-glass text-theme-secondary'
+                  : 'bg-transparent border-transparent text-theme-muted hover:text-theme-primary hover:bg-theme-input/10'
+              }`}
+            >
+              <svg
+                className="w-4 h-4 shrink-0"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth="2.5"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 4a2 2 0 012 2v5a2 2 0 01-2 2h-2m-6-4h.01M9 16h5"
+                />
+              </svg>
+              Update Notes
+            </button>
           </nav>
         </div>
 
@@ -648,12 +731,18 @@ function AdminDashboardContent() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-glass">
           <div>
             <h2 className="text-lg font-extrabold tracking-tight text-theme-primary">
-              {activeTab === 'users' ? 'User Accounts' : 'Registered Servers'}
+              {activeTab === 'users'
+                ? 'User Accounts'
+                : activeTab === 'groups'
+                  ? 'Registered Servers'
+                  : 'Update Notes'}
             </h2>
             <p className="text-[11px] text-theme-muted mt-0.5">
               {activeTab === 'users'
                 ? 'Administer platform user identities and warning systems.'
-                : 'Manage group servers and direct group user assignments.'}
+                : activeTab === 'groups'
+                  ? 'Manage group servers and direct group user assignments.'
+                  : 'Publish new update logs and patch notes to the site.'}
             </p>
           </div>
 
@@ -666,10 +755,24 @@ function AdminDashboardContent() {
                 Reset All Devices
               </button>
             )}
+            {activeTab === 'update-notes' && (
+              <button
+                onClick={() => {
+                  setNoteTitle('');
+                  setNoteContent('');
+                  setNoteModal({ isOpen: true, mode: 'create' });
+                }}
+                className="px-3 py-1.5 rounded-lg bg-theme-secondary hover:bg-theme-secondary/90 text-white text-[10px] font-bold cursor-pointer transition-all active-press"
+              >
+                Publish New Note
+              </button>
+            )}
             <span className="text-[10px] font-bold text-theme-muted uppercase tracking-wider bg-theme-input/40 px-2.5 py-1 rounded border border-glass">
               {activeTab === 'users'
                 ? `${filteredUsers.length} Users`
-                : `${filteredGroups.length} Servers`}
+                : activeTab === 'groups'
+                  ? `${filteredGroups.length} Servers`
+                  : `${updateNotes.length} Updates`}
             </span>
           </div>
         </div>
@@ -1049,7 +1152,7 @@ function AdminDashboardContent() {
                 </table>
               </div>
             </div>
-          ) : (
+          ) : activeTab === 'groups' ? (
             <div className="flex-1 flex flex-col min-h-0 border border-glass bg-theme-sidebar/10 rounded-2xl p-5">
               {/* Search bar */}
               <div className="relative shrink-0 mb-4">
@@ -1159,6 +1262,90 @@ function AdminDashboardContent() {
                               className="btn-send px-3.5 py-1.5 rounded-lg text-[10px] font-bold text-white cursor-pointer transition-all active-press"
                             >
                               Add Member
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col min-h-0 border border-glass bg-theme-sidebar/10 rounded-2xl p-5">
+              {/* Update Notes Table Scroll */}
+              <div className="flex-1 overflow-y-auto rounded-xl">
+                <table className="w-full text-left border-collapse table-fixed">
+                  <thead className="sticky top-0 z-10 bg-[var(--bg-primary)] border-b border-[var(--glass-border)]">
+                    <tr className="text-theme-muted text-[10px] font-bold uppercase tracking-wider">
+                      <th className="px-6 py-3 w-[200px]">Title</th>
+                      <th className="px-6 py-3 w-[350px]">Content Preview</th>
+                      <th className="px-6 py-3 w-[150px]">Author</th>
+                      <th className="px-6 py-3 w-[120px]">Published At</th>
+                      <th className="px-6 py-3 text-right w-[150px]">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--glass-border)] text-xs text-theme-primary">
+                    {updateNotes.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={5}
+                          className="px-6 py-12 text-center text-theme-muted font-semibold"
+                        >
+                          No update notes published yet.
+                        </td>
+                      </tr>
+                    ) : (
+                      updateNotes.map((note) => (
+                        <tr
+                          key={note.id}
+                          className="hover:bg-theme-sidebar/10 transition-colors"
+                        >
+                          <td className="px-6 py-3.5 font-bold truncate">
+                            {note.title}
+                          </td>
+                          <td className="px-6 py-3.5 truncate text-theme-muted font-medium">
+                            {note.content.length > 85
+                              ? note.content.substring(0, 85) + '...'
+                              : note.content}
+                          </td>
+                          <td className="px-6 py-3.5 truncate">
+                            {note.author?.displayName ||
+                              note.author?.username ||
+                              note.author?.email ||
+                              'System'}
+                          </td>
+                          <td className="px-6 py-3.5 text-theme-muted">
+                            {new Date(note.createdAt).toLocaleDateString()}
+                          </td>
+                          <td className="px-6 py-3.5 text-right space-x-2">
+                            <button
+                              onClick={() => {
+                                setNoteTitle(note.title);
+                                setNoteContent(note.content);
+                                setNoteModal({
+                                  isOpen: true,
+                                  mode: 'edit',
+                                  noteId: note.id,
+                                });
+                              }}
+                              className="px-2.5 py-1 rounded bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 text-[10px] font-bold cursor-pointer transition-all border border-indigo-500/20"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => {
+                                setDeleteNoteModal({
+                                  isOpen: true,
+                                  noteId: note.id,
+                                  noteTitle: note.title,
+                                });
+                              }}
+                              className="px-2.5 py-1 rounded bg-red-500/10 hover:bg-red-500/20 text-red-400 text-[10px] font-bold cursor-pointer transition-all border border-red-500/20"
+                            >
+                              Delete
                             </button>
                           </td>
                         </tr>
@@ -1514,6 +1701,104 @@ function AdminDashboardContent() {
           </div>
         </div>
       )}
+
+      {/* Update Notes Modals */}
+      {noteModal?.isOpen && (
+        <AdminNoteModal
+          isOpen={noteModal.isOpen}
+          mode={noteModal.mode}
+          initialTitle={noteTitle}
+          initialContent={noteContent}
+          onClose={() => setNoteModal(null)}
+          submitting={noteSubmitting}
+          onSave={async (title, content) => {
+            setNoteSubmitting(true);
+            try {
+              if (noteModal.mode === 'edit' && noteModal.noteId) {
+                await ApiRequest(
+                  `/admin/update-notes/${noteModal.noteId}`,
+                  'patch',
+                  {
+                    title: title.trim(),
+                    content: content.trim(),
+                  },
+                );
+                showToast.success('Update note saved');
+              } else {
+                await ApiRequest('/admin/update-notes', 'post', {
+                  title: title.trim(),
+                  content: content.trim(),
+                });
+                showToast.success('Update note published to all users');
+              }
+              setNoteModal(null);
+              fetchData();
+            } catch (err: any) {
+              showToast.error(
+                err.response?.data?.message || 'Failed to save update note',
+              );
+            } finally {
+              setNoteSubmitting(false);
+            }
+          }}
+        />
+      )}
+
+      {deleteNoteModal?.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="glass-panel p-6 max-w-sm w-full animate-slide-up flex flex-col gap-4 border border-glass">
+            <div className="flex items-center gap-3 border-b border-glass pb-3">
+              <div className="p-2 bg-red-500/10 rounded-lg text-red-500">
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-theme-primary">
+                  Delete Update Note
+                </h2>
+                <p className="text-xs text-theme-muted font-semibold">
+                  This action cannot be undone.
+                </p>
+              </div>
+            </div>
+            <p className="text-xs text-theme-secondary leading-relaxed">
+              Are you sure you want to delete update note:{' '}
+              <span className="font-bold text-theme-primary">
+                &ldquo;{deleteNoteModal.noteTitle}&rdquo;
+              </span>
+              ? Users will no longer be able to see it.
+            </p>
+            <div className="flex justify-end gap-3 pt-2 border-t border-glass">
+              <button
+                type="button"
+                onClick={() => setDeleteNoteModal(null)}
+                className="px-4 py-2 text-xs font-semibold text-theme-secondary hover:text-theme-primary bg-transparent border border-glass rounded-lg cursor-pointer transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deleteNoteSubmitting}
+                onClick={handleDeleteNote}
+                className="px-4 py-2 text-xs font-bold text-white rounded-lg cursor-pointer active-press disabled:opacity-50 disabled:cursor-not-allowed transition-all bg-red-500 hover:bg-red-600 border-none"
+              >
+                {deleteNoteSubmitting ? 'Deleting...' : 'Delete Note'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* React Portal actions dropdown menu to prevent table layout/border clipping */}
       {activeMenu &&
         typeof window !== 'undefined' &&
@@ -1604,6 +1889,189 @@ function AdminDashboardContent() {
           </>,
           document.body,
         )}
+    </div>
+  );
+}
+
+interface AdminNoteModalProps {
+  isOpen: boolean;
+  mode: 'create' | 'edit';
+  initialTitle: string;
+  initialContent: string;
+  onClose: () => void;
+  onSave: (title: string, content: string) => void;
+  submitting: boolean;
+}
+
+function AdminNoteModal({
+  isOpen,
+  mode,
+  initialTitle,
+  initialContent,
+  onClose,
+  onSave,
+  submitting,
+}: AdminNoteModalProps) {
+  const [title, setTitle] = useState(initialTitle);
+  const [content, setContent] = useState(initialContent);
+  const [editorTab, setEditorTab] = useState<'write' | 'preview'>('write');
+
+  useEffect(() => {
+    setTitle(initialTitle);
+    setContent(initialContent);
+    setEditorTab('write');
+  }, [initialTitle, initialContent, isOpen]);
+
+  if (!isOpen) {
+    return null;
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave(title, content);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+      <div className="glass-panel p-6 max-w-2xl w-full animate-slide-up flex flex-col gap-4 border border-glass max-h-[90vh]">
+        <div className="flex items-center justify-between border-b border-glass pb-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-indigo-500/10 rounded-lg text-theme-secondary">
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth="2.5"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"
+                />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-theme-primary">
+                {mode === 'create' ? 'Publish Update Note' : 'Edit Update Note'}
+              </h2>
+              <p className="text-xs text-theme-muted">
+                {mode === 'create'
+                  ? 'Publish a new update note with markdown support.'
+                  : 'Modify an existing published update note.'}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1 rounded-lg border border-glass bg-theme-input hover:bg-theme-input-focus text-theme-muted hover:text-theme-primary transition-all cursor-pointer"
+          >
+            <svg
+              className="w-4.5 h-4.5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth="2.5"
+            >
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col gap-4 overflow-hidden"
+        >
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[10px] font-bold text-theme-muted uppercase tracking-wider">
+              Title <span className="text-red-400">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="E.g., Version 1.2.0 - Voice Chat & Screen Share"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="input-base focus:input-focus bg-theme-input/40 rounded-xl p-3 text-xs text-theme-primary placeholder-theme-muted"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5 flex-1 min-h-0 overflow-hidden">
+            <div className="flex justify-between items-center">
+              <label className="text-[10px] font-bold text-theme-muted uppercase tracking-wider">
+                Content (Markdown Supported){' '}
+                <span className="text-red-400">*</span>
+              </label>
+              <div className="flex bg-theme-input/60 p-0.5 rounded-lg border border-glass">
+                <button
+                  type="button"
+                  onClick={() => setEditorTab('write')}
+                  className={`px-3 py-1 text-[10px] font-semibold rounded-md transition-all cursor-pointer ${
+                    editorTab === 'write'
+                      ? 'bg-theme-secondary text-white shadow-sm'
+                      : 'text-theme-muted hover:text-theme-primary'
+                  }`}
+                >
+                  Write
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditorTab('preview')}
+                  className={`px-3 py-1 text-[10px] font-semibold rounded-md transition-all cursor-pointer ${
+                    editorTab === 'preview'
+                      ? 'bg-theme-secondary text-white shadow-sm'
+                      : 'text-theme-muted hover:text-theme-primary'
+                  }`}
+                >
+                  Preview
+                </button>
+              </div>
+            </div>
+
+            {editorTab === 'write' ? (
+              <textarea
+                required
+                placeholder="### What's New&#10;- Added super cool voice dashboards&#10;- Improved security layers&#10;&#10;Use markdown syntax like **bold**, *italics*, [links](url), lists, code blocks."
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                rows={12}
+                className="input-base focus:input-focus bg-theme-input/40 rounded-xl p-3 text-xs text-theme-primary placeholder-theme-muted font-mono resize-none flex-1 overflow-y-auto"
+              />
+            ) : (
+              <div className="flex-1 overflow-y-auto border border-glass bg-theme-input/20 rounded-xl p-3 max-h-[300px]">
+                <div className="markdown-body text-xs text-theme-primary leading-relaxed">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {content ||
+                      '*No content preview available. Write some text first!*'}
+                  </ReactMarkdown>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-3 pt-2 border-t border-glass shrink-0">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-xs font-semibold text-theme-secondary hover:text-theme-primary bg-transparent border border-glass rounded-lg cursor-pointer transition-all"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting || !title.trim() || !content.trim()}
+              className="btn-send px-4 py-2 text-xs font-bold text-white rounded-lg cursor-pointer active-press disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            >
+              {submitting
+                ? 'Publishing...'
+                : mode === 'create'
+                  ? 'Publish'
+                  : 'Save Changes'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

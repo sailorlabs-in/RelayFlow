@@ -207,6 +207,7 @@ export class UsersService {
       avatarThumbnailUrl?: string;
       groupOrder?: string;
       customThemes?: string;
+      lastSeenUpdateNoteId?: string;
     },
   ): Promise<User> {
     const user = await this.findById(id);
@@ -293,6 +294,10 @@ export class UsersService {
 
     if (data.customThemes !== undefined) {
       user.customThemes = data.customThemes;
+    }
+
+    if (data.lastSeenUpdateNoteId !== undefined) {
+      user.lastSeenUpdateNoteId = data.lastSeenUpdateNoteId;
     }
 
     const updatedUser = await this.userRepository.save(user);

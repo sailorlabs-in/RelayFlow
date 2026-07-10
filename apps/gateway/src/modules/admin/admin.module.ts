@@ -1,6 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { User, Group, GroupMember } from '@chat-app/database';
+import { User, Group, GroupMember, UpdateNote } from '@chat-app/database';
 import { AdminController } from './admin.controller';
 import { AuthModule } from '../auth/auth.module';
 import { UsersModule } from '../users/users.module';
@@ -11,7 +11,7 @@ import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Group, GroupMember]),
+    TypeOrmModule.forFeature([User, Group, GroupMember, UpdateNote]),
     forwardRef(() => AuthModule),
     forwardRef(() => UsersModule),
     forwardRef(() => GroupsModule),

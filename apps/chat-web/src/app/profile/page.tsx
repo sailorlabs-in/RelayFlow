@@ -6,8 +6,10 @@ import { useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
 import { PrintLog } from '../../utils/logger';
 import { getNotificationClient } from '../useNotificationClient';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import ApiRequest from '../../utils/ApiRequest';
 import { ConfirmationModal } from '../../components/ConfirmationModal';
-
 import { useAppDispatch, useAppSelector } from '../../store';
 import {
   updateUserProfile,
@@ -116,6 +118,20 @@ const IconBell = (): React.JSX.Element => (
   </svg>
 );
 
+const IconMegaphone = (): React.JSX.Element => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    className="w-[18px] h-[18px]"
+  >
+    <path d="M11 5L6 9H2v6h4l5 4V5z" />
+    <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+    <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+  </svg>
+);
+
 const IconLogout = (): React.JSX.Element => (
   <svg
     viewBox="0 0 24 24"
@@ -183,9 +199,9 @@ export function ProfileSettingsContent({
   isModal?: boolean;
   onClose?: () => void;
   onSignOut?: () => void;
-  activeTab?: 'account' | 'theme' | 'status' | 'notifications';
+  activeTab?: 'account' | 'theme' | 'status' | 'notifications' | 'update-notes';
   setActiveTab?: (
-    tab: 'account' | 'theme' | 'status' | 'notifications',
+    tab: 'account' | 'theme' | 'status' | 'notifications' | 'update-notes',
   ) => void;
   isMobileView?: boolean;
   onSaveSuccess?: () => void;
@@ -194,9 +210,9 @@ export function ProfileSettingsContent({
   const dispatch = useAppDispatch();
   const { user, accessToken, status } = useAppSelector((s) => s.auth);
 
-  // Active Tab: 'account' | 'theme' | 'status' | 'notifications'
+  // Active Tab: 'account' | 'theme' | 'status' | 'notifications' | 'update-notes'
   const [internalActiveTab, setInternalActiveTab] = useState<
-    'account' | 'theme' | 'status' | 'notifications'
+    'account' | 'theme' | 'status' | 'notifications' | 'update-notes'
   >('account');
 
   const activeTab =
@@ -435,6 +451,10 @@ export function ProfileSettingsContent({
   const [devices, setDevices] = useState<DeviceSession[]>([]);
   const [loadingDevices, setLoadingDevices] = useState(false);
 
+  // Update Notes History State
+  const [historyNotes, setHistoryNotes] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
   // Load devices when switching to notifications tab
   useEffect(() => {
     if (activeTab === 'notifications' && user) {
@@ -452,6 +472,24 @@ export function ProfileSettingsContent({
         });
     }
   }, [activeTab, user, dispatch]);
+
+  // Load update notes when switching to update-notes tab
+  useEffect(() => {
+    if (activeTab === 'update-notes' && accessToken) {
+      setHistoryLoading(true);
+      ApiRequest('/users/update-notes/all', 'get')
+        .then((res) => {
+          const notesData = res?.data || res || [];
+          setHistoryNotes(notesData);
+        })
+        .catch((err) => {
+          console.error('Failed to load update notes:', err);
+        })
+        .finally(() => {
+          setHistoryLoading(false);
+        });
+    }
+  }, [activeTab, accessToken]);
 
   const handleToggleDeviceNotification = async (
     deviceId: string,
@@ -1153,7 +1191,7 @@ export function ProfileSettingsContent({
         <div className="flex items-center justify-between px-6 py-4.5 border-b border-[var(--border-muted)]">
           <div>
             <h1 className="text-[20px] font-bold tracking-tight text-[var(--text-primary)]">
-              Profile Settings
+              Settings
             </h1>
             <p className="text-[11.5px] mt-0.5 text-[var(--text-muted)]">
               Configure your display name, theme layouts, and active status.
@@ -1211,12 +1249,22 @@ export function ProfileSettingsContent({
                 label: 'Notifications',
                 icon: <IconBell />,
               },
+              {
+                id: 'update-notes',
+                label: 'Update Notes',
+                icon: <IconMegaphone />,
+              },
             ].map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => {
                   setActiveTab(
-                    tab.id as 'account' | 'theme' | 'status' | 'notifications',
+                    tab.id as
+                      | 'account'
+                      | 'theme'
+                      | 'status'
+                      | 'notifications'
+                      | 'update-notes',
                   );
                 }}
                 className={`flex items-center gap-3 shrink-0 w-max md:w-full px-4 py-3 rounded-xl text-[13.5px] font-semibold cursor-pointer text-left transition-all duration-200 border-none ${
@@ -3407,10 +3455,67 @@ export function ProfileSettingsContent({
                 </div>
               </div>
             )}
+
+            {/* TAB: UPDATE NOTES HISTORY */}
+            {activeTab === 'update-notes' && (
+              <div className="flex flex-col gap-6 flex-1 animate-fade-in overflow-hidden h-full">
+                <div className="flex flex-col gap-0.5">
+                  <h3 className="font-extrabold text-[15px] text-theme-primary">
+                    Update Notes History
+                  </h3>
+                  <span className="text-[11.5px] text-theme-muted">
+                    View all previous patch logs and platform updates.
+                  </span>
+                </div>
+
+                <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-4">
+                  {historyLoading ? (
+                    <div className="flex flex-col items-center justify-center py-12 gap-3">
+                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-theme-secondary" />
+                      <span className="text-xs text-theme-muted font-bold">
+                        Loading updates...
+                      </span>
+                    </div>
+                  ) : historyNotes.length === 0 ? (
+                    <div className="text-center py-12 text-theme-muted font-semibold text-xs border border-glass rounded-xl bg-theme-input/10">
+                      No update notes available yet.
+                    </div>
+                  ) : (
+                    historyNotes.map((note) => (
+                      <div
+                        key={note.id}
+                        className="glass-panel border border-glass bg-theme-sidebar/5 rounded-xl p-4.5 flex flex-col gap-3 hover:shadow-md transition-all duration-200"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 border-b border-glass pb-2">
+                          <h4 className="font-bold text-[13px] text-theme-primary">
+                            {note.title}
+                          </h4>
+                          <span className="text-[10px] text-theme-muted font-semibold shrink-0">
+                            {new Date(note.createdAt).toLocaleDateString(
+                              'en-US',
+                              {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                              },
+                            )}
+                          </span>
+                        </div>
+                        <div className="markdown-body text-xs text-theme-primary leading-relaxed max-h-[250px] overflow-y-auto pr-1">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {note.content}
+                          </ReactMarkdown>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Footer Action Save Buttons */}
-          {activeTab !== 'status' && (
+          {activeTab !== 'status' && activeTab !== 'update-notes' && (
             <div
               className={
                 isMobileView

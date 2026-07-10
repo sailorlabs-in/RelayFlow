@@ -78,7 +78,7 @@ export const MobileDashboard = ({
 
   // Mobile Settings Navigation
   const [profileSubPage, setProfileSubPage] = useState<
-    'root' | 'account' | 'theme' | 'status' | 'notifications'
+    'root' | 'account' | 'theme' | 'status' | 'notifications' | 'update-notes'
   >('root');
 
   // Mobile Context Menu for hold gesture

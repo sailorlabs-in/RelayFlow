@@ -1,4 +1,4 @@
-import { User } from '@chat-app/database';
+import { User, UpdateNote } from '@chat-app/database';
 import {
   Controller,
   Get,
@@ -12,6 +12,7 @@ import {
   Inject,
   forwardRef,
   Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -25,6 +26,8 @@ import {
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { QueueNames } from '@chat-app/queues';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, MoreThan, Not } from 'typeorm';
 
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -44,6 +47,10 @@ export class UsersController {
     private readonly realtimeGateway: RealtimeGateway,
     @InjectQueue(QueueNames.NOTIFICATIONS)
     private readonly notificationsQueue: Queue,
+    @InjectRepository(UpdateNote)
+    private readonly updateNoteRepo: Repository<UpdateNote>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
   ) {}
 
   @Get('search')
@@ -499,6 +506,116 @@ export class UsersController {
       },
     });
     return { success: true };
+  }
+
+  // ── Update Notes (user-facing) ──────────────────────────────────────────────
+
+  /**
+   * Returns the most recent unseen update note for the current user.
+   * Used to display the one-time modal on login.
+   */
+  @UseGuards(JwtAuthGuard)
+  @Get('update-notes/unseen')
+  @ApiOperation({ summary: 'Get unseen update notes for current user' })
+  async getUnseenUpdateNotes(@CurrentUser() currentUser: { userId: string }) {
+    const user = await this.userRepo.findOne({
+      where: { id: currentUser.userId },
+      select: ['id', 'lastSeenUpdateNoteId'],
+    });
+    console.log(
+      'UNSEEN CHECK: user id =',
+      currentUser.userId,
+      'lastSeenUpdateNoteId =',
+      user?.lastSeenUpdateNoteId,
+    );
+    if (!user) {
+      return [];
+    }
+
+    let notes: UpdateNote[];
+    if (user.lastSeenUpdateNoteId) {
+      // Find the last-seen note to get its timestamp
+      const lastSeen = await this.updateNoteRepo.findOne({
+        where: { id: user.lastSeenUpdateNoteId },
+        select: ['id', 'createdAt'],
+      });
+      if (lastSeen) {
+        notes = await this.updateNoteRepo.find({
+          where: {
+            id: Not(user.lastSeenUpdateNoteId),
+            createdAt: MoreThan(lastSeen.createdAt),
+          },
+          order: { createdAt: 'DESC' },
+        });
+      } else {
+        // Last-seen note was deleted — show latest only
+        notes = await this.updateNoteRepo.find({
+          order: { createdAt: 'DESC' },
+          take: 1,
+        });
+      }
+    } else {
+      // User has never seen any note — show the latest one
+      notes = await this.updateNoteRepo.find({
+        order: { createdAt: 'DESC' },
+        take: 1,
+      });
+    }
+
+    return notes.map((n) => ({
+      id: n.id,
+      title: n.title,
+      content: n.content,
+      createdAt: n.createdAt,
+      updatedAt: n.updatedAt,
+    }));
+  }
+
+  /**
+   * Mark a note as seen by updating the user's lastSeenUpdateNoteId.
+   */
+  @UseGuards(JwtAuthGuard)
+  @Post('update-notes/:noteId/mark-seen')
+  @ApiOperation({ summary: 'Mark an update note as seen' })
+  async markUpdateNoteSeen(
+    @CurrentUser() currentUser: { userId: string },
+    @Param('noteId') noteId: string,
+  ) {
+    const note = await this.updateNoteRepo.findOne({ where: { id: noteId } });
+    if (!note) {
+      throw new NotFoundException('Update note not found');
+    }
+
+    console.log('MARKING SEEN: user =', currentUser.userId, 'note =', noteId);
+    const updated = await this.usersService.updateProfile(currentUser.userId, {
+      lastSeenUpdateNoteId: noteId,
+    });
+    console.log(
+      'MARKING SEEN RESULT: updated lastSeenUpdateNoteId =',
+      updated.lastSeenUpdateNoteId,
+    );
+
+    return { success: true };
+  }
+
+  /**
+   * Returns all update notes (for the settings history view).
+   */
+  @UseGuards(JwtAuthGuard)
+  @Get('update-notes/all')
+  @ApiOperation({ summary: 'Get all update notes for settings history' })
+  async getAllUpdateNotes() {
+    const notes = await this.updateNoteRepo.find({
+      order: { createdAt: 'DESC' },
+    });
+
+    return notes.map((n) => ({
+      id: n.id,
+      title: n.title,
+      content: n.content,
+      createdAt: n.createdAt,
+      updatedAt: n.updatedAt,
+    }));
   }
 
   @Get(':id')

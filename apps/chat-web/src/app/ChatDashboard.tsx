@@ -43,6 +43,8 @@ import { ProfileSettingsContent } from './profile/page';
 import { useNotificationClient } from './useNotificationClient';
 import { MobileDashboard } from '../components/MobileDashboard';
 import { CallOverlay } from '../components/CallOverlay';
+import { UpdateNoteModal } from '../components/UpdateNoteModal';
+import ApiRequest from '../utils/ApiRequest';
 
 function ChatDashboardContent() {
   const dispatch = useAppDispatch();
@@ -92,6 +94,15 @@ function ChatDashboardContent() {
   const [autoStatus, setAutoStatus] = useState<'online' | 'away' | 'offline'>(
     'online',
   );
+
+  // Update Notes modal state
+  const [showUpdateNoteModal, setShowUpdateNoteModal] = useState(false);
+  const [pushedUpdateNote, setPushedUpdateNote] = useState<{
+    id: string;
+    title: string;
+    content: string;
+    createdAt: string;
+  } | null>(null);
 
   const [isMobile, setIsMobile] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -183,7 +194,34 @@ function ChatDashboardContent() {
       dispatch(fetchPendingRequests());
       socketManager.connect(accessToken);
 
+      // Check for unseen update notes
+      (async () => {
+        try {
+          const res = await ApiRequest('/users/update-notes/unseen', 'get');
+          const data = res?.data || res || [];
+          if (Array.isArray(data) && data.length > 0) {
+            setShowUpdateNoteModal(true);
+          }
+        } catch {
+          // Silently ignore
+        }
+      })();
+
+      // Listen for real-time update note broadcasts
+      const socket = socketManager.getSocket();
+      const onUpdateNotePublished = (note: {
+        id: string;
+        title: string;
+        content: string;
+        createdAt: string;
+      }) => {
+        setPushedUpdateNote(note);
+        setShowUpdateNoteModal(true);
+      };
+      socket?.on('platform.update-note.published', onUpdateNotePublished);
+
       return () => {
+        socket?.off('platform.update-note.published', onUpdateNotePublished);
         socketManager.disconnect();
       };
     }
@@ -517,6 +555,16 @@ function ChatDashboardContent() {
           />
         )}
         <CallOverlay />
+        {/* Update Note Modal */}
+        {showUpdateNoteModal && (
+          <UpdateNoteModal
+            note={pushedUpdateNote}
+            onDismiss={() => {
+              setShowUpdateNoteModal(false);
+              setPushedUpdateNote(null);
+            }}
+          />
+        )}
       </>
     );
   }
@@ -757,6 +805,16 @@ function ChatDashboardContent() {
         />
       )}
       <CallOverlay />
+      {/* Update Note Modal */}
+      {showUpdateNoteModal && (
+        <UpdateNoteModal
+          note={pushedUpdateNote}
+          onDismiss={() => {
+            setShowUpdateNoteModal(false);
+            setPushedUpdateNote(null);
+          }}
+        />
+      )}
     </div>
   );
 }

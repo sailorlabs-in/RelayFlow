@@ -4,6 +4,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Param,
   UseGuards,
   Inject,
@@ -18,7 +19,7 @@ import { Repository } from 'typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { QueueNames } from '@chat-app/queues';
-import { User, Group, GroupMember } from '@chat-app/database';
+import { User, Group, GroupMember, UpdateNote } from '@chat-app/database';
 import { RedisService } from '@chat-app/redis';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
@@ -28,6 +29,9 @@ import { RealtimeGateway } from '../realtime/realtime.gateway';
 
 @Controller('admin')
 export class AdminController {
+  // Platform service account email — hidden from admin panel
+  private readonly PLATFORM_SERVICE_EMAIL = 'service@sailorlabs.in';
+
   constructor(
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
@@ -35,6 +39,8 @@ export class AdminController {
     private readonly groupRepo: Repository<Group>,
     @InjectRepository(GroupMember)
     private readonly groupMemberRepo: Repository<GroupMember>,
+    @InjectRepository(UpdateNote)
+    private readonly updateNoteRepo: Repository<UpdateNote>,
     private readonly usersService: UsersService,
     private readonly groupsService: GroupsService,
     @Inject(forwardRef(() => RealtimeGateway))
@@ -101,13 +107,18 @@ export class AdminController {
       order: { createdAt: 'DESC' },
     });
 
+    // Hide the platform service account from other admins
+    const visibleUsers = users.filter(
+      (u) => u.email !== this.PLATFORM_SERVICE_EMAIL,
+    );
+
     // Merge real-time presence from Redis so the admin sees live status
     // instead of the stale DB value.
     try {
       const redis = this.redisService.getClient();
       const allPresence = await redis.hgetall('presence:status');
       if (allPresence && Object.keys(allPresence).length > 0) {
-        return users.map((u) => {
+        return visibleUsers.map((u) => {
           const presenceJson = allPresence[u.id];
           if (presenceJson) {
             try {
@@ -129,7 +140,7 @@ export class AdminController {
       // Redis unavailable — return DB data as-is
     }
 
-    return users.map((u) => ({ ...u, lastSeen: null }));
+    return visibleUsers.map((u) => ({ ...u, lastSeen: null }));
   }
 
   @UseGuards(JwtAuthGuard, PlatformAdminGuard)
@@ -590,5 +601,116 @@ export class AdminController {
         displayName: savedUser.displayName,
       },
     };
+  }
+
+  // ── Update Notes CRUD ───────────────────────────────────────────────────────
+
+  /**
+   * Create a new platform update note.
+   * Emits a real-time event so online users see it immediately.
+   */
+  @UseGuards(JwtAuthGuard, PlatformAdminGuard)
+  @Post('update-notes')
+  async createUpdateNote(
+    @Body() body: { title: string; content: string },
+    @Request() req: any,
+  ) {
+    if (!body.title?.trim()) {
+      throw new BadRequestException('Title is required');
+    }
+    if (!body.content?.trim()) {
+      throw new BadRequestException('Content is required');
+    }
+
+    const note = this.updateNoteRepo.create({
+      title: body.title.trim(),
+      content: body.content.trim(),
+      createdBy: req.user?.userId,
+    });
+    const saved = await this.updateNoteRepo.save(note);
+
+    // Broadcast to all connected clients so they can show the modal
+    this.realtimeGateway.server.emit('platform.update-note.published', {
+      id: saved.id,
+      title: saved.title,
+      content: saved.content,
+      createdAt: saved.createdAt,
+    });
+
+    return { success: true, note: saved };
+  }
+
+  /**
+   * List all update notes (admin management view).
+   */
+  @UseGuards(JwtAuthGuard, PlatformAdminGuard)
+  @Get('update-notes')
+  async listUpdateNotes() {
+    const notes = await this.updateNoteRepo.find({
+      order: { createdAt: 'DESC' },
+      relations: ['author'],
+    });
+
+    return notes.map((n) => ({
+      id: n.id,
+      title: n.title,
+      content: n.content,
+      createdAt: n.createdAt,
+      updatedAt: n.updatedAt,
+      author: n.author
+        ? {
+            id: n.author.id,
+            displayName: n.author.displayName,
+            username: n.author.username,
+            email: n.author.email,
+          }
+        : null,
+    }));
+  }
+
+  /**
+   * Update an existing note's title and/or content.
+   */
+  @UseGuards(JwtAuthGuard, PlatformAdminGuard)
+  @Patch('update-notes/:noteId')
+  async updateNote(
+    @Param('noteId') noteId: string,
+    @Body() body: { title?: string; content?: string },
+  ) {
+    const note = await this.updateNoteRepo.findOne({ where: { id: noteId } });
+    if (!note) {
+      throw new NotFoundException('Update note not found');
+    }
+
+    if (!body.title?.trim() && !body.content?.trim()) {
+      throw new BadRequestException(
+        'At least one of title or content must be provided',
+      );
+    }
+
+    if (body.title?.trim()) {
+      note.title = body.title.trim();
+    }
+    if (body.content?.trim()) {
+      note.content = body.content.trim();
+    }
+
+    const saved = await this.updateNoteRepo.save(note);
+    return { success: true, note: saved };
+  }
+
+  /**
+   * Delete an update note.
+   */
+  @UseGuards(JwtAuthGuard, PlatformAdminGuard)
+  @Delete('update-notes/:noteId')
+  async deleteUpdateNote(@Param('noteId') noteId: string) {
+    const note = await this.updateNoteRepo.findOne({ where: { id: noteId } });
+    if (!note) {
+      throw new NotFoundException('Update note not found');
+    }
+
+    await this.updateNoteRepo.remove(note);
+    return { success: true };
   }
 }

@@ -101,6 +101,9 @@ export class User {
   @Column({ name: 'warnings', type: 'jsonb', default: [] })
   warnings!: string[];
 
+  @Column({ name: 'last_seen_update_note_id', type: 'uuid', nullable: true })
+  lastSeenUpdateNoteId?: string;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 
