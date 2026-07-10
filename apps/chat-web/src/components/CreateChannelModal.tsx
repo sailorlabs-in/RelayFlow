@@ -302,6 +302,7 @@ export const CreateChannelModal = ({
                   ) : (
                     <div className="flex flex-col gap-2 max-h-25 overflow-y-auto pr-1">
                       {group?.members
+                        .filter((m) => !m.isGhost)
                         .filter((m) => {
                           const name =
                             m.user?.displayName ||
@@ -414,6 +415,7 @@ export const CreateChannelModal = ({
                   ) : (
                     <div className="flex flex-col gap-2 max-h-25 overflow-y-auto pr-1">
                       {group?.members
+                        .filter((m) => !m.isGhost)
                         .filter((m) => {
                           const name =
                             m.user?.displayName ||
@@ -556,6 +558,7 @@ export const CreateChannelModal = ({
                   ) : (
                     <div className="flex flex-col gap-2 max-h-25 overflow-y-auto pr-1">
                       {group?.members
+                        .filter((m) => !m.isGhost)
                         .filter((m) => {
                           const name =
                             m.user?.displayName ||

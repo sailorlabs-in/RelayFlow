@@ -851,46 +851,77 @@ export class GroupsService {
     const sections = await this.getGroupSectionsForUser(groupId, userId);
     const allowedSectionIds = new Set(sections.map((s) => s.id));
 
+    let sortedRoles: GroupRole[] = [];
+    if (memberRoleIds.length > 0) {
+      const roles = await this.groupRoleRepo.find({
+        where: { id: In(memberRoleIds), groupId },
+      });
+      sortedRoles = roles.sort((a, b) => {
+        const aPriority = Math.max(a.hierarchyPriority ?? a.priority ?? 1, 1);
+        const bPriority = Math.max(b.hierarchyPriority ?? b.priority ?? 1, 1);
+        return aPriority - bPriority;
+      });
+    }
+
     return channels.filter((channel) => {
       if (channel.sectionId && !allowedSectionIds.has(channel.sectionId)) {
         return false;
       }
 
-      // Check if user is explicitly hidden from this channel
-      const hiddenFrom = channel.hiddenFromUserIds || [];
-      if (hiddenFrom.includes(userId)) {
-        return false;
-      }
-
-      // Check if user's role is explicitly hidden from this channel
-      const hiddenFromRoles = channel.hiddenFromRoleIds || [];
-      if (hiddenFromRoles.some((roleId) => memberRoleIds.includes(roleId))) {
-        return false;
-      }
-
-      const allowed = channel.allowedRoleIds || [];
-      const readRoles = channel.readRoleIds || [];
-      const writeRoles = channel.writeRoleIds || [];
+      const hiddenFromUsers = channel.hiddenFromUserIds || [];
       const readUsers = channel.readUserIds || [];
       const writeUsers = channel.writeUserIds || [];
 
-      if (
-        allowed.length === 0 &&
-        readRoles.length === 0 &&
-        writeRoles.length === 0 &&
-        readUsers.length === 0 &&
-        writeUsers.length === 0
-      ) {
+      // 1. User-level overrides (highest priority)
+      if (hiddenFromUsers.includes(userId)) {
+        return false;
+      }
+      if (writeUsers.includes(userId) || readUsers.includes(userId)) {
         return true;
       }
 
-      return (
-        allowed.some((roleId) => memberRoleIds.includes(roleId)) ||
-        readRoles.some((roleId) => memberRoleIds.includes(roleId)) ||
-        writeRoles.some((roleId) => memberRoleIds.includes(roleId)) ||
-        readUsers.includes(userId) ||
-        writeUsers.includes(userId)
-      );
+      // 2. Role-level evaluation (second priority)
+      const hiddenFromRoles = channel.hiddenFromRoleIds || [];
+      const allowedRoles = channel.allowedRoleIds || [];
+      const readRoles = channel.readRoleIds || [];
+      const writeRoles = channel.writeRoleIds || [];
+
+      const isChannelPrivate =
+        allowedRoles.length > 0 ||
+        readRoles.length > 0 ||
+        readUsers.length > 0 ||
+        writeRoles.length > 0 ||
+        writeUsers.length > 0;
+
+      if (sortedRoles.length > 0) {
+        const configuredRole = sortedRoles.find(
+          (role) =>
+            hiddenFromRoles.includes(role.id) ||
+            writeRoles.includes(role.id) ||
+            readRoles.includes(role.id) ||
+            allowedRoles.includes(role.id),
+        );
+
+        if (configuredRole) {
+          if (hiddenFromRoles.includes(configuredRole.id)) {
+            return false;
+          }
+          if (
+            writeRoles.includes(configuredRole.id) ||
+            readRoles.includes(configuredRole.id) ||
+            allowedRoles.includes(configuredRole.id)
+          ) {
+            return true;
+          }
+        }
+      }
+
+      // 3. Fallback/Default for users with no matching role configurations
+      if (isChannelPrivate) {
+        return false;
+      }
+
+      return true;
     });
   }
 
@@ -926,19 +957,6 @@ export class GroupsService {
       return false;
     }
 
-    // Check if user is explicitly hidden from this channel
-    const hiddenFrom = channel.hiddenFromUserIds || [];
-    if (hiddenFrom.includes(userId)) {
-      return false;
-    }
-
-    // Check if user's role is explicitly hidden from this channel
-    const hiddenFromRoles = channel.hiddenFromRoleIds || [];
-    const memberRoleIds = member.roleIds || [];
-    if (hiddenFromRoles.some((roleId) => memberRoleIds.includes(roleId))) {
-      return false;
-    }
-
     if (channel.sectionId) {
       const section = await this.groupSectionRepo.findOne({
         where: { id: channel.sectionId },
@@ -955,39 +973,70 @@ export class GroupsService {
       }
     }
 
-    const allowed = channel.allowedRoleIds || [];
-    const readRoles = channel.readRoleIds || [];
-    const writeRoles = channel.writeRoleIds || [];
+    const hiddenFromUsers = channel.hiddenFromUserIds || [];
     const readUsers = channel.readUserIds || [];
     const writeUsers = channel.writeUserIds || [];
 
-    if (
-      allowed.length === 0 &&
-      readRoles.length === 0 &&
-      readUsers.length === 0 &&
-      writeUsers.length === 0
-    ) {
+    // 1. User-level overrides (highest priority)
+    if (hiddenFromUsers.includes(userId)) {
+      return false;
+    }
+    if (writeUsers.includes(userId) || readUsers.includes(userId)) {
       return true;
     }
 
-    const hasReadRole =
-      allowed.some((roleId) => memberRoleIds.includes(roleId)) ||
-      readRoles.some((roleId) => memberRoleIds.includes(roleId)) ||
-      readUsers.includes(userId);
+    // 2. Role-level evaluation (second priority)
+    const memberRoleIds = member.roleIds || [];
+    const hiddenFromRoles = channel.hiddenFromRoleIds || [];
+    const allowedRoles = channel.allowedRoleIds || [];
+    const readRoles = channel.readRoleIds || [];
+    const writeRoles = channel.writeRoleIds || [];
 
-    if (hasReadRole) {
-      return true;
+    const isChannelPrivate =
+      allowedRoles.length > 0 ||
+      readRoles.length > 0 ||
+      readUsers.length > 0 ||
+      writeRoles.length > 0 ||
+      writeUsers.length > 0;
+
+    if (memberRoleIds.length > 0) {
+      const roles = await this.groupRoleRepo.find({
+        where: { id: In(memberRoleIds), groupId },
+      });
+      const sortedRoles = roles.sort((a, b) => {
+        const aPriority = Math.max(a.hierarchyPriority ?? a.priority ?? 1, 1);
+        const bPriority = Math.max(b.hierarchyPriority ?? b.priority ?? 1, 1);
+        return aPriority - bPriority;
+      });
+
+      const configuredRole = sortedRoles.find(
+        (role) =>
+          hiddenFromRoles.includes(role.id) ||
+          writeRoles.includes(role.id) ||
+          readRoles.includes(role.id) ||
+          allowedRoles.includes(role.id),
+      );
+
+      if (configuredRole) {
+        if (hiddenFromRoles.includes(configuredRole.id)) {
+          return false;
+        }
+        if (
+          writeRoles.includes(configuredRole.id) ||
+          readRoles.includes(configuredRole.id) ||
+          allowedRoles.includes(configuredRole.id)
+        ) {
+          return true;
+        }
+      }
     }
 
-    if (
-      !channel.isReadOnly &&
-      (writeRoles.some((roleId) => memberRoleIds.includes(roleId)) ||
-        writeUsers.includes(userId))
-    ) {
-      return true;
+    // 3. Fallback/Default
+    if (isChannelPrivate) {
+      return false;
     }
 
-    return false;
+    return true;
   }
 
   async canUserWriteToChannel(
@@ -1031,24 +1080,73 @@ export class GroupsService {
       return false;
     }
 
-    const writeRoles = channel.writeRoleIds || [];
+    // 1. User-level overrides (highest priority)
+    const hiddenFromUsers = channel.hiddenFromUserIds || [];
+    const readUsers = channel.readUserIds || [];
     const writeUsers = channel.writeUserIds || [];
-    if (
-      channel.isReadOnly &&
-      writeRoles.length === 0 &&
-      writeUsers.length === 0
-    ) {
+
+    if (hiddenFromUsers.includes(userId)) {
       return false;
     }
-    if (writeRoles.length === 0 && writeUsers.length === 0) {
+    if (writeUsers.includes(userId)) {
       return true;
     }
+    if (readUsers.includes(userId)) {
+      // Since they are individually selected, we don't consider their roles.
+      // They can write only if the channel has no write restrictions.
+      const isChannelReadOnly =
+        channel.isReadOnly ||
+        (channel.writeRoleIds && channel.writeRoleIds.length > 0) ||
+        writeUsers.length > 0;
+      return !isChannelReadOnly;
+    }
 
+    // 2. Role-level evaluation (second priority)
     const memberRoleIds = member.roleIds || [];
-    return (
-      writeRoles.some((roleId) => memberRoleIds.includes(roleId)) ||
-      writeUsers.includes(userId)
-    );
+    const hiddenFromRoles = channel.hiddenFromRoleIds || [];
+    const allowedRoles = channel.allowedRoleIds || [];
+    const readRoles = channel.readRoleIds || [];
+    const writeRoles = channel.writeRoleIds || [];
+
+    const isChannelReadOnly =
+      channel.isReadOnly || writeRoles.length > 0 || writeUsers.length > 0;
+
+    if (memberRoleIds.length > 0) {
+      const roles = await this.groupRoleRepo.find({
+        where: { id: In(memberRoleIds), groupId },
+      });
+      const sortedRoles = roles.sort((a, b) => {
+        const aPriority = Math.max(a.hierarchyPriority ?? a.priority ?? 1, 1);
+        const bPriority = Math.max(b.hierarchyPriority ?? b.priority ?? 1, 1);
+        return aPriority - bPriority;
+      });
+
+      const configuredRole = sortedRoles.find(
+        (role) =>
+          hiddenFromRoles.includes(role.id) ||
+          writeRoles.includes(role.id) ||
+          readRoles.includes(role.id) ||
+          allowedRoles.includes(role.id),
+      );
+
+      if (configuredRole) {
+        if (hiddenFromRoles.includes(configuredRole.id)) {
+          return false;
+        }
+        if (writeRoles.includes(configuredRole.id)) {
+          return true;
+        }
+        if (
+          readRoles.includes(configuredRole.id) ||
+          allowedRoles.includes(configuredRole.id)
+        ) {
+          return false;
+        }
+      }
+    }
+
+    // 3. Fallback/Default
+    return !isChannelReadOnly;
   }
 
   // ─── Custom Role Management ─────────────────────────────────────────────────
