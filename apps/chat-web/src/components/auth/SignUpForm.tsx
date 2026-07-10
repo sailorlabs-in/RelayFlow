@@ -89,7 +89,7 @@ export const SignUpForm = ({
       <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
         <div className="flex flex-col gap-1.5">
           <label className="text-[11.5px] font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
-            Display Name
+            Name
           </label>
           <input
             id="auth-display-name"

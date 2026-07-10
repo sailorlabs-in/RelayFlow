@@ -7,7 +7,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Not, Brackets } from 'typeorm';
+import { Repository, Not, Brackets, In } from 'typeorm';
 
 import { CryptoUtil } from '../auth/crypto.util';
 
@@ -97,7 +97,52 @@ export class UsersService {
     if (!ids || ids.length === 0) {
       return [];
     }
-    return this.userRepository.findByIds(ids);
+
+    const uniqueIds = Array.from(new Set(ids));
+    const redis = this.redisService.getClient();
+    const result: User[] = [];
+    const missingIds: string[] = [];
+
+    // Try cache first
+    try {
+      const keys = uniqueIds.map((id) => `user:profile:${id}`);
+      const cached = await redis.mget(keys);
+      for (let i = 0; i < uniqueIds.length; i++) {
+        if (cached[i]) {
+          result.push(JSON.parse(cached[i]));
+        } else {
+          missingIds.push(uniqueIds[i]);
+        }
+      }
+    } catch (err) {
+      // Redis error, fallback to fetching all from db
+      missingIds.push(...uniqueIds);
+    }
+
+    if (missingIds.length > 0) {
+      const dbUsers = await this.userRepository.find({
+        where: { id: In(missingIds) },
+      });
+      if (dbUsers.length > 0) {
+        result.push(...dbUsers);
+        // Save to cache
+        try {
+          const pipeline = redis.pipeline();
+          for (const user of dbUsers) {
+            pipeline.setex(
+              `user:profile:${user.id}`,
+              86400,
+              JSON.stringify(user),
+            );
+          }
+          await pipeline.exec();
+        } catch (err) {
+          // Ignore cache save error
+        }
+      }
+    }
+
+    return result;
   }
 
   async findByEmail(email: string): Promise<User | null> {
@@ -162,6 +207,7 @@ export class UsersService {
       avatarThumbnailUrl?: string;
       groupOrder?: string;
       customThemes?: string;
+      lastSeenUpdateNoteId?: string;
     },
   ): Promise<User> {
     const user = await this.findById(id);
@@ -248,6 +294,10 @@ export class UsersService {
 
     if (data.customThemes !== undefined) {
       user.customThemes = data.customThemes;
+    }
+
+    if (data.lastSeenUpdateNoteId !== undefined) {
+      user.lastSeenUpdateNoteId = data.lastSeenUpdateNoteId;
     }
 
     const updatedUser = await this.userRepository.save(user);

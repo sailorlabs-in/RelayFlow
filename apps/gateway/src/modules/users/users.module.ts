@@ -1,4 +1,4 @@
-import { User, Friendship } from '@chat-app/database';
+import { User, Friendship, UpdateNote } from '@chat-app/database';
 import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
@@ -11,7 +11,7 @@ import { CleanUpService } from './cleanup.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Friendship]),
+    TypeOrmModule.forFeature([User, Friendship, UpdateNote]),
     forwardRef(() => AuthModule),
     forwardRef(() => RealtimeModule),
   ],
