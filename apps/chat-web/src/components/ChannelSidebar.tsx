@@ -29,7 +29,11 @@ import {
 import { showToast } from './toast';
 import { ConfirmationModal } from './ConfirmationModal';
 import { Avatar } from './Avatar';
-import { hasGroupPermission } from '../utils/permissions';
+import {
+  hasGroupPermission,
+  canUserAccessSection,
+  canUserAccessChannel,
+} from '../utils/permissions';
 
 interface ChannelSidebarProps {
   group: Group;
@@ -557,12 +561,16 @@ export const ChannelSidebar = ({
   };
 
   const sections = group.sections
-    ? [...group.sections].sort((a, b) => a.position - b.position)
+    ? [...group.sections]
+        .sort((a, b) => a.position - b.position)
+        .filter((s) => canUserAccessSection(group, s, user?.id))
     : [];
   const uncategorizedChannels = group.channels
-    ? group.channels.filter(
-        (c) => !c.sectionId || !sections.some((s) => s.id === c.sectionId),
-      )
+    ? group.channels
+        .filter(
+          (c) => !c.sectionId || !sections.some((s) => s.id === c.sectionId),
+        )
+        .filter((c) => canUserAccessChannel(group, c, user?.id))
     : [];
 
   return (
@@ -689,6 +697,7 @@ export const ChannelSidebar = ({
             ? group.channels
                 .filter((c) => c.sectionId === section.id)
                 .sort((a, b) => a.position - b.position)
+                .filter((c) => canUserAccessChannel(group, c, user?.id))
             : [];
           const isOver = dragOverSectionId === section.id;
 

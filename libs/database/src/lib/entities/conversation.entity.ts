@@ -92,6 +92,22 @@ export class Conversation {
   })
   writeUserIds?: string[];
 
+  @Column({
+    name: 'deny_write_role_ids',
+    type: 'jsonb',
+    nullable: true,
+    default: [],
+  })
+  denyWriteRoleIds?: string[];
+
+  @Column({
+    name: 'deny_write_user_ids',
+    type: 'jsonb',
+    nullable: true,
+    default: [],
+  })
+  denyWriteUserIds?: string[];
+
   @Column({ name: 'section_id', type: 'uuid', nullable: true })
   sectionId?: string;
 

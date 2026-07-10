@@ -22,7 +22,11 @@ import {
 import { setActiveConversation } from '../../store/slices/chatSlice';
 import { socketManager } from '../../store/socketManager';
 import { showToast } from '../toast';
-import { hasGroupPermission } from '../../utils/permissions';
+import {
+  hasGroupPermission,
+  canUserAccessSection,
+  canUserAccessChannel,
+} from '../../utils/permissions';
 
 const IconGrip = (): React.JSX.Element => (
   <svg
@@ -677,7 +681,10 @@ export const MobileGroupsTab = ({
             )}
 
             {/* Uncategorized channels */}
-            {activeGroup.channels.filter((c) => !c.sectionId).length > 0 && (
+            {activeGroup.channels
+              .filter((c) => !c.sectionId)
+              .filter((c) => canUserAccessChannel(activeGroup, c, user?.id))
+              .length > 0 && (
               <div
                 data-drag-type="category"
                 data-drag-id="uncategorized"
@@ -696,6 +703,9 @@ export const MobileGroupsTab = ({
                 <div className="flex flex-col gap-0.5">
                   {activeGroup.channels
                     .filter((c) => !c.sectionId)
+                    .filter((c) =>
+                      canUserAccessChannel(activeGroup, c, user?.id),
+                    )
                     .sort((a, b) => a.position - b.position)
                     .map((channel) => {
                       const isChanActive = channel.id === activeChannelId;
@@ -912,9 +922,13 @@ export const MobileGroupsTab = ({
             {/* Categorized sections */}
             {[...activeGroup.sections]
               .sort((a, b) => a.position - b.position)
+              .filter((section) =>
+                canUserAccessSection(activeGroup, section, user?.id),
+              )
               .map((section) => {
                 const sectionChannels = activeGroup.channels
                   .filter((c) => c.sectionId === section.id)
+                  .filter((c) => canUserAccessChannel(activeGroup, c, user?.id))
                   .sort((a, b) => a.position - b.position);
                 const isCollapsed = collapsedSections[section.id];
                 return (

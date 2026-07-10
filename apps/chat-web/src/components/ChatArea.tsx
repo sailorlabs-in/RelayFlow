@@ -65,7 +65,10 @@ import {
 } from '../store/slices/chatSlice';
 import { socketManager } from '../store/socketManager';
 import { generateImageThumbnail, generateVideoThumbnail } from '../utils/media';
-import { hasGroupPermission } from '../utils/permissions';
+import {
+  hasGroupPermission,
+  canUserWriteToChannel,
+} from '../utils/permissions';
 import { formatMessageTimestamp, formatReadAtTimestamp } from '../utils/date';
 
 import { Avatar } from './Avatar';
@@ -345,93 +348,12 @@ export const ChatArea = ({
   const isOwner = activeGroup?.ownerId === user?.id;
   const isAdmin =
     activeGroup?.members?.find((m) => m.userId === user?.id)?.role === 'admin';
-  const member = activeGroup?.members?.find((m) => m.userId === user?.id);
-  const isOwnerOrAdmin = isOwner || isAdmin;
-  const hasManageGroup = hasGroupPermission(
-    activeGroup,
-    user?.id,
-    'manage_group',
-  );
 
-  let hasChannelWriteAccess = true;
-  if (isGroupChannel && activeChannel && user?.id) {
-    if (isOwnerOrAdmin || hasManageGroup) {
-      hasChannelWriteAccess = true;
-    } else {
-      const userId = user.id;
-      const hiddenFromUsers = activeChannel.hiddenFromUserIds || [];
-      const readUsers = activeChannel.readUserIds || [];
-      const writeUsers = activeChannel.writeUserIds || [];
-
-      // 1. User-level overrides (highest priority)
-      if (hiddenFromUsers.includes(userId)) {
-        hasChannelWriteAccess = false;
-      } else if (writeUsers.includes(userId)) {
-        hasChannelWriteAccess = true;
-      } else if (readUsers.includes(userId)) {
-        const isChannelReadOnly =
-          activeChannel.isReadOnly ||
-          (activeChannel.writeRoleIds &&
-            activeChannel.writeRoleIds.length > 0) ||
-          writeUsers.length > 0;
-        hasChannelWriteAccess = !isChannelReadOnly;
-      } else {
-        // 2. Role-level evaluation (second priority)
-        const memberRoleIds = member?.roleIds || [];
-        const hiddenFromRoles = activeChannel.hiddenFromRoleIds || [];
-        const allowedRoles = activeChannel.allowedRoleIds || [];
-        const readRoles = activeChannel.readRoleIds || [];
-        const writeRoles = activeChannel.writeRoleIds || [];
-
-        const isChannelReadOnly =
-          activeChannel.isReadOnly ||
-          writeRoles.length > 0 ||
-          writeUsers.length > 0;
-
-        let roleMatched = false;
-        if (memberRoleIds.length > 0 && activeGroup.roles) {
-          // Find custom roles the member has
-          const userRoles = activeGroup.roles.filter((role) =>
-            memberRoleIds.includes(role.id),
-          );
-
-          // Sort roles by priority ascending (smallest level is high)
-          const sortedRoles = [...userRoles].sort((a, b) => {
-            const hpA = a.hierarchyPriority ?? a.priority ?? 1000000;
-            const hpB = b.hierarchyPriority ?? b.priority ?? 1000000;
-            return hpA - hpB;
-          });
-
-          const configuredRole = sortedRoles.find(
-            (role) =>
-              hiddenFromRoles.includes(role.id) ||
-              writeRoles.includes(role.id) ||
-              readRoles.includes(role.id) ||
-              allowedRoles.includes(role.id),
-          );
-
-          if (configuredRole) {
-            roleMatched = true;
-            if (hiddenFromRoles.includes(configuredRole.id)) {
-              hasChannelWriteAccess = false;
-            } else if (writeRoles.includes(configuredRole.id)) {
-              hasChannelWriteAccess = true;
-            } else if (
-              readRoles.includes(configuredRole.id) ||
-              allowedRoles.includes(configuredRole.id)
-            ) {
-              hasChannelWriteAccess = false;
-            }
-          }
-        }
-
-        // 3. Fallback/Default
-        if (!roleMatched) {
-          hasChannelWriteAccess = !isChannelReadOnly;
-        }
-      }
-    }
-  }
+  const hasChannelWriteAccess =
+    !isGroupChannel ||
+    !activeChannel ||
+    !user?.id ||
+    canUserWriteToChannel(activeGroup, activeChannel, user.id);
 
   const canSendMessages =
     (!isGroupChannel ||
@@ -1338,6 +1260,9 @@ export const ChatArea = ({
   // ---- Messages ----
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canSendMessages) {
+      return;
+    }
     if (
       (!messageInput.trim() && attachedFiles.length === 0) ||
       !activeConversationId
@@ -2886,140 +2811,222 @@ export const ChatArea = ({
                       ))}
                     </div>
                   )}
-                  <form
-                    className="flex gap-2.5 items-end"
-                    onSubmit={handleSendMessage}
-                  >
-                    <div
-                      className="relative hidden md:block"
-                      ref={emojiPickerRef}
+                  {!canSendMessages ? (
+                    <div className="flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-dashed border-[rgba(255,255,255,0.06)] text-theme-muted font-semibold text-[13.5px] cursor-not-allowed select-none w-full box-border">
+                      <svg
+                        width="15"
+                        height="15"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="opacity-50 mr-0.5"
+                      >
+                        <rect
+                          x="3"
+                          y="11"
+                          width="18"
+                          height="11"
+                          rx="2"
+                          ry="2"
+                        />
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                      </svg>
+                      {isChannelMode && activeChannel && !hasChannelWriteAccess
+                        ? 'This channel is read-only.'
+                        : 'You do not have permission to send messages in this group.'}
+                    </div>
+                  ) : (
+                    <form
+                      className="flex gap-2.5 items-end"
+                      onSubmit={handleSendMessage}
                     >
+                      <div
+                        className="relative hidden md:block"
+                        ref={emojiPickerRef}
+                      >
+                        <button
+                          type="button"
+                          disabled={!canSendMessages}
+                          onClick={handleEmojiPickerToggle}
+                          className="w-11.5 h-11.5 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200 bg-theme-input text-theme-muted hover:bg-(--theme-btn-hover) hover:text-theme-primary disabled:opacity-40 disabled:cursor-not-allowed active-press border border-glass"
+                          title={
+                            canSendMessages
+                              ? 'Choose an emoji'
+                              : isChannelMode &&
+                                  activeChannel &&
+                                  !hasChannelWriteAccess
+                                ? 'This channel is read-only'
+                                : 'You do not have permission to send messages'
+                          }
+                        >
+                          <IconEmoji size={20} />
+                        </button>
+
+                        {showEmojiPicker && (
+                          <div
+                            ref={emojiPickerContainerRef}
+                            className="absolute z-50 shadow-(--glass-shadow) rounded-2xl overflow-hidden border-[1.5px] border-glass bg-(--glass-bg) backdrop-blur-[20px] transition-opacity duration-150 ease-out"
+                            style={{ ...emojiPickerStyle }}
+                          >
+                            <EmojiPicker
+                              onEmojiSelect={onEmojiSelect}
+                              theme="auto"
+                              previewPosition="none"
+                            />
+                          </div>
+                        )}
+                      </div>
                       <button
                         type="button"
-                        disabled={!canSendMessages}
-                        onClick={handleEmojiPickerToggle}
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={
+                          uploading || !canAttachFiles || !canSendMessages
+                        }
                         className="w-11.5 h-11.5 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200 bg-theme-input text-theme-muted hover:bg-(--theme-btn-hover) hover:text-theme-primary disabled:opacity-40 disabled:cursor-not-allowed active-press border border-glass"
                         title={
-                          canSendMessages
-                            ? 'Choose an emoji'
-                            : isChannelMode &&
-                                activeChannel &&
-                                !hasChannelWriteAccess
+                          !canSendMessages
+                            ? isChannelMode &&
+                              activeChannel &&
+                              !hasChannelWriteAccess
                               ? 'This channel is read-only'
                               : 'You do not have permission to send messages'
+                            : !canAttachFiles
+                              ? 'You do not have permission to attach files'
+                              : 'Attach a file'
                         }
                       >
-                        <IconEmoji size={20} />
+                        {uploading ? (
+                          <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin border-(--text-primary)" />
+                        ) : (
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            className="w-4.5 h-4.5"
+                          >
+                            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                          </svg>
+                        )}
                       </button>
-
-                      {showEmojiPicker && (
-                        <div
-                          ref={emojiPickerContainerRef}
-                          className="absolute z-50 shadow-(--glass-shadow) rounded-2xl overflow-hidden border-[1.5px] border-glass bg-(--glass-bg) backdrop-blur-[20px] transition-opacity duration-150 ease-out"
-                          style={{ ...emojiPickerStyle }}
-                        >
-                          <EmojiPicker
-                            onEmojiSelect={onEmojiSelect}
-                            theme="auto"
-                            previewPosition="none"
-                          />
-                        </div>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={
-                        uploading || !canAttachFiles || !canSendMessages
-                      }
-                      className="w-11.5 h-11.5 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200 bg-theme-input text-theme-muted hover:bg-(--theme-btn-hover) hover:text-theme-primary disabled:opacity-40 disabled:cursor-not-allowed active-press border border-glass"
-                      title={
-                        !canSendMessages
-                          ? isChannelMode &&
-                            activeChannel &&
-                            !hasChannelWriteAccess
-                            ? 'This channel is read-only'
-                            : 'You do not have permission to send messages'
-                          : !canAttachFiles
-                            ? 'You do not have permission to attach files'
-                            : 'Attach a file'
-                      }
-                    >
-                      {uploading ? (
-                        <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin border-(--text-primary)" />
-                      ) : (
-                        <svg
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2.5"
-                          className="w-4.5 h-4.5"
-                        >
-                          <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-                        </svg>
-                      )}
-                    </button>
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleFileSelect}
-                      className="hidden"
-                      multiple
-                    />
-                    <div className="relative flex-1 flex flex-col justify-end">
-                      {mentionQuery && emojiResults.length > 0 && (
-                        <div className="absolute bottom-full left-0 mb-2 w-75 max-h-50 overflow-y-auto bg-theme-sidebar border border-theme rounded-xl shadow-(--glass-shadow) z-50 flex flex-col p-1">
-                          {emojiResults.map((emoji: any) => (
-                            <button
-                              key={emoji.id}
-                              type="button"
-                              className="flex items-center gap-2 px-3 py-2 text-left rounded-lg hover:bg-theme-input active-press cursor-pointer border-none bg-transparent"
-                              onClick={() => {
-                                const val = messageInput;
-                                const newText =
-                                  val.slice(0, mentionQuery.start) +
-                                  emoji.skins[0].native +
-                                  val.slice(mentionQuery.end);
-                                setMessageInput(newText);
-                                setMentionQuery(null);
-                                setEmojiResults([]);
-                                document
-                                  .getElementById('message-input')
-                                  ?.focus();
-                              }}
-                            >
-                              <span className="text-[20px] leading-none">
-                                {emoji.skins[0].native}
-                              </span>
-                              <span className="text-[13px] text-theme-primary">
-                                :{emoji.id}:
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      {atMentionQuery &&
-                        isChannelMode &&
-                        activeGroup &&
-                        matchingMentions.length > 0 && (
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileSelect}
+                        className="hidden"
+                        multiple
+                      />
+                      <div className="relative flex-1 flex flex-col justify-end">
+                        {mentionQuery && emojiResults.length > 0 && (
                           <div className="absolute bottom-full left-0 mb-2 w-75 max-h-50 overflow-y-auto bg-theme-sidebar border border-theme rounded-xl shadow-(--glass-shadow) z-50 flex flex-col p-1">
-                            {matchingMentions.map((item, idx) => {
-                              const isActive = idx === activeSuggestIndex;
-                              if (item.isEveryone) {
+                            {emojiResults.map((emoji: any) => (
+                              <button
+                                key={emoji.id}
+                                type="button"
+                                className="flex items-center gap-2 px-3 py-2 text-left rounded-lg hover:bg-theme-input active-press cursor-pointer border-none bg-transparent"
+                                onClick={() => {
+                                  const val = messageInput;
+                                  const newText =
+                                    val.slice(0, mentionQuery.start) +
+                                    emoji.skins[0].native +
+                                    val.slice(mentionQuery.end);
+                                  setMessageInput(newText);
+                                  setMentionQuery(null);
+                                  setEmojiResults([]);
+                                  document
+                                    .getElementById('message-input')
+                                    ?.focus();
+                                }}
+                              >
+                                <span className="text-[20px] leading-none">
+                                  {emoji.skins[0].native}
+                                </span>
+                                <span className="text-[13px] text-theme-primary">
+                                  :{emoji.id}:
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        {atMentionQuery &&
+                          isChannelMode &&
+                          activeGroup &&
+                          matchingMentions.length > 0 && (
+                            <div className="absolute bottom-full left-0 mb-2 w-75 max-h-50 overflow-y-auto bg-theme-sidebar border border-theme rounded-xl shadow-(--glass-shadow) z-50 flex flex-col p-1">
+                              {matchingMentions.map((item, idx) => {
+                                const isActive = idx === activeSuggestIndex;
+                                if (item.isEveryone) {
+                                  return (
+                                    <button
+                                      key="everyone"
+                                      type="button"
+                                      className={`flex items-center gap-2.5 px-3 py-2 text-left rounded-lg active-press cursor-pointer border-none ${
+                                        isActive
+                                          ? 'bg-theme-input text-theme-secondary font-semibold'
+                                          : 'bg-transparent text-theme-muted hover:bg-theme-input/50'
+                                      }`}
+                                      onClick={() => {
+                                        const val = messageInput;
+                                        const newText =
+                                          val.slice(0, atMentionQuery.start) +
+                                          '@everyone ' +
+                                          val.slice(atMentionQuery.end);
+                                        setMessageInput(newText);
+                                        setAtMentionQuery(null);
+                                        document
+                                          .getElementById('message-input')
+                                          ?.focus();
+                                      }}
+                                    >
+                                      <div className="w-8 h-8 rounded-full flex items-center justify-center bg-(--accent-primary) text-white text-[12px] font-bold shrink-0">
+                                        📢
+                                      </div>
+                                      <div className="flex flex-col">
+                                        <span
+                                          className={`text-[13px] font-bold ${isActive ? 'text-theme-secondary' : 'text-theme-primary'}`}
+                                        >
+                                          @everyone
+                                        </span>
+                                        <span className="text-[10.5px] text-theme-muted">
+                                          Notify all members
+                                        </span>
+                                      </div>
+                                    </button>
+                                  );
+                                }
+
+                                const member = item.member;
+                                const memberName = item.name;
+                                const letter =
+                                  memberName[0]?.toUpperCase() || 'U';
+
+                                const isOwnerMember =
+                                  activeGroup.ownerId === member.userId;
+                                const memberRoleIds = member.roleIds || [];
+                                const topRole = activeGroup.roles?.find((r) =>
+                                  memberRoleIds.includes(r.id),
+                                );
+                                const memberColor = isOwnerMember
+                                  ? '#eab308'
+                                  : topRole?.color || undefined;
+
                                 return (
                                   <button
-                                    key="everyone"
+                                    key={member.id}
                                     type="button"
                                     className={`flex items-center gap-2.5 px-3 py-2 text-left rounded-lg active-press cursor-pointer border-none ${
                                       isActive
-                                        ? 'bg-theme-input text-theme-secondary font-semibold'
-                                        : 'bg-transparent text-theme-muted hover:bg-theme-input/50'
+                                        ? 'bg-theme-input font-semibold'
+                                        : 'bg-transparent hover:bg-theme-input/50'
                                     }`}
                                     onClick={() => {
                                       const val = messageInput;
                                       const newText =
                                         val.slice(0, atMentionQuery.start) +
-                                        '@everyone ' +
+                                        `@${memberName} ` +
                                         val.slice(atMentionQuery.end);
                                       setMessageInput(newText);
                                       setAtMentionQuery(null);
@@ -3028,362 +3035,310 @@ export const ChatArea = ({
                                         ?.focus();
                                     }}
                                   >
-                                    <div className="w-8 h-8 rounded-full flex items-center justify-center bg-(--accent-primary) text-white text-[12px] font-bold shrink-0">
-                                      📢
-                                    </div>
+                                    <Avatar
+                                      letter={letter}
+                                      url={
+                                        member.user?.avatarThumbnailUrl ||
+                                        member.user?.avatarUrl
+                                      }
+                                      size="xs"
+                                    />
                                     <div className="flex flex-col">
                                       <span
-                                        className={`text-[13px] font-bold ${isActive ? 'text-theme-secondary' : 'text-theme-primary'}`}
+                                        className={`text-[13px] font-bold ${!memberColor ? (isActive ? 'text-theme-secondary' : 'text-theme-primary') : ''}`}
+                                        style={
+                                          memberColor
+                                            ? { color: memberColor }
+                                            : undefined
+                                        }
                                       >
-                                        @everyone
+                                        @{memberName}
                                       </span>
-                                      <span className="text-[10.5px] text-theme-muted">
-                                        Notify all members
-                                      </span>
+                                      {member.user?.displayName && (
+                                        <span className="text-[10px] text-theme-muted">
+                                          {member.user.displayName}
+                                        </span>
+                                      )}
                                     </div>
                                   </button>
                                 );
+                              })}
+                            </div>
+                          )}
+                        {isMdMode && (
+                          <div className="flex items-center justify-between mb-2 px-2">
+                            {/* Toggle Icon Button */}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setMdTab(
+                                  mdTab === 'write' ? 'preview' : 'write',
+                                )
                               }
+                              className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-(--accent-primary) transition-colors flex items-center gap-1.5"
+                              title={mdTab === 'write' ? 'Preview' : 'Edit'}
+                            >
+                              {mdTab === 'write' ? (
+                                <IconEye />
+                              ) : (
+                                <IconCompose />
+                              )}
+                              <span className="text-[12px] font-semibold">
+                                {mdTab === 'write' ? 'Preview' : 'Edit'}
+                              </span>
+                            </button>
 
-                              const member = item.member;
-                              const memberName = item.name;
-                              const letter =
-                                memberName[0]?.toUpperCase() || 'U';
-
-                              const isOwnerMember =
-                                activeGroup.ownerId === member.userId;
-                              const memberRoleIds = member.roleIds || [];
-                              const topRole = activeGroup.roles?.find((r) =>
-                                memberRoleIds.includes(r.id),
-                              );
-                              const memberColor = isOwnerMember
-                                ? '#eab308'
-                                : topRole?.color || undefined;
-
-                              return (
+                            {/* Formatting Buttons */}
+                            {mdTab === 'write' && (
+                              <div className="flex items-center gap-1">
                                 <button
-                                  key={member.id}
                                   type="button"
-                                  className={`flex items-center gap-2.5 px-3 py-2 text-left rounded-lg active-press cursor-pointer border-none ${
-                                    isActive
-                                      ? 'bg-theme-input font-semibold'
-                                      : 'bg-transparent hover:bg-theme-input/50'
-                                  }`}
-                                  onClick={() => {
+                                  onClick={() => applyFormat('# ')}
+                                  className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors flex items-center justify-center min-w-[24px]"
+                                  title="Heading 1"
+                                >
+                                  <span className="text-[11px] font-bold">
+                                    H1
+                                  </span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => applyFormat('## ')}
+                                  className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors flex items-center justify-center min-w-[24px]"
+                                  title="Heading 2"
+                                >
+                                  <span className="text-[11px] font-bold">
+                                    H2
+                                  </span>
+                                </button>
+                                <div className="w-px h-4 bg-theme/20 mx-1" />
+                                <button
+                                  type="button"
+                                  onClick={() => applyFormat('**', '**')}
+                                  className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors"
+                                  title="Bold"
+                                >
+                                  <IconBold />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => applyFormat('*', '*')}
+                                  className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors"
+                                  title="Italic"
+                                >
+                                  <IconItalic />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => applyFormat('~~', '~~')}
+                                  className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors"
+                                  title="Strikethrough"
+                                >
+                                  <IconStrikethrough />
+                                </button>
+                                <div className="w-px h-4 bg-theme/20 mx-1" />
+                                <button
+                                  type="button"
+                                  onClick={() => applyFormat('`', '`')}
+                                  className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors"
+                                  title="Inline Code"
+                                >
+                                  <IconCode />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => applyFormat('```\n', '\n```')}
+                                  className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors flex items-center justify-center w-6 h-6"
+                                  title="Code Block"
+                                >
+                                  <span className="text-[10px] font-bold mt-0.5">
+                                    {'</>'}
+                                  </span>
+                                </button>
+                                <div className="w-px h-4 bg-theme/20 mx-1" />
+                                <button
+                                  type="button"
+                                  onClick={() => applyFormat('[', '](url)')}
+                                  className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors"
+                                  title="Link"
+                                >
+                                  <IconLink />
+                                </button>
+                                <div className="w-px h-4 bg-theme/20 mx-1" />
+                                <button
+                                  type="button"
+                                  onClick={() => applyFormat('- ')}
+                                  className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors"
+                                  title="List"
+                                >
+                                  <IconList />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => applyFormat('> ')}
+                                  className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors"
+                                  title="Quote"
+                                >
+                                  <IconQuote />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {(!isMdMode || mdTab === 'write') && (
+                          <textarea
+                            ref={textareaRef}
+                            id="message-input"
+                            disabled={!canSendMessages}
+                            className={`input-base w-full block rounded-xl px-4 text-[14px] resize-none leading-normal bg-theme-input/40 border-[1.5px] border-glass text-theme-primary focus:outline-none focus:border-(--accent-primary) focus:ring-[3px] focus:ring-(--accent-ring) disabled:opacity-50 disabled:cursor-not-allowed box-border ${isMdMode ? 'max-h-64' : 'max-h-30'}`}
+                            style={{
+                              minHeight: isMdMode ? '100px' : '46px',
+                              paddingTop: '11px',
+                              paddingBottom: '11px',
+                            }}
+                            placeholder={
+                              isMdMode
+                                ? 'Markdown Mode...'
+                                : canSendMessages
+                                  ? isMobileScreen
+                                    ? 'Type a message…'
+                                    : 'Type a message… (Enter to send)'
+                                  : isChannelMode &&
+                                      activeChannel &&
+                                      !hasChannelWriteAccess
+                                    ? 'This channel is read-only.'
+                                    : 'You do not have permission to send messages in this group.'
+                            }
+                            rows={isMdMode ? 4 : 1}
+                            value={messageInput}
+                            onChange={handleInputChange}
+                            onSelect={handleTextareaSelect}
+                            onKeyDown={(e) => {
+                              if (
+                                atMentionQuery &&
+                                isChannelMode &&
+                                activeGroup &&
+                                matchingMentions.length > 0
+                              ) {
+                                if (e.key === 'ArrowDown') {
+                                  e.preventDefault();
+                                  setActiveSuggestIndex(
+                                    (prev) =>
+                                      (prev + 1) % matchingMentions.length,
+                                  );
+                                  return;
+                                }
+                                if (e.key === 'ArrowUp') {
+                                  e.preventDefault();
+                                  setActiveSuggestIndex(
+                                    (prev) =>
+                                      (prev - 1 + matchingMentions.length) %
+                                      matchingMentions.length,
+                                  );
+                                  return;
+                                }
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  const selected =
+                                    matchingMentions[activeSuggestIndex];
+                                  if (selected) {
                                     const val = messageInput;
+                                    const inserted = selected.isEveryone
+                                      ? '@everyone '
+                                      : `@${selected.name} `;
                                     const newText =
                                       val.slice(0, atMentionQuery.start) +
-                                      `@${memberName} ` +
+                                      inserted +
                                       val.slice(atMentionQuery.end);
                                     setMessageInput(newText);
                                     setAtMentionQuery(null);
-                                    document
-                                      .getElementById('message-input')
-                                      ?.focus();
-                                  }}
-                                >
-                                  <Avatar
-                                    letter={letter}
-                                    url={
-                                      member.user?.avatarThumbnailUrl ||
-                                      member.user?.avatarUrl
-                                    }
-                                    size="xs"
-                                  />
-                                  <div className="flex flex-col">
-                                    <span
-                                      className={`text-[13px] font-bold ${!memberColor ? (isActive ? 'text-theme-secondary' : 'text-theme-primary') : ''}`}
-                                      style={
-                                        memberColor
-                                          ? { color: memberColor }
-                                          : undefined
-                                      }
-                                    >
-                                      @{memberName}
-                                    </span>
-                                    {member.user?.displayName && (
-                                      <span className="text-[10px] text-theme-muted">
-                                        {member.user.displayName}
-                                      </span>
-                                    )}
-                                  </div>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
-                      {isMdMode && (
-                        <div className="flex items-center justify-between mb-2 px-2">
-                          {/* Toggle Icon Button */}
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setMdTab(mdTab === 'write' ? 'preview' : 'write')
-                            }
-                            className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-(--accent-primary) transition-colors flex items-center gap-1.5"
-                            title={mdTab === 'write' ? 'Preview' : 'Edit'}
-                          >
-                            {mdTab === 'write' ? <IconEye /> : <IconCompose />}
-                            <span className="text-[12px] font-semibold">
-                              {mdTab === 'write' ? 'Preview' : 'Edit'}
-                            </span>
-                          </button>
-
-                          {/* Formatting Buttons */}
-                          {mdTab === 'write' && (
-                            <div className="flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => applyFormat('# ')}
-                                className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors flex items-center justify-center min-w-[24px]"
-                                title="Heading 1"
-                              >
-                                <span className="font-bold text-[11px]">
-                                  H1
-                                </span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => applyFormat('## ')}
-                                className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors flex items-center justify-center min-w-[24px]"
-                                title="Heading 2"
-                              >
-                                <span className="font-bold text-[11px]">
-                                  H2
-                                </span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => applyFormat('### ')}
-                                className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors flex items-center justify-center min-w-[24px]"
-                                title="Heading 3"
-                              >
-                                <span className="font-bold text-[11px]">
-                                  H3
-                                </span>
-                              </button>
-                              <div className="w-px h-4 bg-theme/20 mx-1" />
-                              <button
-                                type="button"
-                                onClick={() => applyFormat('**', '**')}
-                                className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors"
-                                title="Bold"
-                              >
-                                <IconBold />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => applyFormat('*', '*')}
-                                className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors"
-                                title="Italic"
-                              >
-                                <IconItalic />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => applyFormat('~~', '~~')}
-                                className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors"
-                                title="Strikethrough"
-                              >
-                                <IconStrikethrough />
-                              </button>
-                              <div className="w-px h-4 bg-theme/20 mx-1" />
-                              <button
-                                type="button"
-                                onClick={() => applyFormat('`', '`')}
-                                className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors"
-                                title="Code"
-                              >
-                                <IconCode />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => applyFormat('```\n', '\n```')}
-                                className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors flex items-center justify-center w-6 h-6"
-                                title="Code Block"
-                              >
-                                <span className="text-[10px] font-bold mt-0.5">
-                                  {'</>'}
-                                </span>
-                              </button>
-                              <div className="w-px h-4 bg-theme/20 mx-1" />
-                              <button
-                                type="button"
-                                onClick={() => applyFormat('[', '](url)')}
-                                className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors"
-                                title="Link"
-                              >
-                                <IconLink />
-                              </button>
-                              <div className="w-px h-4 bg-theme/20 mx-1" />
-                              <button
-                                type="button"
-                                onClick={() => applyFormat('- ')}
-                                className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors"
-                                title="List"
-                              >
-                                <IconList />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => applyFormat('> ')}
-                                className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors"
-                                title="Quote"
-                              >
-                                <IconQuote />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      {(!isMdMode || mdTab === 'write') && (
-                        <textarea
-                          ref={textareaRef}
-                          id="message-input"
-                          disabled={!canSendMessages}
-                          className={`input-base w-full block rounded-xl px-4 text-[14px] resize-none leading-normal bg-theme-input/40 border-[1.5px] border-glass text-theme-primary focus:outline-none focus:border-(--accent-primary) focus:ring-[3px] focus:ring-(--accent-ring) disabled:opacity-50 disabled:cursor-not-allowed box-border ${isMdMode ? 'max-h-64' : 'max-h-30'}`}
-                          style={{
-                            minHeight: isMdMode ? '100px' : '46px',
-                            paddingTop: '11px',
-                            paddingBottom: '11px',
-                          }}
-                          placeholder={
-                            isMdMode
-                              ? 'Markdown Mode...'
-                              : canSendMessages
-                                ? isMobileScreen
-                                  ? 'Type a message…'
-                                  : 'Type a message… (Enter to send)'
-                                : isChannelMode &&
-                                    activeChannel &&
-                                    !hasChannelWriteAccess
-                                  ? 'This channel is read-only.'
-                                  : 'You do not have permission to send messages in this group.'
-                          }
-                          rows={isMdMode ? 4 : 1}
-                          value={messageInput}
-                          onChange={handleInputChange}
-                          onSelect={handleTextareaSelect}
-                          onKeyDown={(e) => {
-                            if (
-                              atMentionQuery &&
-                              isChannelMode &&
-                              activeGroup &&
-                              matchingMentions.length > 0
-                            ) {
-                              if (e.key === 'ArrowDown') {
-                                e.preventDefault();
-                                setActiveSuggestIndex(
-                                  (prev) =>
-                                    (prev + 1) % matchingMentions.length,
-                                );
-                                return;
-                              }
-                              if (e.key === 'ArrowUp') {
-                                e.preventDefault();
-                                setActiveSuggestIndex(
-                                  (prev) =>
-                                    (prev - 1 + matchingMentions.length) %
-                                    matchingMentions.length,
-                                );
-                                return;
-                              }
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                const selected =
-                                  matchingMentions[activeSuggestIndex];
-                                if (selected) {
-                                  const val = messageInput;
-                                  const inserted = selected.isEveryone
-                                    ? '@everyone '
-                                    : `@${selected.name} `;
-                                  const newText =
-                                    val.slice(0, atMentionQuery.start) +
-                                    inserted +
-                                    val.slice(atMentionQuery.end);
-                                  setMessageInput(newText);
-                                  setAtMentionQuery(null);
-                                  setTimeout(() => {
-                                    document
-                                      .getElementById('message-input')
-                                      ?.focus();
-                                  }, 0);
+                                    setTimeout(() => {
+                                      document
+                                        .getElementById('message-input')
+                                        ?.focus();
+                                    }, 0);
+                                  }
+                                  return;
                                 }
-                                return;
+                                if (e.key === 'Escape') {
+                                  e.preventDefault();
+                                  setAtMentionQuery(null);
+                                  return;
+                                }
                               }
-                              if (e.key === 'Escape') {
+
+                              if (e.key === 'Escape' && replyingToMessage) {
                                 e.preventDefault();
-                                setAtMentionQuery(null);
+                                setReplyingToMessage(null);
                                 return;
                               }
-                            }
 
-                            if (e.key === 'Escape' && replyingToMessage) {
-                              e.preventDefault();
-                              setReplyingToMessage(null);
-                              return;
-                            }
-
-                            if (e.key === 'Enter' && !e.shiftKey && !isMdMode) {
-                              e.preventDefault();
-                              if (canSendMessages) {
-                                handleSendMessage(e);
+                              if (
+                                e.key === 'Enter' &&
+                                !e.shiftKey &&
+                                !isMdMode
+                              ) {
+                                e.preventDefault();
+                                if (canSendMessages) {
+                                  handleSendMessage(e);
+                                }
                               }
-                            }
-                          }}
-                          onPaste={(e) => {
-                            const items = e.clipboardData?.items;
-                            if (items) {
-                              const filesToPaste: File[] = [];
-                              for (let i = 0; i < items.length; i++) {
-                                if (items[i].kind === 'file') {
-                                  const file = items[i].getAsFile();
-                                  if (file) {
-                                    filesToPaste.push(file);
+                            }}
+                            onPaste={(e) => {
+                              const items = e.clipboardData?.items;
+                              if (items) {
+                                const filesToPaste: File[] = [];
+                                for (let i = 0; i < items.length; i++) {
+                                  if (items[i].kind === 'file') {
+                                    const file = items[i].getAsFile();
+                                    if (file) {
+                                      filesToPaste.push(file);
+                                    }
                                   }
                                 }
+                                if (filesToPaste.length > 0) {
+                                  e.preventDefault();
+                                  processFiles(filesToPaste);
+                                }
                               }
-                              if (filesToPaste.length > 0) {
-                                e.preventDefault();
-                                processFiles(filesToPaste);
-                              }
-                            }
-                          }}
-                        />
-                      )}
-                      {isMdMode && mdTab === 'preview' && (
-                        <div
-                          className="input-base w-full block rounded-xl px-4 text-[14px] leading-normal bg-theme-input/40 border-[1.5px] border-glass text-theme-primary box-border overflow-y-auto max-h-64 markdown-body"
-                          style={{
-                            minHeight: '100px',
-                            paddingTop: '11px',
-                            paddingBottom: '11px',
-                          }}
-                        >
-                          {messageInput.trim() ? (
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                              {messageInput}
-                            </ReactMarkdown>
-                          ) : (
-                            <span className="text-theme-muted italic">
-                              Nothing to preview
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    <button
-                      id="send-message-btn"
-                      type="submit"
-                      disabled={
-                        (!messageInput.trim() && attachedFiles.length === 0) ||
-                        !canSendMessages
-                      }
-                      className="btn-send w-11.5 h-11.5 rounded-xl shrink-0 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed hover:-translate-y-0.5 hover:shadow-(--btn-shadow) active-press"
-                    >
-                      <IconSend />
-                    </button>
-                  </form>
+                            }}
+                          />
+                        )}
+                        {isMdMode && mdTab === 'preview' && (
+                          <div
+                            className="input-base w-full block rounded-xl px-4 text-[14px] leading-normal bg-theme-input/40 border-[1.5px] border-glass text-theme-primary box-border overflow-y-auto max-h-64 markdown-body"
+                            style={{
+                              minHeight: '100px',
+                              paddingTop: '11px',
+                              paddingBottom: '11px',
+                            }}
+                          >
+                            {messageInput.trim() ? (
+                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {messageInput}
+                              </ReactMarkdown>
+                            ) : (
+                              <span className="text-theme-muted italic">
+                                Nothing to preview
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        id="send-message-btn"
+                        type="submit"
+                        disabled={
+                          (!messageInput.trim() &&
+                            attachedFiles.length === 0) ||
+                          !canSendMessages
+                        }
+                        className="btn-send w-11.5 h-11.5 rounded-xl shrink-0 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed hover:-translate-y-0.5 hover:shadow-(--btn-shadow) active-press"
+                      >
+                        <IconSend />
+                      </button>
+                    </form>
+                  )}
                 </div>
               </div>
             </>

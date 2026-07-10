@@ -58,6 +58,7 @@ import {
   socketVoicePresenceSync,
   setActiveChannel,
   localSetSelfVoiceChannel,
+  fetchGroups,
 } from './slices/groupsSlice';
 
 import { SOCKET_URL } from '../constants/config';
@@ -355,7 +356,8 @@ class SocketManager {
       'group.channel.created',
       (data: { groupId: string; channel: any }) => {
         PrintLog('📢 Socket group.channel.created:', data.channel.id);
-        store.dispatch(socketChannelCreated(data));
+        const userId = store.getState().auth.user?.id;
+        store.dispatch(socketChannelCreated({ ...data, userId }));
       },
     );
 
@@ -363,7 +365,8 @@ class SocketManager {
       'group.channel.updated',
       (data: { groupId: string; channel: any }) => {
         PrintLog('📢 Socket group.channel.updated:', data.channel.id);
-        store.dispatch(socketChannelUpdated(data));
+        const userId = store.getState().auth.user?.id;
+        store.dispatch(socketChannelUpdated({ ...data, userId }));
       },
     );
 
@@ -388,6 +391,7 @@ class SocketManager {
       (data: { groupId: string; role: any }) => {
         PrintLog('🏷️ Socket group.role.updated:', data.role.id);
         store.dispatch(socketRoleUpdated(data));
+        store.dispatch(fetchGroups());
       },
     );
 
@@ -396,6 +400,7 @@ class SocketManager {
       (data: { groupId: string; roleId: string }) => {
         PrintLog('🗑️ Socket group.role.deleted:', data.roleId);
         store.dispatch(socketRoleDeleted(data));
+        store.dispatch(fetchGroups());
       },
     );
 
@@ -404,6 +409,7 @@ class SocketManager {
       (data: { groupId: string; roles: any[] }) => {
         PrintLog('🏷️ Socket group.roles.reordered:', data.groupId);
         store.dispatch(socketRolesReordered(data));
+        store.dispatch(fetchGroups());
       },
     );
 
@@ -421,6 +427,10 @@ class SocketManager {
           data.roleIds,
         );
         store.dispatch(socketMemberRolesUpdated(data));
+        const currentUserId = store.getState().auth.user?.id;
+        if (data.userId === currentUserId) {
+          store.dispatch(fetchGroups());
+        }
       },
     );
 
