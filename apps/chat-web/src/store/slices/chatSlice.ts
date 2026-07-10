@@ -851,6 +851,13 @@ const chatSlice = createSlice({
         // Parse conversation members dynamically to populate convoRecipients mapping on mount
         const currentUserId = action.meta.arg;
         action.payload.forEach((convo: any) => {
+          if (convo.members) {
+            convo.members.forEach((m: any) => {
+              if (m.user) {
+                state.userProfiles[m.userId] = m.user;
+              }
+            });
+          }
           if (convo.type === 'dm' && convo.members) {
             const recipient = convo.members.find(
               (m: any) => m.userId !== currentUserId,

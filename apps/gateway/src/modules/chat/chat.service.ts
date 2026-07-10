@@ -109,6 +109,14 @@ export class ChatService {
       where: { conversationId: In(conversationIds) },
     });
 
+    // Resolve all participant profiles in bulk to avoid roundtrips
+    const memberUserIds = Array.from(
+      new Set(allMemberships.map((m) => m.userId)),
+    );
+    const users = await this.usersService.findByIds(memberUserIds);
+    const userMap = new Map<string, User>();
+    users.forEach((u) => userMap.set(u.id, u));
+
     const conversationsWithDetails = await Promise.all(
       conversations.map(async (convo) => {
         const members = allMemberships.filter(
@@ -121,7 +129,24 @@ export class ChatService {
 
         return {
           ...convo,
-          members: members.map((m) => ({ userId: m.userId, role: m.role })),
+          members: members.map((m) => {
+            const userProfile = userMap.get(m.userId);
+            return {
+              userId: m.userId,
+              role: m.role,
+              user: userProfile
+                ? {
+                    id: userProfile.id,
+                    email: userProfile.email,
+                    username: userProfile.username,
+                    displayName: userProfile.displayName,
+                    avatarUrl: userProfile.avatarUrl,
+                    avatarThumbnailUrl: userProfile.avatarThumbnailUrl,
+                    status: userProfile.status,
+                  }
+                : null,
+            };
+          }),
           lastMessage: lastMessage
             ? {
                 id: lastMessage.id,
