@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 import { useAppDispatch, useAppSelector } from '../store';
-import type { GroupSection } from '../store/slices/groupsSlice';
+import type { GroupSection, GroupRole } from '../store/slices/groupsSlice';
 import { createSection, updateSection } from '../store/slices/groupsSlice';
 
 import { IconX, IconLock } from './Icons';

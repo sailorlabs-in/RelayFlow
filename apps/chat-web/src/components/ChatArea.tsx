@@ -3571,76 +3571,84 @@ export const ChatArea = ({
               </svg>
               <span>Reply to Message</span>
             </button>
-            <div className="convo-context-menu-separator" />
-            <div
-              className="convo-context-menu-item group relative flex justify-between items-center cursor-pointer"
-              role="menuitem"
-            >
-              <div className="flex items-center gap-2.5">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  width="15"
-                  height="15"
+            {isChannelMode && (
+              <>
+                <div className="convo-context-menu-separator" />
+                <div
+                  className="convo-context-menu-item group relative flex justify-between items-center cursor-pointer"
+                  role="menuitem"
                 >
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
-                <span>Read by {liveContextMenuMsg.readBy?.length || 0}</span>
-              </div>
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                width="12"
-                height="12"
-                className="opacity-60"
-              >
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-              <div
-                className="hidden group-hover:block absolute w-64 bg-(--dropdown-bg) border border-glass rounded-[10px] p-1 shadow-[0_16px_40px_rgba(0,0,0,0.35),0_0_0_1px_var(--glass-border)] backdrop-blur-lg z-10000 animate-[fadeIn_0.15s_ease-out_forwards]"
-                style={{
-                  ...(adjustedContextMenu?.subMenuLeft
-                    ? { right: '100%', left: 'auto', marginRight: '4px' }
-                    : { left: '100%', right: 'auto', marginLeft: '4px' }),
-                  ...(adjustedContextMenu?.subMenuUp
-                    ? { bottom: 0, top: 'auto' }
-                    : { top: 0, bottom: 'auto' }),
-                }}
-              >
-                <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-theme-muted border-b border-glass mb-1">
-                  Read By
-                </div>
-                <div style={{ maxHeight: '150px', overflowY: 'auto' }}>
-                  {liveContextMenuMsg.readBy &&
-                  liveContextMenuMsg.readBy.length > 0 ? (
-                    liveContextMenuMsg.readBy.map((reader) => (
-                      <div
-                        key={reader.userId}
-                        className="flex items-center justify-between gap-3 px-3 py-1.5 rounded-md text-[12px] font-medium text-theme-primary"
-                      >
-                        <span className="truncate flex-1">{reader.name}</span>
-                        {reader.readAt && (
-                          <span className="text-[10.5px] text-theme-muted shrink-0">
-                            {formatReadAtTimestamp(reader.readAt)}
-                          </span>
-                        )}
-                      </div>
-                    ))
-                  ) : (
-                    <div className="flex items-center px-3 py-1.5 rounded-md text-[12px] font-medium text-theme-muted italic break-all">
-                      <span className="whitespace-nowrap overflow-hidden text-ellipsis w-full">
-                        No one yet
-                      </span>
+                  <div className="flex items-center gap-2.5">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      width="15"
+                      height="15"
+                    >
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                    <span>
+                      Read by {liveContextMenuMsg.readBy?.length || 0}
+                    </span>
+                  </div>
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    width="12"
+                    height="12"
+                    className="opacity-60"
+                  >
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                  <div
+                    className="hidden group-hover:block absolute w-64 bg-(--dropdown-bg) border border-glass rounded-[10px] p-1 shadow-[0_16px_40px_rgba(0,0,0,0.35),0_0_0_1px_var(--glass-border)] backdrop-blur-lg z-10000 animate-[fadeIn_0.15s_ease-out_forwards]"
+                    style={{
+                      ...(adjustedContextMenu?.subMenuLeft
+                        ? { right: '100%', left: 'auto', marginRight: '4px' }
+                        : { left: '100%', right: 'auto', marginLeft: '4px' }),
+                      ...(adjustedContextMenu?.subMenuUp
+                        ? { bottom: 0, top: 'auto' }
+                        : { top: 0, bottom: 'auto' }),
+                    }}
+                  >
+                    <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-theme-muted border-b border-glass mb-1">
+                      Read By
                     </div>
-                  )}
+                    <div style={{ maxHeight: '150px', overflowY: 'auto' }}>
+                      {liveContextMenuMsg.readBy &&
+                      liveContextMenuMsg.readBy.length > 0 ? (
+                        liveContextMenuMsg.readBy.map((reader) => (
+                          <div
+                            key={reader.userId}
+                            className="flex items-center justify-between gap-3 px-3 py-1.5 rounded-md text-[12px] font-medium text-theme-primary"
+                          >
+                            <span className="truncate flex-1">
+                              {reader.name}
+                            </span>
+                            {reader.readAt && (
+                              <span className="text-[10.5px] text-theme-muted shrink-0">
+                                {formatReadAtTimestamp(reader.readAt)}
+                              </span>
+                            )}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="flex items-center px-3 py-1.5 rounded-md text-[12px] font-medium text-theme-muted italic break-all">
+                          <span className="whitespace-nowrap overflow-hidden text-ellipsis w-full">
+                            No one yet
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              </>
+            )}
           </div>,
           document.body,
         )}
