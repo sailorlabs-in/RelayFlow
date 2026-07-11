@@ -3280,12 +3280,12 @@ em-emoji-picker {
   .glass-panel button,
   button.active-press,
   .btn-send {
-    border-radius: 20px !important;
+    border-radius: 20px;
   }
 
   /* Special items that should be rounder */
   .glass-panel {
-    border-radius: 28px !important;
+    border-radius: 28px;
   }
 
   /* Avatar upload wrapper */
