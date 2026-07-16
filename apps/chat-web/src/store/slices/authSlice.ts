@@ -10,6 +10,7 @@ export interface User {
   avatarThumbnailUrl?: string;
   themeMode?: string;
   themeSchema?: string;
+  timeFormat?: '12h' | '24h';
   status?: string;
   visibility?: string;
   notificationsEnabled?: boolean;
@@ -36,6 +37,7 @@ export interface AuthState {
   error: string | null;
   themeMode: 'dark' | 'light' | 'system';
   themeSchema: string;
+  timeFormat: '12h' | '24h';
   requiresVerification: boolean;
   requires2FA: boolean;
   verificationEmail: string | null;
@@ -52,6 +54,7 @@ const initialState: AuthState = {
   error: null,
   themeMode: 'system',
   themeSchema: 'arctic_glass',
+  timeFormat: '12h',
   requiresVerification: false,
   requires2FA: false,
   verificationEmail: null,
@@ -411,6 +414,7 @@ const authSlice = createSlice({
         const theme = localStorage.getItem('rf-theme') || 'system';
         const schema =
           localStorage.getItem('rf-theme-schema') || 'arctic_glass';
+        const timeFormat = localStorage.getItem('rf-time-format') || '12h';
 
         if (token && userVal) {
           try {
@@ -418,6 +422,7 @@ const authSlice = createSlice({
             state.user = JSON.parse(userVal);
             state.themeMode = theme as 'dark' | 'light' | 'system';
             state.themeSchema = schema;
+            state.timeFormat = timeFormat as '12h' | '24h';
             state.status = 'succeeded';
           } catch (_) {
             localStorage.removeItem('chat_token');
@@ -461,6 +466,18 @@ const authSlice = createSlice({
       state.themeSchema = action.payload;
       if (isBrowser) {
         localStorage.setItem('rf-theme-schema', action.payload);
+      }
+    },
+    setTimeFormat: (state, action) => {
+      state.timeFormat = action.payload;
+      if (isBrowser) {
+        localStorage.setItem('rf-time-format', action.payload);
+      }
+      if (state.user) {
+        state.user.timeFormat = action.payload;
+        if (isBrowser) {
+          localStorage.setItem('chat_user', JSON.stringify(state.user));
+        }
       }
     },
     setLocalCustomThemes: (state, action) => {
@@ -571,8 +588,10 @@ const authSlice = createSlice({
 
           const userTheme = action.payload.user?.themeMode || 'system';
           const userSchema = action.payload.user?.themeSchema || 'arctic_glass';
+          const userTimeFormat = action.payload.user?.timeFormat || '12h';
           state.themeMode = userTheme;
           state.themeSchema = userSchema;
+          state.timeFormat = userTimeFormat;
 
           if (isBrowser) {
             localStorage.setItem('chat_token', action.payload.accessToken);
@@ -582,6 +601,7 @@ const authSlice = createSlice({
             );
             localStorage.setItem('rf-theme', userTheme);
             localStorage.setItem('rf-theme-schema', userSchema);
+            localStorage.setItem('rf-time-format', userTimeFormat);
           }
         }
       })
@@ -606,8 +626,10 @@ const authSlice = createSlice({
 
         const userTheme = action.payload.user?.themeMode || 'system';
         const userSchema = action.payload.user?.themeSchema || 'arctic_glass';
+        const userTimeFormat = action.payload.user?.timeFormat || '12h';
         state.themeMode = userTheme;
         state.themeSchema = userSchema;
+        state.timeFormat = userTimeFormat;
 
         if (isBrowser) {
           localStorage.setItem('chat_token', action.payload.accessToken);
@@ -617,6 +639,7 @@ const authSlice = createSlice({
           );
           localStorage.setItem('rf-theme', userTheme);
           localStorage.setItem('rf-theme-schema', userSchema);
+          localStorage.setItem('rf-time-format', userTimeFormat);
         }
       })
       .addCase(verifyEmailOtp.rejected, (state, action) => {
@@ -641,8 +664,10 @@ const authSlice = createSlice({
 
         const userTheme = action.payload.user?.themeMode || 'system';
         const userSchema = action.payload.user?.themeSchema || 'arctic_glass';
+        const userTimeFormat = action.payload.user?.timeFormat || '12h';
         state.themeMode = userTheme;
         state.themeSchema = userSchema;
+        state.timeFormat = userTimeFormat;
 
         if (isBrowser) {
           localStorage.setItem('chat_token', action.payload.accessToken);
@@ -652,6 +677,7 @@ const authSlice = createSlice({
           );
           localStorage.setItem('rf-theme', userTheme);
           localStorage.setItem('rf-theme-schema', userSchema);
+          localStorage.setItem('rf-time-format', userTimeFormat);
         }
       })
       .addCase(verify2FaOtp.rejected, (state, action) => {
@@ -672,13 +698,16 @@ const authSlice = createSlice({
 
         const userTheme = action.payload?.themeMode || state.themeMode;
         const userSchema = action.payload?.themeSchema || state.themeSchema;
+        const userTimeFormat = action.payload?.timeFormat || state.timeFormat;
         state.themeMode = userTheme;
         state.themeSchema = userSchema;
+        state.timeFormat = userTimeFormat;
 
         if (isBrowser) {
           localStorage.setItem('chat_user', JSON.stringify(action.payload));
           localStorage.setItem('rf-theme', userTheme);
           localStorage.setItem('rf-theme-schema', userSchema);
+          localStorage.setItem('rf-time-format', userTimeFormat);
         }
       })
       .addCase(updateUserProfile.rejected, (state, action) => {
@@ -708,6 +737,7 @@ export const {
   cancelVerification,
   setThemeMode,
   setThemeSchema,
+  setTimeFormat,
   setLocalCustomThemes,
   updateUserStatusOptimistic,
   restoreSession,

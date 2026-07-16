@@ -16,6 +16,7 @@ import {
   logoutUser,
   setThemeMode as setReduxThemeMode,
   setThemeSchema as setReduxThemeSchema,
+  setTimeFormat as setReduxTimeFormat,
   setLocalCustomThemes,
   updateUserStatusOptimistic,
   checkUsernameAvailability,
@@ -378,6 +379,7 @@ export function ProfileSettingsContent({
   // Theme State
   const [themeMode, setThemeMode] = useState('system');
   const [themeSchema, setThemeSchema] = useState('arctic_glass');
+  const [timeFormat, setTimeFormatState] = useState<'12h' | '24h'>('12h');
   const [customThemes, setCustomThemes] = useState<any[]>([]);
   const [showThemeForm, setShowThemeForm] = useState(false);
   const [editingThemeId, setEditingThemeId] = useState<string | null>(null);
@@ -643,6 +645,7 @@ export function ProfileSettingsContent({
       setUsername(user.username || '');
       setThemeMode(user.themeMode || 'system');
       setThemeSchema(user.themeSchema || 'arctic_glass');
+      setTimeFormatState(user.timeFormat || '12h');
       setUserStatus(user.status || 'online');
       setVisibility(user.visibility || 'everyone');
       setNotificationsEnabled(user.notificationsEnabled ?? true);
@@ -714,12 +717,14 @@ export function ProfileSettingsContent({
     // Capture the original values when the component mounts
     const savedMode = user?.themeMode || 'system';
     const savedSchema = user?.themeSchema || 'arctic_glass';
+    const savedTimeFormat = user?.timeFormat || '12h';
 
     return (): void => {
       // Only revert if we haven't saved the changes
       if (!isSavedRef.current) {
         dispatch(setReduxThemeMode(savedMode));
         dispatch(setReduxThemeSchema(savedSchema));
+        dispatch(setReduxTimeFormat(savedTimeFormat));
       }
     };
   }, [dispatch]);
@@ -773,6 +778,7 @@ export function ProfileSettingsContent({
         username: username.toLowerCase().trim(),
         themeMode,
         themeSchema,
+        timeFormat,
         status: userStatus,
         visibility,
         notificationsEnabled,
@@ -812,6 +818,7 @@ export function ProfileSettingsContent({
         'rf-theme-schema',
         result.themeSchema || 'arctic_glass',
       );
+      localStorage.setItem('rf-time-format', result.timeFormat || '12h');
 
       // Clear password inputs
       setPassword('');
@@ -1782,6 +1789,89 @@ export function ProfileSettingsContent({
                           style={{ color: 'var(--text-muted)' }}
                         >
                           {mode.desc}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Section 1.5: Time Format Preference */}
+                <div
+                  className="flex flex-col gap-2.5 border-t pt-4"
+                  style={{ borderColor: 'var(--border-muted)' }}
+                >
+                  <label
+                    className="text-[11.5px] font-bold uppercase tracking-wider"
+                    style={{ color: 'var(--text-secondary)' }}
+                  >
+                    Time Format Preference
+                  </label>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      {
+                        id: '12h',
+                        name: '12-Hour Clock',
+                        desc: 'Display time with AM/PM (e.g., 09:45 PM)',
+                      },
+                      {
+                        id: '24h',
+                        name: '24-Hour Clock',
+                        desc: 'Display 24-hour military time (e.g., 21:45)',
+                      },
+                    ].map((format) => (
+                      <button
+                        key={format.id}
+                        type="button"
+                        onClick={() => {
+                          setTimeFormatState(format.id as '12h' | '24h');
+                          dispatch(
+                            setReduxTimeFormat(format.id as '12h' | '24h'),
+                          );
+                        }}
+                        className={`flex flex-col items-start p-4 rounded-xl cursor-pointer text-left transition-all duration-200 border ${
+                          timeFormat === format.id
+                            ? 'border-[var(--accent-primary)] bg-[var(--theme-btn-active)]'
+                            : 'border-[var(--glass-border)] bg-[var(--theme-btn)]'
+                        }`}
+                        onMouseEnter={(e) => {
+                          if (timeFormat !== format.id) {
+                            e.currentTarget.style.background =
+                              'var(--theme-btn-hover)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (timeFormat !== format.id) {
+                            e.currentTarget.style.background =
+                              'var(--theme-btn)';
+                          }
+                        }}
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <span
+                            className="font-bold text-[13px]"
+                            style={{
+                              color:
+                                timeFormat === format.id
+                                  ? 'var(--theme-btn-active-text)'
+                                  : 'var(--text-primary)',
+                            }}
+                          >
+                            {format.name}
+                          </span>
+                          {timeFormat === format.id && (
+                            <span
+                              style={{ color: 'var(--theme-btn-active-text)' }}
+                            >
+                              <IconCheck />
+                            </span>
+                          )}
+                        </div>
+                        <span
+                          className="text-[10.5px] mt-1"
+                          style={{ color: 'var(--text-muted)' }}
+                        >
+                          {format.desc}
                         </span>
                       </button>
                     ))}
@@ -3296,7 +3386,14 @@ export function ProfileSettingsContent({
                                         Active:{' '}
                                         {new Date(
                                           dev.lastActive,
-                                        ).toLocaleString()}
+                                        ).toLocaleString([], {
+                                          year: 'numeric',
+                                          month: 'numeric',
+                                          day: 'numeric',
+                                          hour: 'numeric',
+                                          minute: '2-digit',
+                                          hour12: timeFormat !== '24h',
+                                        })}
                                       </span>
                                     </div>
                                   </div>
