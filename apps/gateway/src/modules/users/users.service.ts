@@ -48,6 +48,7 @@ export class UsersService {
       displayName: displayName || username || email.split('@')[0],
       themeSchema: 'arctic_glass',
       themeMode: 'system',
+      timeFormat: '12h',
     });
 
     const saved = await this.userRepository.save(user);
@@ -193,6 +194,7 @@ export class UsersService {
       password?: string;
       themeMode?: string;
       themeSchema?: string;
+      timeFormat?: '12h' | '24h';
       status?: string;
       visibility?: string;
       notificationsEnabled?: boolean;
@@ -237,6 +239,10 @@ export class UsersService {
 
     if (data.themeSchema !== undefined) {
       user.themeSchema = data.themeSchema;
+    }
+
+    if (data.timeFormat !== undefined) {
+      user.timeFormat = data.timeFormat;
     }
 
     if (data.status !== undefined) {

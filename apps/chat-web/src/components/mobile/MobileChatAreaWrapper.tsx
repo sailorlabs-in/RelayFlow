@@ -298,7 +298,7 @@ export const MobileChatAreaWrapper = ({
       </header>
 
       {/* Chat Area fills remaining space */}
-      <div className="flex-1 min-h-0 mx-3 mb-4 mt-2 rounded-2xl overflow-hidden">
+      <div className="flex-1 min-h-0 mx-3 mb-4 mt-2 rounded-3xl overflow-hidden">
         <ChatArea
           activeConversationId={effectiveActiveConversationId}
           setIsComposeOpen={setIsComposeOpen}

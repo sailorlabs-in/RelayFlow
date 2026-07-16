@@ -296,7 +296,7 @@ export const ChatArea = ({
   const dispatch = useAppDispatch();
   const feedEndRef = useRef<HTMLDivElement>(null);
 
-  const { user } = useAppSelector((s) => s.auth);
+  const { user, timeFormat } = useAppSelector((s) => s.auth);
 
   const [timeStr, setTimeStr] = useState('');
   const [greeting, setGreeting] = useState('');
@@ -306,8 +306,9 @@ export const ChatArea = ({
       const now = new Date();
       setTimeStr(
         now.toLocaleTimeString([], {
-          hour: '2-digit',
+          hour: timeFormat === '24h' ? '2-digit' : 'numeric',
           minute: '2-digit',
+          hour12: timeFormat !== '24h',
         }),
       );
 
@@ -323,7 +324,7 @@ export const ChatArea = ({
     updateTimeAndGreeting();
     const interval = setInterval(updateTimeAndGreeting, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [timeFormat]);
   const {
     conversations,
     messages,
@@ -378,6 +379,10 @@ export const ChatArea = ({
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState('');
+  const [viewingCode, setViewingCode] = useState<{
+    code: string;
+    language: string;
+  } | null>(null);
 
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isMobileScreen, setIsMobileScreen] = useState(false);
@@ -682,7 +687,92 @@ export const ChatArea = ({
     if (isMarkdownMsg || isMdMode) {
       return (
         <div className="markdown-body prose prose-sm dark:prose-invert max-w-none break-words">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              pre({ node, children, ...props }: any) {
+                try {
+                  const isMobile = isMobileScreen || isMobileView;
+                  if (isMobile) {
+                    const codeElement = React.Children.toArray(
+                      children,
+                    )[0] as any;
+                    if (codeElement && codeElement.props) {
+                      const codeString = String(
+                        codeElement.props.children,
+                      ).replace(/\n$/, '');
+                      const match = /language-(\w+)/.exec(
+                        codeElement.props.className || '',
+                      );
+                      const lang = match ? match[1] : '';
+                      return (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setViewingCode({
+                              code: codeString,
+                              language: lang,
+                            });
+                          }}
+                          className="w-full text-left my-2 p-3 rounded-xl border border-glass bg-theme-input/40 hover:bg-theme-input/60 transition-all flex items-center justify-between gap-3 text-theme-primary font-sans cursor-pointer group active-press"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="w-8 h-8 rounded-lg flex items-center justify-center bg-(--accent-primary)/10 text-(--accent-primary) shrink-0 group-hover:scale-105 transition-transform">
+                              <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2.5"
+                                className="w-4 h-4"
+                              >
+                                <polyline points="16 18 22 12 16 6" />
+                                <polyline points="8 6 2 12 8 18" />
+                              </svg>
+                            </span>
+                            <div className="min-w-0">
+                              <div className="text-[12.5px] font-bold leading-tight">
+                                [Message with code]
+                              </div>
+                              <div className="text-[10px] text-theme-muted truncate mt-0.5">
+                                {lang
+                                  ? `${lang} code block`
+                                  : 'Click to view code snippet'}
+                              </div>
+                            </div>
+                          </div>
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            className="w-4 h-4 text-theme-muted opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all shrink-0"
+                          >
+                            <polyline points="9 18 15 12 9 6" />
+                          </svg>
+                        </button>
+                      );
+                    }
+                  }
+                } catch (err) {
+                  console.error('Error rendering mobile code block:', err);
+                }
+                return <pre {...props}>{children}</pre>;
+              },
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              code({ node, inline, className, children, ...props }: any) {
+                return (
+                  <code className={className} {...props}>
+                    {children}
+                  </code>
+                );
+              },
+            }}
+          >
+            {content}
+          </ReactMarkdown>
         </div>
       );
     }
@@ -2018,7 +2108,10 @@ export const ChatArea = ({
                                   {senderName}
                                 </span>
                                 <span className="text-[10.5px] text-theme-muted">
-                                  {formatMessageTimestamp(msg.createdAt)}
+                                  {formatMessageTimestamp(
+                                    msg.createdAt,
+                                    timeFormat,
+                                  )}
                                 </span>
                                 {msg.isEdited && (
                                   <span className="text-[9.5px] text-theme-muted opacity-85 select-none">
@@ -2569,7 +2662,10 @@ export const ChatArea = ({
 
                           <div className="flex items-center gap-1.5 mt-1 px-1 select-none">
                             <span className="text-[10px] text-theme-muted">
-                              {formatMessageTimestamp(msg.createdAt)}
+                              {formatMessageTimestamp(
+                                msg.createdAt,
+                                timeFormat,
+                              )}
                             </span>
                             {msg.isEdited && (
                               <span className="text-[9.5px] text-theme-muted opacity-85 select-none">
@@ -3632,7 +3728,10 @@ export const ChatArea = ({
                             </span>
                             {reader.readAt && (
                               <span className="text-[10.5px] text-theme-muted shrink-0">
-                                {formatReadAtTimestamp(reader.readAt)}
+                                {formatReadAtTimestamp(
+                                  reader.readAt,
+                                  timeFormat,
+                                )}
                               </span>
                             )}
                           </div>
@@ -3663,6 +3762,80 @@ export const ChatArea = ({
           onConfirm={confirmModal.onConfirm}
           onCancel={() => setConfirmModal(null)}
         />
+      )}
+
+      {viewingCode && (
+        <div
+          className="fixed inset-0 z-[1300] flex flex-col items-center justify-center p-4 bg-[rgba(4,6,12,0.7)] backdrop-blur-sm animate-fade-in"
+          onClick={() => setViewingCode(null)}
+        >
+          <div
+            className="w-full max-w-2xl bg-(--glass-bg) border border-glass rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh] animate-slide-up"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backdropFilter: 'blur(12px)',
+            }}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-theme bg-theme-input/20">
+              <div className="flex items-center gap-2.5">
+                <span className="w-8 h-8 rounded-lg flex items-center justify-center bg-(--accent-primary)/10 text-(--accent-primary)">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    className="w-4 h-4"
+                  >
+                    <polyline points="16 18 22 12 16 6" />
+                    <polyline points="8 6 2 12 8 18" />
+                  </svg>
+                </span>
+                <h3 className="m-0 text-[15px] font-bold text-theme-primary">
+                  {viewingCode.language
+                    ? `${viewingCode.language} code block`
+                    : 'Code block'}
+                </h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(viewingCode.code);
+                    showToast.success('Code copied to clipboard!');
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-(--accent-primary) hover:bg-(--accent-primary)/90 text-white text-[12px] font-bold border-none cursor-pointer flex items-center gap-1.5 transition-colors active-press"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="13"
+                    height="13"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                  >
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                  </svg>
+                  Copy
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewingCode(null)}
+                  className="bg-transparent border-none cursor-pointer text-theme-muted hover:text-theme-primary p-1 rounded-lg flex items-center justify-center hover:bg-theme-input transition-colors active-press"
+                >
+                  <IconX size={16} />
+                </button>
+              </div>
+            </div>
+            {/* Code Content */}
+            <div className="p-4 overflow-y-auto flex-1 bg-theme-input/20">
+              <pre className="m-0 p-4 rounded-xl bg-theme-chat border border-glass/40 overflow-x-auto text-[13px] font-mono leading-relaxed text-theme-primary">
+                <code>{viewingCode.code}</code>
+              </pre>
+            </div>
+          </div>
+        </div>
       )}
       {activeMediaItem && (
         <div

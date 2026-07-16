@@ -6,13 +6,14 @@
  */
 export const formatMessageTimestamp = (
   dateInput: string | Date | number,
+  timeFormat: '12h' | '24h' = '12h',
 ): string => {
   const date = new Date(dateInput);
 
   const timeStr = date.toLocaleTimeString([], {
-    hour: 'numeric',
+    hour: timeFormat === '24h' ? '2-digit' : 'numeric',
     minute: '2-digit',
-    hour12: true,
+    hour12: timeFormat !== '24h',
   });
 
   const now = new Date();
@@ -44,13 +45,14 @@ export const formatMessageTimestamp = (
 
 export const formatReadAtTimestamp = (
   dateInput: string | Date | number,
+  timeFormat: '12h' | '24h' = '12h',
 ): string => {
   const date = new Date(dateInput);
 
   const timeStr = date.toLocaleTimeString([], {
-    hour: 'numeric',
+    hour: timeFormat === '24h' ? '2-digit' : 'numeric',
     minute: '2-digit',
-    hour12: true,
+    hour12: timeFormat !== '24h',
   });
 
   const now = new Date();

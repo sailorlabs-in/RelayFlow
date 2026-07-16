@@ -43,7 +43,7 @@ export const MobileChatsTab = ({
   handleTouchEnd,
 }: MobileChatsTabProps): React.JSX.Element => {
   const dispatch = useAppDispatch();
-  const { user } = useAppSelector((s) => s.auth);
+  const { user, timeFormat } = useAppSelector((s) => s.auth);
   const {
     conversations,
     messages,
@@ -164,7 +164,7 @@ export const MobileChatsTab = ({
                     )}
                     {lastMsg && (
                       <span className="text-[10px] text-theme-muted">
-                        {formatMessageTimestamp(lastMsg.createdAt)}
+                        {formatMessageTimestamp(lastMsg.createdAt, timeFormat)}
                       </span>
                     )}
                   </div>

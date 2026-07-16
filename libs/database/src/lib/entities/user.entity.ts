@@ -35,6 +35,9 @@ export class User {
   @Column({ name: 'theme_schema', default: 'arctic_glass' })
   themeSchema!: string;
 
+  @Column({ name: 'time_format', default: '12h' })
+  timeFormat!: '12h' | '24h';
+
   @Column({ name: 'status', default: 'online' })
   status!: string;
 

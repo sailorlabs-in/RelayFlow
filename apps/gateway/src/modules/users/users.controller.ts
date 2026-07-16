@@ -115,6 +115,7 @@ export class UsersController {
         password: { type: 'string', example: 'newsecurepassword123' },
         themeMode: { type: 'string', example: 'dark' },
         themeSchema: { type: 'string', example: 'emerald' },
+        timeFormat: { type: 'string', example: '12h' },
         status: { type: 'string', example: 'away' },
         visibility: { type: 'string', example: 'everyone' },
         notificationsEnabled: { type: 'boolean', example: true },
@@ -158,6 +159,7 @@ export class UsersController {
       password?: string;
       themeMode?: string;
       themeSchema?: string;
+      timeFormat?: '12h' | '24h';
       status?: string;
       visibility?: string;
       notificationsEnabled?: boolean;

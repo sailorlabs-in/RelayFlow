@@ -10,7 +10,7 @@ interface UpdateNote {
   title: string;
   content: string;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
 }
 
 interface UpdateNoteModalProps {

@@ -24,7 +24,7 @@ export const InviteMembersModal = ({
   onClose,
 }: InviteMembersModalProps): React.JSX.Element => {
   const dispatch = useAppDispatch();
-  const { user } = useAppSelector((s) => s.auth);
+  const { user, timeFormat } = useAppSelector((s) => s.auth);
   const { friends, onlineUsers } = useAppSelector((s) => s.chat);
   const {
     invites,
@@ -406,7 +406,16 @@ export const InviteMembersModal = ({
                             isExpired ? (
                               <span className="text-(--danger)">Expired</span>
                             ) : (
-                              `Expires: ${new Date(invite.expiresAt).toLocaleString()}`
+                              `Expires: ${new Date(
+                                invite.expiresAt,
+                              ).toLocaleString([], {
+                                year: 'numeric',
+                                month: 'numeric',
+                                day: 'numeric',
+                                hour: 'numeric',
+                                minute: '2-digit',
+                                hour12: timeFormat !== '24h',
+                              })}`
                             )
                           ) : (
                             'Never Expires'

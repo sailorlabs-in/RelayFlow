@@ -59,7 +59,7 @@ export const ChatSidebar = ({
   onToggleRail,
 }: ChatSidebarProps): React.JSX.Element => {
   const dispatch = useAppDispatch();
-  const { user } = useAppSelector((s) => s.auth);
+  const { user, timeFormat } = useAppSelector((s) => s.auth);
   const {
     conversations,
     activeConversationId,
@@ -449,7 +449,10 @@ export const ChatSidebar = ({
                         )}
                         {lastMsg && (
                           <span className="text-[10px] text-theme-muted">
-                            {formatMessageTimestamp(lastMsg.createdAt)}
+                            {formatMessageTimestamp(
+                              lastMsg.createdAt,
+                              timeFormat,
+                            )}
                           </span>
                         )}
                       </div>

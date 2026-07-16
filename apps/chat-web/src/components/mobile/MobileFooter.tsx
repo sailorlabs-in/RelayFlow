@@ -29,14 +29,14 @@ export const MobileFooter = ({
   });
 
   return (
-    <footer className="glass-panel mx-3 mb-4 border border-glass shadow-lg flex items-center justify-around py-1.5 px-1.5 rounded-4xl shrink-0 z-40 pb-safe">
+    <footer className="mx-4 gap-1 mb-4 border border-glass shadow-lg flex items-center justify-around p-1.5 rounded-[30px] shrink z-40 pb-safe">
       {/* Chats Tab */}
       <button
         onClick={() => {
           setActiveTab('chats');
           setSelectedGroupId(null);
         }}
-        className={`flex flex-col items-center justify-center flex-1 py-2 px-1 rounded-xl transition-all duration-200 active:scale-95 ${
+        className={`flex flex-col items-center justify-center flex-1 p-1 rounded-3xl transition-all duration-200 active:scale-95 ${
           activeTab === 'chats'
             ? 'bg-(--theme-btn-active) border border-glass shadow-sm text-(--accent-primary)'
             : 'text-theme-muted hover:text-theme-primary'
@@ -48,7 +48,7 @@ export const MobileFooter = ({
             <span className="absolute top-0 right-0 w-2.5 h-2.5 rounded-full bg-(--accent-primary) animate-pulse" />
           )}
         </div>
-        <span className="text-[10px] font-semibold mt-0.5">Chats</span>
+        <span className="text-[10px] font-semibold">Chats</span>
       </button>
 
       {/* Groups Tab */}
@@ -56,7 +56,7 @@ export const MobileFooter = ({
         onClick={() => {
           setActiveTab('groups');
         }}
-        className={`flex flex-col items-center justify-center flex-1 py-2 px-1 rounded-xl transition-all duration-200 active:scale-95 ${
+        className={`flex flex-col items-center justify-center flex-1 p-1 rounded-3xl transition-all duration-200 active:scale-95 ${
           activeTab === 'groups'
             ? 'bg-(--theme-btn-active) border border-glass shadow-sm text-(--accent-primary)'
             : 'text-theme-muted hover:text-theme-primary'
@@ -74,7 +74,7 @@ export const MobileFooter = ({
           setActiveTab('friends');
           setSelectedGroupId(null);
         }}
-        className={`flex flex-col items-center justify-center flex-1 py-2 px-1 rounded-xl transition-all duration-200 active:scale-95 ${
+        className={`flex flex-col items-center justify-center flex-1 p-1 rounded-3xl transition-all duration-200 active:scale-95 ${
           activeTab === 'friends'
             ? 'bg-(--theme-btn-active) border border-glass shadow-sm text-(--accent-primary)'
             : 'text-theme-muted hover:text-theme-primary'
@@ -92,7 +92,7 @@ export const MobileFooter = ({
           setActiveTab('profile');
           setSelectedGroupId(null);
         }}
-        className={`flex flex-col items-center justify-center flex-1 py-2 px-1 rounded-xl transition-all duration-200 active:scale-95 ${
+        className={`flex flex-col items-center justify-center flex-1 p-1 rounded-3xl transition-all duration-200 active:scale-95 ${
           activeTab === 'profile'
             ? 'bg-(--theme-btn-active) border border-glass shadow-sm text-(--accent-primary)'
             : 'text-theme-muted hover:text-theme-primary'

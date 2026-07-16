@@ -3,9 +3,21 @@ import { IconPlus } from '../Icons';
 
 interface MobileHeaderProps {
   activeTab: 'chats' | 'groups' | 'friends' | 'profile';
-  profileSubPage: 'root' | 'account' | 'theme' | 'status' | 'notifications';
+  profileSubPage:
+    | 'root'
+    | 'account'
+    | 'theme'
+    | 'status'
+    | 'notifications'
+    | 'update-notes';
   setProfileSubPage: (
-    page: 'root' | 'account' | 'theme' | 'status' | 'notifications',
+    page:
+      | 'root'
+      | 'account'
+      | 'theme'
+      | 'status'
+      | 'notifications'
+      | 'update-notes',
   ) => void;
   setIsComposeOpen: (open: boolean) => void;
   setIsCreateGroupOpen: (open: boolean) => void;
@@ -43,6 +55,7 @@ export const MobileHeader = ({
               {profileSubPage === 'theme' && 'Appearance & Themes'}
               {profileSubPage === 'status' && 'Status & Visibility'}
               {profileSubPage === 'notifications' && 'Notifications & Devices'}
+              {profileSubPage === 'update-notes' && 'Update Notes'}
             </div>
           </div>
         </div>
