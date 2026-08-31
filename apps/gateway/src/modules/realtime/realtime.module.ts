@@ -1,6 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
-import { QueueNames } from '@chat-app/queues';
+import { DEFAULT_QUEUE_JOB_OPTIONS, QueueNames } from '@chat-app/queues';
 
 import { AuthModule } from '../auth/auth.module';
 import { ChatModule } from '../chat/chat.module';
@@ -17,6 +17,7 @@ import { RealtimeGateway } from './realtime.gateway';
     forwardRef(() => GroupsModule),
     BullModule.registerQueue({
       name: QueueNames.NOTIFICATIONS,
+      defaultJobOptions: DEFAULT_QUEUE_JOB_OPTIONS,
     }),
   ],
   providers: [RealtimeGateway],

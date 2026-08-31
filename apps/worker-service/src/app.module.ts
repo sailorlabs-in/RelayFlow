@@ -5,10 +5,12 @@ import { RedisModule } from '@chat-app/redis';
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigService } from '@nestjs/config';
-import { QueueNames } from '@chat-app/queues';
+import { DEFAULT_QUEUE_JOB_OPTIONS, QueueNames } from '@chat-app/queues';
 
 import { NotificationProcessor } from './processors/notification.processor';
 import { EmailProcessor } from './processors/email.processor';
+import { SystemCleanupProcessor } from './processors/system-cleanup.processor';
+import { SystemCleanupService } from './services/system-cleanup.service';
 
 @Module({
   imports: [
@@ -29,11 +31,21 @@ import { EmailProcessor } from './processors/email.processor';
     }),
     BullModule.registerQueue({
       name: QueueNames.NOTIFICATIONS,
+      defaultJobOptions: DEFAULT_QUEUE_JOB_OPTIONS,
     }),
     BullModule.registerQueue({
       name: QueueNames.EMAILS,
+      defaultJobOptions: DEFAULT_QUEUE_JOB_OPTIONS,
+    }),
+    BullModule.registerQueue({
+      name: QueueNames.SYSTEM_CLEANUP,
     }),
   ],
-  providers: [NotificationProcessor, EmailProcessor],
+  providers: [
+    NotificationProcessor,
+    EmailProcessor,
+    SystemCleanupProcessor,
+    SystemCleanupService,
+  ],
 })
 export class AppModule {}

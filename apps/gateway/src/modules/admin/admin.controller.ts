@@ -713,4 +713,65 @@ export class AdminController {
     await this.updateNoteRepo.remove(note);
     return { success: true };
   }
+
+  /**
+   * Get queue metrics and job counts.
+   */
+  @UseGuards(JwtAuthGuard, PlatformAdminGuard)
+  @Get('queues/stats')
+  async getQueueStats() {
+    const counts = await this.notificationsQueue.getJobCounts(
+      'waiting',
+      'active',
+      'completed',
+      'failed',
+      'delayed',
+      'paused',
+    );
+
+    return {
+      queue: QueueNames.NOTIFICATIONS,
+      counts,
+    };
+  }
+
+  /**
+   * Trigger immediate cleanup of completed / failed queue jobs in Redis.
+   */
+  @UseGuards(JwtAuthGuard, PlatformAdminGuard)
+  @Post('queues/clean')
+  async cleanQueue(
+    @Body()
+    body?: {
+      type?: 'completed' | 'failed' | 'all';
+      gracePeriodMs?: number;
+    },
+  ) {
+    const type = body?.type || 'all';
+    const grace = body?.gracePeriodMs ?? 0;
+
+    let completedCleaned: string[] = [];
+    let failedCleaned: string[] = [];
+
+    if (type === 'completed' || type === 'all') {
+      completedCleaned = await this.notificationsQueue.clean(
+        grace,
+        0,
+        'completed',
+      );
+    }
+    if (type === 'failed' || type === 'all') {
+      failedCleaned = await this.notificationsQueue.clean(grace, 0, 'failed');
+    }
+    await this.notificationsQueue.trimEvents(100);
+
+    return {
+      success: true,
+      message: `Cleaned ${completedCleaned.length} completed and ${failedCleaned.length} failed jobs from ${QueueNames.NOTIFICATIONS} queue.`,
+      purged: {
+        completed: completedCleaned.length,
+        failed: failedCleaned.length,
+      },
+    };
+  }
 }
