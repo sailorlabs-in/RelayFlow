@@ -25,38 +25,66 @@ import { MobileGroupsTab } from './mobile/MobileGroupsTab';
 import { MobileProfileTab } from './mobile/MobileProfileTab';
 import { MobileVoiceOverlay } from './mobile/MobileVoiceOverlay';
 import { MobileChatAreaWrapper } from './mobile/MobileChatAreaWrapper';
+import { useMobileBackHandler } from '../hooks/useMobileBackHandler';
 
 interface MobileDashboardProps {
   ownStatus: string;
   handleLogout: () => void;
-  _setIsProfileOpen: (open: boolean) => void;
+  isProfileOpen: boolean;
+  setIsProfileOpen: (open: boolean) => void;
+  isComposeOpen: boolean;
   setIsComposeOpen: (open: boolean) => void;
+  isCreateGroupOpen: boolean;
   setIsCreateGroupOpen: (open: boolean) => void;
+  isCreateChannelOpen: boolean;
   setIsCreateChannelOpen: (open: boolean) => void;
   setCreateChannelSectionId: (sectionId: string | undefined) => void;
+  isCreateSectionOpen: boolean;
   setIsCreateSectionOpen: (open: boolean) => void;
   setSectionToEdit: (section: any | null) => void;
+  isGroupSettingsOpen: boolean;
   setIsGroupSettingsOpen: (open: boolean) => void;
+  isChannelSettingsOpen: boolean;
+  setIsChannelSettingsOpen: (open: boolean) => void;
+  isInviteMembersOpen: boolean;
   setIsInviteMembersOpen: (open: boolean) => void;
   isMembersListOpen: boolean;
   setIsMembersListOpen: (open: boolean) => void;
   onEditChannel: (channel: any) => void;
+  confirmModal: any;
+  setConfirmModal: (modal: any) => void;
+  showUpdateNoteModal: boolean;
+  setShowUpdateNoteModal: (show: boolean) => void;
 }
 
 export const MobileDashboard = ({
   ownStatus,
   handleLogout,
+  isProfileOpen,
+  setIsProfileOpen,
+  isComposeOpen,
   setIsComposeOpen,
+  isCreateGroupOpen,
   setIsCreateGroupOpen,
+  isCreateChannelOpen,
   setIsCreateChannelOpen,
   setCreateChannelSectionId,
+  isCreateSectionOpen,
   setIsCreateSectionOpen,
   setSectionToEdit,
+  isGroupSettingsOpen,
   setIsGroupSettingsOpen,
+  isChannelSettingsOpen,
+  setIsChannelSettingsOpen,
+  isInviteMembersOpen,
   setIsInviteMembersOpen,
   isMembersListOpen,
   setIsMembersListOpen,
   onEditChannel,
+  confirmModal,
+  setConfirmModal,
+  showUpdateNoteModal,
+  setShowUpdateNoteModal,
 }: MobileDashboardProps): React.JSX.Element => {
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((s) => s.auth);
@@ -183,6 +211,45 @@ export const MobileDashboard = ({
     conversations.some((c) => c.id === activeConversationId);
   const showChannelChat = activeTab === 'groups' && !!activeChannelId;
   const showChatArea = showDMChat || showChannelChat;
+
+  useMobileBackHandler({
+    enabled: true,
+    activeTab,
+    setActiveTab,
+    showChatArea,
+    onCloseChat: () => {
+      dispatch(setActiveConversation(null));
+      dispatch(setActiveChannel(null));
+    },
+    profileSubPage,
+    setProfileSubPage,
+    contextMenu,
+    setContextMenu,
+    localConfirmModal,
+    setLocalConfirmModal,
+    confirmModal,
+    setConfirmModal,
+    isMembersListOpen,
+    setIsMembersListOpen,
+    isComposeOpen,
+    setIsComposeOpen,
+    isCreateGroupOpen,
+    setIsCreateGroupOpen,
+    isCreateChannelOpen,
+    setIsCreateChannelOpen,
+    isCreateSectionOpen,
+    setIsCreateSectionOpen,
+    isInviteMembersOpen,
+    setIsInviteMembersOpen,
+    isGroupSettingsOpen,
+    setIsGroupSettingsOpen,
+    isChannelSettingsOpen,
+    setIsChannelSettingsOpen,
+    isProfileOpen,
+    setIsProfileOpen,
+    showUpdateNoteModal,
+    setShowUpdateNoteModal,
+  });
 
   if (!user) {
     return <div className="h-screen w-screen bg-theme-primary" />;

@@ -372,6 +372,20 @@ function ChatDashboardContent() {
     }
   }, [effectiveActiveConversationId, activeConversationId, dispatch]);
 
+  // If user is already logged in, purge/replace any prior login page from browser history
+  useEffect(() => {
+    if (accessToken && user && typeof window !== 'undefined') {
+      const state = window.history.state;
+      if (!state || !state.rfMobile) {
+        window.history.replaceState(
+          { rfMobile: true, depth: 0, isBase: true },
+          '',
+          window.location.pathname,
+        );
+      }
+    }
+  }, [accessToken, user]);
+
   // ── RENDER: Hydration & Auth Gate ──
   if (!isHydrated) {
     return <div className="bg-theme-primary h-screen w-screen" />;
@@ -392,14 +406,23 @@ function ChatDashboardContent() {
         <MobileDashboard
           ownStatus={ownStatus}
           handleLogout={handleLogout}
-          _setIsProfileOpen={setIsProfileOpen}
+          isProfileOpen={isProfileOpen}
+          setIsProfileOpen={setIsProfileOpen}
+          isComposeOpen={isComposeOpen}
           setIsComposeOpen={setIsComposeOpen}
+          isCreateGroupOpen={isCreateGroupOpen}
           setIsCreateGroupOpen={setIsCreateGroupOpen}
+          isCreateChannelOpen={isCreateChannelOpen}
           setIsCreateChannelOpen={setIsCreateChannelOpen}
           setCreateChannelSectionId={setCreateChannelSectionId}
+          isCreateSectionOpen={isCreateSectionOpen}
           setIsCreateSectionOpen={setIsCreateSectionOpen}
           setSectionToEdit={setSectionToEdit}
+          isGroupSettingsOpen={isGroupSettingsOpen}
           setIsGroupSettingsOpen={setIsGroupSettingsOpen}
+          isChannelSettingsOpen={isChannelSettingsOpen}
+          setIsChannelSettingsOpen={setIsChannelSettingsOpen}
+          isInviteMembersOpen={isInviteMembersOpen}
           setIsInviteMembersOpen={setIsInviteMembersOpen}
           isMembersListOpen={isMembersListOpen}
           setIsMembersListOpen={setIsMembersListOpen}
@@ -407,6 +430,10 @@ function ChatDashboardContent() {
             setChannelToEdit(c);
             setIsChannelSettingsOpen(true);
           }}
+          confirmModal={confirmModal}
+          setConfirmModal={setConfirmModal}
+          showUpdateNoteModal={showUpdateNoteModal}
+          setShowUpdateNoteModal={setShowUpdateNoteModal}
         />
 
         {/* Backdrop for mobile member sidebar */}
