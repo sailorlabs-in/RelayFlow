@@ -47,8 +47,44 @@ async function bootstrap(): Promise<void> {
   app.useGlobalFilters(new GlobalExceptionFilter());
 
   // -------------------------------------------------------------
-  // Swagger Documentation Setup
+  // Swagger Documentation Setup (Locked with Basic Auth)
   // -------------------------------------------------------------
+  const adminUser =
+    process.env.ADMIN_USERNAME ||
+    process.env.ADMIN_DOCS_USERNAME ||
+    process.env.BULL_BOARD_USERNAME ||
+    'admin';
+  const adminPass =
+    process.env.ADMIN_PASSWORD ||
+    process.env.ADMIN_DOCS_PASSWORD ||
+    process.env.BULL_BOARD_PASSWORD ||
+    'admin';
+
+  app.use(
+    ['/docs', '/docs/', '/docs-json'],
+    (req: any, res: any, next: any) => {
+      const authHeader = req.headers['authorization'];
+      if (authHeader && authHeader.startsWith('Basic ')) {
+        const credentials = Buffer.from(
+          authHeader.split(' ')[1],
+          'base64',
+        ).toString('utf-8');
+        const [user, pass] = credentials.split(':');
+        if (user === adminUser && pass === adminPass) {
+          return next();
+        }
+      }
+
+      res.setHeader(
+        'WWW-Authenticate',
+        'Basic realm="RelayFlow Swagger Documentation"',
+      );
+      return res
+        .status(401)
+        .send('Authentication required to access API Documentation');
+    },
+  );
+
   const config = new DocumentBuilder()
     .setTitle('RelayFlow REST API')
     .setDescription(

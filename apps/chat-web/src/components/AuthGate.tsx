@@ -32,7 +32,7 @@ export const AuthGate = (): React.JSX.Element => {
     user,
   } = useAppSelector((s) => s.auth);
 
-  // If user is already logged in, immediately remove/bypass this auth page from history and exit/quit
+  // If user is already logged in, redirect directly to dashboard
   useEffect(() => {
     if (typeof window === 'undefined') {
       return;
@@ -42,15 +42,7 @@ export const AuthGate = (): React.JSX.Element => {
       localStorage.getItem('chat_token') ||
       localStorage.getItem('access_token');
     if (token) {
-      // User is already logged in! Navigating to AuthGate via back button should quit the webapp
-      try {
-        window.close();
-      } catch {
-        // Browser may disallow script-initiated window closing; fall back to history navigation
-        void 0;
-      }
-      // If window.close() didn't close (browser tab), continue popping history out of the domain
-      window.history.back();
+      window.location.replace('/');
     }
   }, [accessToken, user]);
 

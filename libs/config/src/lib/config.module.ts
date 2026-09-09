@@ -5,18 +5,29 @@ import appConfig from './app.config';
 import authConfig from './auth.config';
 import { environmentSchema } from './config.schema';
 import databaseConfig from './database.config';
+import emailConfig from './email.config';
 import redisConfig from './redis.config';
+import throttlerConfig from './throttler.config';
 
 @Module({
   imports: [
     NestConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, databaseConfig, redisConfig, authConfig],
+      load: [
+        appConfig,
+        databaseConfig,
+        redisConfig,
+        authConfig,
+        emailConfig,
+        throttlerConfig,
+      ],
       validate: (config: Record<string, unknown>) => {
         try {
           return environmentSchema.parse(config);
         } catch (error) {
-          throw new Error(`❌ Environment validation failed:\n${JSON.stringify(error, null, 2)}`);
+          throw new Error(
+            `❌ Environment validation failed:\n${JSON.stringify(error, null, 2)}`,
+          );
         }
       },
     }),

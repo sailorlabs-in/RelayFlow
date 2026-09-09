@@ -6,6 +6,11 @@ export const environmentSchema = z.object({
     .default('development'),
   PORT: z.coerce.number().default(3000),
 
+  // Application Ports
+  GATEWAY_PORT: z.coerce.number().default(4001),
+  WORKER_PORT: z.coerce.number().default(4002),
+  FRONTEND_PORT: z.coerce.number().default(4000),
+
   // Database Configurations
   DATABASE_URL: z.string().optional(),
   DB_HOST: z.string().default('localhost'),
@@ -13,6 +18,12 @@ export const environmentSchema = z.object({
   DB_USERNAME: z.string().default('postgres'),
   DB_PASSWORD: z.string().default('postgres'),
   DB_NAME: z.string().default('relayflow'),
+  DB_SYNCHRONIZE: z
+    .preprocess((val) => val === 'true' || val === true, z.boolean())
+    .default(false),
+  DB_LOGGING: z
+    .preprocess((val) => val === 'true' || val === true, z.boolean())
+    .default(false),
 
   // Redis Configurations
   REDIS_HOST: z.string().default('localhost'),
@@ -23,6 +34,22 @@ export const environmentSchema = z.object({
   JWT_SECRET: z.string().default('relayflow-super-secret-key-12345'),
   JWT_ACCESS_EXPIRATION: z.string().default('15m'),
   JWT_REFRESH_EXPIRATION: z.string().default('7d'),
+  JWT_REFRESH_SECRET: z.string().optional(),
+
+  // Throttler / Rate Limiting Configurations
+  THROTTLE_TTL: z.coerce.number().default(60),
+  THROTTLE_LIMIT: z.coerce.number().default(100),
+
+  // Admin Documentation & BullMQ Dashboard Security
+  ADMIN_USERNAME: z.string().default('admin'),
+  ADMIN_PASSWORD: z.string().default('admin'),
+  BULL_BOARD_USERNAME: z.string().default('admin'),
+  BULL_BOARD_PASSWORD: z.string().default('admin'),
+
+  // Application Logging
+  LOG_LEVEL: z
+    .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace'])
+    .default('info'),
 
   // Vibe Message Configurations
   VIBE_APP_ID: z.string().optional(),
@@ -45,6 +72,13 @@ export const environmentSchema = z.object({
 
   // Storage Bucket Configurations
   BUCKET_URL: z.string().default('https://bucket.umangsailor.com'),
+
+  // Optional Frontend Environment Variables (passthrough)
+  NEXT_PUBLIC_SOCKET_URL: z.string().optional(),
+  NEXT_PUBLIC_API_URL: z.string().optional(),
+  NEXT_PUBLIC_VIBE_APP_ID: z.string().optional(),
+  NEXT_PUBLIC_VIBE_PUBLIC_KEY: z.string().optional(),
+  NEXT_PUBLIC_BUCKET_URL: z.string().optional(),
 });
 
 export type Environment = z.infer<typeof environmentSchema>;

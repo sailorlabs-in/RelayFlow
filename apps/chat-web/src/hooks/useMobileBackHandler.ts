@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useMemo, useState } from 'react';
 
+import { showToast } from '../components/toast';
+
 export interface UseMobileBackHandlerOptions {
   enabled: boolean;
 
@@ -162,9 +164,9 @@ export function triggerBack(): boolean {
 function getTopmostDismissAction(
   opts: UseMobileBackHandlerOptions,
 ): (() => void) | null {
-  // Manual registered handlers have highest priority
+  // Manual registered handlers have highest priority (sorted descending)
   if (manualHandlers.length > 0) {
-    const topEntry = manualHandlers[manualHandlers.length - 1];
+    const topEntry = manualHandlers[0];
     return () => {
       topEntry.handler();
     };
@@ -246,6 +248,7 @@ export function useMobileBackHandler(options: UseMobileBackHandlerOptions) {
   const historyDepthRef = useRef<number>(0);
   const isHandlingPopstateRef = useRef<boolean>(false);
   const isProgrammaticBackRef = useRef<boolean>(false);
+  const lastBackPressRef = useRef<number>(0);
 
   // Compute current target depth:
   // Root of chats, groups, friends, profile = depth 0 (clean root, no back stack).
@@ -355,18 +358,28 @@ export function useMobileBackHandler(options: UseMobileBackHandlerOptions) {
         dismissAction();
       } else {
         // At root screen of Chats, Groups, Friends, or Profile:
-        // No back event within the app — user quits the webapp!
-        try {
-          window.close();
-        } catch {
-          // Browser may restrict window.close(); fall through to history back
-          void 0;
-        }
-        setTimeout(() => {
-          if (typeof window !== 'undefined') {
+        // Double-back within 2s exits the webapp, single back shows a toast
+        const now = Date.now();
+        if (lastBackPressRef.current && now - lastBackPressRef.current < 2000) {
+          lastBackPressRef.current = 0;
+          try {
             window.history.back();
+          } catch {
+            void 0;
           }
-        }, 50);
+        } else {
+          lastBackPressRef.current = now;
+          window.history.pushState(
+            { rfMobile: true, depth: 0, isBase: true },
+            '',
+            window.location.href,
+          );
+          historyDepthRef.current = 0;
+          showToast.info('Press back again to exit', {
+            autoClose: 2000,
+            toastId: 'press-back-exit',
+          });
+        }
       }
     };
 
