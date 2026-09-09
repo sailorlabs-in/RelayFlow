@@ -39,6 +39,7 @@ import {
 } from '../../utils/theme';
 import type { ThemeColorSet } from '../../utils/theme';
 import { AutoDeletionSettings } from '../../components/AutoDeletionSettings';
+import { getOrCreateDeviceToken } from '../../utils/deviceToken';
 
 /* ── SVGs for icons ────────────────────────────────────────── */
 
@@ -536,10 +537,7 @@ export function ProfileSettingsContent({
     deviceId: string,
     enabled: boolean,
   ) => {
-    const currentDeviceId =
-      typeof window !== 'undefined'
-        ? localStorage.getItem('rf_device_id')
-        : null;
+    const currentDeviceId = getOrCreateDeviceToken();
     const isCurrent = deviceId === currentDeviceId;
 
     if (isCurrent && enabled) {
@@ -650,10 +648,7 @@ export function ProfileSettingsContent({
           dispatch(fetchCurrentUser());
           setConfirmModal(null);
           // If the user logs out the current device, force logout locally too
-          const currentId =
-            typeof window !== 'undefined'
-              ? localStorage.getItem('rf_device_id')
-              : null;
+          const currentId = getOrCreateDeviceToken();
           if (deviceId === currentId) {
             socketManager.disconnect();
             dispatch(logoutUser());
@@ -3061,10 +3056,7 @@ export function ProfileSettingsContent({
                           try {
                             const permission =
                               await Notification.requestPermission();
-                            const deviceId =
-                              typeof window !== 'undefined'
-                                ? localStorage.getItem('rf_device_id')
-                                : null;
+                            const deviceId = getOrCreateDeviceToken();
                             const compositeId =
                               user && deviceId
                                 ? `${user.id}:${deviceId}`
@@ -3106,10 +3098,7 @@ export function ProfileSettingsContent({
                                 ? Notification.permission
                                 : 'default';
                             if (permission === 'granted') {
-                              const deviceId =
-                                typeof window !== 'undefined'
-                                  ? localStorage.getItem('rf_device_id')
-                                  : null;
+                              const deviceId = getOrCreateDeviceToken();
                               const compositeId =
                                 user && deviceId
                                   ? `${user.id}:${deviceId}`
@@ -3322,8 +3311,7 @@ export function ProfileSettingsContent({
                           {devices.map((dev) => {
                             const isCurrent =
                               typeof window !== 'undefined' &&
-                              dev.deviceId ===
-                                localStorage.getItem('rf_device_id');
+                              dev.deviceId === getOrCreateDeviceToken();
                             const isWindows = /windows/i.test(dev.userAgent);
                             const isApple =
                               /macintosh|mac os x|iphone|ipad|ipod/i.test(

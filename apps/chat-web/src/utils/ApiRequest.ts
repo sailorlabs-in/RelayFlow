@@ -4,6 +4,7 @@ import axios from 'axios';
 import { API_URL } from '../constants/config';
 import { store } from '../store';
 import { logoutUser } from '../store/slices/authSlice';
+import { getOrCreateDeviceToken } from './deviceToken';
 
 const activeControllers = new Map<string, AbortController>();
 
@@ -40,7 +41,7 @@ const ApiRequest = async (
   }
 
   const deviceId =
-    typeof window !== 'undefined' ? localStorage.getItem('rf_device_id') : null;
+    typeof window !== 'undefined' ? getOrCreateDeviceToken() : null;
 
   const apiRequestPayload: AxiosRequestConfig = {
     url:

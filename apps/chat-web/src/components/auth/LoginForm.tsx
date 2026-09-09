@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 
 import { useAppDispatch, useAppSelector } from '../../store';
 import { loginUser } from '../../store/slices/authSlice';
+import { getOrCreateDeviceToken } from '../../utils/deviceToken';
 import { IconAlertCircle, IconEye, IconEyeOff } from '../Icons';
 
 interface LoginFormProps {
   prefilledEmail: string;
   onSwitchToSignUp: () => void;
   onSwitchToForgotPassword: () => void;
-  deviceId: string;
+  deviceId?: string;
 }
 
 export const LoginForm = ({
@@ -32,7 +33,8 @@ export const LoginForm = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    dispatch(loginUser({ email, password, deviceId }));
+    const token = deviceId || getOrCreateDeviceToken();
+    dispatch(loginUser({ email, password, deviceId: token }));
   };
 
   return (

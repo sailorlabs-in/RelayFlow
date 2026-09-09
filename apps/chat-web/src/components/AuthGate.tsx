@@ -18,6 +18,7 @@ import { VerifyEmailForm } from './auth/VerifyEmailForm';
 import { IconZap, IconShield, IconGlobe } from './Icons';
 import type { Theme } from './ThemeSwitcher';
 import { ThemeSwitcher } from './ThemeSwitcher';
+import { getOrCreateDeviceToken } from '../utils/deviceToken';
 
 export const AuthGate = (): React.JSX.Element => {
   const dispatch = useAppDispatch();
@@ -61,16 +62,14 @@ export const AuthGate = (): React.JSX.Element => {
   const [isForgotPasswordMode, setIsForgotPasswordMode] = useState(false);
   const [prefilledEmail, setPrefilledEmail] = useState('');
   const [resetToken, setResetToken] = useState<string | null>(null);
-  const [deviceId, setDeviceId] = useState('');
+  const [deviceId, setDeviceId] = useState<string>(() =>
+    typeof window !== 'undefined' ? getOrCreateDeviceToken() : '',
+  );
 
   // Initialize Device ID and search URL reset tokens
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      let dId = localStorage.getItem('rf_device_id');
-      if (!dId) {
-        dId = Math.random().toString(36).substring(2) + Date.now().toString(36);
-        localStorage.setItem('rf_device_id', dId);
-      }
+      const dId = getOrCreateDeviceToken();
       setDeviceId(dId);
 
       const params = new URLSearchParams(window.location.search);

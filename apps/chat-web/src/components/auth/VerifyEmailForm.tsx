@@ -5,6 +5,7 @@ import {
   verifyEmailOtp,
   resendVerificationCode,
 } from '../../store/slices/authSlice';
+import { getOrCreateDeviceToken } from '../../utils/deviceToken';
 import { IconAlertCircle } from '../Icons';
 import { showToast } from '../toast';
 
@@ -35,9 +36,7 @@ export const VerifyEmailForm = ({
       return;
     }
     const dId =
-      typeof window !== 'undefined'
-        ? localStorage.getItem('rf_device_id') || undefined
-        : undefined;
+      typeof window !== 'undefined' ? getOrCreateDeviceToken() : undefined;
     dispatch(verifyEmailOtp({ email, otp, deviceId: dId }));
   };
 

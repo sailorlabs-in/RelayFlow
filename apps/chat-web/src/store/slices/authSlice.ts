@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import ApiRequest from '../../utils/ApiRequest';
+import { getOrCreateDeviceToken } from '../../utils/deviceToken';
 
 export interface User {
   id: string;
@@ -101,7 +102,13 @@ export const loginUser = createAsyncThunk(
     { rejectWithValue },
   ) => {
     try {
-      const response = await ApiRequest('/auth/login', 'post', payload, false);
+      const deviceId = payload.deviceId || getOrCreateDeviceToken();
+      const response = await ApiRequest(
+        '/auth/login',
+        'post',
+        { ...payload, deviceId },
+        false,
+      );
       return response.data;
     } catch (error: any) {
       const errorMsg =
@@ -121,10 +128,11 @@ export const verifyEmailOtp = createAsyncThunk(
     { rejectWithValue },
   ) => {
     try {
+      const deviceId = payload.deviceId || getOrCreateDeviceToken();
       const response = await ApiRequest(
         '/auth/verify-email',
         'post',
-        payload,
+        { ...payload, deviceId },
         false,
       );
       return response.data;
@@ -151,10 +159,11 @@ export const verify2FaOtp = createAsyncThunk(
     { rejectWithValue },
   ) => {
     try {
+      const deviceId = payload.deviceId || getOrCreateDeviceToken();
       const response = await ApiRequest(
         '/auth/verify-2fa',
         'post',
-        payload,
+        { ...payload, deviceId },
         false,
       );
       return response.data;
@@ -402,6 +411,27 @@ export const sendTestNotification = createAsyncThunk(
         error.response?.data?.error?.message ||
         error.response?.data?.message ||
         'Failed to send test notification.';
+      return rejectWithValue(errorMsg);
+    }
+  },
+);
+
+export const registerDeviceSession = createAsyncThunk(
+  'auth/registerDeviceSession',
+  async (deviceId: string, { rejectWithValue }) => {
+    try {
+      const response = await ApiRequest(
+        '/users/devices/register',
+        'post',
+        { deviceId },
+        true,
+      );
+      return response.data;
+    } catch (error: any) {
+      const errorMsg =
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        'Failed to register device session.';
       return rejectWithValue(errorMsg);
     }
   },

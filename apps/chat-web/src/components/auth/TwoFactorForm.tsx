@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 
 import { useAppDispatch, useAppSelector } from '../../store';
 import { verify2FaOtp } from '../../store/slices/authSlice';
+import { getOrCreateDeviceToken } from '../../utils/deviceToken';
 import { IconAlertCircle } from '../Icons';
 
 interface TwoFactorFormProps {
   userId: string;
   email: string;
-  deviceId: string;
+  deviceId?: string;
   onCancel: () => void;
 }
 
@@ -32,7 +33,8 @@ export const TwoFactorForm = ({
       setLocalError('Please enter a valid 6-digit code.');
       return;
     }
-    dispatch(verify2FaOtp({ userId, otp, deviceId, rememberDevice }));
+    const token = deviceId || getOrCreateDeviceToken();
+    dispatch(verify2FaOtp({ userId, otp, deviceId: token, rememberDevice }));
   };
 
   const error = localError || authError;

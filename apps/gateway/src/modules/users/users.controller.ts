@@ -14,6 +14,8 @@ import {
   Logger,
   NotFoundException,
   InternalServerErrorException,
+  BadRequestException,
+  Req,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -457,6 +459,35 @@ export class UsersController {
     } catch {
       return [];
     }
+  }
+
+  @Post('devices/register')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Register or refresh an active device session' })
+  async registerDevice(
+    @CurrentUser() currentUser: { userId: string },
+    @Body('deviceId') deviceId: string,
+    @Req() req: any,
+  ): Promise<any> {
+    if (!deviceId) {
+      throw new BadRequestException('Device ID / Token is required');
+    }
+    const userAgent = req.headers['user-agent'] || 'Unknown Device';
+    const ip =
+      req.headers['x-forwarded-for']?.toString().split(',')[0].trim() ||
+      req.ip ||
+      '127.0.0.1';
+
+    const updatedUser = await this.usersService.registerLoggedInDevice(
+      currentUser.userId,
+      {
+        deviceId,
+        userAgent,
+        ip,
+      },
+    );
+    return { success: true, user: updatedUser };
   }
 
   @Post('devices/:deviceId/logout')

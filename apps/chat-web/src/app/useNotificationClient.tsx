@@ -5,7 +5,8 @@ import { initNotificationClient } from 'vibe-message';
 import { PrintLog } from '../utils/logger';
 import { showToast } from '../components/toast';
 import { useAppDispatch, useAppSelector } from '../store';
-import type { User } from '../store/slices/authSlice';
+import { registerDeviceSession, type User } from '../store/slices/authSlice';
+import { getOrCreateDeviceToken } from '../utils/deviceToken';
 import {
   loadMutedConversations,
   setActiveConversation,
@@ -648,7 +649,12 @@ export function useNotificationClient(
         return;
       }
 
-      const deviceId = localStorage.getItem('rf_device_id');
+      const deviceId = getOrCreateDeviceToken();
+
+      // Ensure active device is registered on the backend so it shows up in logged-in devices
+      if (user && user.id && deviceId) {
+        dispatch(registerDeviceSession(deviceId));
+      }
 
       // Determine if platform notifications are enabled for this user + device
       let platformNotificationsEnabled = true;
