@@ -88,8 +88,9 @@ export const MobileDashboard = ({
 }: MobileDashboardProps): React.JSX.Element => {
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((s) => s.auth);
-  const { conversations, activeConversationId, mutedConversationIds } =
-    useAppSelector((s) => s.chat);
+  const { activeConversationId, mutedConversationIds } = useAppSelector(
+    (s) => s.chat,
+  );
 
   const { groups: rawGroups, activeChannelId } = useAppSelector(
     (s) => s.groups,
@@ -190,11 +191,9 @@ export const MobileDashboard = ({
     if (activeTab === 'chats') {
       dispatch(setActiveChannel(null));
       dispatch(setActiveGroup(null));
-      dispatch(setActiveConversation(null));
     } else if (activeTab === 'groups') {
       dispatch(setActiveConversation(null));
     } else if (activeTab === 'friends') {
-      dispatch(setActiveConversation('friends'));
       dispatch(setActiveChannel(null));
       dispatch(setActiveGroup(null));
     } else {
@@ -205,10 +204,9 @@ export const MobileDashboard = ({
   }, [activeTab, dispatch]);
 
   const showDMChat =
-    activeTab === 'chats' &&
+    (activeTab === 'chats' || activeTab === 'friends') &&
     !!activeConversationId &&
-    activeConversationId !== 'friends' &&
-    conversations.some((c) => c.id === activeConversationId);
+    activeConversationId !== 'friends';
   const showChannelChat = activeTab === 'groups' && !!activeChannelId;
   const showChatArea = showDMChat || showChannelChat;
 
@@ -321,7 +319,11 @@ export const MobileDashboard = ({
         {activeTab === 'friends' && (
           <div className="h-full pb-10 flex flex-col overflow-y-auto px-3 py-3">
             <div className="flex-1 h-full min-h-0">
-              <FriendsDashboard />
+              <FriendsDashboard
+                onNavigateToChat={() => {
+                  setActiveTab('chats');
+                }}
+              />
             </div>
           </div>
         )}

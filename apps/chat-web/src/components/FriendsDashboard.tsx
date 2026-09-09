@@ -19,10 +19,12 @@ import { ConfirmationModal } from './ConfirmationModal';
 
 interface FriendsDashboardProps {
   onMenuClick?: () => void;
+  onNavigateToChat?: (conversationId?: string) => void;
 }
 
 export const FriendsDashboard = ({
   onMenuClick,
+  onNavigateToChat,
 }: FriendsDashboardProps = {}): React.JSX.Element => {
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((s) => s.auth);
@@ -146,17 +148,26 @@ export const FriendsDashboard = ({
     });
   };
 
-  const handleStartDM = (friend: User) => {
+  const handleStartDM = async (friend: User) => {
     if (!user) {
       return;
     }
-    dispatch(
-      createConversation({
-        userIds: [user.id, friend.id],
-        recipient: friend,
-      }),
-    );
-    dispatch(fetchUserProfile(friend.id));
+    try {
+      const action = await dispatch(
+        createConversation({
+          userIds: [user.id, friend.id],
+          recipient: friend,
+        }),
+      );
+      if (createConversation.fulfilled.match(action)) {
+        dispatch(fetchUserProfile(friend.id));
+        onNavigateToChat?.(action.payload.conversation.id);
+      }
+    } catch (err: any) {
+      showToast.error(
+        typeof err === 'string' ? err : 'Failed to start conversation.',
+      );
+    }
   };
 
   const handleCopyEmail = (email: string) => {

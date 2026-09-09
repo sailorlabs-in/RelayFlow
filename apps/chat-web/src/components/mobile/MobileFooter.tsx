@@ -1,5 +1,6 @@
 import React from 'react';
-import { useAppSelector } from '../../store';
+import { useAppDispatch, useAppSelector } from '../../store';
+import { setActiveConversation } from '../../store/slices/chatSlice';
 import { IconChat, IconServer, IconPeople } from '../Icons';
 import { Avatar } from '../Avatar';
 
@@ -16,6 +17,7 @@ export const MobileFooter = ({
   setSelectedGroupId,
   ownStatus,
 }: MobileFooterProps): React.JSX.Element => {
+  const dispatch = useAppDispatch();
   const { user } = useAppSelector((s) => s.auth);
   const { conversations } = useAppSelector((s) => s.chat);
 
@@ -35,6 +37,7 @@ export const MobileFooter = ({
         onClick={() => {
           setActiveTab('chats');
           setSelectedGroupId(null);
+          dispatch(setActiveConversation(null));
         }}
         className={`flex flex-col items-center justify-center flex-1 p-1 rounded-3xl transition-all duration-200 active:scale-95 ${
           activeTab === 'chats'
