@@ -79,8 +79,8 @@ function InvitePageContent() {
       await dispatch(fetchGroups()).unwrap();
       // Set active group
       dispatch(setActiveGroup(joinedGroup.id));
-      // Redirect to dashboard
-      router.push('/');
+      // Redirect to dashboard replacing history
+      router.replace('/');
     } catch (err: any) {
       showToast.error(err || 'Failed to join group.');
     } finally {
@@ -114,7 +114,7 @@ function InvitePageContent() {
             {error}
           </p>
           <button
-            onClick={() => router.push('/')}
+            onClick={() => router.replace('/')}
             className="w-full btn-send rounded-[10px] py-3 text-[14.5px] font-semibold text-white cursor-pointer active-press"
           >
             Go to Dashboard
@@ -158,7 +158,7 @@ function InvitePageContent() {
             {isJoining ? 'Joining Group...' : 'Accept Invite'}
           </button>
           <button
-            onClick={() => router.push('/')}
+            onClick={() => router.replace('/')}
             disabled={isJoining}
             className="w-full bg-transparent border border-[var(--glass-border)] text-[var(--text-secondary)] rounded-[10px] py-3 text-[14.5px] font-semibold cursor-pointer hover:bg-[var(--bg-input)] transition-all duration-200 active-press"
           >

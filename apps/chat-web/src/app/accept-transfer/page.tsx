@@ -48,8 +48,8 @@ function AcceptTransferContent() {
       await dispatch(fetchGroups()).unwrap();
       // Set active group
       dispatch(setActiveGroup(updatedGroup.id));
-      // Redirect to dashboard
-      router.push('/');
+      // Redirect to dashboard replacing history
+      router.replace('/');
     } catch (err: any) {
       const errMsg =
         err.response?.data?.message ||
