@@ -21,6 +21,8 @@ export class SystemCleanupService implements OnApplicationBootstrap {
   async onApplicationBootstrap(): Promise<void> {
     await this.runStartupPurge();
     await this.registerMidnightCleanupSchedule();
+    await this.registerUnverifiedUsersCleanupSchedule();
+    await this.registerDmRetentionCleanupSchedule();
   }
 
   /**
@@ -113,6 +115,102 @@ export class SystemCleanupService implements OnApplicationBootstrap {
     } catch (error) {
       this.logger.error(
         '❌ [Scheduler] Failed to register midnight cleanup schedule:',
+        error,
+      );
+    }
+  }
+
+  /**
+   * Schedules an hourly BullMQ repeatable job to purge unverified user accounts
+   */
+  async registerUnverifiedUsersCleanupSchedule(): Promise<void> {
+    const cronPattern = this.configService.get<string>(
+      'UNVERIFIED_USERS_CLEANUP_CRON',
+      '0 * * * *', // Default: Every hour on the hour
+    );
+
+    try {
+      const repeatableJobs = await this.systemCleanupQueue.getRepeatableJobs();
+      const existingJob = repeatableJobs.find(
+        (job) =>
+          job.name === 'unverified-users-cleanup' ||
+          job.key?.includes('unverified-users-cleanup'),
+      );
+
+      if (existingJob) {
+        this.logger.log(
+          `⏱ [Scheduler] Unverified users cleanup schedule already active (Pattern: "${existingJob.pattern || cronPattern}").`,
+        );
+        return;
+      }
+
+      await this.systemCleanupQueue.add(
+        'unverified-users-cleanup',
+        {},
+        {
+          repeat: {
+            pattern: cronPattern,
+          },
+          jobId: 'unverified-users-cleanup',
+          removeOnComplete: true,
+          removeOnFail: true,
+        },
+      );
+
+      this.logger.log(
+        `⏱ [Scheduler] Successfully registered recurring unverified users cleanup (Cron: "${cronPattern}").`,
+      );
+    } catch (error) {
+      this.logger.error(
+        '❌ [Scheduler] Failed to register unverified users cleanup schedule:',
+        error,
+      );
+    }
+  }
+
+  /**
+   * Schedules a daily BullMQ repeatable job for 1-on-1 direct conversation retention & auto-deletion
+   */
+  async registerDmRetentionCleanupSchedule(): Promise<void> {
+    const cronPattern = this.configService.get<string>(
+      'DM_RETENTION_CLEANUP_CRON',
+      '0 4 * * *', // Default: Daily at 4:00 AM
+    );
+
+    try {
+      const repeatableJobs = await this.systemCleanupQueue.getRepeatableJobs();
+      const existingJob = repeatableJobs.find(
+        (job) =>
+          job.name === 'dm-retention-cleanup' ||
+          job.key?.includes('dm-retention-cleanup'),
+      );
+
+      if (existingJob) {
+        this.logger.log(
+          `⏱ [Scheduler] 1-on-1 DM retention cleanup schedule already active (Pattern: "${existingJob.pattern || cronPattern}").`,
+        );
+        return;
+      }
+
+      await this.systemCleanupQueue.add(
+        'dm-retention-cleanup',
+        {},
+        {
+          repeat: {
+            pattern: cronPattern,
+          },
+          jobId: 'dm-retention-cleanup',
+          removeOnComplete: true,
+          removeOnFail: true,
+        },
+      );
+
+      this.logger.log(
+        `⏱ [Scheduler] Successfully registered recurring 1-on-1 DM retention cleanup (Cron: "${cronPattern}").`,
+      );
+    } catch (error) {
+      this.logger.error(
+        '❌ [Scheduler] Failed to register DM retention cleanup schedule:',
         error,
       );
     }

@@ -9,6 +9,14 @@ export interface Conversation {
   type: 'dm' | 'group';
   name?: string;
   lastMessage?: Message | null;
+  retentionPolicy?: {
+    mediaDays: number | null;
+    messageDays: number | null;
+    myMediaDays: number;
+    peerMediaDays: number;
+    myMessageDays: number;
+    peerMessageDays: number;
+  } | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -20,6 +28,7 @@ export interface MessageMediaItem {
   thumbnailUrl?: string;
   type: string;
   size: number;
+  isExpired?: boolean;
 }
 
 export interface Message {

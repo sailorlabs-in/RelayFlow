@@ -142,6 +142,18 @@ export class UsersController {
           type: 'string',
           example: '[]',
         },
+        retentionMediaDays: {
+          type: 'number',
+          example: 30,
+          description:
+            'Media retention period in days (15, 30, 60, 90; 0 for super admin)',
+        },
+        retentionMessageDays: {
+          type: 'number',
+          example: 90,
+          description:
+            'Message retention period in days (15, 30, 45, 60, 90, 180; 0 for infinity)',
+        },
       },
     },
   })
@@ -174,6 +186,8 @@ export class UsersController {
       avatarThumbnailUrl?: string;
       groupOrder?: string;
       customThemes?: string;
+      retentionMediaDays?: number;
+      retentionMessageDays?: number;
     },
   ): Promise<User> {
     const updatedUser = await this.usersService.updateProfile(

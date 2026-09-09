@@ -8,6 +8,7 @@ import { UsersModule } from '../users/users.module';
 import { GroupsModule } from '../groups/groups.module';
 
 import { RealtimeGateway } from './realtime.gateway';
+import { PresenceCleanupProcessor } from './presence-cleanup.processor';
 
 @Module({
   imports: [
@@ -15,12 +16,18 @@ import { RealtimeGateway } from './realtime.gateway';
     forwardRef(() => ChatModule),
     forwardRef(() => UsersModule),
     forwardRef(() => GroupsModule),
-    BullModule.registerQueue({
-      name: QueueNames.NOTIFICATIONS,
-      defaultJobOptions: DEFAULT_QUEUE_JOB_OPTIONS,
-    }),
+    BullModule.registerQueue(
+      {
+        name: QueueNames.NOTIFICATIONS,
+        defaultJobOptions: DEFAULT_QUEUE_JOB_OPTIONS,
+      },
+      {
+        name: QueueNames.REALTIME_TASKS,
+        defaultJobOptions: DEFAULT_QUEUE_JOB_OPTIONS,
+      },
+    ),
   ],
-  providers: [RealtimeGateway],
+  providers: [RealtimeGateway, PresenceCleanupProcessor],
   exports: [RealtimeGateway, BullModule],
 })
 export class RealtimeModule {}

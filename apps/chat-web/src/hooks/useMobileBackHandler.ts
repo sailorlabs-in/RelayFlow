@@ -22,6 +22,7 @@ export interface UseMobileBackHandlerOptions {
     | 'theme'
     | 'status'
     | 'notifications'
+    | 'retention'
     | 'update-notes';
   setProfileSubPage: (
     page:
@@ -30,6 +31,7 @@ export interface UseMobileBackHandlerOptions {
       | 'theme'
       | 'status'
       | 'notifications'
+      | 'retention'
       | 'update-notes',
   ) => void;
 

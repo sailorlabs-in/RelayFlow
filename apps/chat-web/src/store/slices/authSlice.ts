@@ -26,6 +26,8 @@ export interface User {
   customThemes?: string;
   role?: string;
   warnings?: string[];
+  retentionMediaDays?: number;
+  retentionMessageDays?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -278,6 +280,8 @@ export const updateUserProfile = createAsyncThunk(
       avatarThumbnailUrl?: string;
       groupOrder?: string;
       customThemes?: string;
+      retentionMediaDays?: number;
+      retentionMessageDays?: number;
     },
     { rejectWithValue },
   ) => {

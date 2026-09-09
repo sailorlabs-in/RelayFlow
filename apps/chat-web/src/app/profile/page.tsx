@@ -38,8 +38,22 @@ import {
   clearCustomColors,
 } from '../../utils/theme';
 import type { ThemeColorSet } from '../../utils/theme';
+import { AutoDeletionSettings } from '../../components/AutoDeletionSettings';
 
 /* ── SVGs for icons ────────────────────────────────────────── */
+
+const IconClock = (): React.JSX.Element => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    className="w-[18px] h-[18px]"
+  >
+    <circle cx="12" cy="12" r="10" />
+    <polyline points="12 6 12 12 16 14" />
+  </svg>
+);
 
 const IconUser = (): React.JSX.Element => (
   <svg
@@ -200,9 +214,21 @@ export function ProfileSettingsContent({
   isModal?: boolean;
   onClose?: () => void;
   onSignOut?: () => void;
-  activeTab?: 'account' | 'theme' | 'status' | 'notifications' | 'update-notes';
+  activeTab?:
+    | 'account'
+    | 'theme'
+    | 'status'
+    | 'notifications'
+    | 'retention'
+    | 'update-notes';
   setActiveTab?: (
-    tab: 'account' | 'theme' | 'status' | 'notifications' | 'update-notes',
+    tab:
+      | 'account'
+      | 'theme'
+      | 'status'
+      | 'notifications'
+      | 'retention'
+      | 'update-notes',
   ) => void;
   isMobileView?: boolean;
   onSaveSuccess?: () => void;
@@ -211,9 +237,14 @@ export function ProfileSettingsContent({
   const dispatch = useAppDispatch();
   const { user, accessToken, status } = useAppSelector((s) => s.auth);
 
-  // Active Tab: 'account' | 'theme' | 'status' | 'notifications' | 'update-notes'
+  // Active Tab: 'account' | 'theme' | 'status' | 'notifications' | 'retention' | 'update-notes'
   const [internalActiveTab, setInternalActiveTab] = useState<
-    'account' | 'theme' | 'status' | 'notifications' | 'update-notes'
+    | 'account'
+    | 'theme'
+    | 'status'
+    | 'notifications'
+    | 'retention'
+    | 'update-notes'
   >('account');
 
   const activeTab =
@@ -434,6 +465,14 @@ export function ProfileSettingsContent({
     notificationsFriendRequestEnabled,
     setNotificationsFriendRequestEnabled,
   ] = useState(true);
+
+  // Auto-Deletion & Media Retention State
+  const [retentionMediaDays, setRetentionMediaDays] = useState<number>(
+    user?.retentionMediaDays !== undefined ? user.retentionMediaDays : 30,
+  );
+  const [retentionMessageDays, setRetentionMessageDays] = useState<number>(
+    user?.retentionMessageDays !== undefined ? user.retentionMessageDays : 90,
+  );
 
   // Notification State
   const [message, setMessage] = useState<{
@@ -660,6 +699,14 @@ export function ProfileSettingsContent({
       setTwoFactorOnlyNewDevice(user.twoFactorOnlyNewDevice ?? false);
       setAvatarUrl(user.avatarUrl || '');
       setAvatarThumbnailUrl(user.avatarThumbnailUrl || '');
+      setRetentionMediaDays(
+        user.retentionMediaDays !== undefined ? user.retentionMediaDays : 30,
+      );
+      setRetentionMessageDays(
+        user.retentionMessageDays !== undefined
+          ? user.retentionMessageDays
+          : 90,
+      );
 
       let parsedThemes: any[] = [];
       if (user.customThemes) {
@@ -773,7 +820,7 @@ export function ProfileSettingsContent({
     }
 
     try {
-      const payload: Record<string, string | boolean | undefined> = {
+      const payload: Record<string, string | boolean | number | undefined> = {
         displayName,
         username: username.toLowerCase().trim(),
         themeMode,
@@ -792,6 +839,8 @@ export function ProfileSettingsContent({
         avatarUrl,
         avatarThumbnailUrl,
         customThemes: JSON.stringify(customThemes),
+        retentionMediaDays,
+        retentionMessageDays,
       };
 
       if (password) {
@@ -1257,6 +1306,11 @@ export function ProfileSettingsContent({
                 icon: <IconBell />,
               },
               {
+                id: 'retention',
+                label: 'Data & Auto-Deletion',
+                icon: <IconClock />,
+              },
+              {
                 id: 'update-notes',
                 label: 'Update Notes',
                 icon: <IconMegaphone />,
@@ -1271,6 +1325,7 @@ export function ProfileSettingsContent({
                       | 'theme'
                       | 'status'
                       | 'notifications'
+                      | 'retention'
                       | 'update-notes',
                   );
                 }}
@@ -3607,6 +3662,19 @@ export function ProfileSettingsContent({
                     ))
                   )}
                 </div>
+              </div>
+            )}
+
+            {/* TAB: 1-ON-1 AUTO-DELETION & MEDIA RETENTION */}
+            {activeTab === 'retention' && (
+              <div className="flex flex-col gap-6 flex-1">
+                <AutoDeletionSettings
+                  mediaDays={retentionMediaDays}
+                  setMediaDays={setRetentionMediaDays}
+                  messageDays={retentionMessageDays}
+                  setMessageDays={setRetentionMessageDays}
+                  hideSaveButton={true}
+                />
               </div>
             )}
           </div>

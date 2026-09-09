@@ -80,16 +80,38 @@ export class RealtimeGateway
     private readonly groupsService: GroupsService,
     @InjectQueue(QueueNames.NOTIFICATIONS)
     private readonly notificationsQueue: Queue,
+    @InjectQueue(QueueNames.REALTIME_TASKS)
+    private readonly realtimeTasksQueue: Queue,
   ) {}
 
-  onModuleInit() {
-    // Start periodic check for users who are away by autostatus for > 10 minutes
-    setInterval(
-      () => {
-        this.checkAndCleanupAwayUsers();
-      },
-      2 * 60 * 1000,
-    ); // Check every 2 minutes
+  async onModuleInit(): Promise<void> {
+    try {
+      const repeatableJobs = await this.realtimeTasksQueue.getRepeatableJobs();
+      const existing = repeatableJobs.find(
+        (job) =>
+          job.name === 'check-stale-presence' ||
+          job.key?.includes('check-stale-presence'),
+      );
+      if (!existing) {
+        await this.realtimeTasksQueue.add(
+          'check-stale-presence',
+          {},
+          {
+            repeat: {
+              pattern: '*/2 * * * *', // Every 2 minutes
+            },
+            jobId: 'check-stale-presence',
+            removeOnComplete: true,
+            removeOnFail: true,
+          },
+        );
+        this.logger.log(
+          '⏱ [Scheduler] Registered BullMQ repeatable job: check-stale-presence (Every 2m)',
+        );
+      }
+    } catch (err) {
+      this.logger.error('Failed to register check-stale-presence cron:', err);
+    }
   }
 
   async checkAndCleanupAwayUsers(): Promise<void> {

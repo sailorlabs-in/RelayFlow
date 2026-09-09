@@ -127,8 +127,39 @@ export class ChatService {
           order: { createdAt: 'DESC' },
         });
 
+        let retentionPolicy = null;
+        if (convo.type === ConversationType.DM) {
+          const myProfile = userMap.get(userId);
+          const peerMember = members.find((m) => m.userId !== userId);
+          const peerProfile = peerMember
+            ? userMap.get(peerMember.userId)
+            : myProfile;
+
+          const myMedia = myProfile?.retentionMediaDays ?? 30;
+          const peerMedia = peerProfile?.retentionMediaDays ?? 30;
+          const effectiveMedia =
+            myMedia === 0 || peerMedia === 0
+              ? null
+              : Math.max(myMedia, peerMedia);
+
+          const myMsg = myProfile?.retentionMessageDays ?? 90;
+          const peerMsg = peerProfile?.retentionMessageDays ?? 90;
+          const effectiveMsg =
+            myMsg === 0 || peerMsg === 0 ? null : Math.max(myMsg, peerMsg);
+
+          retentionPolicy = {
+            mediaDays: effectiveMedia,
+            messageDays: effectiveMsg,
+            myMediaDays: myMedia,
+            peerMediaDays: peerMedia,
+            myMessageDays: myMsg,
+            peerMessageDays: peerMsg,
+          };
+        }
+
         return {
           ...convo,
+          retentionPolicy,
           members: members.map((m) => {
             const userProfile = userMap.get(m.userId);
             return {

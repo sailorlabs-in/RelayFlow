@@ -52,6 +52,7 @@ export class Message {
     thumbnailUrl?: string;
     type: string;
     size: number;
+    isExpired?: boolean;
   }[];
 
   @Column({ name: 'parent_id', type: 'uuid', nullable: true })

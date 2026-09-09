@@ -188,7 +188,7 @@ const renderMessageMedia = (
           return (
             <div
               key={idx}
-              className="mt-1 max-w-full w-fit rounded-lg overflow-hidden border border-theme bg-theme-input hover:scale-[1.01] transition-all duration-200 h-[240px]  max-w-[360px]"
+              className="mt-1 max-w-full w-fit rounded-lg overflow-hidden border border-theme bg-theme-input hover:scale-[1.01] transition-all duration-200 h-[240px] max-w-[360px] relative group"
             >
               <img
                 src={displayUrl}
@@ -196,6 +196,12 @@ const renderMessageMedia = (
                 className="h-full w-auto max-w-full max-w-[360px] object-cover cursor-pointer hover:opacity-90 transition-opacity"
                 onClick={() => onMediaClick(item)}
               />
+              {item.isExpired && (
+                <div className="absolute top-2 left-2 z-10 px-2 py-0.5 rounded-md bg-black/65 backdrop-blur-md text-amber-300 border border-amber-500/30 text-[10px] font-bold flex items-center gap-1 shadow-sm pointer-events-none">
+                  <span>⏱️</span>
+                  <span>Thumbnail Kept</span>
+                </div>
+              )}
             </div>
           );
         }
@@ -205,7 +211,7 @@ const renderMessageMedia = (
           return (
             <div
               key={idx}
-              className="mt-1 max-w-full w-fit rounded-lg overflow-hidden border border-theme bg-theme-input relative cursor-pointer hover:scale-[1.01] transition-all duration-200 group h-[240px]  max-w-[360px]"
+              className="mt-1 max-w-full w-fit rounded-lg overflow-hidden border border-theme bg-theme-input relative cursor-pointer hover:scale-[1.01] transition-all duration-200 group h-[240px] max-w-[360px]"
               onClick={() => onMediaClick(item)}
             >
               {item.thumbnailUrl ? (
@@ -234,6 +240,12 @@ const renderMessageMedia = (
                   preload="metadata"
                 />
               )}
+              {item.isExpired && (
+                <div className="absolute top-2 left-2 z-10 px-2 py-0.5 rounded-md bg-black/65 backdrop-blur-md text-amber-300 border border-amber-500/30 text-[10px] font-bold flex items-center gap-1 shadow-sm pointer-events-none">
+                  <span>⏱️</span>
+                  <span>Thumbnail Kept</span>
+                </div>
+              )}
             </div>
           );
         }
@@ -250,32 +262,40 @@ const renderMessageMedia = (
               <div className="font-semibold truncate text-theme-primary text-[13.5px]">
                 {item.name || 'Attachment'}
               </div>
-              <div className="text-[11px] text-theme-muted mt-0.5">
-                {item.size
-                  ? `${(item.size / 1024).toFixed(1)} KB`
-                  : 'Unknown size'}
-              </div>
+              {item.isExpired ? (
+                <div className="text-[11px] text-amber-400 font-medium mt-0.5 flex items-center gap-1">
+                  <span>⏱️</span> Expired file
+                </div>
+              ) : (
+                <div className="text-[11px] text-theme-muted mt-0.5">
+                  {item.size
+                    ? `${(item.size / 1024).toFixed(1)} KB`
+                    : 'Unknown size'}
+                </div>
+              )}
             </div>
-            <a
-              href={item.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-1.5 rounded-lg bg-(--theme-btn) text-theme-secondary hover:text-theme-primary hover:bg-(--theme-btn-hover) shrink-0 flex items-center justify-center active-press"
-              title="Download file"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                className="w-4 h-4"
+            {!item.isExpired && (
+              <a
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-1.5 rounded-lg bg-(--theme-btn) text-theme-secondary hover:text-theme-primary hover:bg-(--theme-btn-hover) shrink-0 flex items-center justify-center active-press"
+                title="Download file"
+                onClick={(e) => e.stopPropagation()}
               >
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
-            </a>
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  className="w-4 h-4"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+              </a>
+            )}
           </div>
         );
       })}
@@ -934,6 +954,9 @@ export const ChatArea = ({
 
   const [activeMediaItem, setActiveMediaItem] =
     useState<MessageMediaItem | null>(null);
+  const [mediaLoadError, setMediaLoadError] = useState<boolean>(false);
+  const [showRetentionPopover, setShowRetentionPopover] =
+    useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [attachedFiles, setAttachedFiles] = useState<
     {
@@ -1937,6 +1960,90 @@ export const ChatArea = ({
               {/* Call button & Delete thread — only in DM mode */}
               {!isChannelMode && (
                 <div className="flex items-center gap-2 shrink-0">
+                  {/* 1-on-1 Retention Policy Badge */}
+                  {activeConvo?.retentionPolicy && (
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setShowRetentionPopover((prev) => !prev)}
+                        title="View 1-on-1 Auto-Deletion Policy"
+                        className="flex items-center gap-1.5 rounded-[9px] px-2.5 py-1.5 text-[11px] font-semibold cursor-pointer transition-all duration-200 border bg-theme-input/70 border-theme text-theme-secondary hover:text-theme-primary hover:bg-theme-input active-press"
+                      >
+                        <span className="text-[12px]">⏱️</span>
+                        <span className="hidden sm:inline">
+                          Media:{' '}
+                          {activeConvo.retentionPolicy.mediaDays === null
+                            ? 'Never'
+                            : `${activeConvo.retentionPolicy.mediaDays}d`}{' '}
+                          • Chat:{' '}
+                          {activeConvo.retentionPolicy.messageDays === null
+                            ? 'Never'
+                            : `${activeConvo.retentionPolicy.messageDays}d`}
+                        </span>
+                        <span className="sm:hidden">
+                          {activeConvo.retentionPolicy.mediaDays === null
+                            ? '∞'
+                            : `${activeConvo.retentionPolicy.mediaDays}d`}
+                          /
+                          {activeConvo.retentionPolicy.messageDays === null
+                            ? '∞'
+                            : `${activeConvo.retentionPolicy.messageDays}d`}
+                        </span>
+                      </button>
+
+                      {showRetentionPopover && (
+                        <div
+                          className="absolute right-0 top-full mt-2 w-72 sm:w-80 p-4 rounded-2xl glass-panel border border-glass shadow-2xl z-50 animate-fade-in flex flex-col gap-2.5 text-left"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="flex items-center justify-between border-b border-glass pb-2">
+                            <span className="text-xs font-bold text-theme-primary flex items-center gap-1.5">
+                              <span>⏱️</span> 1-on-1 Retention Policy
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setShowRetentionPopover(false)}
+                              className="text-theme-muted hover:text-theme-primary text-xs cursor-pointer p-0.5"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                          <p className="text-[11px] text-theme-muted leading-relaxed">
+                            In 1-on-1 chats, whichever participant has selected
+                            the longer duration applies to both users.
+                          </p>
+                          <div className="flex flex-col gap-1.5 py-1">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-theme-muted">
+                                Media Retention:
+                              </span>
+                              <span className="font-bold text-(--accent-primary)">
+                                {activeConvo.retentionPolicy.mediaDays === null
+                                  ? 'Keep Forever'
+                                  : `${activeConvo.retentionPolicy.mediaDays} Days (Applied max)`}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-theme-muted">
+                                Message History:
+                              </span>
+                              <span className="font-bold text-(--accent-primary)">
+                                {activeConvo.retentionPolicy.messageDays ===
+                                null
+                                  ? 'Keep Forever'
+                                  : `${activeConvo.retentionPolicy.messageDays} Days (Applied max)`}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="text-[10.5px] text-theme-muted/80 bg-theme-input/50 p-2.5 rounded-xl border border-theme leading-relaxed">
+                            💡 High-res media purges after media retention while
+                            keeping preview thumbnails. Expired messages are
+                            permanently wiped with all attachments.
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <button
                     id="call-user-btn"
                     title="Start Voice Call"
@@ -3839,36 +3946,85 @@ export const ChatArea = ({
       )}
       {activeMediaItem && (
         <div
-          className="fixed inset-0 z-100 flex flex-col items-center justify-center bg-black/75 backdrop-blur-md transition-all duration-300 animate-fade-in animate-duration-150"
-          onClick={() => setActiveMediaItem(null)}
+          className="fixed inset-0 z-100 flex flex-col items-center justify-center bg-black/80 backdrop-blur-md transition-all duration-300 animate-fade-in animate-duration-150"
+          onClick={() => {
+            setActiveMediaItem(null);
+            setMediaLoadError(false);
+          }}
         >
           <div
-            className="relative max-w-[90vw] max-h-[80vh] flex flex-col items-center justify-center"
+            className="relative max-w-[90vw] max-h-[85vh] flex flex-col items-center justify-center"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close button */}
             <button
               className="absolute -top-12 right-0 bg-white/10 hover:bg-white/25 text-white rounded-full p-2 hover:scale-105 active:scale-95 transition-all border-none cursor-pointer flex items-center justify-center shadow-lg"
-              onClick={() => setActiveMediaItem(null)}
+              onClick={() => {
+                setActiveMediaItem(null);
+                setMediaLoadError(false);
+              }}
               title="Close viewer"
             >
               <IconX size={20} />
             </button>
 
+            {/* Expired / Fallback Notice Banner */}
+            {(activeMediaItem.isExpired || mediaLoadError) && (
+              <div className="mb-3 px-4 py-1.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-semibold flex items-center gap-2 backdrop-blur-md shadow-lg">
+                <span className="text-sm">⏱️</span>
+                <span>
+                  Original media expired according to chat retention policy •
+                  Displaying thumbnail
+                </span>
+              </div>
+            )}
+
             {/* Media rendering */}
             {activeMediaItem.type.startsWith('image/') ? (
               <img
-                src={activeMediaItem.url}
+                src={
+                  (activeMediaItem.isExpired || mediaLoadError) &&
+                  activeMediaItem.thumbnailUrl
+                    ? activeMediaItem.thumbnailUrl
+                    : activeMediaItem.url
+                }
                 alt={activeMediaItem.name}
+                onError={() => {
+                  if (!mediaLoadError && activeMediaItem.thumbnailUrl) {
+                    setMediaLoadError(true);
+                  }
+                }}
                 className="max-w-full max-h-[75vh] object-contain rounded-xl shadow-2xl border border-white/10"
               />
             ) : activeMediaItem.type.startsWith('video/') ? (
-              <video
-                src={activeMediaItem.url}
-                controls
-                autoPlay
-                className="max-w-full max-h-[75vh] object-contain rounded-xl shadow-2xl border border-white/10"
-              />
+              (activeMediaItem.isExpired || mediaLoadError) &&
+              activeMediaItem.thumbnailUrl ? (
+                <div className="relative flex flex-col items-center">
+                  <img
+                    src={activeMediaItem.thumbnailUrl}
+                    alt={activeMediaItem.name}
+                    className="max-w-full max-h-[75vh] object-contain rounded-xl shadow-2xl border border-white/10"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-xl">
+                    <div className="px-3.5 py-1.5 rounded-lg bg-black/70 text-white text-xs font-semibold flex items-center gap-2">
+                      <span>🎬</span>
+                      <span>Original video expired (Preview only)</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <video
+                  src={activeMediaItem.url}
+                  controls
+                  autoPlay
+                  onError={() => {
+                    if (!mediaLoadError && activeMediaItem.thumbnailUrl) {
+                      setMediaLoadError(true);
+                    }
+                  }}
+                  className="max-w-full max-h-[75vh] object-contain rounded-xl shadow-2xl border border-white/10"
+                />
+              )
             ) : null}
 
             {/* Title / details */}
@@ -3878,6 +4034,8 @@ export const ChatArea = ({
               </h4>
               <p className="text-[12px] text-white/60 mt-1">
                 {(activeMediaItem.size / (1024 * 1024)).toFixed(2)} MB
+                {(activeMediaItem.isExpired || mediaLoadError) &&
+                  ' • Thumbnail Preview'}
               </p>
             </div>
           </div>

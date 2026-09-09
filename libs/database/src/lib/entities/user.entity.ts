@@ -107,6 +107,12 @@ export class User {
   @Column({ name: 'last_seen_update_note_id', type: 'uuid', nullable: true })
   lastSeenUpdateNoteId?: string;
 
+  @Column({ name: 'retention_media_days', type: 'integer', default: 30 })
+  retentionMediaDays!: number;
+
+  @Column({ name: 'retention_message_days', type: 'integer', default: 90 })
+  retentionMessageDays!: number;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 

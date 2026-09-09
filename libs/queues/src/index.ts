@@ -2,6 +2,7 @@ export const QueueNames = {
   NOTIFICATIONS: 'notifications',
   MEDIA_PROCESSING: 'media-processing',
   SYSTEM_CLEANUP: 'system-cleanup',
+  REALTIME_TASKS: 'realtime-tasks',
   EMAILS: 'emails',
 } as const;
 

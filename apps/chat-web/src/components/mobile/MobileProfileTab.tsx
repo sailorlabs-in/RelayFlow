@@ -12,6 +12,19 @@ import { socketManager } from '../../store/socketManager';
 import { showToast } from '../toast';
 import { ProfileSettingsContent } from '../../app/profile/page';
 
+const IconClock = (): React.JSX.Element => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    className="w-[18px] h-[18px]"
+  >
+    <circle cx="12" cy="12" r="10" />
+    <polyline points="12 6 12 12 16 14" />
+  </svg>
+);
+
 const IconUser = (): React.JSX.Element => (
   <svg
     viewBox="0 0 24 24"
@@ -100,6 +113,7 @@ interface MobileProfileTabProps {
     | 'theme'
     | 'status'
     | 'notifications'
+    | 'retention'
     | 'update-notes';
   setProfileSubPage: (
     page:
@@ -108,6 +122,7 @@ interface MobileProfileTabProps {
       | 'theme'
       | 'status'
       | 'notifications'
+      | 'retention'
       | 'update-notes',
   ) => void;
 }
@@ -199,6 +214,12 @@ export const MobileProfileTab = ({
                 label: 'Notifications & Devices',
                 desc: 'Alerts, push settings, device sessions',
                 icon: <IconBell />,
+              },
+              {
+                id: 'retention',
+                label: 'Data & Auto-Deletion',
+                desc: '1-on-1 media & message retention rules',
+                icon: <IconClock />,
               },
               {
                 id: 'update-notes',

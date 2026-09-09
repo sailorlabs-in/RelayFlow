@@ -9,6 +9,7 @@ interface MobileHeaderProps {
     | 'theme'
     | 'status'
     | 'notifications'
+    | 'retention'
     | 'update-notes';
   setProfileSubPage: (
     page:
@@ -17,6 +18,7 @@ interface MobileHeaderProps {
       | 'theme'
       | 'status'
       | 'notifications'
+      | 'retention'
       | 'update-notes',
   ) => void;
   setIsComposeOpen: (open: boolean) => void;
@@ -55,6 +57,7 @@ export const MobileHeader = ({
               {profileSubPage === 'theme' && 'Appearance & Themes'}
               {profileSubPage === 'status' && 'Status & Visibility'}
               {profileSubPage === 'notifications' && 'Notifications & Devices'}
+              {profileSubPage === 'retention' && 'Auto-Deletion Policies'}
               {profileSubPage === 'update-notes' && 'Update Notes'}
             </div>
           </div>

@@ -1,10 +1,16 @@
-import { ConfigModule } from '@chat-app/config';
-import { DatabaseModule } from '@chat-app/database';
+import {
+  DatabaseModule,
+  User,
+  Conversation,
+  ConversationMember,
+  Message,
+} from '@chat-app/database';
 import { LoggerModule } from '@chat-app/logger';
 import { RedisModule } from '@chat-app/redis';
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
-import { ConfigService } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { DEFAULT_QUEUE_JOB_OPTIONS, QueueNames } from '@chat-app/queues';
 
 import { NotificationProcessor } from './processors/notification.processor';
@@ -17,6 +23,7 @@ import { SystemCleanupService } from './services/system-cleanup.service';
     ConfigModule,
     LoggerModule,
     DatabaseModule,
+    TypeOrmModule.forFeature([User, Conversation, ConversationMember, Message]),
     RedisModule,
     BullModule.forRootAsync({
       imports: [ConfigModule],

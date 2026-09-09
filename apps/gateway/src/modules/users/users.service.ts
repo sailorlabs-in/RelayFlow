@@ -5,6 +5,7 @@ import {
   ConflictException,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Not, Brackets, In } from 'typeorm';
@@ -210,6 +211,8 @@ export class UsersService {
       groupOrder?: string;
       customThemes?: string;
       lastSeenUpdateNoteId?: string;
+      retentionMediaDays?: number;
+      retentionMessageDays?: number;
     },
   ): Promise<User> {
     const user = await this.findById(id);
@@ -304,6 +307,32 @@ export class UsersService {
 
     if (data.lastSeenUpdateNoteId !== undefined) {
       user.lastSeenUpdateNoteId = data.lastSeenUpdateNoteId;
+    }
+
+    if (data.retentionMediaDays !== undefined) {
+      const allowed = [15, 30, 60, 90];
+      if (data.retentionMediaDays === 0) {
+        if (user.role !== 'admin') {
+          throw new BadRequestException(
+            '❌ Only platform super admins can set media retention to infinity.',
+          );
+        }
+      } else if (!allowed.includes(data.retentionMediaDays)) {
+        throw new BadRequestException(
+          '❌ Invalid media retention option. Allowed: 15, 30, 60, 90 days (or infinity for super admin).',
+        );
+      }
+      user.retentionMediaDays = data.retentionMediaDays;
+    }
+
+    if (data.retentionMessageDays !== undefined) {
+      const allowed = [15, 30, 45, 60, 90, 180, 0];
+      if (!allowed.includes(data.retentionMessageDays)) {
+        throw new BadRequestException(
+          '❌ Invalid message retention option. Allowed: 15, 30, 45, 60, 90, 180 days or 0 (infinity).',
+        );
+      }
+      user.retentionMessageDays = data.retentionMessageDays;
     }
 
     const updatedUser = await this.userRepository.save(user);

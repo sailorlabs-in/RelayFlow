@@ -10,3 +10,11 @@ export const PRESENCE_DOT_COLORS = {
   dnd: '#ef4444', // red
   offline: '#8e9bae', // gray
 };
+
+// 1-on-1 Conversation Auto-Deletion Policies
+export const MEDIA_RETENTION_DAYS_OPTIONS = [15, 30, 60, 90] as const;
+export const MESSAGE_RETENTION_DAYS_OPTIONS = [
+  15, 30, 45, 60, 90, 180, 0,
+] as const; // 0 = Infinity (Never delete)
+export const DEFAULT_MEDIA_RETENTION_DAYS = 30;
+export const DEFAULT_MESSAGE_RETENTION_DAYS = 90;
