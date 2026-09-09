@@ -15,32 +15,43 @@ export class NotificationProcessor extends WorkerHost implements OnModuleInit {
   }
 
   onModuleInit() {
-    const appId = this.configService.get<string>('VIBE_APP_ID');
-    const secretKey = this.configService.get<string>('VIBE_SECRET_KEY');
+    this.getServerClient();
+  }
 
-    if (appId && secretKey) {
-      this.logger.log(
-        'Initializing vibe-message Server Client inside Worker...',
-      );
-      try {
-        this.serverClient = initServerClient({
-          appId,
-          secretKey,
-        });
+  private getServerClient(): any {
+    if (!this.serverClient) {
+      const appId =
+        this.configService.get<string>('VIBE_APP_ID') ||
+        process.env.VIBE_APP_ID;
+      const secretKey =
+        this.configService.get<string>('VIBE_SECRET_KEY') ||
+        process.env.VIBE_SECRET_KEY;
+
+      if (appId && secretKey) {
         this.logger.log(
-          'vibe-message Server Client inside Worker initialized successfully.',
+          'Initializing vibe-message Server Client inside Worker...',
         );
-      } catch (error) {
-        this.logger.error(
-          'Failed to initialize vibe-message client inside Worker',
-          error,
+        try {
+          this.serverClient = initServerClient({
+            appId,
+            secretKey,
+          });
+          this.logger.log(
+            'vibe-message Server Client inside Worker initialized successfully.',
+          );
+        } catch (error) {
+          this.logger.error(
+            'Failed to initialize vibe-message client inside Worker',
+            error,
+          );
+        }
+      } else {
+        this.logger.warn(
+          'vibe-message App ID or Secret Key missing in environment inside Worker. Notifications will be disabled.',
         );
       }
-    } else {
-      this.logger.warn(
-        'vibe-message App ID or Secret Key missing in environment inside Worker. Notifications will be disabled.',
-      );
     }
+    return this.serverClient;
   }
 
   async process(
@@ -66,7 +77,8 @@ export class NotificationProcessor extends WorkerHost implements OnModuleInit {
     Body: "${body}"
     Metadata: ${JSON.stringify(metadata)}`);
 
-    if (!this.serverClient) {
+    const client = this.getServerClient();
+    if (!client) {
       this.logger.warn(
         'vibe-message is not initialized. Skipping notification.',
       );
@@ -87,16 +99,16 @@ export class NotificationProcessor extends WorkerHost implements OnModuleInit {
     }
 
     try {
-      await this.serverClient.notification({
+      const response = await client.notification({
         notificationData,
         externalUsers: recipients,
       });
       this.logger.log('vibe-message Notification sent successfully.');
-      return { success: true, processedAt: new Date().toISOString() };
-    } catch (error) {
+      return { success: true, processedAt: new Date().toISOString(), response };
+    } catch (error: any) {
       this.logger.error(
-        'Failed to send notification via vibe-message SDK',
-        error,
+        `Failed to send notification via vibe-message SDK: ${error?.message || error}`,
+        error?.stack || error,
       );
       throw error;
     }

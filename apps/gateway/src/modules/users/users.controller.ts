@@ -13,6 +13,7 @@ import {
   forwardRef,
   Logger,
   NotFoundException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -500,28 +501,38 @@ export class UsersController {
     @CurrentUser() currentUser: { userId: string },
     @Param('deviceId') deviceId: string,
   ): Promise<any> {
-    const user = await this.usersService.findById(currentUser.userId);
-    let devices: any[] = [];
-    if (user.loggedInDevices) {
-      try {
-        devices = JSON.parse(user.loggedInDevices);
-      } catch {
-        devices = [];
+    try {
+      const user = await this.usersService.findById(currentUser.userId);
+      let devices: any[] = [];
+      if (user.loggedInDevices) {
+        try {
+          devices = JSON.parse(user.loggedInDevices);
+        } catch {
+          devices = [];
+        }
       }
-    }
-    const device = devices.find((d: any) => d.deviceId === deviceId);
-    const deviceInfo = device?.deviceInfo || 'This Device';
+      const device = devices.find((d: any) => d.deviceId === deviceId);
+      const deviceInfo = device?.deviceInfo || 'This Device';
 
-    await this.notificationsQueue.add('send-push', {
-      title: 'Test Notification',
-      body: `Hello! This is a test notification for your device: ${deviceInfo}`,
-      recipients: [`${currentUser.userId}:${deviceId}`],
-      metadata: {
-        type: 'test_notification',
-        deviceId,
-      },
-    });
-    return { success: true };
+      await this.notificationsQueue.add('send-push', {
+        title: 'Test Notification',
+        body: `Hello! This is a test notification for your device: ${deviceInfo}`,
+        recipients: [`${currentUser.userId}:${deviceId}`],
+        metadata: {
+          type: 'test_notification',
+          deviceId,
+        },
+      });
+      return { success: true };
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to queue test notification for user ${currentUser.userId} device ${deviceId}: ${error?.message || error}`,
+        error?.stack || error,
+      );
+      throw new InternalServerErrorException(
+        error?.message || 'Failed to queue test notification.',
+      );
+    }
   }
 
   // ── Update Notes (user-facing) ──────────────────────────────────────────────

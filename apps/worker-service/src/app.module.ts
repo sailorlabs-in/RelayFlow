@@ -9,7 +9,8 @@ import { LoggerModule } from '@chat-app/logger';
 import { RedisModule } from '@chat-app/redis';
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigModule } from '@chat-app/config';
+import { ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DEFAULT_QUEUE_JOB_OPTIONS, QueueNames } from '@chat-app/queues';
 

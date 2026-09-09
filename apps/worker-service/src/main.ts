@@ -1,8 +1,21 @@
 // Load workspace .env before all other imports so process.env is populated
+const dotenv = require('dotenv');
+const path = require('path');
+const fs = require('fs');
 
-require('dotenv').config({
-  path: require('path').resolve(__dirname, '../../.env'),
-});
+const envCandidates = [
+  path.resolve(process.cwd(), '.env'),
+  path.resolve(process.cwd(), '../../.env'),
+  path.resolve(__dirname, '../../.env'),
+  path.resolve(__dirname, '../../../.env'),
+];
+
+for (const envPath of envCandidates) {
+  if (fs.existsSync(envPath)) {
+    dotenv.config({ path: envPath });
+    break;
+  }
+}
 
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
