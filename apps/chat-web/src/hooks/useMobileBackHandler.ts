@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useMemo } from 'react';
-import { showToast } from '../components/toast';
+import { useEffect, useRef, useMemo, useState } from 'react';
 
 export interface UseMobileBackHandlerOptions {
   enabled: boolean;
@@ -75,13 +74,103 @@ export interface UseMobileBackHandlerOptions {
   setShowUpdateNoteModal?: (open: boolean) => void;
 }
 
+// ---------------------------------------------------------------------------
+// Manual Back Handler Registry
+// ---------------------------------------------------------------------------
+
+export interface BackHandlerRegistration {
+  id: string;
+  priority: number;
+  handler: () => boolean | void;
+}
+
+const manualHandlers: BackHandlerRegistration[] = [];
+const registryListeners = new Set<() => void>();
+
+function notifyRegistryListeners() {
+  registryListeners.forEach((listener) => {
+    try {
+      listener();
+    } catch {
+      void 0;
+    }
+  });
+}
+
+/**
+ * Imperatively register a manual back handler.
+ * Returns an unregister function to remove it when closed/destroyed.
+ */
+export function registerBackHandler(
+  handler: () => boolean | void,
+  priority = 0,
+): () => void {
+  const id = Math.random().toString(36).substring(2, 9);
+  manualHandlers.push({ id, priority, handler });
+  manualHandlers.sort((a, b) => b.priority - a.priority);
+  notifyRegistryListeners();
+
+  return () => {
+    const idx = manualHandlers.findIndex((h) => h.id === id);
+    if (idx !== -1) {
+      manualHandlers.splice(idx, 1);
+      notifyRegistryListeners();
+    }
+  };
+}
+
+/**
+ * Declarative hook: Any component, modal, or sheet can register its own
+ * back action locally. When enabled is true, back events are intercepted.
+ */
+export function useBackHandler(
+  handler: () => boolean | void,
+  enabled = true,
+  priority = 0,
+) {
+  const handlerRef = useRef(handler);
+  handlerRef.current = handler;
+
+  useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+    return registerBackHandler(() => handlerRef.current(), priority);
+  }, [enabled, priority]);
+}
+
+/**
+ * Programmatically triggers the mobile back event from any button or gesture.
+ */
+export function triggerBack(): boolean {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+  window.history.back();
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// Layer Dismissal Logic
+// ---------------------------------------------------------------------------
+
 /**
  * Returns the dismissal action for the topmost active layer on mobile.
+ * When on the root of chats, groups, friends, or profile (with nothing open),
+ * returns null (NO back event).
  */
 function getTopmostDismissAction(
   opts: UseMobileBackHandlerOptions,
 ): (() => void) | null {
-  // Layer 5: Menus, Overlays, and Confirmations
+  // Manual registered handlers have highest priority
+  if (manualHandlers.length > 0) {
+    const topEntry = manualHandlers[manualHandlers.length - 1];
+    return () => {
+      topEntry.handler();
+    };
+  }
+
+  // Layer 4: Menus, Overlays, and Confirmations
   if (opts.contextMenu) {
     return () => opts.setContextMenu(null);
   }
@@ -92,7 +181,7 @@ function getTopmostDismissAction(
     return () => opts.setConfirmModal?.(null);
   }
 
-  // Layer 4: Floating Modals
+  // Layer 3: Floating Modals
   if (opts.showUpdateNoteModal) {
     return () => opts.setShowUpdateNoteModal?.(false);
   }
@@ -121,12 +210,12 @@ function getTopmostDismissAction(
     return () => opts.setIsComposeOpen?.(false);
   }
 
-  // Layer 3: Group Member Drawer
+  // Layer 2: Group Member Drawer
   if (opts.isMembersListOpen) {
     return () => opts.setIsMembersListOpen?.(false);
   }
 
-  // Layer 2: Sub-views (Active Chat or Profile Settings Subpage)
+  // Layer 1: Sub-views (Active Chat or Profile Settings Subpage)
   if (opts.showChatArea) {
     return () => opts.onCloseChat();
   }
@@ -134,12 +223,8 @@ function getTopmostDismissAction(
     return () => opts.setProfileSubPage('root');
   }
 
-  // Layer 1: Non-root tabs (switch back to primary 'chats' tab)
-  if (opts.activeTab !== 'chats') {
-    return () => opts.setActiveTab('chats');
-  }
-
-  // Layer 0: Root (Home Chats list with nothing open)
+  // Layer 0: Root of any main tab (chats, groups, friends, profile)
+  // No back event within the app! Returns null so back exits the web app.
   return null;
 }
 
@@ -148,19 +233,27 @@ export function useMobileBackHandler(options: UseMobileBackHandlerOptions) {
   const optionsRef = useRef(options);
   optionsRef.current = options;
 
-  const historyDepthRef = useRef<number>(1);
+  const [manualCount, setManualCount] = useState<number>(manualHandlers.length);
+
+  useEffect(() => {
+    const onRegistryChange = () => setManualCount(manualHandlers.length);
+    registryListeners.add(onRegistryChange);
+    return () => {
+      registryListeners.delete(onRegistryChange);
+    };
+  }, []);
+
+  const historyDepthRef = useRef<number>(0);
   const isHandlingPopstateRef = useRef<boolean>(false);
   const isProgrammaticBackRef = useRef<boolean>(false);
-  const lastExitPressRef = useRef<number>(0);
 
-  // Compute the current target depth based on active visual layers
+  // Compute current target depth:
+  // Root of chats, groups, friends, profile = depth 0 (clean root, no back stack).
+  // Sub-views, drawers, modals, overlays, or manual handlers = depth > 0 (back active).
   const targetDepth = useMemo(() => {
-    let depth = 1; // Root tab (chats)
+    let depth = 0; // Root of chats, groups, friends, or profile
 
-    if (options.activeTab !== 'chats') {
-      depth += 1;
-    }
-
+    // Sub-view (Active Chat Area or Profile Subpage)
     if (
       options.showChatArea ||
       (options.activeTab === 'profile' && options.profileSubPage !== 'root')
@@ -168,10 +261,12 @@ export function useMobileBackHandler(options: UseMobileBackHandlerOptions) {
       depth += 1;
     }
 
+    // Drawer (Member List)
     if (options.isMembersListOpen) {
       depth += 1;
     }
 
+    // Modals
     const isAnyModalOpen = Boolean(
       options.isComposeOpen ||
         options.isCreateGroupOpen ||
@@ -187,6 +282,7 @@ export function useMobileBackHandler(options: UseMobileBackHandlerOptions) {
       depth += 1;
     }
 
+    // Overlays / Confirmations
     const isAnyOverlayOpen = Boolean(
       options.localConfirmModal || options.confirmModal || options.contextMenu,
     );
@@ -194,10 +290,13 @@ export function useMobileBackHandler(options: UseMobileBackHandlerOptions) {
       depth += 1;
     }
 
+    // Manual registered handlers
+    depth += manualCount;
+
     return depth;
   }, [
-    options.activeTab,
     options.showChatArea,
+    options.activeTab,
     options.profileSubPage,
     options.isMembersListOpen,
     options.isComposeOpen,
@@ -212,9 +311,10 @@ export function useMobileBackHandler(options: UseMobileBackHandlerOptions) {
     options.localConfirmModal,
     options.confirmModal,
     options.contextMenu,
+    manualCount,
   ]);
 
-  // Initial history trap setup on mobile mount
+  // Initial history base setup on mobile mount
   useEffect(() => {
     if (!enabled || typeof window === 'undefined') {
       return;
@@ -222,21 +322,15 @@ export function useMobileBackHandler(options: UseMobileBackHandlerOptions) {
 
     const state = window.history.state;
     if (!state || !state.rfMobile) {
-      // Entry 0: Base trap
+      // Set base history state at depth 0
       window.history.replaceState(
         { rfMobile: true, depth: 0, isBase: true },
         '',
         window.location.href,
       );
-      // Entry 1: Root active
-      window.history.pushState(
-        { rfMobile: true, depth: 1 },
-        '',
-        window.location.href,
-      );
-      historyDepthRef.current = 1;
+      historyDepthRef.current = 0;
     } else {
-      historyDepthRef.current = state.depth ?? 1;
+      historyDepthRef.current = state.depth ?? 0;
     }
 
     const handlePopState = (e: PopStateEvent) => {
@@ -244,7 +338,7 @@ export function useMobileBackHandler(options: UseMobileBackHandlerOptions) {
         return;
       }
 
-      // If this pop was triggered by our own window.history.go(-diff), ignore it
+      // If this pop was triggered programmatically (e.g. UI close button unwinding history), ignore
       if (isProgrammaticBackRef.current) {
         isProgrammaticBackRef.current = false;
         return;
@@ -259,35 +353,20 @@ export function useMobileBackHandler(options: UseMobileBackHandlerOptions) {
       if (dismissAction) {
         isHandlingPopstateRef.current = true;
         dismissAction();
-        // At root screen (Chats list, nothing open) -> Double-back to exit pattern
-        const now = Date.now();
-        if (now - lastExitPressRef.current < 2000) {
-          // Confirmed exit within 2 seconds: close webapp
-          lastExitPressRef.current = 0;
-          try {
-            window.close();
-          } catch {
-            // Browser may disallow script-initiated window closing; fall back to history back
-            void 0;
-          }
-          // In regular browser tabs where script-initiated window.close() may be restricted,
-          // pop backward to exit domain
-          setTimeout(() => {
-            if (typeof window !== 'undefined') {
-              window.history.back();
-            }
-          }, 50);
-        } else {
-          // First back press at root: show toast and preserve open state
-          lastExitPressRef.current = now;
-          showToast.info('Press back again to exit', { autoClose: 2000 });
-          window.history.pushState(
-            { rfMobile: true, depth: 1 },
-            '',
-            window.location.href,
-          );
-          historyDepthRef.current = 1;
+      } else {
+        // At root screen of Chats, Groups, Friends, or Profile:
+        // No back event within the app — user quits the webapp!
+        try {
+          window.close();
+        } catch {
+          // Browser may restrict window.close(); fall through to history back
+          void 0;
         }
+        setTimeout(() => {
+          if (typeof window !== 'undefined') {
+            window.history.back();
+          }
+        }, 50);
       }
     };
 
@@ -315,8 +394,8 @@ export function useMobileBackHandler(options: UseMobileBackHandlerOptions) {
     const target = targetDepth;
 
     if (target > current) {
-      // Forward navigation (opening chat, opening modal, etc.)
-      for (let d = current + 1; d <= target; d++) {
+      // Forward navigation (opening chat, opening modal, registering manual handler, etc.)
+      for (let d = current + 1; d <= target; d += 1) {
         window.history.pushState(
           { rfMobile: true, depth: d },
           '',
@@ -325,11 +404,28 @@ export function useMobileBackHandler(options: UseMobileBackHandlerOptions) {
       }
       historyDepthRef.current = target;
     } else if (target < current) {
-      // Backward navigation via UI action (in-app '<' back button or modal close button)
+      // Backward navigation via UI action (in-app '<' back button, closing modal, or tab switch)
       const diff = current - target;
       isProgrammaticBackRef.current = true;
       historyDepthRef.current = target;
       window.history.go(-diff);
+
+      // If we returned to root, ensure clean base state
+      if (target === 0) {
+        window.history.replaceState(
+          { rfMobile: true, depth: 0, isBase: true },
+          '',
+          window.location.href,
+        );
+      }
+    } else if (target === 0) {
+      // Switching between tabs at root (Chats -> Groups -> Friends -> Profile)
+      // Keep depth 0 and clear any back event history
+      window.history.replaceState(
+        { rfMobile: true, depth: 0, isBase: true },
+        '',
+        window.location.href,
+      );
     }
   }, [targetDepth, enabled]);
 }
