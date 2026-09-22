@@ -9,10 +9,13 @@ interface ThemeSwitcherProps {
   onChange: (t: Theme) => void;
 }
 
-export const ThemeSwitcher = ({ theme, onChange }: ThemeSwitcherProps): React.JSX.Element => {
+export function ThemeSwitcher({
+  theme,
+  onChange,
+}: ThemeSwitcherProps): React.JSX.Element {
   const options: { value: Theme; icon: React.ReactNode; label: string }[] = [
-    { value: 'light',  icon: <IconSun />,     label: 'Light mode' },
-    { value: 'dark',   icon: <IconMoon />,    label: 'Dark mode' },
+    { value: 'light', icon: <IconSun />, label: 'Light mode' },
+    { value: 'dark', icon: <IconMoon />, label: 'Dark mode' },
     { value: 'system', icon: <IconMonitor />, label: 'System mode' },
   ];
 
@@ -26,15 +29,25 @@ export const ThemeSwitcher = ({ theme, onChange }: ThemeSwitcherProps): React.JS
           aria-pressed={theme === value}
           onClick={() => onChange(value)}
           className={`theme-btn${theme === value ? ' theme-btn-active' : ''}`}
-          style={theme === value ? {
-            background: 'var(--theme-btn-active)',
-            color: 'var(--theme-btn-active-text)',
-          } : {}}
+          style={
+            theme === value
+              ? {
+                  background: 'var(--theme-btn-active)',
+                  color: 'var(--theme-btn-active-text)',
+                }
+              : {}
+          }
           onMouseEnter={(e) => {
-            if (theme !== value) {(e.currentTarget as HTMLButtonElement).style.background = 'var(--theme-btn-hover)';}
+            if (theme !== value) {
+              (e.currentTarget as HTMLButtonElement).style.background =
+                'var(--theme-btn-hover)';
+            }
           }}
           onMouseLeave={(e) => {
-            if (theme !== value) {(e.currentTarget as HTMLButtonElement).style.background = 'transparent';}
+            if (theme !== value) {
+              (e.currentTarget as HTMLButtonElement).style.background =
+                'transparent';
+            }
           }}
         >
           {icon}
@@ -42,4 +55,4 @@ export const ThemeSwitcher = ({ theme, onChange }: ThemeSwitcherProps): React.JS
       ))}
     </div>
   );
-};
+}

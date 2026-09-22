@@ -11,20 +11,22 @@ import { assignMemberRoles } from '../store/slices/groupsSlice';
 import { showToast } from './toast';
 import { hasGroupPermission } from '../utils/permissions';
 
-const IconAddFriend = (): React.JSX.Element => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2.5"
-    className="w-3.5 h-3.5"
-  >
-    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-    <circle cx="9" cy="7" r="4" />
-    <line x1="19" y1="8" x2="19" y2="14" />
-    <line x1="16" y1="11" x2="22" y2="11" />
-  </svg>
-);
+function IconAddFriend(): React.JSX.Element {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      className="w-3.5 h-3.5"
+    >
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <line x1="19" y1="8" x2="19" y2="14" />
+      <line x1="16" y1="11" x2="22" y2="11" />
+    </svg>
+  );
+}
 
 interface MemberProfilePopoverProps {
   selectedMember: {
@@ -50,13 +52,13 @@ interface MemberProfilePopoverProps {
   groupId?: string;
 }
 
-export const MemberProfilePopover = ({
+export function MemberProfilePopover({
   selectedMember,
   popoverPosition,
   onClose: _onClose,
   onUpdate,
   groupId,
-}: MemberProfilePopoverProps): React.JSX.Element => {
+}: MemberProfilePopoverProps): React.JSX.Element {
   const dispatch = useAppDispatch();
   const popoverRef = useRef<HTMLDivElement>(null);
   const [adjustedTop, setAdjustedTop] = useState<number>(popoverPosition.top);
@@ -418,4 +420,4 @@ export const MemberProfilePopover = ({
       )}
     </div>
   );
-};
+}

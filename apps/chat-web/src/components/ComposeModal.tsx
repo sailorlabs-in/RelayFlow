@@ -15,9 +15,9 @@ interface ComposeModalProps {
   onClose: () => void;
 }
 
-export const ComposeModal = ({
+export function ComposeModal({
   onClose,
-}: ComposeModalProps): React.JSX.Element => {
+}: ComposeModalProps): React.JSX.Element {
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((s) => s.auth);
   const { friends } = useAppSelector((s) => s.chat);
@@ -140,4 +140,4 @@ export const ComposeModal = ({
       </div>
     </div>
   );
-};
+}

@@ -5,7 +5,7 @@ import { socketManager } from '../store/socketManager';
 import { Avatar } from './Avatar';
 import { showToast } from './toast';
 
-export const CallOverlay: React.FC = () => {
+export function CallOverlay(): React.ReactElement | null {
   const dispatch = useAppDispatch();
   const activeCall = useAppSelector((state) => state.chat.activeCall);
   const userProfiles = useAppSelector((state) => state.chat.userProfiles);
@@ -721,4 +721,4 @@ export const CallOverlay: React.FC = () => {
       </div>
     </div>
   );
-};
+}

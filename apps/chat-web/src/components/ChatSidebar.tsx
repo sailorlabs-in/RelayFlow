@@ -50,14 +50,14 @@ const getLatestActivityTime = (
   return 0;
 };
 
-export const ChatSidebar = ({
+export function ChatSidebar({
   ownStatus,
   setIsProfileOpen,
   setIsComposeOpen,
   handleLogout,
   isRailCollapsed,
   onToggleRail,
-}: ChatSidebarProps): React.JSX.Element => {
+}: ChatSidebarProps): React.JSX.Element {
   const dispatch = useAppDispatch();
   const { user, timeFormat } = useAppSelector((s) => s.auth);
   const {
@@ -586,4 +586,4 @@ export const ChatSidebar = ({
       )}
     </>
   );
-};
+}

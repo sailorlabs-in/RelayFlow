@@ -303,7 +303,7 @@ const renderMessageMedia = (
   );
 };
 
-export const ChatArea = ({
+export function ChatArea({
   activeConversationId,
   setIsComposeOpen,
   isChannelMode = false,
@@ -312,7 +312,7 @@ export const ChatArea = ({
   onToggleMembersList,
   onMenuClick,
   isMobileView = false,
-}: ChatAreaProps): React.JSX.Element => {
+}: ChatAreaProps): React.JSX.Element {
   const dispatch = useAppDispatch();
   const feedEndRef = useRef<HTMLDivElement>(null);
 
@@ -4100,4 +4100,4 @@ export const ChatArea = ({
       )}
     </div>
   );
-};
+}

@@ -27,13 +27,13 @@ interface GroupRailProps {
   isCollapsed: boolean;
 }
 
-export const GroupRail = ({
+export function GroupRail({
   onCreateGroup,
   onShowDMs,
   onSelectGroup,
   isDMMode,
   isCollapsed,
-}: GroupRailProps): React.JSX.Element => {
+}: GroupRailProps): React.JSX.Element {
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((s) => s.auth);
   const {
@@ -490,7 +490,7 @@ export const GroupRail = ({
       )}
     </div>
   );
-};
+}
 
 // ── Rail Button ──────────────────────────────────────────────────────────────
 interface RailButtonProps {
@@ -506,7 +506,7 @@ interface RailButtonProps {
   setTooltip: (t: { text: string; id: string } | null) => void;
 }
 
-const RailButton = ({
+function RailButton({
   id,
   isActive,
   isCreate,
@@ -517,7 +517,7 @@ const RailButton = ({
   children,
   tooltip_state,
   setTooltip,
-}: RailButtonProps): React.JSX.Element => {
+}: RailButtonProps): React.JSX.Element {
   const showTooltip = tooltip_state?.id === id;
 
   return (
@@ -567,4 +567,4 @@ const RailButton = ({
       )}
     </div>
   );
-};
+}
