@@ -20,7 +20,7 @@ import type { Theme } from './ThemeSwitcher';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { getOrCreateDeviceToken } from '../utils/deviceToken';
 
-export const AuthGate = (): React.JSX.Element => {
+export function AuthGate(): React.JSX.Element {
   const dispatch = useAppDispatch();
 
   const {
@@ -219,4 +219,4 @@ export const AuthGate = (): React.JSX.Element => {
       </div>
     </div>
   );
-};
+}

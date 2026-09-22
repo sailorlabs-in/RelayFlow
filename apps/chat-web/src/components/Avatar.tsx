@@ -9,12 +9,12 @@ interface AvatarProps {
   size?: 'xs' | 'sm' | 'md' | 'lg';
 }
 
-export const Avatar = ({
+export function Avatar({
   letter,
   url,
   status = 'offline',
   size = 'md',
-}: AvatarProps): React.JSX.Element => {
+}: AvatarProps): React.JSX.Element {
   const sizeMap = {
     xs: 'w-[20px] h-[20px] text-[8px] rounded-full',
     sm: 'w-[32px] h-[32px] text-[12px]',
@@ -67,4 +67,4 @@ export const Avatar = ({
       )}
     </div>
   );
-};
+}

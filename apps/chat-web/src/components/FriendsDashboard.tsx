@@ -22,10 +22,10 @@ interface FriendsDashboardProps {
   onNavigateToChat?: (conversationId?: string) => void;
 }
 
-export const FriendsDashboard = ({
+export function FriendsDashboard({
   onMenuClick,
   onNavigateToChat,
-}: FriendsDashboardProps = {}): React.JSX.Element => {
+}: FriendsDashboardProps = {}): React.JSX.Element {
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((s) => s.auth);
   const {
@@ -1274,7 +1274,7 @@ export const FriendsDashboard = ({
       )}
     </div>
   );
-};
+}
 
 /* ── INDIVIDUAL FRIEND LIST ROW COMPONENT ─────────────────────── */
 interface FriendRowProps {
@@ -1286,14 +1286,14 @@ interface FriendRowProps {
   onRemove: (friendId: string, friendName: string) => void;
 }
 
-const FriendRow = ({
+function FriendRow({
   friend,
   status,
   isSelected,
   onClick,
   onChat,
   onRemove,
-}: FriendRowProps) => {
+}: FriendRowProps) {
   const name = friend.username
     ? `@${friend.username}`
     : friend.displayName || friend.email.split('@')[0];
@@ -1379,4 +1379,4 @@ const FriendRow = ({
       </div>
     </div>
   );
-};
+}

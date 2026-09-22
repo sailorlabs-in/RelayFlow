@@ -13,7 +13,7 @@ interface ConfirmationModalProps {
   onCancel: () => void;
 }
 
-export const ConfirmationModal = ({
+export function ConfirmationModal({
   isOpen,
   title,
   message,
@@ -22,7 +22,7 @@ export const ConfirmationModal = ({
   type = 'info',
   onConfirm,
   onCancel,
-}: ConfirmationModalProps): React.JSX.Element | null => {
+}: ConfirmationModalProps): React.JSX.Element | null {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -117,4 +117,4 @@ export const ConfirmationModal = ({
     </div>,
     document.body,
   );
-};
+}

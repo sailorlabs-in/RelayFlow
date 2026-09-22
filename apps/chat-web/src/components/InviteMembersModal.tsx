@@ -19,10 +19,10 @@ interface InviteMembersModalProps {
   onClose: () => void;
 }
 
-export const InviteMembersModal = ({
+export function InviteMembersModal({
   group,
   onClose,
-}: InviteMembersModalProps): React.JSX.Element => {
+}: InviteMembersModalProps): React.JSX.Element {
   const dispatch = useAppDispatch();
   const { user, timeFormat } = useAppSelector((s) => s.auth);
   const { friends, onlineUsers } = useAppSelector((s) => s.chat);
@@ -436,4 +436,4 @@ export const InviteMembersModal = ({
       </div>
     </div>
   );
-};
+}

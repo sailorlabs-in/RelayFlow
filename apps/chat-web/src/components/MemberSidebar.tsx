@@ -19,11 +19,11 @@ interface MemberSidebarProps {
 
 type PresenceStatus = 'online' | 'away' | 'dnd' | 'offline';
 
-export const MemberSidebar = ({
+export function MemberSidebar({
   group,
   onInviteClick,
   isOpen,
-}: MemberSidebarProps): React.JSX.Element => {
+}: MemberSidebarProps): React.JSX.Element {
   const dispatch = useAppDispatch();
   const { onlineUsers, typingUsers, activeConversationId } = useAppSelector(
     (s) => s.chat,
@@ -463,4 +463,4 @@ export const MemberSidebar = ({
       )}
     </>
   );
-};
+}

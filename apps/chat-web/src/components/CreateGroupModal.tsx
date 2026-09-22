@@ -13,9 +13,9 @@ interface CreateGroupModalProps {
   onClose: () => void;
 }
 
-export const CreateGroupModal = ({
+export function CreateGroupModal({
   onClose,
-}: CreateGroupModalProps): React.JSX.Element => {
+}: CreateGroupModalProps): React.JSX.Element {
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((s) => s.auth);
   const { friends } = useAppSelector((s) => s.chat);
@@ -442,4 +442,4 @@ export const CreateGroupModal = ({
       </div>
     </div>
   );
-};
+}

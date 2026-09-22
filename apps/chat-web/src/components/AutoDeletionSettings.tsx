@@ -9,12 +9,12 @@ export interface AutoDeletionSettingsProps {
   hideSaveButton?: boolean;
 }
 
-export const AutoDeletionSettings: React.FC<AutoDeletionSettingsProps> = ({
+export function AutoDeletionSettings({
   mediaDays: propMediaDays,
   setMediaDays: propSetMediaDays,
   messageDays: propMessageDays,
   setMessageDays: propSetMessageDays,
-}) => {
+}: AutoDeletionSettingsProps): React.ReactElement | null {
   const { user } = useAppSelector((s) => s.auth);
 
   const isSuperAdmin = user?.role === 'admin';
@@ -289,4 +289,4 @@ export const AutoDeletionSettings: React.FC<AutoDeletionSettingsProps> = ({
       </div>
     </div>
   );
-};
+}

@@ -7,10 +7,10 @@ interface PresenceDotProps {
   size?: number;
 }
 
-export const PresenceDot = ({
+export function PresenceDot({
   status,
   size = 10,
-}: PresenceDotProps): React.JSX.Element => {
+}: PresenceDotProps): React.JSX.Element {
   const s =
     (status as PresenceStatus) in PRESENCE_DOT_COLORS
       ? (status as PresenceStatus)
@@ -29,4 +29,4 @@ export const PresenceDot = ({
       aria-label={`Status: ${s}`}
     />
   );
-};
+}
