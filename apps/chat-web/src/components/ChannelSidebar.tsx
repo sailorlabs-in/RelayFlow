@@ -49,7 +49,7 @@ interface ChannelSidebarProps {
   onToggleRail: () => void;
 }
 
-export const ChannelSidebar = ({
+export function ChannelSidebar({
   group,
   onCreateChannel,
   onCreateSection,
@@ -61,7 +61,7 @@ export const ChannelSidebar = ({
   setIsProfileOpen,
   isRailCollapsed,
   onToggleRail,
-}: ChannelSidebarProps): React.JSX.Element => {
+}: ChannelSidebarProps): React.JSX.Element {
   const dispatch = useAppDispatch();
   const { activeChannelId, activeVoiceChannelId, voiceStates } = useAppSelector(
     (s) => s.groups,
@@ -996,7 +996,7 @@ export const ChannelSidebar = ({
       )}
     </div>
   );
-};
+}
 
 interface IconButtonProps {
   title: string;
@@ -1012,18 +1012,20 @@ const IconButton = ({
   id,
   children,
   danger,
-}: IconButtonProps) => (
-  <button
-    id={id}
-    title={title}
-    onClick={onClick}
-    className={`p-1.5 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-150 border-none outline-none focus-visible:ring-2 focus-visible:ring-(--accent-primary) active-press
-      ${
-        danger
-          ? 'text-(--danger) hover:bg-(--danger-bg)'
-          : 'text-theme-muted hover:bg-theme-input hover:text-theme-primary'
-      } ${id.includes('settings') ? 'spin-hover' : ''}`}
-  >
-    {children}
-  </button>
-);
+}: IconButtonProps) => {
+  return (
+    <button
+      id={id}
+      title={title}
+      onClick={onClick}
+      className={`p-1.5 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-150 border-none outline-none focus-visible:ring-2 focus-visible:ring-(--accent-primary) active-press
+        ${
+          danger
+            ? 'text-(--danger) hover:bg-(--danger-bg)'
+            : 'text-theme-muted hover:bg-theme-input hover:text-theme-primary'
+        } ${id.includes('settings') ? 'spin-hover' : ''}`}
+    >
+      {children}
+    </button>
+  );
+};
