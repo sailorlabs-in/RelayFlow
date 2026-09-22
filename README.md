@@ -118,3 +118,8 @@ Run these from the root directory:
   ```bash
   npm run lint:all
   ```
+
+  - **Serving single App (Development)**:
+  ```bash
+  npx nx serve {app-name}
+  ```
