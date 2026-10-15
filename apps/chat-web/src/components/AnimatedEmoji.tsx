@@ -9,6 +9,8 @@ interface AnimatedEmojiProps {
   title?: string;
   /** Duration in ms for the initial playback before freezing (default: 5000ms, like MS Teams) */
   initialPlayDuration?: number;
+  /** When true, continuously animates without freezing (ideal for input preview) */
+  alwaysAnimate?: boolean;
 }
 
 // Global cache of high-resolution static PNG data URLs (256x256 native)
@@ -21,6 +23,7 @@ export const AnimatedEmoji: React.FC<AnimatedEmojiProps> = ({
   fallback,
   title,
   initialPlayDuration = 5000,
+  alwaysAnimate = false,
 }) => {
   const [hasError, setHasError] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -35,8 +38,12 @@ export const AnimatedEmoji: React.FC<AnimatedEmojiProps> = ({
 
   const dimension = typeof size === 'number' ? `${size}px` : size;
 
-  // Teams-like behavior: animate for initialPlayDuration (5s) then switch to static frame
+  // Teams-like behavior: animate for initialPlayDuration (5s) then switch to static frame unless alwaysAnimate is true
   useEffect(() => {
+    if (alwaysAnimate) {
+      return;
+    }
+
     if (initialPlayDuration <= 0) {
       setIsInitialPlaying(false);
       return;
@@ -47,7 +54,7 @@ export const AnimatedEmoji: React.FC<AnimatedEmojiProps> = ({
     }, initialPlayDuration);
 
     return () => clearTimeout(timer);
-  }, [initialPlayDuration]);
+  }, [alwaysAnimate, initialPlayDuration]);
 
   // Capture the native full-resolution (256x256) first frame on an offscreen canvas
   const handleLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -96,8 +103,8 @@ export const AnimatedEmoji: React.FC<AnimatedEmojiProps> = ({
     return <>{fallback || defaultFallback}</>;
   }
 
-  // Active animation when either within the initial 5 seconds or currently hovered
-  const isAnimating = isInitialPlaying || isHovered;
+  // Active animation when alwaysAnimate is true, within the initial 5 seconds, or currently hovered
+  const isAnimating = alwaysAnimate || isInitialPlaying || isHovered;
 
   // When hovering, restart animation from beginning
   const handleMouseEnter = () => {
