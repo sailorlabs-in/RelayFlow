@@ -95,6 +95,8 @@ import {
 } from './Icons';
 import { PresenceDot } from './PresenceDot';
 import { showToast } from './toast';
+import { AnimatedEmoji } from './AnimatedEmoji';
+import { getEmojiSegments } from '../utils/animatedEmoji';
 import type { Message, MessageMediaItem } from '../store/slices/chatSlice';
 
 interface ChatAreaProps {
@@ -2323,18 +2325,45 @@ export function ChatArea({
                                 </div>
                               ) : (
                                 <>
-                                  {msg.content && (
-                                    <div
-                                      className={`text-sm leading-relaxed text-theme-primary break-all ${isOnlyEmojis(msg.content) ? 'text-[60px] leading-15' : ''}`}
-                                    >
-                                      {isOnlyEmojis(msg.content)
-                                        ? msg.content
-                                        : renderMessageContent(
-                                            msg.content,
-                                            msg.isMarkdown,
-                                          )}
-                                    </div>
-                                  )}
+                                  {msg.content &&
+                                    (() => {
+                                      const emojiSegments = getEmojiSegments(
+                                        msg.content,
+                                      );
+                                      if (
+                                        emojiSegments &&
+                                        emojiSegments.length >= 1 &&
+                                        emojiSegments.length <= 2
+                                      ) {
+                                        return (
+                                          <div className="flex items-center gap-2 select-all my-1.5 flex-wrap">
+                                            {emojiSegments.map((glyph, idx) => (
+                                              <AnimatedEmoji
+                                                key={`${msg.id}-anim-${glyph}-${idx}`}
+                                                glyph={glyph}
+                                                size={
+                                                  emojiSegments.length === 1
+                                                    ? 84
+                                                    : 68
+                                                }
+                                              />
+                                            ))}
+                                          </div>
+                                        );
+                                      }
+                                      return (
+                                        <div
+                                          className={`text-sm leading-relaxed text-theme-primary break-all ${isOnlyEmojis(msg.content) ? 'text-[60px] leading-15' : ''}`}
+                                        >
+                                          {isOnlyEmojis(msg.content)
+                                            ? msg.content
+                                            : renderMessageContent(
+                                                msg.content,
+                                                msg.isMarkdown,
+                                              )}
+                                        </div>
+                                      );
+                                    })()}
                                 </>
                               )}
                               {renderMessageMedia(msg, setActiveMediaItem)}
@@ -2698,22 +2727,51 @@ export function ChatArea({
                             </div>
                           ) : (
                             <>
-                              {msg.content && (
-                                <div
-                                  className={
-                                    isOnlyEmojis(msg.content)
-                                      ? `text-[60px] leading-15 wrap-break-word select-all ${isOut ? 'text-right' : 'text-left'}`
-                                      : `px-4 py-2.5 rounded-[18px] text-[14px] leading-relaxed wrap-break-word ${isOut ? 'msg-bubble-out' : 'msg-bubble-in'}`
+                              {msg.content &&
+                                (() => {
+                                  const emojiSegments = getEmojiSegments(
+                                    msg.content,
+                                  );
+                                  if (
+                                    emojiSegments &&
+                                    emojiSegments.length >= 1 &&
+                                    emojiSegments.length <= 2
+                                  ) {
+                                    return (
+                                      <div
+                                        className={`flex items-center gap-2 select-all my-1.5 flex-wrap ${isOut ? 'justify-end' : 'justify-start'}`}
+                                      >
+                                        {emojiSegments.map((glyph, idx) => (
+                                          <AnimatedEmoji
+                                            key={`${msg.id}-anim-bubble-${glyph}-${idx}`}
+                                            glyph={glyph}
+                                            size={
+                                              emojiSegments.length === 1
+                                                ? 84
+                                                : 68
+                                            }
+                                          />
+                                        ))}
+                                      </div>
+                                    );
                                   }
-                                >
-                                  {isOnlyEmojis(msg.content)
-                                    ? msg.content
-                                    : renderMessageContent(
-                                        msg.content,
-                                        msg.isMarkdown,
-                                      )}
-                                </div>
-                              )}
+                                  return (
+                                    <div
+                                      className={
+                                        isOnlyEmojis(msg.content)
+                                          ? `text-[60px] leading-15 wrap-break-word select-all ${isOut ? 'text-right' : 'text-left'}`
+                                          : `px-4 py-2.5 rounded-[18px] text-[14px] leading-relaxed wrap-break-word ${isOut ? 'msg-bubble-out' : 'msg-bubble-in'}`
+                                      }
+                                    >
+                                      {isOnlyEmojis(msg.content)
+                                        ? msg.content
+                                        : renderMessageContent(
+                                            msg.content,
+                                            msg.isMarkdown,
+                                          )}
+                                    </div>
+                                  );
+                                })()}
                             </>
                           )}
                           {renderMessageMedia(msg, setActiveMediaItem)}
@@ -3388,6 +3446,28 @@ export function ChatArea({
                             )}
                           </div>
                         )}
+                        {(() => {
+                          const inputEmojiSegments =
+                            getEmojiSegments(messageInput);
+                          if (
+                            inputEmojiSegments &&
+                            inputEmojiSegments.length >= 1 &&
+                            inputEmojiSegments.length <= 2
+                          ) {
+                            return (
+                              <div className="flex items-center gap-2 px-2.5 py-1 mb-2 rounded-2xl bg-theme-sidebar/90 border border-glass shadow-(--glass-shadow) backdrop-blur-md animate-slide-up select-none w-fit">
+                                {inputEmojiSegments.map((glyph, idx) => (
+                                  <AnimatedEmoji
+                                    key={`input-preview-${glyph}-${idx}`}
+                                    glyph={glyph}
+                                    size={40}
+                                  />
+                                ))}
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
                         {(!isMdMode || mdTab === 'write') && (
                           <textarea
                             ref={textareaRef}
