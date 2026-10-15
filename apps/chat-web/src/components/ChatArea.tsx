@@ -3461,6 +3461,7 @@ export function ChatArea({
                                     key={`input-preview-${glyph}-${idx}`}
                                     glyph={glyph}
                                     size={40}
+                                    alwaysAnimate
                                   />
                                 ))}
                               </div>
