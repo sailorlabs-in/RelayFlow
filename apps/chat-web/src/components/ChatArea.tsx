@@ -695,37 +695,35 @@ function ReactionItem({
       {react.userIds.length > 1 && <span>{react.userIds.length}</span>}
 
       {/* Collision-detected Tooltip */}
-      <div
-        className={`absolute bottom-full mb-2 pointer-events-none z-[9999] transition-all duration-150 flex flex-col ${
-          alignment === 'left'
-            ? 'left-[-6px] items-start'
-            : alignment === 'right'
-              ? 'right-[-6px] items-end'
-              : 'left-1/2 -translate-x-1/2 items-center'
-        } ${
-          isHovered
-            ? 'opacity-100 translate-y-0 visible'
-            : 'opacity-0 translate-y-1 invisible'
-        }`}
-      >
-        <div className="bg-zinc-900/95 dark:bg-zinc-900/95 text-white text-[11px] font-medium py-1.5 px-3 rounded-xl max-w-[220px] border border-white/10 dark:border-white/10 shadow-xl text-center leading-normal backdrop-blur-md">
-          <span className="font-bold text-[var(--accent-primary)] mb-0.5 block whitespace-nowrap">
-            {react.emoji} Reacted by
-          </span>
-          <span className="opacity-90 break-words line-clamp-3">
-            {userNames.join(', ')}
-          </span>
-        </div>
+      {isHovered && (
         <div
-          className={`w-2.5 h-2.5 bg-zinc-900/95 dark:bg-zinc-900/95 border-r border-b border-white/10 dark:border-white/10 rotate-45 -mt-1.25 ${
+          className={`absolute bottom-full mb-2 pointer-events-none z-[9999] flex flex-col animate-fade-in ${
             alignment === 'left'
-              ? 'ml-4'
+              ? 'left-[-6px] items-start'
               : alignment === 'right'
-                ? 'mr-4'
-                : 'self-center'
+                ? 'right-[-6px] items-end'
+                : 'left-1/2 -translate-x-1/2 items-center'
           }`}
-        />
-      </div>
+        >
+          <div className="bg-zinc-900/95 dark:bg-zinc-900/95 text-white text-[11px] font-medium py-1.5 px-3 rounded-xl max-w-[220px] border border-white/10 dark:border-white/10 shadow-xl text-center leading-normal backdrop-blur-md">
+            <span className="font-bold text-[var(--accent-primary)] mb-0.5 block whitespace-nowrap">
+              {react.emoji} Reacted by
+            </span>
+            <span className="opacity-90 break-words line-clamp-3">
+              {userNames.join(', ')}
+            </span>
+          </div>
+          <div
+            className={`w-2.5 h-2.5 bg-zinc-900/95 dark:bg-zinc-900/95 border-r border-b border-white/10 dark:border-white/10 rotate-45 -mt-1.25 ${
+              alignment === 'left'
+                ? 'ml-4'
+                : alignment === 'right'
+                  ? 'mr-4'
+                  : 'self-center'
+            }`}
+          />
+        </div>
+      )}
     </button>
   );
 }
@@ -2594,7 +2592,7 @@ export function ChatArea({
               <div
                 ref={feedContainerRef}
                 onScroll={handleScroll}
-                className={`flex-1 overflow-y-auto flex flex-col gap-3.5 bg-theme-chat ${isMobileScreen || isMobileView ? 'p-3' : 'p-5'}`}
+                className={`flex-1 overflow-y-auto overflow-x-hidden flex flex-col gap-3.5 bg-theme-chat ${isMobileScreen || isMobileView ? 'p-3' : 'p-5'}`}
               >
                 {isFetchingMore && (
                   <div className="flex justify-center py-2 shrink-0">
