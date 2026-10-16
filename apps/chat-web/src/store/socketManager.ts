@@ -9,7 +9,9 @@ import {
   addWarning,
   updateRole,
   adminUpdateUserIdentity,
+  syncCurrentUser,
 } from './slices/authSlice';
+import { saveStoredHotReactions } from '../components/chat/useHotReactions';
 import type { Message } from './slices/chatSlice';
 import {
   socketReceiveMessage,
@@ -665,6 +667,20 @@ class SocketManager {
         }
       },
     );
+
+    // Profile or preferences updated on another device or session
+    this.socket.on('user.self.updated', (updatedUser: any) => {
+      PrintLog('👤 Socket user.self.updated received');
+      store.dispatch(syncCurrentUser(updatedUser));
+      if (updatedUser?.hotReactions) {
+        try {
+          const parsed = JSON.parse(updatedUser.hotReactions);
+          saveStoredHotReactions(parsed, updatedUser.id);
+        } catch {
+          // ignore invalid payload
+        }
+      }
+    });
 
     // Start connection attempt sequence
     this.reconnectWithRetry();

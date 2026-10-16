@@ -3096,8 +3096,6 @@ body {
    ============================================================ */
 em-emoji-picker {
   --background: transparent !important;
-  --rgb-background: 0, 0, 0, 0 !important;
-  --em-rgb-background: 0, 0, 0, 0 !important;
   --border-color: transparent !important;
   --shadow: none !important;
   --border-radius: 0px !important;
@@ -3106,6 +3104,53 @@ em-emoji-picker {
   border: none !important;
   box-shadow: none !important;
   font-family: var(--font-sans) !important;
+  display: flex !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 440px !important;
+  flex: 1 1 auto !important;
+}
+
+div:has(> em-emoji-picker) {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 440px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+}
+
+@media (max-width: 639px) {
+  em-emoji-picker,
+  div:has(> em-emoji-picker) {
+    height: min(440px, 52vh) !important;
+  }
+}
+
+[data-theme='light'] em-emoji-picker {
+  --rgb-color: 30, 41, 59 !important;
+  --em-rgb-color: 30, 41, 59 !important;
+  --rgb-background: 248, 244, 234 !important;
+  --em-rgb-background: 248, 244, 234 !important;
+  --color-border: rgba(0, 0, 0, 0.08) !important;
+  --em-color-border: rgba(0, 0, 0, 0.08) !important;
+  --color-border-over: rgba(0, 0, 0, 0.12) !important;
+  --em-color-border-over: rgba(0, 0, 0, 0.12) !important;
+  --rgb-input: 255, 255, 255 !important;
+  --em-rgb-input: 255, 255, 255 !important;
+}
+
+[data-theme='dark'] em-emoji-picker {
+  --rgb-color: 248, 250, 252 !important;
+  --em-rgb-color: 248, 250, 252 !important;
+  --rgb-background: 22, 35, 62 !important;
+  --em-rgb-background: 22, 35, 62 !important;
+  --color-border: rgba(255, 255, 255, 0.08) !important;
+  --em-color-border: rgba(255, 255, 255, 0.08) !important;
+  --color-border-over: rgba(255, 255, 255, 0.15) !important;
+  --em-color-border-over: rgba(255, 255, 255, 0.15) !important;
+  --rgb-input: 30, 45, 78 !important;
+  --em-rgb-input: 30, 45, 78 !important;
 }
 
 /* Markdown Message Styles */
@@ -3300,7 +3345,9 @@ em-emoji-picker {
       [class*='bg-transparent']
     ):not([class*='border-none']),
   select,
-  textarea,
+  textarea:not(.bg-transparent):not([class*='bg-transparent']):not(
+      [class*='border-none']
+    ):not(.message-edit-textarea),
   .input-base {
     border-radius: 20px !important;
     background: rgba(255, 255, 255, 0.03) !important;
@@ -3323,7 +3370,10 @@ em-emoji-picker {
       [class*='bg-transparent']
     ):not([class*='border-none']),
   [data-theme='light'] select,
-  [data-theme='light'] textarea,
+  [data-theme='light']
+    textarea:not(.bg-transparent):not([class*='bg-transparent']):not(
+      [class*='border-none']
+    ):not(.message-edit-textarea),
   [data-theme='light'] .input-base {
     background: rgba(0, 0, 0, 0.03) !important;
     border: 1.5px solid rgba(0, 0, 0, 0.08) !important;
@@ -3340,7 +3390,9 @@ em-emoji-picker {
       [class*='bg-transparent']
     ):not([class*='border-none']):focus,
   select:focus,
-  textarea:focus,
+  textarea:not(.bg-transparent):not([class*='bg-transparent']):not(
+      [class*='border-none']
+    ):not(.message-edit-textarea):focus,
   .input-base:focus {
     border-color: var(--accent-primary) !important;
     box-shadow: 0 0 0 3px var(--accent-ring) !important;
@@ -3360,7 +3412,10 @@ em-emoji-picker {
       [class*='bg-transparent']
     ):not([class*='border-none']):focus,
   [data-theme='light'] select:focus,
-  [data-theme='light'] textarea:focus,
+  [data-theme='light']
+    textarea:not(.bg-transparent):not([class*='bg-transparent']):not(
+      [class*='border-none']
+    ):not(.message-edit-textarea):focus,
   [data-theme='light'] .input-base:focus {
     background: rgba(0, 0, 0, 0.05) !important;
   }
@@ -3370,13 +3425,37 @@ em-emoji-picker {
   input.border-none,
   input[class*='bg-transparent'],
   input[class*='border-none'],
-  input#add-friend-search {
+  input#add-friend-search,
+  textarea.bg-transparent,
+  textarea.border-none,
+  textarea[class*='bg-transparent'],
+  textarea[class*='border-none'],
+  textarea.message-edit-textarea {
     border: none !important;
+    border-radius: 0 !important;
     background: transparent !important;
     box-shadow: none !important;
     outline: none !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
+  }
+
+  input.bg-transparent:focus,
+  input.border-none:focus,
+  input[class*='bg-transparent']:focus,
+  input[class*='border-none']:focus,
+  input#add-friend-search:focus,
+  textarea.bg-transparent:focus,
+  textarea.border-none:focus,
+  textarea[class*='bg-transparent']:focus,
+  textarea[class*='border-none']:focus,
+  textarea.message-edit-textarea:focus,
+  textarea.message-edit-textarea:focus-visible {
+    border: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    outline: none !important;
   }
 
   input.bg-transparent:focus,
@@ -3448,4 +3527,16 @@ div:has(> #add-friend-search):focus-within,
   border-color: var(--accent-primary) !important;
   box-shadow: 0 0 12px var(--accent-ring) !important;
   outline: none !important;
+}
+
+/* Message edit textarea reset — suppresses browser :focus-visible cyan outline ring */
+.message-edit-textarea,
+.message-edit-textarea:focus,
+.message-edit-textarea:focus-visible,
+.message-edit-textarea:active {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  -webkit-tap-highlight-color: transparent !important;
 }

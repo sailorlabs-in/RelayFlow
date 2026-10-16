@@ -1,0 +1,309 @@
+import React from 'react';
+import type { Message, MessageMediaItem } from '../../store/slices/chatSlice';
+import { socketManager } from '../../store/socketManager';
+import { formatMessageTimestamp } from '../../utils/date';
+import { getEmojiSegments } from '../../utils/animatedEmoji';
+import { isOnlyEmojis } from './chatUtils';
+import { Avatar } from '../Avatar';
+import { AnimatedEmoji } from '../AnimatedEmoji';
+import { MessageReactions } from './MessageReactions';
+import { MessageMedia } from './MessageMedia';
+import { MessageContentRenderer } from './MessageContentRenderer';
+import { MessageHoverActions } from './MessageHoverActions';
+import { MessageEditView } from './MessageEditView';
+import { useMessageLongPress } from './useMessageLongPress';
+
+interface MessageCompactRowProps {
+  msg: Message;
+  user: any;
+  userProfiles: Record<string, any>;
+  onlineUsers: Record<string, string>;
+  isChannelMode: boolean;
+  activeGroup?: any;
+  timeFormat: string;
+  editingMessageId: string | null;
+  setEditingMessageId: (id: string | null) => void;
+  editingContent: string;
+  setEditingContent: (content: string) => void;
+  handleSaveEdit: (msgId: string) => void;
+  handleStartEdit: (msg: Message) => void;
+  handleDeleteMessage: (msgId: string) => void;
+  setReplyingToMessage: (msg: Message | null) => void;
+  setActiveReactionMessageId: (id: string | null) => void;
+  activeReactionMessageId: string | null;
+  setActiveMediaItem: (item: MessageMediaItem | null) => void;
+  handleContextMenu: (e: React.MouseEvent, msg: Message) => void;
+  handleMobileClick?: (e: React.MouseEvent, msg: Message) => void;
+  handleLongPress?: (coords: { x: number; y: number }, msg: Message) => void;
+  handleOpenProfile: (e: React.MouseEvent, userId: string) => void;
+  canDeleteOthers: boolean;
+  activeConversationId: string | null;
+  findUserByName: (name: string) => any;
+  onViewCode: (code: { code: string; language: string }) => void;
+  isMobileScreen: boolean;
+  isMobileView: boolean;
+  getReactingUserNames: (userIds: string[]) => string[];
+}
+
+export const MessageCompactRow: React.FC<MessageCompactRowProps> = ({
+  msg,
+  user,
+  userProfiles,
+  onlineUsers,
+  isChannelMode,
+  activeGroup,
+  timeFormat,
+  editingMessageId,
+  setEditingMessageId,
+  editingContent,
+  setEditingContent,
+  handleSaveEdit,
+  handleStartEdit: _handleStartEdit,
+  handleDeleteMessage: _handleDeleteMessage,
+  setReplyingToMessage,
+  setActiveReactionMessageId,
+  activeReactionMessageId,
+  setActiveMediaItem,
+  handleContextMenu,
+  handleMobileClick,
+  handleLongPress,
+  handleOpenProfile,
+  canDeleteOthers: _canDeleteOthers,
+  activeConversationId,
+  findUserByName,
+  onViewCode,
+  isMobileScreen,
+  isMobileView,
+  getReactingUserNames,
+}) => {
+  const isOut = msg.senderId === user?.id;
+  const senderProfile = userProfiles[msg.senderId];
+  const senderName = isOut
+    ? user?.username || user?.displayName || user?.email?.split('@')[0] || 'You'
+    : senderProfile?.username ||
+      senderProfile?.displayName ||
+      senderProfile?.email?.split('@')[0] ||
+      'User';
+
+  let senderColor = 'inherit';
+  if (isChannelMode && activeGroup) {
+    const member = activeGroup.members?.find(
+      (mem: any) => mem.userId === msg.senderId,
+    );
+    if (member) {
+      const isOwnerSender =
+        member.role === 'owner' || msg.senderId === activeGroup.ownerId;
+      if (isOwnerSender) {
+        senderColor = '#eab308';
+      } else {
+        const memberRoleIds = member.roleIds || [];
+        const matchingRole = activeGroup.roles?.find((r: any) =>
+          memberRoleIds.includes(r.id),
+        );
+        senderColor = matchingRole?.color || 'inherit';
+      }
+    }
+  }
+
+  const letter = senderName[0]?.toUpperCase() || 'U';
+  const presenceStatus = isOut
+    ? onlineUsers[user?.id] || user?.status || 'online'
+    : onlineUsers[msg.senderId] || 'offline';
+
+  const emojiSegments = getEmojiSegments(msg.content);
+  const isMobile = isMobileScreen || isMobileView;
+
+  const { onTouchStart, onTouchMove, onTouchEnd, onTouchCancel, onClick } =
+    useMessageLongPress({
+      msg,
+      isMobile,
+      onLongPress: handleLongPress,
+    });
+
+  return (
+    <div
+      id={`msg-${msg.id}`}
+      onContextMenu={(e) => handleContextMenu(e, msg)}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      onTouchCancel={onTouchCancel}
+      onClick={(e) => {
+        onClick(e);
+        if (handleMobileClick && isMobile) {
+          handleMobileClick(e, msg);
+        }
+      }}
+      className="flex items-start gap-3 animate-fade-in group justify-between hover:bg-[rgba(0,0,0,0.02)] dark:hover:bg-[rgba(255,255,255,0.02)] rounded-xl px-2.5 py-1.5 transition-colors duration-150 -mx-2.5 select-none md:select-auto cursor-default"
+    >
+      <div className="flex items-start gap-3 flex-1 min-w-0">
+        <div
+          onClick={(e) => handleOpenProfile(e, msg.senderId)}
+          className="cursor-pointer active-press hover:scale-105 transition-all shrink-0 mt-0.5"
+        >
+          <Avatar
+            letter={letter}
+            url={
+              isOut
+                ? user?.avatarThumbnailUrl || user?.avatarUrl
+                : senderProfile?.avatarThumbnailUrl || senderProfile?.avatarUrl
+            }
+            status={presenceStatus}
+            size="sm"
+          />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-baseline gap-2 mb-1">
+            <span
+              onClick={(e) => handleOpenProfile(e, msg.senderId)}
+              style={{
+                color: senderColor !== 'inherit' ? senderColor : undefined,
+              }}
+              className={`text-[13.5px] font-bold cursor-pointer hover:underline ${
+                isOut ? 'text-(--accent-primary)' : ''
+              } ${!isOut && senderColor === 'inherit' ? 'text-theme-primary' : ''}`}
+            >
+              {senderName}
+            </span>
+            <span className="text-[10.5px] text-theme-muted font-mono">
+              {formatMessageTimestamp(msg.createdAt, timeFormat)}
+            </span>
+            {msg.isEdited && (
+              <span className="text-[9.5px] text-theme-muted opacity-85 select-none italic">
+                (edited)
+              </span>
+            )}
+          </div>
+
+          {/* Replying-to Preview */}
+          {msg.parentMessage && (
+            <div
+              onClick={() => {
+                const el = document.getElementById(`msg-${msg.parentId}`);
+                if (el) {
+                  el.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center',
+                  });
+                  el.classList.add('highlight-flash');
+                  setTimeout(
+                    () => el.classList.remove('highlight-flash'),
+                    2000,
+                  );
+                }
+              }}
+              className="flex flex-col text-[11px] bg-theme-input/40 border-l-[3px] border-l-(--accent-primary) rounded-r-lg px-2.5 py-1 mb-1.5 cursor-pointer hover:bg-theme-input/70 transition-colors max-w-full select-none"
+              title="Click to jump to message"
+            >
+              <span className="font-semibold text-(--accent-primary) text-[10.5px] leading-tight truncate">
+                {userProfiles[msg.parentMessage.senderId]?.displayName ||
+                  userProfiles[msg.parentMessage.senderId]?.username ||
+                  (msg.parentMessage.senderId === user?.id ? 'You' : 'User')}
+              </span>
+              <span className="truncate text-theme-muted text-[11px] leading-tight mt-0.5">
+                {msg.parentMessage.content || 'Photo / Attachment'}
+              </span>
+            </div>
+          )}
+
+          {/* Editing or Message Content */}
+          {editingMessageId === msg.id ? (
+            <MessageEditView
+              messageId={msg.id}
+              initialContent={msg.content}
+              editingContent={editingContent}
+              setEditingContent={setEditingContent}
+              onSave={handleSaveEdit}
+              onCancel={() => {
+                setEditingMessageId(null);
+                setEditingContent('');
+              }}
+            />
+          ) : (
+            <>
+              {msg.content &&
+                (() => {
+                  if (
+                    emojiSegments &&
+                    emojiSegments.length >= 1 &&
+                    emojiSegments.length <= 2
+                  ) {
+                    return (
+                      <div className="flex items-center gap-2 select-all my-1.5 flex-wrap">
+                        {emojiSegments.map((glyph, idx) => (
+                          <AnimatedEmoji
+                            key={`${msg.id}-anim-${glyph}-${idx}`}
+                            glyph={glyph}
+                            size={emojiSegments.length === 1 ? 84 : 68}
+                          />
+                        ))}
+                      </div>
+                    );
+                  }
+                  return (
+                    <div
+                      className={`text-sm leading-relaxed text-theme-primary break-all ${
+                        isOnlyEmojis(msg.content)
+                          ? 'text-[60px] leading-15 select-all'
+                          : ''
+                      }`}
+                    >
+                      {isOnlyEmojis(msg.content) ? (
+                        msg.content
+                      ) : (
+                        <MessageContentRenderer
+                          content={msg.content}
+                          isMarkdownMsg={msg.isMarkdown}
+                          isChannelMode={isChannelMode}
+                          currentUser={user}
+                          activeGroup={activeGroup}
+                          findUserByName={findUserByName}
+                          onOpenProfile={handleOpenProfile}
+                          onViewCode={onViewCode}
+                          isMobile={isMobile}
+                        />
+                      )}
+                    </div>
+                  );
+                })()}
+            </>
+          )}
+
+          {/* Media Attachments */}
+          <MessageMedia msg={msg} onMediaClick={setActiveMediaItem} />
+
+          {/* Reactions List */}
+          {msg.reactions && msg.reactions.length > 0 && (
+            <MessageReactions
+              reactions={msg.reactions}
+              currentUserId={user?.id}
+              onToggleReaction={(emoji) => {
+                if (activeConversationId) {
+                  socketManager.toggleReaction(
+                    msg.id,
+                    activeConversationId,
+                    emoji,
+                  );
+                }
+              }}
+              getReactingUserNames={getReactingUserNames}
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Hover Action Toolbar (Desktop) */}
+      {editingMessageId !== msg.id && (
+        <MessageHoverActions
+          msg={msg}
+          activeConversationId={activeConversationId}
+          onReply={setReplyingToMessage}
+          onOpenReactionPicker={(id) => setActiveReactionMessageId(id)}
+          isReactionPickerOpen={activeReactionMessageId === msg.id}
+          currentUserId={user?.id}
+          className="self-start mt-0.5"
+        />
+      )}
+    </div>
+  );
+};

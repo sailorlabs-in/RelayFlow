@@ -159,11 +159,21 @@ function ChatDashboardContent() {
     setIsHydrated(true);
   }, [dispatch]);
 
-  // Disable default browser context menu globally
+  // Disable default browser context menu on mobile devices only
   useEffect(() => {
     const handleGlobalContextMenu = (e: MouseEvent) => {
-      e.preventDefault();
+      const isMobile =
+        window.innerWidth < 768 ||
+        window.matchMedia('(pointer: coarse)').matches ||
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+          navigator.userAgent,
+        );
+
+      if (isMobile) {
+        e.preventDefault();
+      }
     };
+
     document.addEventListener('contextmenu', handleGlobalContextMenu);
     return () => {
       document.removeEventListener('contextmenu', handleGlobalContextMenu);
