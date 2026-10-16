@@ -38,17 +38,12 @@ export const WelcomeHub: React.FC<WelcomeHubProps> = ({
 
       {/* Hero Welcome Banner */}
       <div className="flex-1 flex flex-col items-center justify-center text-center my-6 max-w-2xl mx-auto shrink-0 relative z-10">
-        <div className="w-20 h-20 rounded-2xl overflow-hidden animate-float border border-glass bg-theme-sidebar/80 shadow-xl p-2.5 flex items-center justify-center backdrop-blur-md mb-2">
+        <div className="w-20 h-20 rounded-2xl overflow-hidden animate-float border border-glass bg-theme-sidebar/80 shadow-xl flex items-center justify-center backdrop-blur-md mb-2">
           <img
             src="/logo.png"
             alt="RelayFlow Logo"
             className="w-full h-full object-contain"
           />
-        </div>
-
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-(--accent-primary)/10 text-(--accent-primary) border border-(--accent-primary)/20 text-[11.5px] font-bold tracking-wide uppercase mb-3">
-          <span className="w-2 h-2 rounded-full bg-(--accent-primary) animate-ping" />
-          Workspace Hub
         </div>
 
         <h1 className="text-[28px] md:text-[34px] font-extrabold tracking-tight text-theme-primary leading-tight">

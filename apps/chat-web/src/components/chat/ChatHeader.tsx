@@ -25,7 +25,7 @@ interface ChatHeaderProps {
     retentionPolicy?: {
       mediaDays: number | null;
       messageDays: number | null;
-    };
+    } | null;
   } | null;
   onMenuClick?: () => void;
   onOpenProfile: (e: React.MouseEvent, userId: string) => void;

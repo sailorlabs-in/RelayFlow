@@ -5,16 +5,15 @@ import type { Message } from '../../store/slices/chatSlice';
 
 interface UseMessageLongPressOptions {
   msg: Message;
-  isMobile: boolean;
+  isMobile?: boolean;
   onLongPress?: (coords: { x: number; y: number }, msg: Message) => void;
   threshold?: number;
 }
 
 export function useMessageLongPress({
   msg,
-  isMobile,
   onLongPress,
-  threshold = 400,
+  threshold = 320,
 }: UseMessageLongPressOptions) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startCoordsRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -29,7 +28,8 @@ export function useMessageLongPress({
 
   const onTouchStart = useCallback(
     (e: React.TouchEvent) => {
-      if (!isMobile || e.touches.length !== 1) {
+      // Must be a single finger touch (1 finger only)
+      if (e.touches.length !== 1) {
         return;
       }
 
@@ -64,7 +64,7 @@ export function useMessageLongPress({
         onLongPress?.(startCoordsRef.current, msg);
       }, threshold);
     },
-    [isMobile, clear, threshold, onLongPress, msg],
+    [clear, threshold, onLongPress, msg],
   );
 
   const onTouchMove = useCallback(
@@ -77,8 +77,8 @@ export function useMessageLongPress({
         touch.clientX - startCoordsRef.current.x,
         touch.clientY - startCoordsRef.current.y,
       );
-      // Cancel long-press if user moves finger by more than 10px (scrolling)
-      if (dist > 10) {
+      // Cancel long-press only if finger moves by more than 18px (actual scrolling)
+      if (dist > 18) {
         clear();
       }
     },
@@ -89,7 +89,14 @@ export function useMessageLongPress({
     (e: React.TouchEvent) => {
       clear();
       if (hasTriggeredRef.current) {
-        e.preventDefault();
+        if (e.cancelable) {
+          e.preventDefault();
+        }
+        e.stopPropagation();
+        // Keep active briefly to swallow trailing synthetic click/mousedown events
+        setTimeout(() => {
+          hasTriggeredRef.current = false;
+        }, 350);
       }
     },
     [clear],
@@ -103,7 +110,6 @@ export function useMessageLongPress({
     if (hasTriggeredRef.current) {
       e.preventDefault();
       e.stopPropagation();
-      hasTriggeredRef.current = false;
     }
   }, []);
 

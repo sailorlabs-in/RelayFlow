@@ -6,7 +6,7 @@
  */
 export const formatMessageTimestamp = (
   dateInput: string | Date | number,
-  timeFormat: '12h' | '24h' = '12h',
+  timeFormat: '12h' | '24h' | string = '12h',
 ): string => {
   const date = new Date(dateInput);
 
@@ -45,7 +45,7 @@ export const formatMessageTimestamp = (
 
 export const formatReadAtTimestamp = (
   dateInput: string | Date | number,
-  timeFormat: '12h' | '24h' = '12h',
+  timeFormat: '12h' | '24h' | string = '12h',
 ): string => {
   const date = new Date(dateInput);
 

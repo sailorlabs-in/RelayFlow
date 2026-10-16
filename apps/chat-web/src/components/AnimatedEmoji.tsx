@@ -85,12 +85,15 @@ export const AnimatedEmoji: React.FC<AnimatedEmojiProps> = ({
 
   const defaultFallback = (
     <span
-      className={`inline-flex items-center justify-center select-all leading-none ${className}`}
+      className={`inline-flex items-center justify-center select-none leading-none ${className}`}
       style={{
         fontSize: dimension,
         lineHeight: 1,
         width: dimension,
         height: dimension,
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        WebkitTouchCallout: 'none',
       }}
       title={title || glyph}
     >
@@ -132,6 +135,9 @@ export const AnimatedEmoji: React.FC<AnimatedEmojiProps> = ({
       style={{
         width: dimension,
         height: dimension,
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        WebkitTouchCallout: 'none',
       }}
       title={title || glyph}
       onMouseEnter={handleMouseEnter}
@@ -140,14 +146,19 @@ export const AnimatedEmoji: React.FC<AnimatedEmojiProps> = ({
       {/* Fallback while loading */}
       {!isLoaded && (
         <span
-          className="absolute inset-0 flex items-center justify-center opacity-40 select-all"
-          style={{ fontSize: `calc(${dimension} * 0.75)` }}
+          className="absolute inset-0 flex items-center justify-center opacity-40 select-none pointer-events-none"
+          style={{
+            fontSize: `calc(${dimension} * 0.75)`,
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+            WebkitTouchCallout: 'none',
+          }}
         >
           {glyph}
         </span>
       )}
 
-      {/* Render directly via a single hardware-accelerated <img> element */}
+      {/* Render directly via a single hardware-accelerated <img> element with pointer-events-none to prevent mobile image preview menu */}
       <img
         key={isAnimating ? `anim-${playCount}` : 'static'}
         src={currentSrc}
@@ -158,12 +169,17 @@ export const AnimatedEmoji: React.FC<AnimatedEmojiProps> = ({
         decoding="async"
         onLoad={handleLoad}
         onError={() => setHasError(true)}
+        className="pointer-events-none select-none"
         style={{
           width: dimension,
           height: dimension,
           objectFit: 'contain',
           opacity: isLoaded ? 1 : 0,
           transition: 'opacity 0.12s ease-in-out',
+          pointerEvents: 'none',
+          userSelect: 'none',
+          WebkitUserSelect: 'none',
+          WebkitTouchCallout: 'none',
         }}
       />
     </span>

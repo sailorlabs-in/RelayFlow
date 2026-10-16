@@ -16,7 +16,7 @@ interface AccountTabProps {
   avatarThumbnailUrl: string;
   setAvatarThumbnailUrl: (val: string) => void;
   uploadingAvatar: boolean;
-  avatarInputRef: React.RefObject<HTMLInputElement>;
+  avatarInputRef: React.RefObject<HTMLInputElement | null>;
   handleAvatarUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   deleteOldMedia: (url: string) => Promise<void>;
   password: string;

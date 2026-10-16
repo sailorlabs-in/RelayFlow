@@ -29,6 +29,7 @@ export interface User {
   warnings?: string[];
   retentionMediaDays?: number;
   retentionMessageDays?: number;
+  hotReactions?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -47,8 +48,29 @@ export interface AuthState {
   temp2FAUserId: string | null;
 }
 
-// Check localStorage for cached credentials safely in Next.js client
 const isBrowser = typeof window !== 'undefined';
+
+const syncHotReactionsStorage = (hotReactions?: string, userId?: string) => {
+  if (!isBrowser || !hotReactions) {
+    return;
+  }
+  try {
+    localStorage.setItem('rf-hot-reactions', hotReactions);
+    if (userId) {
+      localStorage.setItem(`rf-hot-reactions-${userId}`, hotReactions);
+    }
+    const parsed = JSON.parse(hotReactions);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      window.dispatchEvent(
+        new CustomEvent('rf-hot-reactions-updated', {
+          detail: { reactions: parsed, userId },
+        }),
+      );
+    }
+  } catch {
+    // ignore
+  }
+};
 
 const initialState: AuthState = {
   user: null,
@@ -454,11 +476,15 @@ const authSlice = createSlice({
         if (token && userVal) {
           try {
             state.accessToken = token;
-            state.user = JSON.parse(userVal);
+            const parsedUser = JSON.parse(userVal);
+            state.user = parsedUser;
             state.themeMode = theme as 'dark' | 'light' | 'system';
             state.themeSchema = schema;
             state.timeFormat = timeFormat as '12h' | '24h';
             state.status = 'succeeded';
+            if (parsedUser?.hotReactions) {
+              syncHotReactionsStorage(parsedUser.hotReactions, parsedUser.id);
+            }
           } catch (_) {
             localStorage.removeItem('chat_token');
             localStorage.removeItem('chat_user');
@@ -664,6 +690,12 @@ const authSlice = createSlice({
             localStorage.setItem('rf-theme', userTheme);
             localStorage.setItem('rf-theme-schema', userSchema);
             localStorage.setItem('rf-time-format', userTimeFormat);
+            if (action.payload.user?.hotReactions) {
+              syncHotReactionsStorage(
+                action.payload.user.hotReactions,
+                action.payload.user.id,
+              );
+            }
           }
         }
       })
@@ -740,6 +772,12 @@ const authSlice = createSlice({
           localStorage.setItem('rf-theme', userTheme);
           localStorage.setItem('rf-theme-schema', userSchema);
           localStorage.setItem('rf-time-format', userTimeFormat);
+          if (action.payload.user?.hotReactions) {
+            syncHotReactionsStorage(
+              action.payload.user.hotReactions,
+              action.payload.user.id,
+            );
+          }
         }
       })
       .addCase(verify2FaOtp.rejected, (state, action) => {
@@ -770,6 +808,12 @@ const authSlice = createSlice({
           localStorage.setItem('rf-theme', userTheme);
           localStorage.setItem('rf-theme-schema', userSchema);
           localStorage.setItem('rf-time-format', userTimeFormat);
+          if (action.payload?.hotReactions) {
+            syncHotReactionsStorage(
+              action.payload.hotReactions,
+              action.payload.id,
+            );
+          }
         }
       })
       .addCase(updateUserProfile.rejected, (state, action) => {
@@ -783,6 +827,12 @@ const authSlice = createSlice({
         state.user = action.payload;
         if (isBrowser) {
           localStorage.setItem('chat_user', JSON.stringify(action.payload));
+          if (action.payload?.hotReactions) {
+            syncHotReactionsStorage(
+              action.payload.hotReactions,
+              action.payload.id,
+            );
+          }
         }
       })
       .addCase(fetchCurrentUser.rejected, (state, action) => {
