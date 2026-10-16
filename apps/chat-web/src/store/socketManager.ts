@@ -10,6 +10,7 @@ import {
   updateRole,
   adminUpdateUserIdentity,
   syncCurrentUser,
+  setLocalHotReactions,
 } from './slices/authSlice';
 import { saveStoredHotReactions } from '../components/chat/useHotReactions';
 import type { Message } from './slices/chatSlice';
@@ -278,6 +279,26 @@ class SocketManager {
     this.socket.on('message.updated', (message: Message) => {
       PrintLog('📝 Socket message.updated event received:', message);
       store.dispatch(socketUpdateMessage(message));
+    });
+
+    // Handle real-time sync of self profile updates (hot reactions, themes, settings) across all devices
+    this.socket.on('user.self.updated', (updatedUser: any) => {
+      PrintLog('👤 Socket user.self.updated received:', updatedUser);
+      if (!updatedUser) {
+        return;
+      }
+      store.dispatch(syncCurrentUser(updatedUser));
+      if (updatedUser.hotReactions) {
+        store.dispatch(setLocalHotReactions(updatedUser.hotReactions));
+        try {
+          const parsed = JSON.parse(updatedUser.hotReactions);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            saveStoredHotReactions(parsed, updatedUser.id);
+          }
+        } catch {
+          // ignore
+        }
+      }
     });
 
     // Handle granular presence/status changes broadcast by the server
