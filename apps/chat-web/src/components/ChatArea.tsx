@@ -1185,7 +1185,6 @@ export function ChatArea({
                 ) : (
                   activeMessages.map((msg) => {
                     const rowProps = {
-                      key: msg.id,
                       msg,
                       user,
                       userProfiles,
@@ -1217,9 +1216,9 @@ export function ChatArea({
                     };
 
                     return isBubbleLayout ? (
-                      <MessageBubbleRow {...rowProps} />
+                      <MessageBubbleRow key={msg.id} {...rowProps} />
                     ) : (
-                      <MessageCompactRow {...rowProps} />
+                      <MessageCompactRow key={msg.id} {...rowProps} />
                     );
                   })
                 )}
