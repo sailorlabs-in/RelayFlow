@@ -238,38 +238,47 @@ export const ChatInputArea: React.FC<ChatInputAreaProps> = ({
       <div className="glass-panel p-2.5 border-glass bg-theme-sidebar/40 shadow-[0_10px_35px_rgba(0,0,0,0.15)] rounded-2xl">
         {/* Reply Preview Bar */}
         {replyingToMessage && (
-          <div className="flex items-center justify-between gap-3 px-3.5 py-2 rounded-xl bg-theme-input/90 border-l-4 border-l-(--accent-primary) border-glass mb-2.5 animate-fade-in shadow-xs">
-            <div className="flex items-center gap-2 text-[12.5px] min-w-0">
-              <span className="text-(--accent-primary) font-semibold flex items-center gap-1 shrink-0">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  className="w-3.5 h-3.5"
-                >
-                  <polyline points="9 17 4 12 9 7" />
-                  <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
-                </svg>
-                Replying to
-              </span>
-              <span className="font-bold text-theme-primary truncate">
-                {userProfiles[replyingToMessage.senderId]?.displayName ||
-                  (userProfiles[replyingToMessage.senderId]?.username
-                    ? `@${userProfiles[replyingToMessage.senderId].username}`
-                    : null) ||
-                  (replyingToMessage.senderId === currentUser?.id
-                    ? 'You'
-                    : 'User')}
-              </span>
-              <span className="text-theme-secondary opacity-80 truncate max-w-md italic">
-                "{replyingToMessage.content}"
-              </span>
+          <div className="flex items-center justify-between gap-3 px-3 py-1.5 rounded-xl bg-theme-input/40 border border-white/[0.05] dark:border-white/[0.05] mb-2 animate-fade-in select-none">
+            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+              <div className="w-[3px] h-7.5 rounded-full bg-(--accent-primary) shrink-0" />
+              <div className="flex flex-col min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 text-[11.5px] font-semibold text-(--accent-primary)">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    className="w-3 h-3 shrink-0"
+                  >
+                    <polyline points="9 17 4 12 9 7" />
+                    <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
+                  </svg>
+                  <span className="truncate">
+                    Replying to{' '}
+                    <span className="text-theme-primary font-bold">
+                      {userProfiles[replyingToMessage.senderId]?.displayName ||
+                        (userProfiles[replyingToMessage.senderId]?.username
+                          ? `@${userProfiles[replyingToMessage.senderId].username}`
+                          : null) ||
+                        (replyingToMessage.senderId === currentUser?.id
+                          ? 'You'
+                          : 'User')}
+                    </span>
+                  </span>
+                </div>
+                <p className="text-[11.5px] text-theme-muted truncate m-0 font-normal leading-tight">
+                  {replyingToMessage.content ||
+                    (replyingToMessage.media &&
+                    replyingToMessage.media.length > 0
+                      ? 'Photo / Attachment'
+                      : 'Message')}
+                </p>
+              </div>
             </div>
             <button
               type="button"
               onClick={onCancelReply}
-              className="p-1 rounded-full flex items-center justify-center bg-transparent border-none cursor-pointer text-theme-secondary hover:text-theme-primary hover:bg-theme-input transition-colors active-press shrink-0"
+              className="w-6 h-6 rounded-full flex items-center justify-center bg-transparent border-none cursor-pointer text-theme-muted hover:text-theme-primary hover:bg-theme-input transition-colors shrink-0"
               title="Cancel reply"
             >
               <IconX size={12} />

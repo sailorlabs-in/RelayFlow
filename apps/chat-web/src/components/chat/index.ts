@@ -18,3 +18,5 @@ export * from './useMessageLongPress';
 export * from './useHotReactions';
 export * from './CustomizeHotReactionsModal';
 export * from './MessageReactions';
+export * from './MessageHoverActions';
+export * from './MessageEditView';

@@ -9,8 +9,10 @@ import { AnimatedEmoji } from '../AnimatedEmoji';
 import { MessageReactions } from './MessageReactions';
 import { MessageMedia } from './MessageMedia';
 import { MessageContentRenderer } from './MessageContentRenderer';
+import { MessageHoverActions } from './MessageHoverActions';
+import { MessageEditView } from './MessageEditView';
 import { useMessageLongPress } from './useMessageLongPress';
-import { IconCheck, IconDoubleCheck, IconCompose, IconTrash } from '../Icons';
+import { IconCheck, IconDoubleCheck } from '../Icons';
 
 interface MessageBubbleRowProps {
   msg: Message;
@@ -57,8 +59,8 @@ export const MessageBubbleRow: React.FC<MessageBubbleRowProps> = ({
   editingContent,
   setEditingContent,
   handleSaveEdit,
-  handleStartEdit,
-  handleDeleteMessage,
+  handleStartEdit: _handleStartEdit,
+  handleDeleteMessage: _handleDeleteMessage,
   setReplyingToMessage,
   setActiveReactionMessageId,
   activeReactionMessageId,
@@ -67,7 +69,7 @@ export const MessageBubbleRow: React.FC<MessageBubbleRowProps> = ({
   handleMobileClick,
   handleLongPress,
   handleOpenProfile,
-  canDeleteOthers,
+  canDeleteOthers: _canDeleteOthers,
   activeConversationId,
   findUserByName,
   onViewCode,
@@ -134,71 +136,24 @@ export const MessageBubbleRow: React.FC<MessageBubbleRowProps> = ({
           handleMobileClick(e, msg);
         }
       }}
-      className={`flex items-start gap-2.5 group max-w-[85%] md:max-w-[72%] animate-fade-in select-none md:select-auto cursor-default transition-all ${
+      className={`flex items-start gap-2.5 group ${
+        editingMessageId === msg.id
+          ? 'w-full max-w-[94%] sm:max-w-[85%] md:max-w-[72%]'
+          : 'max-w-[85%] md:max-w-[72%]'
+      } animate-fade-in select-none md:select-auto cursor-default transition-all ${
         isOut ? 'self-end' : 'self-start'
       }`}
     >
       {/* Outgoing hover action toolbar (Desktop) */}
       {isOut && editingMessageId !== msg.id && (
-        <div
-          className={`hidden md:flex items-center gap-1 transition-opacity duration-150 shrink-0 self-center ${
-            activeReactionMessageId === msg.id
-              ? 'opacity-100 pointer-events-auto'
-              : 'opacity-0 group-hover:opacity-100'
-          }`}
-        >
-          <button
-            onClick={() => setReplyingToMessage(msg)}
-            className="flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-theme-input text-theme-secondary hover:text-[var(--accent-primary)] hover:bg-theme-input/80 active-press transition-colors shadow-xs"
-            title="Reply to message"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              className="w-4 h-4"
-            >
-              <polyline points="9 17 4 12 9 7" />
-              <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
-            </svg>
-          </button>
-
-          <div className="relative">
-            <button
-              onClick={() => setActiveReactionMessageId(msg.id)}
-              className="flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-theme-input text-theme-secondary hover:text-[var(--accent-primary)] hover:bg-theme-input/80 active-press transition-colors shadow-xs"
-              title="Add reaction"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.2"
-                className="w-4 h-4"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <path d="M8 14s1.5 2 4 2 4-2 4-2" />
-                <line x1="9" y1="9" x2="9.01" y2="9" strokeWidth="2.5" />
-                <line x1="15" y1="9" x2="15.01" y2="9" strokeWidth="2.5" />
-              </svg>
-            </button>
-          </div>
-          <button
-            onClick={() => handleStartEdit(msg)}
-            className="flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-theme-input text-theme-secondary hover:text-[var(--accent-primary)] hover:bg-theme-input/80 active-press transition-colors shadow-xs"
-            title="Edit message"
-          >
-            <IconCompose />
-          </button>
-          <button
-            onClick={() => handleDeleteMessage(msg.id)}
-            className="msg-delete-btn flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-[var(--danger-bg)] text-[var(--danger)] active-press transition-colors shadow-xs"
-            title="Delete message"
-          >
-            <IconTrash />
-          </button>
-        </div>
+        <MessageHoverActions
+          msg={msg}
+          activeConversationId={activeConversationId}
+          onReply={setReplyingToMessage}
+          onOpenReactionPicker={(id) => setActiveReactionMessageId(id)}
+          isReactionPickerOpen={activeReactionMessageId === msg.id}
+          currentUserId={user?.id}
+        />
       )}
 
       {/* Incoming Avatar in Channel Mode */}
@@ -217,7 +172,9 @@ export const MessageBubbleRow: React.FC<MessageBubbleRowProps> = ({
       )}
 
       <div
-        className={`flex flex-col ${isOut ? 'items-end' : 'items-start'} min-w-0`}
+        className={`flex flex-col ${isOut ? 'items-end' : 'items-start'} min-w-0 ${
+          editingMessageId === msg.id ? 'w-full' : ''
+        }`}
       >
         {/* Sender name for channel mode */}
         {!isOut && isChannelMode && (
@@ -246,76 +203,33 @@ export const MessageBubbleRow: React.FC<MessageBubbleRowProps> = ({
                 setTimeout(() => el.classList.remove('highlight-flash'), 2000);
               }
             }}
-            className="flex items-center gap-1.5 text-[11px] text-theme-secondary bg-theme-input/60 border border-glass/40 rounded-xl px-2.5 py-1 mb-1.5 w-fit cursor-pointer hover:bg-theme-input transition-colors max-w-full shadow-xs"
+            className="flex flex-col text-[11px] bg-theme-input/40 border-l-[3px] border-l-(--accent-primary) rounded-r-xl px-2.5 py-1 mb-1.5 cursor-pointer hover:bg-theme-input/70 transition-colors max-w-full select-none"
             title="Click to jump to message"
           >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              className="w-3 h-3 text-[var(--accent-primary)] shrink-0"
-            >
-              <polyline points="9 17 4 12 9 7" />
-              <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
-            </svg>
-            <span className="font-bold text-theme-primary shrink-0">
+            <span className="font-semibold text-(--accent-primary) text-[10.5px] leading-tight truncate">
               {userProfiles[msg.parentMessage.senderId]?.displayName ||
                 userProfiles[msg.parentMessage.senderId]?.username ||
                 (msg.parentMessage.senderId === user?.id ? 'You' : 'User')}
             </span>
-            <span className="truncate opacity-80">
-              {msg.parentMessage.content}
+            <span className="truncate text-theme-muted text-[11px] leading-tight mt-0.5">
+              {msg.parentMessage.content || 'Photo / Attachment'}
             </span>
           </div>
         )}
 
         {/* Editing or Message Bubble Content */}
         {editingMessageId === msg.id ? (
-          <div className="flex flex-col gap-2 mt-1 w-65 sm:w-87.5">
-            <textarea
-              autoFocus
-              value={editingContent}
-              onChange={(e) => setEditingContent(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSaveEdit(msg.id);
-                } else if (e.key === 'Escape') {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setEditingMessageId(null);
-                  setEditingContent('');
-                }
-              }}
-              className="w-full bg-theme-input text-theme-primary border border-theme rounded-xl p-2.5 text-sm focus:outline-none focus:border-(--accent-primary) resize-none shadow-inner"
-              rows={2}
-            />
-            <div className="flex gap-2 justify-end text-[11px] text-theme-muted">
-              <span>
-                escape to{' '}
-                <button
-                  onClick={() => {
-                    setEditingMessageId(null);
-                    setEditingContent('');
-                  }}
-                  className="text-(--accent-primary) hover:underline cursor-pointer bg-transparent border-none p-0"
-                >
-                  cancel
-                </button>
-              </span>
-              <span>•</span>
-              <span>
-                enter to{' '}
-                <button
-                  onClick={() => handleSaveEdit(msg.id)}
-                  className="text-(--accent-primary) hover:underline cursor-pointer bg-transparent border-none p-0 font-bold"
-                >
-                  save
-                </button>
-              </span>
-            </div>
-          </div>
+          <MessageEditView
+            messageId={msg.id}
+            initialContent={msg.content}
+            editingContent={editingContent}
+            setEditingContent={setEditingContent}
+            onSave={handleSaveEdit}
+            onCancel={() => {
+              setEditingMessageId(null);
+              setEditingContent('');
+            }}
+          />
         ) : (
           <>
             {msg.content &&
@@ -420,59 +334,14 @@ export const MessageBubbleRow: React.FC<MessageBubbleRowProps> = ({
 
       {/* Incoming hover action toolbar (Desktop) */}
       {!isOut && editingMessageId !== msg.id && (
-        <div
-          className={`hidden md:flex items-center gap-1 transition-opacity duration-150 shrink-0 self-center ${
-            activeReactionMessageId === msg.id
-              ? 'opacity-100 pointer-events-auto'
-              : 'opacity-0 group-hover:opacity-100'
-          }`}
-        >
-          <button
-            onClick={() => setReplyingToMessage(msg)}
-            className="flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-theme-input text-theme-secondary hover:text-[var(--accent-primary)] hover:bg-theme-input/80 active-press transition-colors shadow-xs"
-            title="Reply to message"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              className="w-4 h-4"
-            >
-              <polyline points="9 17 4 12 9 7" />
-              <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
-            </svg>
-          </button>
-          <div className="relative">
-            <button
-              onClick={() => setActiveReactionMessageId(msg.id)}
-              className="flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-theme-input text-theme-secondary hover:text-[var(--accent-primary)] hover:bg-theme-input/80 active-press transition-colors shadow-xs"
-              title="Add reaction"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.2"
-                className="w-4 h-4"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <path d="M8 14s1.5 2 4 2 4-2 4-2" />
-                <line x1="9" y1="9" x2="9.01" y2="9" strokeWidth="2.5" />
-                <line x1="15" y1="9" x2="15.01" y2="9" strokeWidth="2.5" />
-              </svg>
-            </button>
-          </div>
-          {canDeleteOthers && (
-            <button
-              onClick={() => handleDeleteMessage(msg.id)}
-              className="msg-delete-btn flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-[var(--danger-bg)] text-[var(--danger)] active-press transition-colors shadow-xs"
-              title="Delete message"
-            >
-              <IconTrash />
-            </button>
-          )}
-        </div>
+        <MessageHoverActions
+          msg={msg}
+          activeConversationId={activeConversationId}
+          onReply={setReplyingToMessage}
+          onOpenReactionPicker={(id) => setActiveReactionMessageId(id)}
+          isReactionPickerOpen={activeReactionMessageId === msg.id}
+          currentUserId={user?.id}
+        />
       )}
     </div>
   );
