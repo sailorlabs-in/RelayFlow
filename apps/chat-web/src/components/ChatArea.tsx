@@ -1077,7 +1077,7 @@ export function ChatArea({
       };
     }
 
-    return { name: 'Direct Message', letter: 'D', email: '', id: null };
+    return { name: 'Direct Message', letter: 'D', email: '', id: undefined };
   };
 
   if (!user) {

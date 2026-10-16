@@ -29,6 +29,7 @@ export interface User {
   warnings?: string[];
   retentionMediaDays?: number;
   retentionMessageDays?: number;
+  hotReactions?: string;
   createdAt: string;
   updatedAt: string;
 }
