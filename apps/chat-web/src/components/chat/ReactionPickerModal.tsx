@@ -1,20 +1,37 @@
-import React from 'react';
+'use client';
+
+import React, { useState } from 'react';
 import { EmojiPicker } from './EmojiPickerWrapper';
-import { IconEmoji, IconX } from '../Icons';
+import { CustomizeHotReactionsModal } from './CustomizeHotReactionsModal';
+import { IconEmoji, IconX, IconSettings } from '../Icons';
 
 interface ReactionPickerModalProps {
   activeReactionMessageId: string | null;
   onClose: () => void;
   onSelectReaction: (emojiNative: string) => void;
+  userId?: string;
 }
 
 export const ReactionPickerModal: React.FC<ReactionPickerModalProps> = ({
   activeReactionMessageId,
   onClose,
   onSelectReaction,
+  userId,
 }) => {
+  const [isCustomizingHot, setIsCustomizingHot] = useState(false);
+
   if (!activeReactionMessageId) {
     return null;
+  }
+
+  if (isCustomizingHot) {
+    return (
+      <CustomizeHotReactionsModal
+        isOpen={isCustomizingHot}
+        onClose={() => setIsCustomizingHot(false)}
+        userId={userId}
+      />
+    );
   }
 
   return (
@@ -30,14 +47,25 @@ export const ReactionPickerModal: React.FC<ReactionPickerModalProps> = ({
           <span className="text-xs font-semibold text-theme-secondary flex items-center gap-1.5">
             <IconEmoji size={16} /> Add Reaction
           </span>
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-theme-muted hover:text-theme-primary bg-theme-input/50 hover:bg-theme-input active-press transition-colors"
-            title="Close"
-          >
-            <IconX size={14} />
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setIsCustomizingHot(true)}
+              className="text-[11px] font-medium text-theme-muted hover:text-(--accent-primary) transition-colors px-2 py-1 rounded-md hover:bg-theme-input/50 flex items-center gap-1 cursor-pointer border-none bg-transparent"
+              title="Customize your hot reactions"
+            >
+              <IconSettings />
+              <span>Customize</span>
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-theme-muted hover:text-theme-primary bg-theme-input/50 hover:bg-theme-input active-press transition-colors cursor-pointer border-none"
+              title="Close"
+            >
+              <IconX size={14} />
+            </button>
+          </div>
         </div>
         <div className="w-full overflow-hidden flex flex-col items-stretch">
           <EmojiPicker

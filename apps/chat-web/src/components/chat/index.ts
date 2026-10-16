@@ -15,3 +15,6 @@ export * from './ReactionPickerModal';
 export * from './MobileEmojiPickerModal';
 export * from './MemberProfilePopoverModal';
 export * from './useMessageLongPress';
+export * from './useHotReactions';
+export * from './CustomizeHotReactionsModal';
+export * from './MessageReactions';

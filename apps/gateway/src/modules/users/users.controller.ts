@@ -145,6 +145,11 @@ export class UsersController {
           type: 'string',
           example: '[]',
         },
+        hotReactions: {
+          type: 'string',
+          example: '["👍","❤️","😂","😮","🔥"]',
+          description: 'JSON array of up to 5 favorite hot reaction emojis',
+        },
         retentionMediaDays: {
           type: 'number',
           example: 30,
@@ -189,6 +194,7 @@ export class UsersController {
       avatarThumbnailUrl?: string;
       groupOrder?: string;
       customThemes?: string;
+      hotReactions?: string;
       retentionMediaDays?: number;
       retentionMessageDays?: number;
     },
@@ -197,6 +203,11 @@ export class UsersController {
       currentUser.userId,
       body,
     );
+
+    // Broadcast update to all other devices/sessions owned by this user
+    this.realtimeGateway.server
+      .to(`user:${currentUser.userId}`)
+      .emit('user.self.updated', updatedUser);
 
     // Broadcast public profile changes to all connected clients so they
     // don't need to reload to see the updated name / avatar.

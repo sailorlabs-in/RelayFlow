@@ -6,7 +6,7 @@ import { getEmojiSegments } from '../../utils/animatedEmoji';
 import { isOnlyEmojis } from './chatUtils';
 import { Avatar } from '../Avatar';
 import { AnimatedEmoji } from '../AnimatedEmoji';
-import { ReactionItem } from './ReactionItem';
+import { MessageReactions } from './MessageReactions';
 import { MessageMedia } from './MessageMedia';
 import { MessageContentRenderer } from './MessageContentRenderer';
 import { useMessageLongPress } from './useMessageLongPress';
@@ -379,25 +379,20 @@ export const MessageBubbleRow: React.FC<MessageBubbleRowProps> = ({
 
         {/* Reactions List */}
         {msg.reactions && msg.reactions.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-1.5 select-none">
-            {msg.reactions.map((react, rIdx) => (
-              <ReactionItem
-                key={react.emoji + rIdx}
-                react={react}
-                hasReacted={react.userIds.includes(user?.id || '')}
-                onToggle={() => {
-                  if (activeConversationId) {
-                    socketManager.toggleReaction(
-                      msg.id,
-                      activeConversationId,
-                      react.emoji,
-                    );
-                  }
-                }}
-                userNames={getReactingUserNames(react.userIds)}
-              />
-            ))}
-          </div>
+          <MessageReactions
+            reactions={msg.reactions}
+            currentUserId={user?.id}
+            onToggleReaction={(emoji) => {
+              if (activeConversationId) {
+                socketManager.toggleReaction(
+                  msg.id,
+                  activeConversationId,
+                  emoji,
+                );
+              }
+            }}
+            getReactingUserNames={getReactingUserNames}
+          />
         )}
 
         {/* Footer Meta: Timestamp, Edited tag, Read checkmarks */}

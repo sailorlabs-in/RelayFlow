@@ -210,6 +210,7 @@ export class UsersService {
       avatarThumbnailUrl?: string;
       groupOrder?: string;
       customThemes?: string;
+      hotReactions?: string;
       lastSeenUpdateNoteId?: string;
       retentionMediaDays?: number;
       retentionMessageDays?: number;
@@ -303,6 +304,10 @@ export class UsersService {
 
     if (data.customThemes !== undefined) {
       user.customThemes = data.customThemes;
+    }
+
+    if (data.hotReactions !== undefined) {
+      user.hotReactions = data.hotReactions;
     }
 
     if (data.lastSeenUpdateNoteId !== undefined) {

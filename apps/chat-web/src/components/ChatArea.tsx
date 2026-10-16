@@ -1396,6 +1396,7 @@ export function ChatArea({
       <ReactionPickerModal
         activeReactionMessageId={activeReactionMessageId}
         onClose={() => setActiveReactionMessageId(null)}
+        userId={user?.id}
         onSelectReaction={(emojiNative) => {
           if (activeConversationId && activeReactionMessageId) {
             socketManager.toggleReaction(

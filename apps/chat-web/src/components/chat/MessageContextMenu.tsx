@@ -1,12 +1,12 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import ReactDOM from 'react-dom';
 import type { Message } from '../../store/slices/chatSlice';
 import { formatReadAtTimestamp } from '../../utils/date';
-import { IconCompose, IconTrash, IconEmoji } from '../Icons';
-
-const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🔥', '👏'];
+import { IconCompose, IconTrash, IconSettings } from '../Icons';
+import { useHotReactions } from './useHotReactions';
+import { CustomizeHotReactionsModal } from './CustomizeHotReactionsModal';
 
 interface MessageContextMenuProps {
   contextMenu: { x: number; y: number; message: Message } | null;
@@ -44,12 +44,29 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
   onSelectReaction,
   onOpenReactionPicker,
 }) => {
+  const [isCustomizingHot, setIsCustomizingHot] = useState(false);
+  const { hotReactions } = useHotReactions(currentUser?.id);
+
   if (!contextMenu || typeof document === 'undefined') {
     return null;
   }
 
   const { message } = contextMenu;
   const isSender = message.senderId === currentUser?.id;
+
+  if (isCustomizingHot) {
+    return ReactDOM.createPortal(
+      <CustomizeHotReactionsModal
+        isOpen={isCustomizingHot}
+        onClose={() => {
+          setIsCustomizingHot(false);
+          onClose();
+        }}
+        userId={currentUser?.id}
+      />,
+      document.body,
+    );
+  }
 
   return ReactDOM.createPortal(
     <>
@@ -81,62 +98,62 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
         role="menu"
         aria-label="Message options"
       >
-        {/* Quick Reactions Bar for both Mobile & Desktop */}
+        {/* Quick Reactions Bar for both Mobile & Desktop (Max 5 Customizable Hot Reactions) */}
         {onSelectReaction && (
           <div className="flex items-center justify-between gap-0.5 px-1.5 py-1 mb-1 border-b border-glass bg-theme-input/20 rounded-lg">
-            {QUICK_REACTIONS.map((emoji) => (
-              <button
-                key={emoji}
-                type="button"
-                className="w-7 h-7 flex items-center justify-center text-base hover:scale-125 active:scale-110 transition-transform rounded-md hover:bg-theme-input/70 cursor-pointer border-none bg-transparent"
-                onClick={() => {
-                  onSelectReaction(message.id, emoji);
-                  onClose();
-                }}
-                title={`React ${emoji}`}
-              >
-                {emoji}
-              </button>
-            ))}
-            {onOpenReactionPicker && (
+            <div className="flex items-center gap-0.5">
+              {hotReactions.map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  className="w-7 h-7 flex items-center justify-center text-base hover:scale-125 active:scale-110 transition-transform rounded-md hover:bg-theme-input/70 cursor-pointer border-none bg-transparent"
+                  onClick={() => {
+                    onSelectReaction(message.id, emoji);
+                    onClose();
+                  }}
+                  title={`React ${emoji}`}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-0.5">
+              <div className="w-px h-4 bg-theme/20 mx-0.5" />
+              {onOpenReactionPicker && (
+                <button
+                  type="button"
+                  className="w-7 h-7 flex items-center justify-center text-theme-muted hover:text-theme-primary hover:bg-theme-input/70 rounded-md cursor-pointer border-none bg-transparent transition-colors"
+                  onClick={() => {
+                    onOpenReactionPicker(message.id);
+                    onClose();
+                  }}
+                  title="More reactions"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    width="14"
+                    height="14"
+                  >
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                </button>
+              )}
               <button
                 type="button"
                 className="w-7 h-7 flex items-center justify-center text-theme-muted hover:text-theme-primary hover:bg-theme-input/70 rounded-md cursor-pointer border-none bg-transparent transition-colors"
                 onClick={() => {
-                  onOpenReactionPicker(message.id);
-                  onClose();
+                  setIsCustomizingHot(true);
                 }}
-                title="More reactions"
+                title="Customize hot reactions"
               >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  width="14"
-                  height="14"
-                >
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
+                <IconSettings />
               </button>
-            )}
+            </div>
           </div>
-        )}
-
-        {/* Reaction Picker menu item */}
-        {onOpenReactionPicker && (
-          <button
-            className="convo-context-menu-item"
-            role="menuitem"
-            onClick={() => {
-              onOpenReactionPicker(message.id);
-              onClose();
-            }}
-          >
-            <IconEmoji size={15} />
-            <span>Add Reaction</span>
-          </button>
         )}
 
         <button
