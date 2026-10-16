@@ -2,8 +2,6 @@
 
 import { useEffect, useRef, useMemo, useState } from 'react';
 
-import { showToast } from '../components/toast';
-
 export interface UseMobileBackHandlerOptions {
   enabled: boolean;
 
@@ -44,6 +42,10 @@ export interface UseMobileBackHandlerOptions {
   setLocalConfirmModal: (modal: any) => void;
   confirmModal?: any;
   setConfirmModal?: (modal: any) => void;
+
+  // Quit App Confirmation Modal
+  isQuitModalOpen?: boolean;
+  setIsQuitModalOpen?: (open: boolean) => void;
 
   // Drawers
   isMembersListOpen?: boolean;
@@ -174,6 +176,11 @@ function getTopmostDismissAction(
     };
   }
 
+  // Layer 5: Quit App Confirmation Modal
+  if (opts.isQuitModalOpen) {
+    return () => opts.setIsQuitModalOpen?.(false);
+  }
+
   // Layer 4: Menus, Overlays, and Confirmations
   if (opts.contextMenu) {
     return () => opts.setContextMenu(null);
@@ -228,7 +235,7 @@ function getTopmostDismissAction(
   }
 
   // Layer 0: Root of any main tab (chats, groups, friends, profile)
-  // No back event within the app! Returns null so back exits the web app.
+  // No back event within the app! Returns null so back displays quit modal.
   return null;
 }
 
@@ -250,13 +257,17 @@ export function useMobileBackHandler(options: UseMobileBackHandlerOptions) {
   const historyDepthRef = useRef<number>(0);
   const isHandlingPopstateRef = useRef<boolean>(false);
   const isProgrammaticBackRef = useRef<boolean>(false);
-  const lastBackPressRef = useRef<number>(0);
 
   // Compute current target depth:
   // Root of chats, groups, friends, profile = depth 0 (clean root, no back stack).
   // Sub-views, drawers, modals, overlays, or manual handlers = depth > 0 (back active).
   const targetDepth = useMemo(() => {
     let depth = 0; // Root of chats, groups, friends, or profile
+
+    // Quit App Confirmation Modal
+    if (options.isQuitModalOpen) {
+      depth += 1;
+    }
 
     // Sub-view (Active Chat Area or Profile Subpage)
     if (
@@ -300,6 +311,7 @@ export function useMobileBackHandler(options: UseMobileBackHandlerOptions) {
 
     return depth;
   }, [
+    options.isQuitModalOpen,
     options.showChatArea,
     options.activeTab,
     options.profileSubPage,
@@ -359,28 +371,24 @@ export function useMobileBackHandler(options: UseMobileBackHandlerOptions) {
         isHandlingPopstateRef.current = true;
         dismissAction();
       } else {
-        // At root screen of Chats, Groups, Friends, or Profile:
-        // Double-back within 2s exits the webapp, single back shows a toast
-        const now = Date.now();
-        if (lastBackPressRef.current && now - lastBackPressRef.current < 2000) {
-          lastBackPressRef.current = 0;
+        // At root screen of Chats, Groups, Friends, or Profile (Main Sections):
+        // User pressed back at the main section.
+        // Push state and display modal: "Are you sure you want to quit the app?"
+        if (optionsRef.current.setIsQuitModalOpen) {
+          window.history.pushState(
+            { rfMobile: true, depth: 1, isQuitModal: true },
+            '',
+            window.location.href,
+          );
+          historyDepthRef.current = 1;
+          isHandlingPopstateRef.current = true;
+          optionsRef.current.setIsQuitModalOpen(true);
+        } else {
           try {
             window.history.back();
           } catch {
             void 0;
           }
-        } else {
-          lastBackPressRef.current = now;
-          window.history.pushState(
-            { rfMobile: true, depth: 0, isBase: true },
-            '',
-            window.location.href,
-          );
-          historyDepthRef.current = 0;
-          showToast.info('Press back again to exit', {
-            autoClose: 2000,
-            toastId: 'press-back-exit',
-          });
         }
       }
     };

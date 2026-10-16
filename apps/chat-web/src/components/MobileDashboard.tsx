@@ -131,6 +131,51 @@ export const MobileDashboard = ({
     onConfirm: () => void;
   } | null>(null);
 
+  // Mobile Quit Confirmation Dialog
+  const [isQuitModalOpen, setIsQuitModalOpen] = useState(false);
+
+  const handleQuitApp = () => {
+    setIsQuitModalOpen(false);
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    // 1. Android / iOS WebView or Cordova / Capacitor exit
+    const nav = navigator as any;
+    if (nav?.app?.exitApp && typeof nav.app.exitApp === 'function') {
+      nav.app.exitApp();
+      return;
+    }
+
+    // 2. Standard window.close()
+    try {
+      window.close();
+    } catch {
+      // ignore
+    }
+
+    // 3. Self-window close trick
+    try {
+      window.open('', '_self', '');
+      window.close();
+    } catch {
+      // ignore
+    }
+
+    // 4. Pop back in browser history to exit the webapp
+    setTimeout(() => {
+      try {
+        window.history.go(-2);
+      } catch {
+        try {
+          window.history.back();
+        } catch {
+          // ignore
+        }
+      }
+    }, 100);
+  };
+
   // Hold gesture refs & handlers
   const touchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isLongPressRef = useRef(false);
@@ -233,6 +278,8 @@ export const MobileDashboard = ({
     setLocalConfirmModal,
     confirmModal,
     setConfirmModal,
+    isQuitModalOpen,
+    setIsQuitModalOpen,
     isMembersListOpen,
     setIsMembersListOpen,
     isComposeOpen,
@@ -561,6 +608,20 @@ export const MobileDashboard = ({
           cancelLabel="Cancel"
           onConfirm={localConfirmModal.onConfirm}
           onCancel={() => setLocalConfirmModal(null)}
+          type="danger"
+        />
+      )}
+
+      {/* ── QUIT APP CONFIRMATION MODAL ── */}
+      {isQuitModalOpen && (
+        <ConfirmationModal
+          isOpen={true}
+          title="Quit App"
+          message="Are you sure you want to quit the app?"
+          confirmLabel="Yes"
+          cancelLabel="No"
+          onConfirm={handleQuitApp}
+          onCancel={() => setIsQuitModalOpen(false)}
           type="danger"
         />
       )}
