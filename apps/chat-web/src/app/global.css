@@ -3096,10 +3096,13 @@ body {
    ============================================================ */
 em-emoji-picker {
   --background: transparent !important;
+  --rgb-background: 0, 0, 0, 0 !important;
+  --em-rgb-background: 0, 0, 0, 0 !important;
   --border-color: transparent !important;
   --shadow: none !important;
   --border-radius: 0px !important;
   background: transparent !important;
+  background-color: transparent !important;
   border: none !important;
   box-shadow: none !important;
   font-family: var(--font-sans) !important;
