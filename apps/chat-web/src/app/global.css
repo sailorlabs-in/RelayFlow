@@ -3096,8 +3096,6 @@ body {
    ============================================================ */
 em-emoji-picker {
   --background: transparent !important;
-  --rgb-background: 0, 0, 0, 0 !important;
-  --em-rgb-background: 0, 0, 0, 0 !important;
   --border-color: transparent !important;
   --shadow: none !important;
   --border-radius: 0px !important;
@@ -3106,6 +3104,53 @@ em-emoji-picker {
   border: none !important;
   box-shadow: none !important;
   font-family: var(--font-sans) !important;
+  display: flex !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 440px !important;
+  flex: 1 1 auto !important;
+}
+
+div:has(> em-emoji-picker) {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 440px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+}
+
+@media (max-width: 639px) {
+  em-emoji-picker,
+  div:has(> em-emoji-picker) {
+    height: min(440px, 52vh) !important;
+  }
+}
+
+[data-theme='light'] em-emoji-picker {
+  --rgb-color: 30, 41, 59 !important;
+  --em-rgb-color: 30, 41, 59 !important;
+  --rgb-background: 248, 244, 234 !important;
+  --em-rgb-background: 248, 244, 234 !important;
+  --color-border: rgba(0, 0, 0, 0.08) !important;
+  --em-color-border: rgba(0, 0, 0, 0.08) !important;
+  --color-border-over: rgba(0, 0, 0, 0.12) !important;
+  --em-color-border-over: rgba(0, 0, 0, 0.12) !important;
+  --rgb-input: 255, 255, 255 !important;
+  --em-rgb-input: 255, 255, 255 !important;
+}
+
+[data-theme='dark'] em-emoji-picker {
+  --rgb-color: 248, 250, 252 !important;
+  --em-rgb-color: 248, 250, 252 !important;
+  --rgb-background: 22, 35, 62 !important;
+  --em-rgb-background: 22, 35, 62 !important;
+  --color-border: rgba(255, 255, 255, 0.08) !important;
+  --em-color-border: rgba(255, 255, 255, 0.08) !important;
+  --color-border-over: rgba(255, 255, 255, 0.15) !important;
+  --em-color-border-over: rgba(255, 255, 255, 0.15) !important;
+  --rgb-input: 30, 45, 78 !important;
+  --em-rgb-input: 30, 45, 78 !important;
 }
 
 /* Markdown Message Styles */

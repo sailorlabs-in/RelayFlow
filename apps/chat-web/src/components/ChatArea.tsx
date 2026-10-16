@@ -21,41 +21,285 @@ const EmojiPicker = dynamic(
     ]);
     return function EmojiPickerWrapper(props: any) {
       const wrapperRef = useRef<HTMLDivElement>(null);
+      const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>(
+        'dark',
+      );
 
       useEffect(() => {
-        const injectTransparentStyles = () => {
-          if (!wrapperRef.current) {
-            return;
-          }
-          const pickerEl = wrapperRef.current.querySelector('em-emoji-picker');
-          if (pickerEl && pickerEl.shadowRoot) {
-            if (!pickerEl.shadowRoot.querySelector('#em-transparent-style')) {
-              const style = document.createElement('style');
-              style.id = 'em-transparent-style';
-              style.textContent = `
-                #root {
-                  background-color: transparent !important;
-                  background: transparent !important;
-                  border: none !important;
-                  box-shadow: none !important;
-                }
-                .sticky {
-                  background-color: transparent !important;
-                  background: transparent !important;
-                }
-              `;
-              pickerEl.shadowRoot.appendChild(style);
-            }
+        const updateTheme = () => {
+          const docTheme = document.documentElement.getAttribute('data-theme');
+          if (docTheme === 'light') {
+            setCurrentTheme('light');
+          } else if (docTheme === 'dark') {
+            setCurrentTheme('dark');
+          } else {
+            const isLightSystem = window.matchMedia(
+              '(prefers-color-scheme: light)',
+            ).matches;
+            setCurrentTheme(isLightSystem ? 'light' : 'dark');
           }
         };
 
-        injectTransparentStyles();
-        const t1 = setTimeout(injectTransparentStyles, 0);
-        const t2 = setTimeout(injectTransparentStyles, 100);
-        const t3 = setTimeout(injectTransparentStyles, 300);
+        updateTheme();
+
+        const observer = new MutationObserver(updateTheme);
+        observer.observe(document.documentElement, {
+          attributes: true,
+          attributeFilter: ['data-theme', 'data-theme-schema'],
+        });
+
+        return () => observer.disconnect();
+      }, []);
+
+      useEffect(() => {
+        const isLight = currentTheme === 'light';
+        const injectStyles = () => {
+          if (!wrapperRef.current) {
+            return;
+          }
+          const innerDiv = wrapperRef.current
+            .firstElementChild as HTMLElement | null;
+          if (innerDiv) {
+            innerDiv.style.width = '100%';
+            innerDiv.style.maxWidth = '100%';
+            innerDiv.style.display = 'flex';
+            innerDiv.style.flexDirection = 'column';
+            innerDiv.style.alignItems = 'stretch';
+          }
+          const pickerEl = wrapperRef.current.querySelector('em-emoji-picker');
+          if (pickerEl && pickerEl.shadowRoot) {
+            const scrollInner = pickerEl.shadowRoot.querySelector(
+              '.scroll > div',
+            ) as HTMLElement | null;
+            if (scrollInner) {
+              scrollInner.style.width = '100%';
+              scrollInner.style.maxWidth = '100%';
+            }
+            let style = pickerEl.shadowRoot.querySelector(
+              '#em-theme-style',
+            ) as HTMLStyleElement | null;
+            if (!style) {
+              style = document.createElement('style');
+              style.id = 'em-theme-style';
+              pickerEl.shadowRoot.appendChild(style);
+            }
+            style.textContent = `
+              :host {
+                width: 100% !important;
+                max-width: 100% !important;
+                display: flex !important;
+                flex-direction: column !important;
+                height: 440px !important;
+              }
+              @media (max-width: 639px) {
+                :host {
+                  height: min(440px, 52vh) !important;
+                }
+              }
+              #root {
+                --padding: 8px !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                height: 100% !important;
+                display: flex !important;
+                flex-direction: column !important;
+                overflow: hidden !important;
+                background-color: transparent !important;
+                background: transparent !important;
+                border: none !important;
+                box-shadow: none !important;
+                font-family: inherit !important;
+              }
+              .scroll {
+                width: 100% !important;
+                max-width: 100% !important;
+                flex: 1 1 auto !important;
+                min-height: 0 !important;
+                overflow-y: auto !important;
+                overflow-x: hidden !important;
+                padding-left: 8px !important;
+                padding-right: 8px !important;
+                box-sizing: border-box !important;
+              }
+              .scroll > div,
+              .scroll > div > div {
+                width: 100% !important;
+                max-width: 100% !important;
+                box-sizing: border-box !important;
+              }
+              .sticky {
+                background-color: ${isLight ? 'rgba(248, 244, 234, 0.96)' : 'rgba(17, 28, 50, 0.96)'} !important;
+                background: ${isLight ? 'rgba(248, 244, 234, 0.96)' : 'rgba(17, 28, 50, 0.96)'} !important;
+                backdrop-filter: blur(12px) !important;
+                -webkit-backdrop-filter: blur(12px) !important;
+                color: ${isLight ? '#475569' : '#cbd5e1'} !important;
+                font-size: 12px !important;
+                font-weight: 600 !important;
+                letter-spacing: 0.02em !important;
+                padding: 6px 10px !important;
+                margin: 0 !important;
+                position: sticky !important;
+                top: 0 !important;
+                z-index: 5 !important;
+                border-bottom: 1px solid ${isLight ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.06)'} !important;
+              }
+              #nav {
+                border-bottom: 1px solid ${isLight ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.08)'} !important;
+                width: 100% !important;
+                padding-left: 6px !important;
+                padding-right: 6px !important;
+                box-sizing: border-box !important;
+              }
+              #nav button {
+                color: ${isLight ? '#64748b' : '#94a3b8'} !important;
+              }
+              #nav button[aria-selected="true"] {
+                color: var(--accent-primary, #0284c7) !important;
+              }
+              #nav .bar {
+                background-color: var(--accent-primary, #0284c7) !important;
+              }
+              #nav[data-position="top"]:before,
+              #preview[data-position="top"]:before,
+              #nav[data-position="bottom"]:before,
+              #preview[data-position="bottom"]:before {
+                display: none !important;
+              }
+              /* Search container row */
+              .spacer + .flex-middle,
+              .flex-middle:has(> .search) {
+                padding: 8px 8px 6px !important;
+                gap: 8px !important;
+                display: flex !important;
+                align-items: center !important;
+                box-sizing: border-box !important;
+                width: 100% !important;
+              }
+              .search {
+                padding: 0 !important;
+                margin: 0 !important;
+                position: relative !important;
+                flex: 1 1 auto !important;
+                display: flex !important;
+                align-items: center !important;
+              }
+              .search input[type="search"] {
+                width: 100% !important;
+                height: 38px !important;
+                line-height: 38px !important;
+                padding: 0 34px 0 36px !important;
+                background-color: ${isLight ? 'rgba(255, 255, 255, 0.92)' : 'rgba(255, 255, 255, 0.06)'} !important;
+                backdrop-filter: blur(8px) !important;
+                -webkit-backdrop-filter: blur(8px) !important;
+                border: 1px solid ${isLight ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.1)'} !important;
+                border-radius: 9999px !important;
+                color: ${isLight ? '#0f172a' : '#f8fafc'} !important;
+                font-size: 13.5px !important;
+                font-weight: 500 !important;
+                box-sizing: border-box !important;
+                box-shadow: ${isLight ? '0 1px 3px rgba(0, 0, 0, 0.04), inset 0 1px 1px rgba(255, 255, 255, 0.8)' : 'inset 0 1px 2px rgba(0, 0, 0, 0.25)'} !important;
+                transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+                outline: none !important;
+              }
+              .search input[type="search"]::placeholder {
+                color: ${isLight ? '#64748b' : '#94a3b8'} !important;
+                opacity: 1 !important;
+                font-weight: 400 !important;
+              }
+              .search input[type="search"]:focus {
+                background-color: ${isLight ? '#ffffff' : 'rgba(255, 255, 255, 0.1)'} !important;
+                border-color: var(--accent-primary, ${isLight ? '#0284c7' : '#38bdf8'}) !important;
+                box-shadow: 0 0 0 3px ${isLight ? 'rgba(2, 132, 199, 0.18)' : 'rgba(56, 189, 248, 0.24)'}, 0 2px 6px ${isLight ? 'rgba(0, 0, 0, 0.06)' : 'rgba(0, 0, 0, 0.3)'} !important;
+              }
+              .search .loupe {
+                left: 12px !important;
+                right: auto !important;
+                top: 50% !important;
+                transform: translateY(-50%) !important;
+                color: ${isLight ? '#64748b' : '#94a3b8'} !important;
+                width: 16px !important;
+                height: 16px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                pointer-events: none !important;
+                transition: color 0.2s ease !important;
+              }
+              .search:focus-within .loupe {
+                color: var(--accent-primary, ${isLight ? '#0284c7' : '#38bdf8'}) !important;
+              }
+              .search .delete {
+                right: 11px !important;
+                left: auto !important;
+                top: 50% !important;
+                transform: translateY(-50%) !important;
+                color: ${isLight ? '#94a3b8' : '#64748b'} !important;
+                width: 18px !important;
+                height: 18px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                cursor: pointer !important;
+                border-radius: 50% !important;
+                transition: all 0.15s ease !important;
+              }
+              .search .delete:hover {
+                color: ${isLight ? '#0f172a' : '#f8fafc'} !important;
+                background-color: ${isLight ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.12)'} !important;
+              }
+              /* Skin tone selector button styling */
+              .skin-tone-button {
+                width: 34px !important;
+                height: 34px !important;
+                border-radius: 50% !important;
+                border: 1px solid ${isLight ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.12)'} !important;
+                background-color: ${isLight ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.06)'} !important;
+                box-shadow: ${isLight ? '0 1px 3px rgba(0, 0, 0, 0.04), inset 0 1px 1px rgba(255, 255, 255, 0.8)' : 'inset 0 1px 2px rgba(0, 0, 0, 0.25)'} !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                cursor: pointer !important;
+                transition: all 0.15s ease !important;
+                padding: 0 !important;
+              }
+              .skin-tone-button:hover {
+                background-color: ${isLight ? '#ffffff' : 'rgba(255, 255, 255, 0.12)'} !important;
+                border-color: var(--accent-primary, ${isLight ? '#0284c7' : '#38bdf8'}) !important;
+                transform: scale(1.05) !important;
+              }
+              .skin-tone-button:active {
+                transform: scale(0.95) !important;
+              }
+              .skin-tone {
+                width: 18px !important;
+                height: 18px !important;
+                border-radius: 50% !important;
+                box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25) !important;
+              }
+              #skins {
+                background: ${isLight ? 'rgba(255, 253, 248, 0.96)' : 'rgba(22, 35, 62, 0.96)'} !important;
+                border: 1px solid ${isLight ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.12)'} !important;
+                border-radius: 12px !important;
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25) !important;
+                backdrop-filter: blur(16px) !important;
+                -webkit-backdrop-filter: blur(16px) !important;
+                padding: 6px !important;
+                gap: 6px !important;
+              }
+              .category-title {
+                color: ${isLight ? '#1e293b' : '#f8fafc'} !important;
+              }
+            `;
+          }
+        };
+
+        injectStyles();
+        const t1 = setTimeout(injectStyles, 0);
+        const t2 = setTimeout(injectStyles, 100);
+        const t3 = setTimeout(injectStyles, 300);
 
         const observer = new MutationObserver(() => {
-          injectTransparentStyles();
+          injectStyles();
         });
 
         if (wrapperRef.current) {
@@ -71,11 +315,24 @@ const EmojiPicker = dynamic(
           clearTimeout(t3);
           observer.disconnect();
         };
-      }, []);
+      }, [currentTheme]);
+
+      const effectiveTheme =
+        !props.theme || props.theme === 'auto' ? currentTheme : props.theme;
 
       return (
-        <div ref={wrapperRef} className="contents">
-          <Picker.default data={data.default} {...props} />
+        <div
+          ref={wrapperRef}
+          className="w-full flex-1 flex flex-col items-stretch"
+        >
+          <Picker.default
+            data={data.default}
+            {...props}
+            dynamicWidth={
+              props.dynamicWidth !== undefined ? props.dynamicWidth : true
+            }
+            theme={effectiveTheme}
+          />
         </div>
       );
     };
@@ -363,6 +620,115 @@ const renderMessageMedia = (
     </div>
   );
 };
+
+interface ReactionItemProps {
+  react: { emoji: string; userIds: string[] };
+  hasReacted: boolean;
+  onToggle: () => void;
+  userNames: string[];
+}
+
+function ReactionItem({
+  react,
+  hasReacted,
+  onToggle,
+  userNames,
+}: ReactionItemProps) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [alignment, setAlignment] = useState<'center' | 'left' | 'right'>(
+    'center',
+  );
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  const handleMouseEnter = () => {
+    if (buttonRef.current) {
+      const btnRect = buttonRef.current.getBoundingClientRect();
+      const chatContainer =
+        buttonRef.current.closest<HTMLElement>('.bg-theme-chat') ||
+        document.body;
+      const chatRect = chatContainer.getBoundingClientRect();
+
+      const leftEdge = Math.max(chatRect.left, 0);
+      const rightEdge = Math.min(chatRect.right, window.innerWidth);
+
+      const spaceLeft = btnRect.left - leftEdge;
+      const spaceRight = rightEdge - btnRect.right;
+
+      if (spaceLeft < 110 && spaceRight >= 110) {
+        setAlignment('left');
+      } else if (spaceRight < 110 && spaceLeft >= 110) {
+        setAlignment('right');
+      } else if (spaceLeft < 110 && spaceRight < 110) {
+        setAlignment(spaceLeft < spaceRight ? 'left' : 'right');
+      } else if (spaceRight < 150) {
+        setAlignment('right');
+      } else if (spaceLeft < 150) {
+        setAlignment('left');
+      } else {
+        setAlignment('center');
+      }
+    }
+    setIsHovered(true);
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+  };
+
+  return (
+    <button
+      ref={buttonRef}
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onToggle();
+      }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      className={`relative group/reaction flex items-center gap-1 px-1 py-0.5 rounded-full text-[14px] border cursor-pointer transition-all duration-150 active-press ${
+        hasReacted
+          ? 'bg-[var(--accent-ring)] border-[var(--accent-primary)] text-[var(--accent-primary)] font-semibold'
+          : 'bg-theme-input/40 border-glass/30 text-theme-secondary hover:bg-theme-input hover:border-glass'
+      }`}
+    >
+      <span className="leading-none text-[18px]">{react.emoji}</span>
+      {react.userIds.length > 1 && <span>{react.userIds.length}</span>}
+
+      {/* Collision-detected Tooltip */}
+      <div
+        className={`absolute bottom-full mb-2 pointer-events-none z-[9999] transition-all duration-150 flex flex-col ${
+          alignment === 'left'
+            ? 'left-[-6px] items-start'
+            : alignment === 'right'
+              ? 'right-[-6px] items-end'
+              : 'left-1/2 -translate-x-1/2 items-center'
+        } ${
+          isHovered
+            ? 'opacity-100 translate-y-0 visible'
+            : 'opacity-0 translate-y-1 invisible'
+        }`}
+      >
+        <div className="bg-zinc-900/95 dark:bg-zinc-900/95 text-white text-[11px] font-medium py-1.5 px-3 rounded-xl max-w-[220px] border border-white/10 dark:border-white/10 shadow-xl text-center leading-normal backdrop-blur-md">
+          <span className="font-bold text-[var(--accent-primary)] mb-0.5 block whitespace-nowrap">
+            {react.emoji} Reacted by
+          </span>
+          <span className="opacity-90 break-words line-clamp-3">
+            {userNames.join(', ')}
+          </span>
+        </div>
+        <div
+          className={`w-2.5 h-2.5 bg-zinc-900/95 dark:bg-zinc-900/95 border-r border-b border-white/10 dark:border-white/10 rotate-45 -mt-1.25 ${
+            alignment === 'left'
+              ? 'ml-4'
+              : alignment === 'right'
+                ? 'mr-4'
+                : 'self-center'
+          }`}
+        />
+      </div>
+    </button>
+  );
+}
 
 export function ChatArea({
   activeConversationId,
@@ -1037,7 +1403,27 @@ export function ChatArea({
   }, [editingMessageId]);
 
   const onEmojiSelect = (emoji: any) => {
-    setMessageInput((prev) => prev + emoji.native);
+    const emojiChar = emoji.native;
+    const inputEl = document.getElementById(
+      'message-input',
+    ) as HTMLTextAreaElement | null;
+    if (inputEl) {
+      const start = inputEl.selectionStart ?? messageInput.length;
+      const end = inputEl.selectionEnd ?? messageInput.length;
+      const before = messageInput.substring(0, start);
+      const after = messageInput.substring(end);
+      setMessageInput(before + emojiChar + after);
+      setTimeout(() => {
+        inputEl.focus();
+        inputEl.setSelectionRange(
+          start + emojiChar.length,
+          start + emojiChar.length,
+        );
+      }, 0);
+    } else {
+      setMessageInput((prev) => prev + emojiChar);
+    }
+    setShowEmojiPicker(false);
   };
 
   const [activeMediaItem, setActiveMediaItem] =
@@ -2463,50 +2849,27 @@ export function ChatArea({
 
                               {msg.reactions && msg.reactions.length > 0 && (
                                 <div className="flex flex-wrap gap-1 mt-1.5 select-none">
-                                  {msg.reactions.map((react, rIdx) => {
-                                    const hasReacted = react.userIds.includes(
-                                      user?.id || '',
-                                    );
-                                    return (
-                                      <button
-                                        key={react.emoji + rIdx}
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          if (activeConversationId) {
-                                            socketManager.toggleReaction(
-                                              msg.id,
-                                              activeConversationId,
-                                              react.emoji,
-                                            );
-                                          }
-                                        }}
-                                        className={`relative group/reaction flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11.5px] border cursor-pointer transition-all duration-150 active-press ${
-                                          hasReacted
-                                            ? 'bg-[var(--accent-ring)] border-[var(--accent-primary)] text-[var(--accent-primary)] font-semibold'
-                                            : 'bg-theme-input/40 border-glass/30 text-theme-secondary hover:bg-theme-input hover:border-glass'
-                                        }`}
-                                      >
-                                        <span className="leading-none text-[16px]">
-                                          {react.emoji}
-                                        </span>
-                                        <span>{react.userIds.length}</span>
-                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/reaction:flex flex-col items-center pointer-events-none z-[9999] animate-fade-in">
-                                          <div className="bg-black/90 dark:bg-zinc-900/95 backdrop-blur-md text-white text-[10.5px] font-medium py-1.5 px-3 rounded-xl whitespace-nowrap border border-white/10 dark:border-zinc-800 shadow-xl text-center leading-normal">
-                                            <span className="font-bold text-[var(--accent-primary)] mb-0.5 block">
-                                              {react.emoji} Reacted by
-                                            </span>
-                                            <span className="opacity-90">
-                                              {getReactingUserNames(
-                                                react.userIds,
-                                              ).join(', ')}
-                                            </span>
-                                          </div>
-                                          <div className="w-2.5 h-2.5 bg-black/90 dark:bg-zinc-900/95 border-r border-b border-white/10 dark:border-zinc-800 rotate-45 -mt-1.25" />
-                                        </div>
-                                      </button>
-                                    );
-                                  })}
+                                  {msg.reactions.map((react, rIdx) => (
+                                    <ReactionItem
+                                      key={react.emoji + rIdx}
+                                      react={react}
+                                      hasReacted={react.userIds.includes(
+                                        user?.id || '',
+                                      )}
+                                      onToggle={() => {
+                                        if (activeConversationId) {
+                                          socketManager.toggleReaction(
+                                            msg.id,
+                                            activeConversationId,
+                                            react.emoji,
+                                          );
+                                        }
+                                      }}
+                                      userNames={getReactingUserNames(
+                                        react.userIds,
+                                      )}
+                                    />
+                                  ))}
                                 </div>
                               )}
                             </div>
@@ -2871,50 +3234,27 @@ export function ChatArea({
 
                           {msg.reactions && msg.reactions.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-1.5 select-none">
-                              {msg.reactions.map((react, rIdx) => {
-                                const hasReacted = react.userIds.includes(
-                                  user?.id || '',
-                                );
-                                return (
-                                  <button
-                                    key={react.emoji + rIdx}
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      if (activeConversationId) {
-                                        socketManager.toggleReaction(
-                                          msg.id,
-                                          activeConversationId,
-                                          react.emoji,
-                                        );
-                                      }
-                                    }}
-                                    className={`relative group/reaction flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11.5px] border cursor-pointer transition-all duration-150 active-press ${
-                                      hasReacted
-                                        ? 'bg-[var(--accent-ring)] border-[var(--accent-primary)] text-[var(--accent-primary)] font-semibold'
-                                        : 'bg-theme-input/40 border-glass/30 text-theme-secondary hover:bg-theme-input hover:border-glass'
-                                    }`}
-                                  >
-                                    <span className="leading-none text-[16px]">
-                                      {react.emoji}
-                                    </span>
-                                    <span>{react.userIds.length}</span>
-                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/reaction:flex flex-col items-center pointer-events-none z-[9999] animate-fade-in">
-                                      <div className="bg-black/90 dark:bg-zinc-900/95 backdrop-blur-md text-white text-[10.5px] font-medium py-1.5 px-3 rounded-xl whitespace-nowrap border border-white/10 dark:border-zinc-800 shadow-xl text-center leading-normal">
-                                        <span className="font-bold text-[var(--accent-primary)] mb-0.5 block">
-                                          {react.emoji} Reacted by
-                                        </span>
-                                        <span className="opacity-90">
-                                          {getReactingUserNames(
-                                            react.userIds,
-                                          ).join(', ')}
-                                        </span>
-                                      </div>
-                                      <div className="w-2.5 h-2.5 bg-black/90 dark:bg-zinc-900/95 border-r border-b border-white/10 dark:border-zinc-800 rotate-45 -mt-1.25" />
-                                    </div>
-                                  </button>
-                                );
-                              })}
+                              {msg.reactions.map((react, rIdx) => (
+                                <ReactionItem
+                                  key={react.emoji + rIdx}
+                                  react={react}
+                                  hasReacted={react.userIds.includes(
+                                    user?.id || '',
+                                  )}
+                                  onToggle={() => {
+                                    if (activeConversationId) {
+                                      socketManager.toggleReaction(
+                                        msg.id,
+                                        activeConversationId,
+                                        react.emoji,
+                                      );
+                                    }
+                                  }}
+                                  userNames={getReactingUserNames(
+                                    react.userIds,
+                                  )}
+                                />
+                              ))}
                             </div>
                           )}
 
@@ -3223,12 +3563,13 @@ export function ChatArea({
                         {showEmojiPicker && !isMobile && (
                           <div
                             ref={emojiPickerContainerRef}
-                            className="absolute z-50 shadow-(--glass-shadow) rounded-2xl overflow-hidden border-[1.5px] border-glass bg-(--glass-bg) backdrop-blur-[20px] transition-opacity duration-150 ease-out"
+                            className="absolute z-50 shadow-(--glass-shadow) rounded-2xl overflow-hidden border-[1.5px] border-glass bg-(--glass-bg) backdrop-blur-[20px] transition-opacity duration-150 ease-out w-[352px] h-[440px]"
                             style={{ ...emojiPickerStyle }}
                           >
                             <EmojiPicker
                               onEmojiSelect={onEmojiSelect}
                               theme="auto"
+                              dynamicWidth={true}
                               previewPosition="none"
                             />
                           </div>
@@ -4351,36 +4692,43 @@ export function ChatArea({
       {/* Reaction picker — single centered modal shared across all messages */}
       {activeReactionMessageId && (
         <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center"
+          className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-xs animate-fade-in"
           onClick={() => setActiveReactionMessageId(null)}
         >
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <div
-            className="relative z-10 shadow-(--glass-shadow) rounded-2xl overflow-hidden border-[1.5px] border-glass bg-(--glass-bg) backdrop-blur-[20px] animate-fade-in"
+            className="relative z-10 w-full max-w-md sm:w-[352px] sm:max-w-[352px] sm:rounded-2xl rounded-t-2xl overflow-hidden border-[1.5px] border-glass bg-(--glass-bg) backdrop-blur-[20px] shadow-(--glass-shadow) animate-slide-up sm:animate-fade-in flex flex-col items-stretch"
             onClick={(e) => e.stopPropagation()}
           >
-            <button
-              type="button"
-              onClick={() => setActiveReactionMessageId(null)}
-              className="absolute top-2 right-2 z-20 w-7 h-7 rounded-lg flex items-center justify-center bg-(--glass-bg) border border-glass text-theme-muted hover:text-theme-primary hover:bg-(--theme-btn-hover) transition-all duration-150"
-              title="Close"
-            >
-              <IconX size={14} />
-            </button>
-            <EmojiPicker
-              onEmojiSelect={(emoji: any) => {
-                if (activeConversationId && activeReactionMessageId) {
-                  socketManager.toggleReaction(
-                    activeReactionMessageId,
-                    activeConversationId,
-                    emoji.native,
-                  );
-                }
-                setActiveReactionMessageId(null);
-              }}
-              theme="auto"
-              previewPosition="none"
-            />
+            <div className="w-full flex items-center justify-between px-4 py-2.5 border-b border-glass bg-theme-sidebar/40 shrink-0">
+              <span className="text-xs font-semibold text-theme-secondary flex items-center gap-1.5">
+                <IconEmoji size={16} /> Add Reaction
+              </span>
+              <button
+                type="button"
+                onClick={() => setActiveReactionMessageId(null)}
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-theme-muted hover:text-theme-primary bg-theme-input/50 hover:bg-theme-input active-press transition-colors"
+                title="Close"
+              >
+                <IconX size={14} />
+              </button>
+            </div>
+            <div className="w-full overflow-hidden flex flex-col items-stretch">
+              <EmojiPicker
+                onEmojiSelect={(emoji: any) => {
+                  if (activeConversationId && activeReactionMessageId) {
+                    socketManager.toggleReaction(
+                      activeReactionMessageId,
+                      activeConversationId,
+                      emoji.native,
+                    );
+                  }
+                  setActiveReactionMessageId(null);
+                }}
+                theme="auto"
+                dynamicWidth={true}
+                previewPosition="none"
+              />
+            </div>
           </div>
         </div>
       )}
@@ -4392,7 +4740,7 @@ export function ChatArea({
         >
           <div
             ref={mobileEmojiContainerRef}
-            className="relative z-10 w-full max-w-sm sm:rounded-2xl rounded-t-2xl overflow-hidden border-[1.5px] border-glass bg-(--glass-bg) backdrop-blur-[20px] shadow-(--glass-shadow) animate-slide-up flex flex-col items-center pb-2"
+            className="relative z-10 w-full max-w-md sm:rounded-2xl rounded-t-2xl overflow-hidden border-[1.5px] border-glass bg-(--glass-bg) backdrop-blur-[20px] shadow-(--glass-shadow) animate-slide-up flex flex-col items-stretch pb-1"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="w-full flex items-center justify-between px-4 py-2.5 border-b border-glass bg-theme-sidebar/30">
@@ -4408,10 +4756,11 @@ export function ChatArea({
                 <IconX size={14} />
               </button>
             </div>
-            <div className="w-full flex justify-center max-h-[55vh] overflow-y-auto p-1">
+            <div className="w-full h-[52vh] min-h-[380px] max-h-[500px] overflow-hidden flex flex-col items-stretch">
               <EmojiPicker
                 onEmojiSelect={onEmojiSelect}
                 theme="auto"
+                dynamicWidth={true}
                 previewPosition="none"
               />
             </div>
