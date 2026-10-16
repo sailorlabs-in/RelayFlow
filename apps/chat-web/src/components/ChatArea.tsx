@@ -20,7 +20,64 @@ const EmojiPicker = dynamic(
       import('@emoji-mart/data'),
     ]);
     return function EmojiPickerWrapper(props: any) {
-      return <Picker.default data={data.default} {...props} />;
+      const wrapperRef = useRef<HTMLDivElement>(null);
+
+      useEffect(() => {
+        const injectTransparentStyles = () => {
+          if (!wrapperRef.current) {
+            return;
+          }
+          const pickerEl = wrapperRef.current.querySelector('em-emoji-picker');
+          if (pickerEl && pickerEl.shadowRoot) {
+            if (!pickerEl.shadowRoot.querySelector('#em-transparent-style')) {
+              const style = document.createElement('style');
+              style.id = 'em-transparent-style';
+              style.textContent = `
+                #root {
+                  background-color: transparent !important;
+                  background: transparent !important;
+                  border: none !important;
+                  box-shadow: none !important;
+                }
+                .sticky {
+                  background-color: transparent !important;
+                  background: transparent !important;
+                }
+              `;
+              pickerEl.shadowRoot.appendChild(style);
+            }
+          }
+        };
+
+        injectTransparentStyles();
+        const t1 = setTimeout(injectTransparentStyles, 0);
+        const t2 = setTimeout(injectTransparentStyles, 100);
+        const t3 = setTimeout(injectTransparentStyles, 300);
+
+        const observer = new MutationObserver(() => {
+          injectTransparentStyles();
+        });
+
+        if (wrapperRef.current) {
+          observer.observe(wrapperRef.current, {
+            childList: true,
+            subtree: true,
+          });
+        }
+
+        return () => {
+          clearTimeout(t1);
+          clearTimeout(t2);
+          clearTimeout(t3);
+          observer.disconnect();
+        };
+      }, []);
+
+      return (
+        <div ref={wrapperRef} className="contents">
+          <Picker.default data={data.default} {...props} />
+        </div>
+      );
     };
   },
   {
@@ -92,6 +149,8 @@ import {
   IconList,
   IconQuote,
   IconEye,
+  IconCamera,
+  IconImage,
 } from './Icons';
 import { PresenceDot } from './PresenceDot';
 import { showToast } from './toast';
@@ -417,8 +476,12 @@ export function ChatArea({
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+  const isMobile = isMobileScreen || isMobileView;
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   const emojiPickerContainerRef = useRef<HTMLDivElement>(null);
+  const mobileEmojiContainerRef = useRef<HTMLDivElement>(null);
+  const mobileAttachMenuRef = useRef<HTMLDivElement>(null);
+  const [showMobileAttachMenu, setShowMobileAttachMenu] = useState(false);
 
   const [emojiPickerStyle, setEmojiPickerStyle] = useState<React.CSSProperties>(
     {
@@ -925,16 +988,39 @@ export function ChatArea({
         emojiPickerRef.current &&
         !emojiPickerRef.current.contains(event.target as Node) &&
         (!emojiPickerContainerRef.current ||
-          !emojiPickerContainerRef.current.contains(event.target as Node))
+          !emojiPickerContainerRef.current.contains(event.target as Node)) &&
+        (!mobileEmojiContainerRef.current ||
+          !mobileEmojiContainerRef.current.contains(event.target as Node))
       ) {
         setShowEmojiPicker(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
     };
   }, []);
+
+  useEffect(() => {
+    const handleAttachMenuClickOutside = (event: Event) => {
+      if (
+        mobileAttachMenuRef.current &&
+        !mobileAttachMenuRef.current.contains(event.target as Node)
+      ) {
+        setShowMobileAttachMenu(false);
+      }
+    };
+    if (showMobileAttachMenu) {
+      document.addEventListener('mousedown', handleAttachMenuClickOutside);
+      document.addEventListener('touchstart', handleAttachMenuClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleAttachMenuClickOutside);
+      document.removeEventListener('touchstart', handleAttachMenuClickOutside);
+    };
+  }, [showMobileAttachMenu]);
 
   // Global keydown listener to cancel editing on Escape
   useEffect(() => {
@@ -960,6 +1046,7 @@ export function ChatArea({
   const [showRetentionPopover, setShowRetentionPopover] =
     useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const [attachedFiles, setAttachedFiles] = useState<
     {
       url: string;
@@ -1121,6 +1208,9 @@ export function ChatArea({
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
+      if (cameraInputRef.current) {
+        cameraInputRef.current.value = '';
+      }
     }
   };
 
@@ -1174,6 +1264,8 @@ export function ChatArea({
     setIsMdMode(false);
     setMdTab('write');
     setIsTypingState(false);
+    setShowMobileAttachMenu(false);
+    setShowEmojiPicker(false);
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
     }
@@ -1419,6 +1511,7 @@ export function ChatArea({
     setMessageInput('');
     setAttachedFiles([]);
     setShowEmojiPicker(false);
+    setShowMobileAttachMenu(false);
     setReplyingToMessage(null);
   };
 
@@ -3104,8 +3197,9 @@ export function ChatArea({
                       className="flex gap-2.5 items-end"
                       onSubmit={handleSendMessage}
                     >
+                      {/* Desktop Emoji Picker */}
                       <div
-                        className="relative hidden md:block"
+                        className={`relative ${isMobile ? 'hidden' : 'hidden md:block'}`}
                         ref={emojiPickerRef}
                       >
                         <button
@@ -3126,7 +3220,7 @@ export function ChatArea({
                           <IconEmoji size={20} />
                         </button>
 
-                        {showEmojiPicker && (
+                        {showEmojiPicker && !isMobile && (
                           <div
                             ref={emojiPickerContainerRef}
                             className="absolute z-50 shadow-(--glass-shadow) rounded-2xl overflow-hidden border-[1.5px] border-glass bg-(--glass-bg) backdrop-blur-[20px] transition-opacity duration-150 ease-out"
@@ -3140,13 +3234,15 @@ export function ChatArea({
                           </div>
                         )}
                       </div>
+
+                      {/* Desktop Attachment Button (Paperclip / U-pin) */}
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={
                           uploading || !canAttachFiles || !canSendMessages
                         }
-                        className="w-11.5 h-11.5 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200 bg-theme-input text-theme-muted hover:bg-(--theme-btn-hover) hover:text-theme-primary disabled:opacity-40 disabled:cursor-not-allowed active-press border border-glass"
+                        className={`${isMobile ? 'hidden' : 'hidden md:flex'} w-11.5 h-11.5 rounded-xl items-center justify-center shrink-0 transition-all duration-200 bg-theme-input text-theme-muted hover:bg-(--theme-btn-hover) hover:text-theme-primary disabled:opacity-40 disabled:cursor-not-allowed active-press border border-glass`}
                         title={
                           !canSendMessages
                             ? isChannelMode &&
@@ -3173,12 +3269,121 @@ export function ChatArea({
                           </svg>
                         )}
                       </button>
+
+                      {/* Mobile Attachment Button with Dropdown (Paperclip / U-pin) */}
+                      <div
+                        className={`relative ${isMobile ? 'block' : 'md:hidden'}`}
+                        ref={mobileAttachMenuRef}
+                      >
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setShowMobileAttachMenu((prev) => !prev)
+                          }
+                          disabled={
+                            uploading || (!canAttachFiles && !canSendMessages)
+                          }
+                          className={`w-11.5 h-11.5 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200 bg-theme-input text-theme-muted hover:bg-(--theme-btn-hover) hover:text-theme-primary disabled:opacity-40 disabled:cursor-not-allowed active-press border border-glass ${
+                            showMobileAttachMenu
+                              ? 'bg-(--theme-btn-hover) text-theme-primary ring-2 ring-(--accent-primary)/30'
+                              : ''
+                          }`}
+                          title="Attach options"
+                        >
+                          {uploading ? (
+                            <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin border-(--text-primary)" />
+                          ) : (
+                            <svg
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className={`w-5 h-5 transition-transform duration-200 ${
+                                showMobileAttachMenu
+                                  ? 'rotate-45 text-(--accent-primary)'
+                                  : ''
+                              }`}
+                            >
+                              <line x1="12" y1="5" x2="12" y2="19" />
+                              <line x1="5" y1="12" x2="19" y2="12" />
+                            </svg>
+                          )}
+                        </button>
+
+                        {/* Mobile Dropdown Menu */}
+                        {showMobileAttachMenu && (
+                          <div className="absolute bottom-full left-0 mb-2.5 min-w-[190px] bg-theme-sidebar/95 backdrop-blur-xl border border-glass shadow-(--glass-shadow) rounded-2xl p-1.5 flex flex-col gap-1 z-50 animate-fade-in">
+                            {/* 1. Add emoji */}
+                            <button
+                              type="button"
+                              disabled={!canSendMessages}
+                              onClick={() => {
+                                setShowMobileAttachMenu(false);
+                                setShowEmojiPicker(true);
+                              }}
+                              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-[13.5px] font-medium text-theme-primary hover:bg-theme-input active-press transition-all cursor-pointer border-none bg-transparent disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-amber-500/10 text-amber-500 shrink-0">
+                                <IconEmoji size={18} />
+                              </div>
+                              <span className="truncate">Add emoji</span>
+                            </button>
+
+                            {/* 2. Attach media */}
+                            <button
+                              type="button"
+                              disabled={
+                                uploading || !canAttachFiles || !canSendMessages
+                              }
+                              onClick={() => {
+                                setShowMobileAttachMenu(false);
+                                fileInputRef.current?.click();
+                              }}
+                              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-[13.5px] font-medium text-theme-primary hover:bg-theme-input active-press transition-all cursor-pointer border-none bg-transparent disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-(--accent-primary)/10 text-(--accent-primary) shrink-0">
+                                <IconImage size={18} />
+                              </div>
+                              <span className="truncate">Attach media</span>
+                            </button>
+
+                            {/* 3. Open camera */}
+                            <button
+                              type="button"
+                              disabled={
+                                uploading || !canAttachFiles || !canSendMessages
+                              }
+                              onClick={() => {
+                                setShowMobileAttachMenu(false);
+                                cameraInputRef.current?.click();
+                              }}
+                              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-[13.5px] font-medium text-theme-primary hover:bg-theme-input active-press transition-all cursor-pointer border-none bg-transparent disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-emerald-500/10 text-emerald-500 shrink-0">
+                                <IconCamera size={18} />
+                              </div>
+                              <span className="truncate">Open camera</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
                       <input
                         type="file"
                         ref={fileInputRef}
                         onChange={handleFileSelect}
                         className="hidden"
                         multiple
+                      />
+                      <input
+                        type="file"
+                        ref={cameraInputRef}
+                        onChange={handleFileSelect}
+                        accept="image/*,video/*"
+                        capture="environment"
+                        className="hidden"
                       />
                       <div className="relative flex-1 flex flex-col justify-end">
                         {mentionQuery && emojiResults.length > 0 && (
@@ -4176,6 +4381,40 @@ export function ChatArea({
               theme="auto"
               previewPosition="none"
             />
+          </div>
+        </div>
+      )}
+      {/* Mobile Input Emoji Picker Overlay */}
+      {showEmojiPicker && isMobile && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-xs animate-fade-in"
+          onClick={() => setShowEmojiPicker(false)}
+        >
+          <div
+            ref={mobileEmojiContainerRef}
+            className="relative z-10 w-full max-w-sm sm:rounded-2xl rounded-t-2xl overflow-hidden border-[1.5px] border-glass bg-(--glass-bg) backdrop-blur-[20px] shadow-(--glass-shadow) animate-slide-up flex flex-col items-center pb-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-full flex items-center justify-between px-4 py-2.5 border-b border-glass bg-theme-sidebar/30">
+              <span className="text-xs font-semibold text-theme-secondary flex items-center gap-1.5">
+                <IconEmoji size={16} /> Choose Emoji
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowEmojiPicker(false)}
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-theme-muted hover:text-theme-primary bg-theme-input/50 hover:bg-theme-input active-press transition-colors"
+                title="Close"
+              >
+                <IconX size={14} />
+              </button>
+            </div>
+            <div className="w-full flex justify-center max-h-[55vh] overflow-y-auto p-1">
+              <EmojiPicker
+                onEmojiSelect={onEmojiSelect}
+                theme="auto"
+                previewPosition="none"
+              />
+            </div>
           </div>
         </div>
       )}
