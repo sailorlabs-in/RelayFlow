@@ -241,9 +241,14 @@ export const MessageBubbleRow: React.FC<MessageBubbleRowProps> = ({
                 ) {
                   return (
                     <div
-                      className={`flex items-center gap-2 select-all my-1.5 flex-wrap ${
+                      className={`flex items-center gap-2 select-none md:select-auto my-1.5 flex-wrap touch-pan-y ${
                         isOut ? 'justify-end' : 'justify-start'
                       }`}
+                      style={{
+                        userSelect: 'none',
+                        WebkitUserSelect: 'none',
+                        WebkitTouchCallout: 'none',
+                      }}
                     >
                       {emojiSegments.map((glyph, idx) => (
                         <AnimatedEmoji
@@ -259,12 +264,21 @@ export const MessageBubbleRow: React.FC<MessageBubbleRowProps> = ({
                   <div
                     className={
                       isOnlyEmojis(msg.content)
-                        ? `text-[60px] leading-15 wrap-break-word select-all ${
+                        ? `text-[60px] leading-15 wrap-break-word select-none md:select-auto touch-pan-y ${
                             isOut ? 'text-right' : 'text-left'
                           }`
                         : `px-4 py-2.5 rounded-[18px] text-[14px] leading-relaxed wrap-break-word shadow-xs ${
                             isOut ? 'msg-bubble-out' : 'msg-bubble-in'
                           }`
+                    }
+                    style={
+                      isOnlyEmojis(msg.content)
+                        ? {
+                            userSelect: 'none',
+                            WebkitUserSelect: 'none',
+                            WebkitTouchCallout: 'none',
+                          }
+                        : undefined
                     }
                   >
                     {isOnlyEmojis(msg.content) ? (

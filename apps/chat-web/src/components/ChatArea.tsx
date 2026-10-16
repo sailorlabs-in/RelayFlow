@@ -559,6 +559,7 @@ export function ChatArea({
     message: Message;
     x: number;
     y: number;
+    openedAt?: number;
   }
   const [contextMenu, setContextMenu] =
     useState<MessageContextMenuState | null>(null);
@@ -979,21 +980,29 @@ export function ChatArea({
 
   const handleContextMenu = (e: React.MouseEvent, msg: Message) => {
     e.preventDefault();
-    if (isMobile) {
-      return;
-    }
-    setContextMenu({ message: msg, x: e.clientX, y: e.clientY });
+    setContextMenu({
+      message: msg,
+      x: e.clientX,
+      y: e.clientY,
+      openedAt: Date.now(),
+    });
   };
 
   const handleLongPress = (coords: { x: number; y: number }, msg: Message) => {
-    if (!isMobile) {
-      return;
-    }
-    setContextMenu({ message: msg, x: coords.x, y: coords.y });
+    setContextMenu({
+      message: msg,
+      x: coords.x,
+      y: coords.y,
+      openedAt: Date.now(),
+    });
   };
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
+      // Prevent synthetic click immediately after 1-finger touch release from closing the menu
+      if (contextMenu?.openedAt && Date.now() - contextMenu.openedAt < 400) {
+        return;
+      }
       if (
         contextMenuRef.current &&
         !contextMenuRef.current.contains(e.target as Node)

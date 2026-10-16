@@ -557,6 +557,14 @@ body {
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.05);
 }
 
+/* Touch and mobile gestures for chat messages */
+.msg-bubble-in,
+.msg-bubble-out,
+[id^='msg-'] {
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* Dropdown */
 @utility dropdown-base {
   background: var(--dropdown-bg);

@@ -41,6 +41,27 @@ export function getStoredHotReactions(
     return DEFAULT_HOT_REACTIONS;
   }
   try {
+    // Check if chat_user in localStorage has server hot reactions
+    const cachedUser = localStorage.getItem('chat_user');
+    if (cachedUser) {
+      try {
+        const u = JSON.parse(cachedUser);
+        if (u && u.hotReactions && (!userId || u.id === userId)) {
+          const parsed = JSON.parse(u.hotReactions);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const cleaned = parsed
+              .filter((e) => typeof e === 'string' && e.trim().length > 0)
+              .slice(0, MAX_HOT_REACTIONS);
+            if (cleaned.length > 0) {
+              return cleaned;
+            }
+          }
+        }
+      } catch {
+        // continue
+      }
+    }
+
     const key = userId
       ? `${STORAGE_PREFIX}${userId}`
       : `${STORAGE_PREFIX}default`;

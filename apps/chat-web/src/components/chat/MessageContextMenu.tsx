@@ -9,7 +9,12 @@ import { useHotReactions } from './useHotReactions';
 import { CustomizeHotReactionsModal } from './CustomizeHotReactionsModal';
 
 interface MessageContextMenuProps {
-  contextMenu: { x: number; y: number; message: Message } | null;
+  contextMenu: {
+    x: number;
+    y: number;
+    message: Message;
+    openedAt?: number;
+  } | null;
   adjustedContextMenu: {
     x: number;
     y: number;
@@ -75,6 +80,22 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
         className="fixed inset-0 z-[9998] bg-transparent"
         onClick={(e) => {
           e.stopPropagation();
+          if (
+            contextMenu?.openedAt &&
+            Date.now() - contextMenu.openedAt < 400
+          ) {
+            return;
+          }
+          onClose();
+        }}
+        onTouchEnd={(e) => {
+          e.stopPropagation();
+          if (
+            contextMenu?.openedAt &&
+            Date.now() - contextMenu.openedAt < 400
+          ) {
+            return;
+          }
           onClose();
         }}
         onContextMenu={(e) => {

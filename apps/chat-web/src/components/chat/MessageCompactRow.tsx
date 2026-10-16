@@ -229,7 +229,14 @@ export const MessageCompactRow: React.FC<MessageCompactRowProps> = ({
                     emojiSegments.length <= 2
                   ) {
                     return (
-                      <div className="flex items-center gap-2 select-all my-1.5 flex-wrap">
+                      <div
+                        className="flex items-center gap-2 select-none md:select-auto my-1.5 flex-wrap touch-pan-y"
+                        style={{
+                          userSelect: 'none',
+                          WebkitUserSelect: 'none',
+                          WebkitTouchCallout: 'none',
+                        }}
+                      >
                         {emojiSegments.map((glyph, idx) => (
                           <AnimatedEmoji
                             key={`${msg.id}-anim-${glyph}-${idx}`}
@@ -244,9 +251,18 @@ export const MessageCompactRow: React.FC<MessageCompactRowProps> = ({
                     <div
                       className={`text-sm leading-relaxed text-theme-primary break-all ${
                         isOnlyEmojis(msg.content)
-                          ? 'text-[60px] leading-15 select-all'
+                          ? 'text-[60px] leading-15 select-none md:select-auto touch-pan-y'
                           : ''
                       }`}
+                      style={
+                        isOnlyEmojis(msg.content)
+                          ? {
+                              userSelect: 'none',
+                              WebkitUserSelect: 'none',
+                              WebkitTouchCallout: 'none',
+                            }
+                          : undefined
+                      }
                     >
                       {isOnlyEmojis(msg.content) ? (
                         msg.content
