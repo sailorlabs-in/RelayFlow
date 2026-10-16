@@ -1,102 +1,33 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import ReactDOM from 'react-dom';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import StoreProvider from '../../store/StoreProvider';
 import { useAppSelector, useAppDispatch } from '../../store';
 import { restoreSession } from '../../store/slices/authSlice';
 import ApiRequest from '../../utils/ApiRequest';
 import { showToast } from '../../components/toast';
-import { Avatar } from '../../components/Avatar';
 import { socketManager } from '../../store/socketManager';
+import type {
+  UserData,
+  GroupData,
+  UpdateNoteData,
+  AdminTabType,
+} from './components';
 import {
-  IconBold,
-  IconItalic,
-  IconStrikethrough,
-  IconCode,
-  IconLink,
-  IconList,
-  IconQuote,
-} from '../../components/Icons';
-
-interface UserData {
-  id: string;
-  email: string;
-  username?: string;
-  displayName?: string;
-  avatarUrl?: string;
-  role: string;
-  warnings: string[];
-  status: string;
-  visibility?: string;
-  lastSeen?: string | null;
-  createdAt: string;
-}
-
-function formatLastSeen(dateString: string | null | undefined): string {
-  if (!dateString) {
-    return 'never';
-  }
-  try {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    if (isNaN(diffMs) || diffMs < 0) {
-      return 'recently';
-    }
-    const diffSec = Math.floor(diffMs / 1000);
-    const diffMin = Math.floor(diffSec / 60);
-    const diffHr = Math.floor(diffMin / 60);
-    const diffDays = Math.floor(diffHr / 24);
-
-    if (diffSec < 60) {
-      return 'just now';
-    }
-    if (diffMin < 60) {
-      return `${diffMin}m ago`;
-    }
-    if (diffHr < 24) {
-      return `${diffHr}h ago`;
-    }
-    if (diffDays < 7) {
-      return `${diffDays}d ago`;
-    }
-    return date.toLocaleDateString();
-  } catch {
-    return 'recently';
-  }
-}
-
-interface GroupData {
-  id: string;
-  name: string;
-  description?: string;
-  createdAt: string;
-  memberCount: number;
-  owner: {
-    id: string;
-    email: string;
-    username?: string;
-    displayName?: string;
-  } | null;
-}
-
-interface UpdateNoteData {
-  id: string;
-  title: string;
-  content: string;
-  createdAt: string;
-  updatedAt: string;
-  author: {
-    id: string;
-    displayName?: string;
-    username?: string;
-    email: string;
-  } | null;
-}
+  AdminSidebar,
+  AdminMetricsCards,
+  AdminUsersTab,
+  AdminGroupsTab,
+  AdminUpdateNotesTab,
+  AdminUserActionMenuPortal,
+  AdminNoteModal,
+  AdminWarningModal,
+  AdminAddMemberModal,
+  AdminFriendRequestModal,
+  AdminEditIdentityModal,
+  AdminDeleteNoteModal,
+} from './components';
 
 function AdminDashboardContent() {
   const router = useRouter();
@@ -106,9 +37,7 @@ function AdminDashboardContent() {
   // hydrated = true once restoreSession has synchronously read localStorage
   const [hydrated, setHydrated] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<
-    'users' | 'groups' | 'update-notes'
-  >('users');
+  const [activeTab, setActiveTab] = useState<AdminTabType>('users');
   const [users, setUsers] = useState<UserData[]>([]);
   const [groups, setGroups] = useState<GroupData[]>([]);
   const [updateNotes, setUpdateNotes] = useState<UpdateNoteData[]>([]);
@@ -236,21 +165,24 @@ function AdminDashboardContent() {
       return;
     }
 
-    // Connect socket for the admin dashboard to enable real-time status
     socketManager.connect(accessToken);
     const socket = socketManager.getSocket();
     if (!socket) {
       return;
     }
 
-    // Helper: patch a single user's status and lastSeen in local state
     const patchStatus = (userId: string, status: string, lastSeen?: string) => {
       setUsers((prev) =>
-        prev.map((u) =>
-          u.id === userId
-            ? { ...u, status, ...(lastSeen !== undefined && { lastSeen }) }
-            : u,
-        ),
+        prev.map((u) => {
+          if (u.id === userId) {
+            return {
+              ...u,
+              status,
+              ...(lastSeen !== undefined && { lastSeen }),
+            };
+          }
+          return u;
+        }),
       );
     };
 
@@ -260,7 +192,6 @@ function AdminDashboardContent() {
       autoStatus?: string;
       lastSeen?: string;
     }) => {
-      // Resolve the display status the same way the app does
       const resolved =
         data.status === 'online' ? data.autoStatus || 'online' : data.status;
       patchStatus(data.userId, resolved, data.lastSeen);
@@ -487,7 +418,6 @@ function AdminDashboardContent() {
     }
   };
 
-  // ── Update Notes CRUD ──────────────────────────────────────────────────────
   const handleDeleteNote = async () => {
     if (!deleteNoteModal) {
       return;
@@ -510,6 +440,64 @@ function AdminDashboardContent() {
     }
   };
 
+  const handleOpenUserMenu = (
+    u: UserData,
+    e: React.MouseEvent<HTMLButtonElement>,
+  ) => {
+    e.stopPropagation();
+    if (activeMenu?.userId === u.id) {
+      setActiveMenu(null);
+    } else {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const menuWidth = 176;
+      const menuHeight = 220;
+      let left = rect.right - menuWidth + window.scrollX;
+      if (left < 8) {
+        left = 8;
+      }
+
+      let top = rect.bottom + window.scrollY;
+      if (rect.bottom + menuHeight > window.innerHeight) {
+        const overflow = rect.bottom + menuHeight - window.innerHeight;
+        top = Math.max(8 + window.scrollY, top - overflow - 8);
+      }
+
+      setActiveMenu({
+        userId: u.id,
+        u,
+        top,
+        left,
+      });
+    }
+  };
+
+  const handleSaveNote = async (title: string, content: string) => {
+    setNoteSubmitting(true);
+    try {
+      if (noteModal?.mode === 'edit' && noteModal?.noteId) {
+        await ApiRequest(`/admin/update-notes/${noteModal.noteId}`, 'patch', {
+          title: title.trim(),
+          content: content.trim(),
+        });
+        showToast.success('Update note saved');
+      } else {
+        await ApiRequest('/admin/update-notes', 'post', {
+          title: title.trim(),
+          content: content.trim(),
+        });
+        showToast.success('Update note published to all users');
+      }
+      setNoteModal(null);
+      fetchData();
+    } catch (err: any) {
+      showToast.error(
+        err.response?.data?.message || 'Failed to save update note',
+      );
+    } finally {
+      setNoteSubmitting(false);
+    }
+  };
+
   // ── Loading / redirecting ───────────────────────────────────────────────────
   if (!hydrated || (hydrated && !accessToken)) {
     return (
@@ -528,7 +516,7 @@ function AdminDashboardContent() {
   if (user?.role !== 'admin') {
     return (
       <div className="flex flex-col items-center justify-center h-screen w-screen p-6 text-theme-primary bg-theme-primary">
-        <div className="glass-panel p-8 max-w-md w-full text-center flex flex-col items-center gap-5 border border-glass animate-slide-up">
+        <div className="glass-panel p-8 max-w-md w-full text-center flex flex-col items-center gap-5 border border-glass animate-slide-up shadow-2xl">
           <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500">
             <svg
               className="w-8 h-8"
@@ -566,7 +554,7 @@ function AdminDashboardContent() {
           </div>
           <button
             onClick={() => router.push('/')}
-            className="w-full btn-send py-2.5 rounded-lg text-sm font-bold text-white transition-all cursor-pointer"
+            className="w-full btn-send py-2.5 rounded-lg text-sm font-bold text-white transition-all cursor-pointer shadow-md"
           >
             Back to Workspace
           </button>
@@ -575,167 +563,22 @@ function AdminDashboardContent() {
     );
   }
 
-  // Filters
-  const filteredUsers = users.filter((u) => {
-    const q = userSearch.toLowerCase();
-    return (
-      u.email.toLowerCase().includes(q) ||
-      (u.username && u.username.toLowerCase().includes(q)) ||
-      (u.displayName && u.displayName.toLowerCase().includes(q))
-    );
-  });
+  const warnedUsersCount = users.filter(
+    (u) => u.warnings && u.warnings.length > 0,
+  ).length;
 
-  const filteredGroups = groups.filter((g) => {
-    const q = groupSearch.toLowerCase();
-    return (
-      g.name.toLowerCase().includes(q) ||
-      (g.description && g.description.toLowerCase().includes(q))
-    );
-  });
-
-  // ── Dashboard ──────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col md:flex-row h-screen w-screen p-3 md:p-3.5 gap-3 md:gap-3.5 bg-theme-primary text-theme-primary overflow-hidden font-sans antialiased">
       {/* Left Sidebar */}
-      <div className="glass-panel w-full md:w-64 shrink-0 flex flex-col justify-between p-5 h-auto md:h-full border border-glass animate-fade-in">
-        <div className="flex flex-col gap-6">
-          {/* Logo */}
-          <div className="flex items-center gap-3 pb-4 border-b border-glass">
-            <div className="w-9 h-9 rounded-xl overflow-hidden bg-theme-input/40 border border-glass flex items-center justify-center shrink-0">
-              <img
-                src="/logo.png"
-                alt="Logo"
-                className="w-7 h-7 object-cover"
-              />
-            </div>
-            <div>
-              <h1 className="text-base font-bold tracking-tight text-theme-primary leading-none">
-                RelayFlow
-              </h1>
-              <span className="text-[10px] font-bold tracking-wider text-theme-secondary uppercase">
-                Platform Control
-              </span>
-            </div>
-          </div>
-
-          {/* Navigation tabs */}
-          <nav className="flex flex-row md:flex-col gap-1.5 w-full">
-            <button
-              onClick={() => setActiveTab('users')}
-              className={`flex-1 md:flex-none flex items-center justify-center md:justify-start gap-3 px-4 py-3 text-xs font-bold uppercase tracking-wider rounded-xl border transition-all cursor-pointer ${
-                activeTab === 'users'
-                  ? 'bg-theme-input border-glass text-theme-secondary'
-                  : 'bg-transparent border-transparent text-theme-muted hover:text-theme-primary hover:bg-theme-input/10'
-              }`}
-            >
-              <svg
-                className="w-4 h-4 shrink-0"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth="2.5"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
-                />
-              </svg>
-              Users
-            </button>
-            <button
-              onClick={() => setActiveTab('groups')}
-              className={`flex-1 md:flex-none flex items-center justify-center md:justify-start gap-3 px-4 py-3 text-xs font-bold uppercase tracking-wider rounded-xl border transition-all cursor-pointer ${
-                activeTab === 'groups'
-                  ? 'bg-theme-input border-glass text-theme-secondary'
-                  : 'bg-transparent border-transparent text-theme-muted hover:text-theme-primary hover:bg-theme-input/10'
-              }`}
-            >
-              <svg
-                className="w-4 h-4 shrink-0"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth="2.5"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                />
-              </svg>
-              Groups
-            </button>
-            <button
-              onClick={() => setActiveTab('update-notes')}
-              className={`flex-1 md:flex-none flex items-center justify-center md:justify-start gap-3 px-4 py-3 text-xs font-bold uppercase tracking-wider rounded-xl border transition-all cursor-pointer ${
-                activeTab === 'update-notes'
-                  ? 'bg-theme-input border-glass text-theme-secondary'
-                  : 'bg-transparent border-transparent text-theme-muted hover:text-theme-primary hover:bg-theme-input/10'
-              }`}
-            >
-              <svg
-                className="w-4 h-4 shrink-0"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth="2.5"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 4a2 2 0 012 2v5a2 2 0 01-2 2h-2m-6-4h.01M9 16h5"
-                />
-              </svg>
-              Update Notes
-            </button>
-          </nav>
-        </div>
-
-        {/* User Info & Back Button */}
-        <div className="flex flex-col gap-4 mt-6 pt-4 border-t border-glass">
-          <div className="flex items-center gap-2.5 px-1">
-            <Avatar
-              letter={(user?.displayName ||
-                user?.email ||
-                'A')[0].toUpperCase()}
-              url={user?.avatarUrl}
-              status="online"
-              size="sm"
-            />
-            <div className="min-w-0">
-              <p className="text-xs font-bold text-theme-primary truncate leading-tight">
-                {user?.displayName || 'Administrator'}
-              </p>
-              <p className="text-[10px] text-theme-muted truncate mt-0.5">
-                {user?.email}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => router.push('/')}
-            className="flex items-center justify-center gap-2 w-full px-4 py-2.5 text-xs font-bold text-theme-primary bg-theme-input border border-glass rounded-xl hover:bg-theme-input-focus transition-all cursor-pointer"
-          >
-            <svg
-              className="w-4 h-4 text-theme-secondary shrink-0"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="2.5"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-              />
-            </svg>
-            Workspace
-          </button>
-        </div>
-      </div>
+      <AdminSidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        user={user}
+        onBackToWorkspace={() => router.push('/')}
+      />
 
       {/* Right Content Area */}
-      <div className="glass-panel flex-1 flex flex-col p-6 h-full overflow-hidden border border-glass animate-slide-up">
+      <div className="glass-panel flex-1 flex flex-col p-6 h-full overflow-hidden border border-glass animate-slide-up shadow-sm">
         {/* Header of Content Panel */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-glass">
           <div>
@@ -771,102 +614,27 @@ function AdminDashboardContent() {
                   setNoteContent('');
                   setNoteModal({ isOpen: true, mode: 'create' });
                 }}
-                className="px-3 py-1.5 rounded-lg bg-theme-secondary hover:bg-theme-secondary/90 text-white text-[10px] font-bold cursor-pointer transition-all active-press"
+                className="px-3 py-1.5 rounded-lg bg-theme-secondary hover:bg-theme-secondary/90 text-white text-[10px] font-bold cursor-pointer transition-all active-press shadow-sm"
               >
                 Publish New Note
               </button>
             )}
             <span className="text-[10px] font-bold text-theme-muted uppercase tracking-wider bg-theme-input/40 px-2.5 py-1 rounded border border-glass">
               {activeTab === 'users'
-                ? `${filteredUsers.length} Users`
+                ? `${users.length} Users`
                 : activeTab === 'groups'
-                  ? `${filteredGroups.length} Servers`
+                  ? `${groups.length} Servers`
                   : `${updateNotes.length} Updates`}
             </span>
           </div>
         </div>
 
         {/* Metric Cards Row */}
-        <div className="grid grid-cols-3 gap-4 my-5 shrink-0">
-          <div className="glass-panel bg-theme-sidebar/10 p-4 border border-glass flex items-center justify-between hover:shadow-md transition-all">
-            <div>
-              <p className="text-[9px] uppercase font-bold text-theme-muted tracking-wider">
-                Users
-              </p>
-              <h3 className="text-xl font-extrabold text-theme-primary mt-0.5">
-                {users.length}
-              </h3>
-            </div>
-            <div className="p-2 bg-theme-input rounded-lg border border-glass text-theme-secondary">
-              <svg
-                className="w-4.5 h-4.5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth="2.5"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
-                />
-              </svg>
-            </div>
-          </div>
-          <div className="glass-panel bg-theme-sidebar/10 p-4 border border-glass flex items-center justify-between hover:shadow-md transition-all">
-            <div>
-              <p className="text-[9px] uppercase font-bold text-theme-muted tracking-wider">
-                Groups
-              </p>
-              <h3 className="text-xl font-extrabold text-theme-primary mt-0.5">
-                {groups.length}
-              </h3>
-            </div>
-            <div className="p-2 bg-theme-input rounded-lg border border-glass text-theme-secondary">
-              <svg
-                className="w-4.5 h-4.5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth="2.5"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                />
-              </svg>
-            </div>
-          </div>
-          <div className="glass-panel bg-theme-sidebar/10 p-4 border border-glass flex items-center justify-between hover:shadow-md transition-all">
-            <div>
-              <p className="text-[9px] uppercase font-bold text-theme-muted tracking-wider">
-                Warned
-              </p>
-              <h3 className="text-xl font-extrabold text-theme-primary mt-0.5">
-                {
-                  users.filter((u) => u.warnings && u.warnings.length > 0)
-                    .length
-                }
-              </h3>
-            </div>
-            <div className="p-2 bg-theme-input rounded-lg border border-glass text-theme-secondary">
-              <svg
-                className="w-4.5 h-4.5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth="2.5"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                />
-              </svg>
-            </div>
-          </div>
-        </div>
+        <AdminMetricsCards
+          userCount={users.length}
+          groupCount={groups.length}
+          warnedCount={warnedUsersCount}
+        />
 
         {/* Content Box */}
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -878,1338 +646,158 @@ function AdminDashboardContent() {
               </p>
             </div>
           ) : activeTab === 'users' ? (
-            <div className="flex-1 flex flex-col min-h-0 border border-glass bg-theme-sidebar/10 rounded-2xl p-5">
-              {/* Search bar */}
-              <div className="relative shrink-0 mb-4">
-                <input
-                  type="text"
-                  placeholder="Search user by email, name or username..."
-                  value={userSearch}
-                  onChange={(e) => setUserSearch(e.target.value)}
-                  className="input-base focus:input-focus w-full pl-9 pr-4 py-2.5 text-xs rounded-xl placeholder-theme-muted"
-                />
-                <svg
-                  className="w-4 h-4 absolute left-3 top-3 text-theme-muted"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
-              </div>
-
-              {/* Users Table Scroll */}
-              <div className="flex-1 overflow-y-auto rounded-xl">
-                <table className="w-full text-left border-collapse table-fixed">
-                  <thead className="sticky top-0 z-10 bg-[var(--bg-primary)] border-b border-[var(--glass-border)]">
-                    <tr className="text-theme-muted text-[10px] font-bold uppercase tracking-wider">
-                      <th className="px-6 py-3 w-[220px]">User Profile</th>
-                      <th className="px-6 py-3 w-[200px]">Email</th>
-                      <th className="px-6 py-3 w-[100px]">Role</th>
-                      <th className="px-6 py-3 w-[110px]">Warnings</th>
-                      <th className="px-6 py-3 w-[180px]">Status</th>
-                      <th className="px-6 py-3 w-[130px]">Visibility</th>
-                      <th className="px-6 py-3 w-[110px]">Joined</th>
-                      <th className="px-6 py-3 text-right w-[100px]">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[var(--glass-border)] text-xs text-theme-primary">
-                    {filteredUsers.length === 0 ? (
-                      <tr>
-                        <td
-                          colSpan={7}
-                          className="px-6 py-12 text-center text-theme-muted font-semibold"
-                        >
-                          No matching users found
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredUsers.map((u) => (
-                        <tr
-                          key={u.id}
-                          className="hover:bg-theme-sidebar/10 transition-colors"
-                        >
-                          <td className="px-6 py-3.5">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <Avatar
-                                letter={(u.displayName || u.username || 'U')
-                                  .trim()[0]
-                                  .toUpperCase()}
-                                url={u.avatarUrl}
-                                status={u.status}
-                                size="sm"
-                              />
-                              <div className="min-w-0">
-                                <p className="font-bold text-theme-primary truncate leading-tight">
-                                  {u.displayName || 'No Name'}
-                                </p>
-                                <p className="text-[10px] text-theme-muted font-mono truncate mt-0.5">
-                                  @{u.username || 'unknown'}
-                                </p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-3.5 font-mono text-theme-secondary text-[11px] truncate">
-                            {u.email}
-                          </td>
-                          <td className="px-6 py-3.5">
-                            {u.role === 'admin' ? (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-violet-500/10 text-violet-400 border border-violet-500/20">
-                                Admin
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-theme-input text-theme-muted border border-glass">
-                                User
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-6 py-3.5">
-                            {u.warnings && u.warnings.length > 0 ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 text-[10px] border border-amber-500/20 font-bold">
-                                {u.warnings.length} Warned
-                              </span>
-                            ) : (
-                              <span className="text-theme-muted font-medium text-xs">
-                                Clean
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-6 py-3.5">
-                            {(() => {
-                              const s = u.status || 'offline';
-                              const cfg: Record<
-                                string,
-                                {
-                                  dot: string;
-                                  text: string;
-                                  label: string;
-                                  pulse?: boolean;
-                                }
-                              > = {
-                                online: {
-                                  dot: 'bg-emerald-400',
-                                  text: 'text-emerald-400',
-                                  label: 'Online',
-                                  pulse: true,
-                                },
-                                away: {
-                                  dot: 'bg-amber-400',
-                                  text: 'text-amber-400',
-                                  label: 'Away',
-                                },
-                                dnd: {
-                                  dot: 'bg-red-400',
-                                  text: 'text-red-400',
-                                  label: 'DND',
-                                },
-                                offline: {
-                                  dot: 'bg-slate-500',
-                                  text: 'text-theme-muted',
-                                  label: 'Offline',
-                                },
-                              };
-                              const c = cfg[s] ?? cfg.offline;
-                              let displayLabel = c.label;
-                              if (s === 'offline' && u.lastSeen) {
-                                displayLabel = `Offline (${formatLastSeen(u.lastSeen)})`;
-                              }
-                              return (
-                                <span
-                                  className={`inline-flex items-center gap-1.5 font-semibold text-xs ${c.text}`}
-                                >
-                                  <span
-                                    className={`w-1.5 h-1.5 rounded-full ${c.dot}${c.pulse ? ' animate-pulse' : ''}`}
-                                  />
-                                  {displayLabel}
-                                </span>
-                              );
-                            })()}
-                          </td>
-
-                          <td className="px-6 py-3.5">
-                            {(() => {
-                              const vis = u.visibility || 'everyone';
-                              if (vis === 'noone') {
-                                return (
-                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-500 border border-amber-500/20">
-                                    <svg
-                                      viewBox="0 0 24 24"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      strokeWidth="2.5"
-                                      className="w-2.5 h-2.5 shrink-0"
-                                    >
-                                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                                    </svg>
-                                    Private
-                                  </span>
-                                );
-                              }
-                              if (vis === 'friends_of_friends') {
-                                return (
-                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                                    <svg
-                                      viewBox="0 0 24 24"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      strokeWidth="2.5"
-                                      className="w-2.5 h-2.5 shrink-0"
-                                    >
-                                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                                      <circle cx="9" cy="7" r="4" />
-                                      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                                      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                                    </svg>
-                                    Mutuals
-                                  </span>
-                                );
-                              }
-                              return (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                                  <svg
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2.5"
-                                    className="w-2.5 h-2.5 shrink-0"
-                                  >
-                                    <circle cx="12" cy="12" r="10" />
-                                    <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-                                  </svg>
-                                  Everyone
-                                </span>
-                              );
-                            })()}
-                          </td>
-
-                          <td className="px-6 py-3.5 text-theme-muted font-medium">
-                            {new Date(u.createdAt).toLocaleDateString()}
-                          </td>
-                          <td className="px-6 py-3.5 text-right overflow-visible">
-                            <div className="relative inline-block text-left">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (activeMenu?.userId === u.id) {
-                                    setActiveMenu(null);
-                                  } else {
-                                    const rect =
-                                      e.currentTarget.getBoundingClientRect();
-                                    const menuWidth = 176; // w-44 = 176px
-                                    const menuHeight = 220; // Safe height estimate of dropdown menu
-                                    let left =
-                                      rect.right - menuWidth + window.scrollX;
-                                    if (left < 8) {
-                                      left = 8;
-                                    }
-
-                                    // Collision detection for viewport bottom edge:
-                                    // If menu extends below screen bottom, push it upwards until it fits
-                                    let top = rect.bottom + window.scrollY;
-                                    if (
-                                      rect.bottom + menuHeight >
-                                      window.innerHeight
-                                    ) {
-                                      const overflow =
-                                        rect.bottom +
-                                        menuHeight -
-                                        window.innerHeight;
-                                      top = Math.max(
-                                        8 + window.scrollY,
-                                        top - overflow - 8,
-                                      );
-                                    }
-
-                                    setActiveMenu({
-                                      userId: u.id,
-                                      u,
-                                      top,
-                                      left,
-                                    });
-                                  }
-                                }}
-                                className="p-1.5 rounded-lg border border-glass bg-theme-input hover:bg-theme-input-focus text-theme-primary text-xs font-bold cursor-pointer transition-all flex items-center justify-center shrink-0 active:scale-95"
-                                title="User Actions"
-                              >
-                                <svg
-                                  className="w-4 h-4"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  stroke="currentColor"
-                                  strokeWidth="2.5"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
-                                  />
-                                </svg>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <AdminUsersTab
+              users={users}
+              userSearch={userSearch}
+              setUserSearch={setUserSearch}
+              onOpenMenu={handleOpenUserMenu}
+              activeMenuUserId={activeMenu?.userId}
+            />
           ) : activeTab === 'groups' ? (
-            <div className="flex-1 flex flex-col min-h-0 border border-glass bg-theme-sidebar/10 rounded-2xl p-5">
-              {/* Search bar */}
-              <div className="relative shrink-0 mb-4">
-                <input
-                  type="text"
-                  placeholder="Search group by name or description..."
-                  value={groupSearch}
-                  onChange={(e) => setGroupSearch(e.target.value)}
-                  className="input-base focus:input-focus w-full pl-9 pr-4 py-2.5 text-xs rounded-xl placeholder-theme-muted"
-                />
-                <svg
-                  className="w-4 h-4 absolute left-3 top-3 text-theme-muted"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
-              </div>
-
-              {/* Groups Table Scroll */}
-              <div className="flex-1 overflow-y-auto rounded-xl">
-                <table className="w-full text-left border-collapse table-fixed">
-                  <thead className="sticky top-0 z-10 bg-[var(--bg-primary)] border-b border-[var(--glass-border)]">
-                    <tr className="text-theme-muted text-[10px] font-bold uppercase tracking-wider">
-                      <th className="px-6 py-3 w-[250px]">Server Identity</th>
-                      <th className="px-6 py-3 w-[300px]">Description</th>
-                      <th className="px-6 py-3 w-[220px]">Group Owner</th>
-                      <th className="px-6 py-3 w-[120px]">Members</th>
-                      <th className="px-6 py-3 w-[110px]">Created</th>
-                      <th className="px-6 py-3 text-right w-[150px]">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[var(--glass-border)] text-xs text-theme-primary">
-                    {filteredGroups.length === 0 ? (
-                      <tr>
-                        <td
-                          colSpan={6}
-                          className="px-6 py-12 text-center text-theme-muted font-semibold"
-                        >
-                          No Group registered
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredGroups.map((g) => (
-                        <tr
-                          key={g.id}
-                          className="hover:bg-theme-sidebar/10 transition-colors"
-                        >
-                          <td className="px-6 py-3.5">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="w-8 h-8 rounded-lg bg-theme-secondary flex items-center justify-center font-extrabold text-white uppercase shrink-0 shadow-sm border border-glass/20">
-                                {g.name[0]}
-                              </div>
-                              <span className="font-bold text-theme-primary truncate">
-                                {g.name}
-                              </span>
-                            </div>
-                          </td>
-                          <td
-                            className="px-6 py-3.5 truncate text-theme-muted font-medium"
-                            title={g.description}
-                          >
-                            {g.description || 'No description provided'}
-                          </td>
-                          <td className="px-6 py-3.5">
-                            {g.owner ? (
-                              <div className="min-w-0">
-                                <p className="font-bold text-theme-primary truncate leading-tight">
-                                  {g.owner.displayName || 'No Name'}
-                                </p>
-                                <p className="text-[10px] text-theme-muted font-mono truncate mt-0.5">
-                                  @{g.owner.username || 'unknown'}
-                                </p>
-                              </div>
-                            ) : (
-                              <span className="text-theme-muted font-mono text-[9px] bg-theme-input px-1.5 py-0.5 rounded border border-glass">
-                                Orphaned
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-6 py-3.5">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded bg-theme-input border border-glass text-theme-primary font-bold">
-                              {g.memberCount} member
-                              {g.memberCount !== 1 ? 's' : ''}
-                            </span>
-                          </td>
-                          <td className="px-6 py-3.5 text-theme-muted font-medium">
-                            {new Date(g.createdAt).toLocaleDateString()}
-                          </td>
-                          <td className="px-6 py-3.5 text-right">
-                            <button
-                              onClick={() =>
-                                setAddMemberModal({
-                                  isOpen: true,
-                                  groupId: g.id,
-                                  groupName: g.name,
-                                })
-                              }
-                              className="btn-send px-3.5 py-1.5 rounded-lg text-[10px] font-bold text-white cursor-pointer transition-all active-press"
-                            >
-                              Add Member
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <AdminGroupsTab
+              groups={groups}
+              groupSearch={groupSearch}
+              setGroupSearch={setGroupSearch}
+              onAddMemberClick={(g) =>
+                setAddMemberModal({
+                  isOpen: true,
+                  groupId: g.id,
+                  groupName: g.name,
+                })
+              }
+            />
           ) : (
-            <div className="flex-1 flex flex-col min-h-0 border border-glass bg-theme-sidebar/10 rounded-2xl p-5">
-              {/* Update Notes Table Scroll */}
-              <div className="flex-1 overflow-y-auto rounded-xl">
-                <table className="w-full text-left border-collapse table-fixed">
-                  <thead className="sticky top-0 z-10 bg-[var(--bg-primary)] border-b border-[var(--glass-border)]">
-                    <tr className="text-theme-muted text-[10px] font-bold uppercase tracking-wider">
-                      <th className="px-6 py-3 w-[200px]">Title</th>
-                      <th className="px-6 py-3 w-[350px]">Content Preview</th>
-                      <th className="px-6 py-3 w-[150px]">Author</th>
-                      <th className="px-6 py-3 w-[120px]">Published At</th>
-                      <th className="px-6 py-3 text-right w-[150px]">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[var(--glass-border)] text-xs text-theme-primary">
-                    {updateNotes.length === 0 ? (
-                      <tr>
-                        <td
-                          colSpan={5}
-                          className="px-6 py-12 text-center text-theme-muted font-semibold"
-                        >
-                          No update notes published yet.
-                        </td>
-                      </tr>
-                    ) : (
-                      updateNotes.map((note) => (
-                        <tr
-                          key={note.id}
-                          className="hover:bg-theme-sidebar/10 transition-colors"
-                        >
-                          <td className="px-6 py-3.5 font-bold truncate">
-                            {note.title}
-                          </td>
-                          <td className="px-6 py-3.5 truncate text-theme-muted font-medium">
-                            {note.content.length > 85
-                              ? note.content.substring(0, 85) + '...'
-                              : note.content}
-                          </td>
-                          <td className="px-6 py-3.5 truncate">
-                            {note.author?.displayName ||
-                              note.author?.username ||
-                              note.author?.email ||
-                              'System'}
-                          </td>
-                          <td className="px-6 py-3.5 text-theme-muted">
-                            {new Date(note.createdAt).toLocaleDateString()}
-                          </td>
-                          <td className="px-6 py-3.5 text-right space-x-2">
-                            <button
-                              onClick={() => {
-                                setNoteTitle(note.title);
-                                setNoteContent(note.content);
-                                setNoteModal({
-                                  isOpen: true,
-                                  mode: 'edit',
-                                  noteId: note.id,
-                                });
-                              }}
-                              className="px-2.5 py-1 rounded bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 text-[10px] font-bold cursor-pointer transition-all border border-indigo-500/20"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => {
-                                setDeleteNoteModal({
-                                  isOpen: true,
-                                  noteId: note.id,
-                                  noteTitle: note.title,
-                                });
-                              }}
-                              className="px-2.5 py-1 rounded bg-red-500/10 hover:bg-red-500/20 text-red-400 text-[10px] font-bold cursor-pointer transition-all border border-red-500/20"
-                            >
-                              Delete
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <AdminUpdateNotesTab
+              updateNotes={updateNotes}
+              onEditNote={(note) => {
+                setNoteTitle(note.title);
+                setNoteContent(note.content);
+                setNoteModal({
+                  isOpen: true,
+                  mode: 'edit',
+                  noteId: note.id,
+                });
+              }}
+              onDeleteNote={(note) => {
+                setDeleteNoteModal({
+                  isOpen: true,
+                  noteId: note.id,
+                  noteTitle: note.title,
+                });
+              }}
+            />
           )}
         </div>
       </div>
 
-      {/* Warning Modal */}
-      {warningModal?.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="glass-panel p-6 max-w-md w-full animate-slide-up flex flex-col gap-4 border border-glass">
-            <div className="flex items-center gap-3 border-b border-glass pb-3">
-              <div className="p-2 bg-amber-500/10 rounded-lg text-amber-400">
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                  />
-                </svg>
-              </div>
-              <div>
-                <h2 className="text-sm font-bold text-theme-primary">
-                  Send Warning Notification
-                </h2>
-                <p className="text-xs text-theme-muted">
-                  The user @{warningModal.username} receives it in real-time.
-                </p>
-              </div>
-            </div>
-            <form onSubmit={handleSendWarning} className="flex flex-col gap-4">
-              <div className="flex flex-col p-2 gap-1.5">
-                <label className="text-[10px] font-bold text-theme-muted uppercase tracking-wider">
-                  Warning Message
-                </label>
-                <textarea
-                  required
-                  placeholder="E.g., Your activity in community guidelines violates our service terms."
-                  value={warningMessage}
-                  onChange={(e) => setWarningMessage(e.target.value)}
-                  rows={4}
-                  className="input-base focus:input-focus bg-theme-input/40 rounded-xl p-3 text-sm text-theme-primary placeholder-theme-muted resize-none"
-                />
-              </div>
-              <div className="flex justify-end gap-3 pt-2 border-t border-glass">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setWarningModal(null);
-                    setWarningMessage('');
-                  }}
-                  className="px-4 py-2 text-xs font-semibold text-theme-secondary hover:text-theme-primary bg-transparent border border-glass rounded-lg cursor-pointer transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={warningSubmitting}
-                  className="btn-send px-4 py-2 text-xs font-bold text-white rounded-lg cursor-pointer active-press disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                >
-                  {warningSubmitting ? 'Sending...' : 'Send Warning'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* Modals */}
+      <AdminWarningModal
+        isOpen={Boolean(warningModal?.isOpen)}
+        username={warningModal?.username || ''}
+        warningMessage={warningMessage}
+        warningSubmitting={warningSubmitting}
+        onChangeMessage={setWarningMessage}
+        onClose={() => {
+          setWarningModal(null);
+          setWarningMessage('');
+        }}
+        onSubmit={handleSendWarning}
+      />
 
-      {/* Add Member Modal */}
-      {addMemberModal?.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="glass-panel p-6 max-w-md w-full animate-slide-up flex flex-col gap-4 border border-glass">
-            <div className="flex items-center gap-3 border-b border-glass pb-3">
-              <div className="p-2 bg-indigo-500/10 rounded-lg text-theme-secondary">
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
-                  />
-                </svg>
-              </div>
-              <div>
-                <h2 className="text-sm font-bold text-theme-primary">
-                  Direct Server Assignment
-                </h2>
-                <p className="text-xs text-theme-muted">
-                  Directly assign a user into {addMemberModal.groupName}.
-                </p>
-              </div>
-            </div>
-            <form onSubmit={handleAddMember} className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold text-theme-muted uppercase tracking-wider">
-                  Select Platform User
-                </label>
-                <select
-                  required
-                  value={selectedUserId}
-                  onChange={(e) => setSelectedUserId(e.target.value)}
-                  className="input-base focus:input-focus bg-theme-input/40 rounded-xl p-3 text-xs text-theme-primary focus:bg-theme-primary cursor-pointer"
-                  style={{ colorScheme: 'dark' }}
-                >
-                  <option
-                    value=""
-                    className="bg-theme-primary text-theme-muted"
-                  >
-                    -- Choose User --
-                  </option>
-                  {users.map((u) => (
-                    <option
-                      key={u.id}
-                      value={u.id}
-                      className="bg-theme-primary text-theme-primary"
-                    >
-                      {u.displayName || u.username} ({u.email})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex justify-end gap-3 pt-2 border-t border-glass">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAddMemberModal(null);
-                    setSelectedUserId('');
-                  }}
-                  className="px-4 py-2 text-xs font-semibold text-theme-secondary hover:text-theme-primary bg-transparent border border-glass rounded-lg cursor-pointer transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={addMemberSubmitting || !selectedUserId}
-                  className="btn-send px-4 py-2 text-xs font-bold text-white rounded-lg cursor-pointer active-press disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                >
-                  {addMemberSubmitting ? 'Adding...' : 'Add to Server'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <AdminAddMemberModal
+        isOpen={Boolean(addMemberModal?.isOpen)}
+        groupName={addMemberModal?.groupName || ''}
+        users={users}
+        selectedUserId={selectedUserId}
+        addMemberSubmitting={addMemberSubmitting}
+        onSelectUser={setSelectedUserId}
+        onClose={() => {
+          setAddMemberModal(null);
+          setSelectedUserId('');
+        }}
+        onSubmit={handleAddMember}
+      />
 
-      {/* Friend Request Confirmation Modal */}
-      {friendRequestModal?.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="glass-panel p-6 max-w-sm w-full animate-slide-up flex flex-col gap-4 border border-glass">
-            <div className="flex items-center gap-3 border-b border-glass pb-3">
-              <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-400">
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
-                  />
-                </svg>
-              </div>
-              <div>
-                <h2 className="text-sm font-bold text-theme-primary">
-                  Send Friend Request
-                </h2>
-                <p className="text-xs text-theme-muted">
-                  Send a friend request to @{friendRequestModal.username} as the
-                  platform admin.
-                </p>
-              </div>
-            </div>
-            <p className="text-xs text-theme-secondary leading-relaxed">
-              This will send a friend request from your admin account to{' '}
-              <span className="font-bold text-theme-primary">
-                @{friendRequestModal.username}
-              </span>
-              . They will be notified in real-time.
-            </p>
-            <div className="flex justify-end gap-3 pt-2 border-t border-glass">
-              <button
-                type="button"
-                onClick={() => setFriendRequestModal(null)}
-                className="px-4 py-2 text-xs font-semibold text-theme-secondary hover:text-theme-primary bg-transparent border border-glass rounded-lg cursor-pointer transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={friendRequestSubmitting}
-                onClick={handleSendFriendRequest}
-                className="px-4 py-2 text-xs font-bold text-white rounded-lg cursor-pointer active-press disabled:opacity-50 disabled:cursor-not-allowed transition-all bg-emerald-500 hover:bg-emerald-600 border-none"
-              >
-                {friendRequestSubmitting ? 'Sending...' : 'Send Request'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AdminFriendRequestModal
+        isOpen={Boolean(friendRequestModal?.isOpen)}
+        username={friendRequestModal?.username || ''}
+        submitting={friendRequestSubmitting}
+        onClose={() => setFriendRequestModal(null)}
+        onConfirm={handleSendFriendRequest}
+      />
 
-      {/* Edit Identity Modal */}
-      {editIdentityModal?.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="glass-panel p-6 max-w-lg w-full animate-slide-up flex flex-col gap-4 border border-glass">
-            <div className="flex items-center gap-3 border-b border-glass pb-3">
-              <div className="p-2 bg-violet-500/10 rounded-lg text-violet-400">
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                  />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                  />
-                </svg>
-              </div>
-              <div>
-                <h2 className="text-sm font-bold text-theme-primary">
-                  Edit User Identity
-                </h2>
-                <p className="text-xs text-theme-muted">
-                  Modify @{editIdentityModal.currentUsername}&apos;s username or
-                  Name.
-                </p>
-              </div>
-            </div>
+      <AdminEditIdentityModal
+        isOpen={Boolean(editIdentityModal?.isOpen)}
+        currentUsername={editIdentityModal?.currentUsername || ''}
+        currentDisplayName={editIdentityModal?.currentDisplayName || ''}
+        editUsername={editUsername}
+        editDisplayName={editDisplayName}
+        editReason={editReason}
+        submitting={editIdentitySubmitting}
+        onChangeUsername={setEditUsername}
+        onChangeDisplayName={setEditDisplayName}
+        onChangeReason={setEditReason}
+        onClose={() => {
+          setEditIdentityModal(null);
+          setEditUsername('');
+          setEditDisplayName('');
+          setEditReason('');
+        }}
+        onSubmit={handleEditIdentity}
+      />
 
-            {/* Warning notice */}
-            <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-400 text-[11px]">
-              <svg
-                className="w-3.5 h-3.5 shrink-0 mt-0.5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                />
-              </svg>
-              <span>
-                The user will be notified in real-time:{' '}
-                <strong>
-                  &ldquo;Relay Guardian AI changed your [field] due to:
-                  [reason]&rdquo;
-                </strong>
-              </span>
-            </div>
+      <AdminDeleteNoteModal
+        isOpen={Boolean(deleteNoteModal?.isOpen)}
+        noteTitle={deleteNoteModal?.noteTitle || ''}
+        submitting={deleteNoteSubmitting}
+        onClose={() => setDeleteNoteModal(null)}
+        onConfirm={handleDeleteNote}
+      />
 
-            <form onSubmit={handleEditIdentity} className="flex flex-col gap-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-bold text-theme-muted uppercase tracking-wider">
-                    New Username
-                  </label>
-                  <input
-                    type="text"
-                    placeholder={
-                      editIdentityModal.currentUsername || 'username'
-                    }
-                    value={editUsername}
-                    onChange={(e) => setEditUsername(e.target.value)}
-                    className="input-base focus:input-focus bg-theme-input/40 rounded-xl p-3 text-xs text-theme-primary placeholder-theme-muted font-mono"
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-bold text-theme-muted uppercase tracking-wider">
-                    New Name
-                  </label>
-                  <input
-                    type="text"
-                    placeholder={editIdentityModal.currentDisplayName || 'Name'}
-                    value={editDisplayName}
-                    onChange={(e) => setEditDisplayName(e.target.value)}
-                    className="input-base focus:input-focus bg-theme-input/40 rounded-xl p-3 text-xs text-theme-primary placeholder-theme-muted"
-                  />
-                </div>
-              </div>
+      <AdminNoteModal
+        isOpen={Boolean(noteModal?.isOpen)}
+        mode={noteModal?.mode || 'create'}
+        initialTitle={noteTitle}
+        initialContent={noteContent}
+        onClose={() => setNoteModal(null)}
+        onSave={handleSaveNote}
+        submitting={noteSubmitting}
+      />
 
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold text-theme-muted uppercase tracking-wider">
-                  Reason <span className="text-red-400">*</span>
-                </label>
-                <textarea
-                  required
-                  placeholder="E.g., Username contained inappropriate language."
-                  value={editReason}
-                  onChange={(e) => setEditReason(e.target.value)}
-                  rows={3}
-                  className="input-base focus:input-focus bg-theme-input/40 rounded-xl p-3 text-xs text-theme-primary placeholder-theme-muted resize-none"
-                />
-              </div>
-
-              <div className="flex justify-end gap-3 pt-2 border-t border-glass">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditIdentityModal(null);
-                    setEditUsername('');
-                    setEditDisplayName('');
-                    setEditReason('');
-                  }}
-                  className="px-4 py-2 text-xs font-semibold text-theme-secondary hover:text-theme-primary bg-transparent border border-glass rounded-lg cursor-pointer transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={
-                    editIdentitySubmitting ||
-                    (!editUsername.trim() && !editDisplayName.trim()) ||
-                    !editReason.trim()
-                  }
-                  className="btn-send px-4 py-2 text-xs font-bold text-white rounded-lg cursor-pointer active-press disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                >
-                  {editIdentitySubmitting ? 'Applying...' : 'Apply Changes'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Update Notes Modals */}
-      {noteModal?.isOpen && (
-        <AdminNoteModal
-          isOpen={noteModal.isOpen}
-          mode={noteModal.mode}
-          initialTitle={noteTitle}
-          initialContent={noteContent}
-          onClose={() => setNoteModal(null)}
-          submitting={noteSubmitting}
-          onSave={async (title, content) => {
-            setNoteSubmitting(true);
-            try {
-              if (noteModal.mode === 'edit' && noteModal.noteId) {
-                await ApiRequest(
-                  `/admin/update-notes/${noteModal.noteId}`,
-                  'patch',
-                  {
-                    title: title.trim(),
-                    content: content.trim(),
-                  },
-                );
-                showToast.success('Update note saved');
-              } else {
-                await ApiRequest('/admin/update-notes', 'post', {
-                  title: title.trim(),
-                  content: content.trim(),
-                });
-                showToast.success('Update note published to all users');
-              }
-              setNoteModal(null);
-              fetchData();
-            } catch (err: any) {
-              showToast.error(
-                err.response?.data?.message || 'Failed to save update note',
-              );
-            } finally {
-              setNoteSubmitting(false);
-            }
-          }}
-        />
-      )}
-
-      {deleteNoteModal?.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="glass-panel p-6 max-w-sm w-full animate-slide-up flex flex-col gap-4 border border-glass">
-            <div className="flex items-center gap-3 border-b border-glass pb-3">
-              <div className="p-2 bg-red-500/10 rounded-lg text-red-500">
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                  />
-                </svg>
-              </div>
-              <div>
-                <h2 className="text-sm font-bold text-theme-primary">
-                  Delete Update Note
-                </h2>
-                <p className="text-xs text-theme-muted font-semibold">
-                  This action cannot be undone.
-                </p>
-              </div>
-            </div>
-            <p className="text-xs text-theme-secondary leading-relaxed">
-              Are you sure you want to delete update note:{' '}
-              <span className="font-bold text-theme-primary">
-                &ldquo;{deleteNoteModal.noteTitle}&rdquo;
-              </span>
-              ? Users will no longer be able to see it.
-            </p>
-            <div className="flex justify-end gap-3 pt-2 border-t border-glass">
-              <button
-                type="button"
-                onClick={() => setDeleteNoteModal(null)}
-                className="px-4 py-2 text-xs font-semibold text-theme-secondary hover:text-theme-primary bg-transparent border border-glass rounded-lg cursor-pointer transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={deleteNoteSubmitting}
-                onClick={handleDeleteNote}
-                className="px-4 py-2 text-xs font-bold text-white rounded-lg cursor-pointer active-press disabled:opacity-50 disabled:cursor-not-allowed transition-all bg-red-500 hover:bg-red-600 border-none"
-              >
-                {deleteNoteSubmitting ? 'Deleting...' : 'Delete Note'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* React Portal actions dropdown menu to prevent table layout/border clipping */}
-      {activeMenu &&
-        typeof window !== 'undefined' &&
-        ReactDOM.createPortal(
-          <>
-            <div
-              className="fixed inset-0 z-40 bg-transparent"
-              onClick={(e) => {
-                e.stopPropagation();
-                setActiveMenu(null);
-              }}
-            />
-            <div
-              style={{
-                position: 'absolute',
-                top: `${activeMenu.top}px`,
-                left: `${activeMenu.left}px`,
-              }}
-              className="w-44 rounded-xl border border-glass bg-[var(--bg-primary)] shadow-2xl py-1 z-50 animate-fade-in text-left"
-            >
-              <button
-                onClick={() => {
-                  setActiveMenu(null);
-                  handleToggleRole(activeMenu.u);
-                }}
-                disabled={activeMenu.u.id === user?.id}
-                className="w-full text-left px-3.5 py-2 text-[11px] font-semibold text-theme-primary hover:bg-theme-input flex items-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed border-none bg-transparent"
-              >
-                {activeMenu.u.role === 'admin' ? 'Revoke Admin' : 'Make Admin'}
-              </button>
-              <button
-                onClick={() => {
-                  setActiveMenu(null);
-                  setWarningModal({
-                    isOpen: true,
-                    userId: activeMenu.u.id,
-                    username: activeMenu.u.username || activeMenu.u.email,
-                  });
-                }}
-                className="w-full text-left px-3.5 py-2 text-[11px] font-semibold text-amber-400 hover:bg-theme-input flex items-center gap-2 cursor-pointer border-none bg-transparent"
-              >
-                Send Warning
-              </button>
-              <button
-                onClick={() => {
-                  setActiveMenu(null);
-                  setFriendRequestModal({
-                    isOpen: true,
-                    userId: activeMenu.u.id,
-                    username: activeMenu.u.username || activeMenu.u.email,
-                  });
-                }}
-                disabled={activeMenu.u.id === user?.id}
-                className="w-full text-left px-3.5 py-2 text-[11px] font-semibold text-emerald-400 hover:bg-theme-input flex items-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed border-none bg-transparent"
-              >
-                Friend Request
-              </button>
-              <button
-                onClick={() => {
-                  setActiveMenu(null);
-                  setEditIdentityModal({
-                    isOpen: true,
-                    userId: activeMenu.u.id,
-                    username: activeMenu.u.username || activeMenu.u.email,
-                    currentUsername: activeMenu.u.username || '',
-                    currentDisplayName: activeMenu.u.displayName || '',
-                  });
-                  setEditUsername(activeMenu.u.username || '');
-                  setEditDisplayName(activeMenu.u.displayName || '');
-                  setEditReason('');
-                }}
-                className="w-full text-left px-3.5 py-2 text-[11px] font-semibold text-violet-400 hover:bg-theme-input flex items-center gap-2 cursor-pointer border-none bg-transparent"
-              >
-                Edit Identity Info
-              </button>
-              <div className="h-[1px] bg-[var(--glass-border)] my-1" />
-              <button
-                onClick={() => {
-                  setActiveMenu(null);
-                  handleForceReload(activeMenu.u);
-                }}
-                disabled={activeMenu.u.id === user?.id}
-                className="w-full text-left px-3.5 py-2 text-[11px] font-semibold text-red-500 hover:bg-theme-input flex items-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed border-none bg-transparent"
-              >
-                Force Reset
-              </button>
-            </div>
-          </>,
-          document.body,
-        )}
-    </div>
-  );
-}
-
-interface AdminNoteModalProps {
-  isOpen: boolean;
-  mode: 'create' | 'edit';
-  initialTitle: string;
-  initialContent: string;
-  onClose: () => void;
-  onSave: (title: string, content: string) => void;
-  submitting: boolean;
-}
-
-function AdminNoteModal({
-  isOpen,
-  mode,
-  initialTitle,
-  initialContent,
-  onClose,
-  onSave,
-  submitting,
-}: AdminNoteModalProps) {
-  const [title, setTitle] = useState(initialTitle);
-  const [content, setContent] = useState(initialContent);
-  const [editorTab, setEditorTab] = useState<'write' | 'preview'>('write');
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  const applyFormat = (prefix: string, suffix = '') => {
-    if (!textareaRef.current) {
-      return;
-    }
-    const start = textareaRef.current.selectionStart;
-    const end = textareaRef.current.selectionEnd;
-    const text = content;
-    const selectedText = text.substring(start, end);
-
-    if (!suffix) {
-      const before = text.substring(0, start);
-      const after = text.substring(end);
-      const newText = before + prefix + selectedText + after;
-      setContent(newText);
-      setTimeout(() => {
-        if (textareaRef.current) {
-          textareaRef.current.focus();
-          textareaRef.current.setSelectionRange(
-            start + prefix.length,
-            end + prefix.length,
-          );
+      {/* React Portal User Actions Dropdown Menu */}
+      <AdminUserActionMenuPortal
+        activeMenu={activeMenu}
+        currentUserId={user?.id}
+        onClose={() => setActiveMenu(null)}
+        onToggleRole={handleToggleRole}
+        onSendWarning={(u) =>
+          setWarningModal({
+            isOpen: true,
+            userId: u.id,
+            username: u.username || u.email,
+          })
         }
-      }, 0);
-      return;
-    }
-
-    const before = text.substring(0, start);
-    const after = text.substring(end);
-    const newText = before + prefix + selectedText + suffix + after;
-    setContent(newText);
-
-    setTimeout(() => {
-      if (textareaRef.current) {
-        textareaRef.current.focus();
-        textareaRef.current.setSelectionRange(
-          start + prefix.length,
-          end + prefix.length,
-        );
-      }
-    }, 0);
-  };
-
-  useEffect(() => {
-    setTitle(initialTitle);
-    setContent(initialContent);
-    setEditorTab('write');
-  }, [initialTitle, initialContent, isOpen]);
-
-  if (!isOpen) {
-    return null;
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSave(title, content);
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-      <div className="glass-panel p-6 max-w-2xl w-full animate-slide-up flex flex-col gap-4 border border-glass max-h-[90vh]">
-        <div className="flex items-center justify-between border-b border-glass pb-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-indigo-500/10 rounded-lg text-theme-secondary">
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth="2.5"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"
-                />
-              </svg>
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-theme-primary">
-                {mode === 'create' ? 'Publish Update Note' : 'Edit Update Note'}
-              </h2>
-              <p className="text-xs text-theme-muted">
-                {mode === 'create'
-                  ? 'Publish a new update note with markdown support.'
-                  : 'Modify an existing published update note.'}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1 rounded-lg border border-glass bg-theme-input hover:bg-theme-input-focus text-theme-muted hover:text-theme-primary transition-all cursor-pointer"
-          >
-            <svg
-              className="w-4.5 h-4.5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="2.5"
-            >
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] font-bold text-theme-muted uppercase tracking-wider">
-              Title <span className="text-red-400">*</span>
-            </label>
-            <input
-              type="text"
-              required
-              placeholder="E.g., Version 1.2.0 - Voice Chat & Screen Share"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="input-base focus:input-focus bg-theme-input/40 rounded-xl p-3 text-xs text-theme-primary placeholder-theme-muted"
-            />
-          </div>
-
-          <div className="flex flex-col gap-1.5 flex-1 min-h-0 overflow-hidden">
-            <div className="flex justify-between items-center">
-              <label className="text-[10px] font-bold text-theme-muted uppercase tracking-wider">
-                Content (Markdown Supported){' '}
-                <span className="text-red-400">*</span>
-              </label>
-              <div className="flex bg-theme-input/60 p-0.5 rounded-lg border border-glass">
-                <button
-                  type="button"
-                  onClick={() => setEditorTab('write')}
-                  className={`px-3 py-1 text-[10px] font-semibold rounded-md transition-all cursor-pointer ${
-                    editorTab === 'write'
-                      ? 'bg-theme-secondary text-white shadow-sm'
-                      : 'text-theme-muted hover:text-theme-primary'
-                  }`}
-                >
-                  Write
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEditorTab('preview')}
-                  className={`px-3 py-1 text-[10px] font-semibold rounded-md transition-all cursor-pointer ${
-                    editorTab === 'preview'
-                      ? 'bg-theme-secondary text-white shadow-sm'
-                      : 'text-theme-muted hover:text-theme-primary'
-                  }`}
-                >
-                  Preview
-                </button>
-              </div>
-            </div>
-
-            {editorTab === 'write' ? (
-              <div className="flex flex-col flex-1 min-h-0">
-                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-theme-input/20 border border-glass border-b-0 rounded-t-xl overflow-x-auto min-h-[36px]">
-                  <button
-                    type="button"
-                    onClick={() => applyFormat('# ')}
-                    className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors flex items-center justify-center min-w-[24px] cursor-pointer"
-                    title="Heading 1"
-                  >
-                    <span className="text-[11px] font-bold">H1</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => applyFormat('## ')}
-                    className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors flex items-center justify-center min-w-[24px] cursor-pointer"
-                    title="Heading 2"
-                  >
-                    <span className="text-[11px] font-bold">H2</span>
-                  </button>
-                  <div className="w-px h-4 bg-theme/20 mx-1" />
-                  <button
-                    type="button"
-                    onClick={() => applyFormat('**', '**')}
-                    className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors cursor-pointer"
-                    title="Bold"
-                  >
-                    <IconBold />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => applyFormat('*', '*')}
-                    className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors cursor-pointer"
-                    title="Italic"
-                  >
-                    <IconItalic />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => applyFormat('~~', '~~')}
-                    className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors cursor-pointer"
-                    title="Strikethrough"
-                  >
-                    <IconStrikethrough />
-                  </button>
-                  <div className="w-px h-4 bg-theme/20 mx-1" />
-                  <button
-                    type="button"
-                    onClick={() => applyFormat('`', '`')}
-                    className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors cursor-pointer"
-                    title="Inline Code"
-                  >
-                    <IconCode />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => applyFormat('```\n', '\n```')}
-                    className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors flex items-center justify-center w-6 h-6 cursor-pointer"
-                    title="Code Block"
-                  >
-                    <span className="text-[10px] font-bold mt-0.5">
-                      {'</>'}
-                    </span>
-                  </button>
-                  <div className="w-px h-4 bg-theme/20 mx-1" />
-                  <button
-                    type="button"
-                    onClick={() => applyFormat('[', '](url)')}
-                    className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors cursor-pointer"
-                    title="Link"
-                  >
-                    <IconLink />
-                  </button>
-                  <div className="w-px h-4 bg-theme/20 mx-1" />
-                  <button
-                    type="button"
-                    onClick={() => applyFormat('- ')}
-                    className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors cursor-pointer"
-                    title="List"
-                  >
-                    <IconList />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => applyFormat('> ')}
-                    className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors cursor-pointer"
-                    title="Quote"
-                  >
-                    <IconQuote />
-                  </button>
-                </div>
-                <textarea
-                  ref={textareaRef}
-                  required
-                  placeholder="### What's New&#10;- Added super cool voice dashboards&#10;- Improved security layers&#10;&#10;Use markdown syntax like **bold**, *italics*, [links](url), lists, code blocks."
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  rows={12}
-                  className="input-base focus:input-focus bg-theme-input/40 rounded-b-xl rounded-t-none p-3 text-xs text-theme-primary placeholder-theme-muted font-mono resize-none flex-1 overflow-y-auto border-t-0"
-                />
-              </div>
-            ) : (
-              <div className="flex-1 overflow-y-auto border border-glass bg-theme-input/20 rounded-xl p-3 max-h-[300px]">
-                <div className="markdown-body text-xs text-theme-primary leading-relaxed">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {content ||
-                      '*No content preview available. Write some text first!*'}
-                  </ReactMarkdown>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="flex justify-end gap-3 pt-2 border-t border-glass shrink-0">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-theme-secondary hover:text-theme-primary bg-transparent border border-glass rounded-lg cursor-pointer transition-all"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={submitting || !title.trim() || !content.trim()}
-              className="btn-send px-4 py-2 text-xs font-bold text-white rounded-lg cursor-pointer active-press disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-            >
-              {submitting
-                ? 'Publishing...'
-                : mode === 'create'
-                  ? 'Publish'
-                  : 'Save Changes'}
-            </button>
-          </div>
-        </form>
-      </div>
+        onFriendRequest={(u) =>
+          setFriendRequestModal({
+            isOpen: true,
+            userId: u.id,
+            username: u.username || u.email,
+          })
+        }
+        onEditIdentity={(u) => {
+          setEditIdentityModal({
+            isOpen: true,
+            userId: u.id,
+            username: u.username || u.email,
+            currentUsername: u.username || '',
+            currentDisplayName: u.displayName || '',
+          });
+          setEditUsername(u.username || '');
+          setEditDisplayName(u.displayName || '');
+          setEditReason('');
+        }}
+        onForceReload={handleForceReload}
+      />
     </div>
   );
 }

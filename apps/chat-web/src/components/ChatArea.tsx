@@ -1,5 +1,3 @@
-import type { PresenceStatus } from '@chat-app/shared-constants';
-import { PRESENCE_DOT_COLORS, STATUS_TEXTS } from '@chat-app/shared-constants';
 import React, {
   useState,
   useEffect,
@@ -7,368 +5,6 @@ import React, {
   useCallback,
   useLayoutEffect,
 } from 'react';
-import ReactDOM from 'react-dom';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-
-import dynamic from 'next/dynamic';
-
-const EmojiPicker = dynamic(
-  async () => {
-    const [Picker, data] = await Promise.all([
-      import('@emoji-mart/react'),
-      import('@emoji-mart/data'),
-    ]);
-    return function EmojiPickerWrapper(props: any) {
-      const wrapperRef = useRef<HTMLDivElement>(null);
-      const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>(
-        'dark',
-      );
-
-      useEffect(() => {
-        const updateTheme = () => {
-          const docTheme = document.documentElement.getAttribute('data-theme');
-          if (docTheme === 'light') {
-            setCurrentTheme('light');
-          } else if (docTheme === 'dark') {
-            setCurrentTheme('dark');
-          } else {
-            const isLightSystem = window.matchMedia(
-              '(prefers-color-scheme: light)',
-            ).matches;
-            setCurrentTheme(isLightSystem ? 'light' : 'dark');
-          }
-        };
-
-        updateTheme();
-
-        const observer = new MutationObserver(updateTheme);
-        observer.observe(document.documentElement, {
-          attributes: true,
-          attributeFilter: ['data-theme', 'data-theme-schema'],
-        });
-
-        return () => observer.disconnect();
-      }, []);
-
-      useEffect(() => {
-        const isLight = currentTheme === 'light';
-        const injectStyles = () => {
-          if (!wrapperRef.current) {
-            return;
-          }
-          const innerDiv = wrapperRef.current
-            .firstElementChild as HTMLElement | null;
-          if (innerDiv) {
-            innerDiv.style.width = '100%';
-            innerDiv.style.maxWidth = '100%';
-            innerDiv.style.display = 'flex';
-            innerDiv.style.flexDirection = 'column';
-            innerDiv.style.alignItems = 'stretch';
-          }
-          const pickerEl = wrapperRef.current.querySelector('em-emoji-picker');
-          if (pickerEl && pickerEl.shadowRoot) {
-            const scrollInner = pickerEl.shadowRoot.querySelector(
-              '.scroll > div',
-            ) as HTMLElement | null;
-            if (scrollInner) {
-              scrollInner.style.width = '100%';
-              scrollInner.style.maxWidth = '100%';
-            }
-            let style = pickerEl.shadowRoot.querySelector(
-              '#em-theme-style',
-            ) as HTMLStyleElement | null;
-            if (!style) {
-              style = document.createElement('style');
-              style.id = 'em-theme-style';
-              pickerEl.shadowRoot.appendChild(style);
-            }
-            style.textContent = `
-              :host {
-                width: 100% !important;
-                max-width: 100% !important;
-                display: flex !important;
-                flex-direction: column !important;
-                height: 440px !important;
-              }
-              @media (max-width: 639px) {
-                :host {
-                  height: min(440px, 52vh) !important;
-                }
-              }
-              #root {
-                --padding: 8px !important;
-                width: 100% !important;
-                max-width: 100% !important;
-                height: 100% !important;
-                display: flex !important;
-                flex-direction: column !important;
-                overflow: hidden !important;
-                background-color: transparent !important;
-                background: transparent !important;
-                border: none !important;
-                box-shadow: none !important;
-                font-family: inherit !important;
-              }
-              .scroll {
-                width: 100% !important;
-                max-width: 100% !important;
-                flex: 1 1 auto !important;
-                min-height: 0 !important;
-                overflow-y: auto !important;
-                overflow-x: hidden !important;
-                padding-left: 8px !important;
-                padding-right: 8px !important;
-                box-sizing: border-box !important;
-              }
-              .scroll > div,
-              .scroll > div > div {
-                width: 100% !important;
-                max-width: 100% !important;
-                box-sizing: border-box !important;
-              }
-              .sticky {
-                background-color: ${isLight ? 'rgba(248, 244, 234, 0.96)' : 'rgba(17, 28, 50, 0.96)'} !important;
-                background: ${isLight ? 'rgba(248, 244, 234, 0.96)' : 'rgba(17, 28, 50, 0.96)'} !important;
-                backdrop-filter: blur(12px) !important;
-                -webkit-backdrop-filter: blur(12px) !important;
-                color: ${isLight ? '#475569' : '#cbd5e1'} !important;
-                font-size: 12px !important;
-                font-weight: 600 !important;
-                letter-spacing: 0.02em !important;
-                padding: 6px 10px !important;
-                margin: 0 !important;
-                position: sticky !important;
-                top: 0 !important;
-                z-index: 5 !important;
-                border-bottom: 1px solid ${isLight ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.06)'} !important;
-              }
-              #nav {
-                border-bottom: 1px solid ${isLight ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.08)'} !important;
-                width: 100% !important;
-                padding-left: 6px !important;
-                padding-right: 6px !important;
-                box-sizing: border-box !important;
-              }
-              #nav button {
-                color: ${isLight ? '#64748b' : '#94a3b8'} !important;
-              }
-              #nav button[aria-selected="true"] {
-                color: var(--accent-primary, #0284c7) !important;
-              }
-              #nav .bar {
-                background-color: var(--accent-primary, #0284c7) !important;
-              }
-              #nav[data-position="top"]:before,
-              #preview[data-position="top"]:before,
-              #nav[data-position="bottom"]:before,
-              #preview[data-position="bottom"]:before {
-                display: none !important;
-              }
-              /* Search container row */
-              .spacer + .flex-middle,
-              .flex-middle:has(> .search) {
-                padding: 8px 8px 6px !important;
-                gap: 8px !important;
-                display: flex !important;
-                align-items: center !important;
-                box-sizing: border-box !important;
-                width: 100% !important;
-              }
-              .search {
-                padding: 0 !important;
-                margin: 0 !important;
-                position: relative !important;
-                flex: 1 1 auto !important;
-                display: flex !important;
-                align-items: center !important;
-              }
-              .search input[type="search"] {
-                width: 100% !important;
-                height: 38px !important;
-                line-height: 38px !important;
-                padding: 0 34px 0 36px !important;
-                background-color: ${isLight ? 'rgba(255, 255, 255, 0.92)' : 'rgba(255, 255, 255, 0.06)'} !important;
-                backdrop-filter: blur(8px) !important;
-                -webkit-backdrop-filter: blur(8px) !important;
-                border: 1px solid ${isLight ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.1)'} !important;
-                border-radius: 9999px !important;
-                color: ${isLight ? '#0f172a' : '#f8fafc'} !important;
-                font-size: 13.5px !important;
-                font-weight: 500 !important;
-                box-sizing: border-box !important;
-                box-shadow: ${isLight ? '0 1px 3px rgba(0, 0, 0, 0.04), inset 0 1px 1px rgba(255, 255, 255, 0.8)' : 'inset 0 1px 2px rgba(0, 0, 0, 0.25)'} !important;
-                transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
-                outline: none !important;
-              }
-              .search input[type="search"]::placeholder {
-                color: ${isLight ? '#64748b' : '#94a3b8'} !important;
-                opacity: 1 !important;
-                font-weight: 400 !important;
-              }
-              .search input[type="search"]:focus {
-                background-color: ${isLight ? '#ffffff' : 'rgba(255, 255, 255, 0.1)'} !important;
-                border-color: var(--accent-primary, ${isLight ? '#0284c7' : '#38bdf8'}) !important;
-                box-shadow: 0 0 0 3px ${isLight ? 'rgba(2, 132, 199, 0.18)' : 'rgba(56, 189, 248, 0.24)'}, 0 2px 6px ${isLight ? 'rgba(0, 0, 0, 0.06)' : 'rgba(0, 0, 0, 0.3)'} !important;
-              }
-              .search .loupe {
-                left: 12px !important;
-                right: auto !important;
-                top: 50% !important;
-                transform: translateY(-50%) !important;
-                color: ${isLight ? '#64748b' : '#94a3b8'} !important;
-                width: 16px !important;
-                height: 16px !important;
-                display: flex !important;
-                align-items: center !important;
-                justify-content: center !important;
-                pointer-events: none !important;
-                transition: color 0.2s ease !important;
-              }
-              .search:focus-within .loupe {
-                color: var(--accent-primary, ${isLight ? '#0284c7' : '#38bdf8'}) !important;
-              }
-              .search .delete {
-                right: 11px !important;
-                left: auto !important;
-                top: 50% !important;
-                transform: translateY(-50%) !important;
-                color: ${isLight ? '#94a3b8' : '#64748b'} !important;
-                width: 18px !important;
-                height: 18px !important;
-                display: flex !important;
-                align-items: center !important;
-                justify-content: center !important;
-                cursor: pointer !important;
-                border-radius: 50% !important;
-                transition: all 0.15s ease !important;
-              }
-              .search .delete:hover {
-                color: ${isLight ? '#0f172a' : '#f8fafc'} !important;
-                background-color: ${isLight ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.12)'} !important;
-              }
-              /* Skin tone selector button styling */
-              .skin-tone-button {
-                width: 34px !important;
-                height: 34px !important;
-                border-radius: 50% !important;
-                border: 1px solid ${isLight ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.12)'} !important;
-                background-color: ${isLight ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.06)'} !important;
-                box-shadow: ${isLight ? '0 1px 3px rgba(0, 0, 0, 0.04), inset 0 1px 1px rgba(255, 255, 255, 0.8)' : 'inset 0 1px 2px rgba(0, 0, 0, 0.25)'} !important;
-                display: flex !important;
-                align-items: center !important;
-                justify-content: center !important;
-                cursor: pointer !important;
-                transition: all 0.15s ease !important;
-                padding: 0 !important;
-              }
-              .skin-tone-button:hover {
-                background-color: ${isLight ? '#ffffff' : 'rgba(255, 255, 255, 0.12)'} !important;
-                border-color: var(--accent-primary, ${isLight ? '#0284c7' : '#38bdf8'}) !important;
-                transform: scale(1.05) !important;
-              }
-              .skin-tone-button:active {
-                transform: scale(0.95) !important;
-              }
-              .skin-tone {
-                width: 18px !important;
-                height: 18px !important;
-                border-radius: 50% !important;
-                box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25) !important;
-              }
-              #skins {
-                background: ${isLight ? 'rgba(255, 253, 248, 0.96)' : 'rgba(22, 35, 62, 0.96)'} !important;
-                border: 1px solid ${isLight ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.12)'} !important;
-                border-radius: 12px !important;
-                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25) !important;
-                backdrop-filter: blur(16px) !important;
-                -webkit-backdrop-filter: blur(16px) !important;
-                padding: 6px !important;
-                gap: 6px !important;
-              }
-              .category-title {
-                color: ${isLight ? '#1e293b' : '#f8fafc'} !important;
-              }
-            `;
-          }
-        };
-
-        injectStyles();
-        const t1 = setTimeout(injectStyles, 0);
-        const t2 = setTimeout(injectStyles, 100);
-        const t3 = setTimeout(injectStyles, 300);
-
-        const observer = new MutationObserver(() => {
-          injectStyles();
-        });
-
-        if (wrapperRef.current) {
-          observer.observe(wrapperRef.current, {
-            childList: true,
-            subtree: true,
-          });
-        }
-
-        return () => {
-          clearTimeout(t1);
-          clearTimeout(t2);
-          clearTimeout(t3);
-          observer.disconnect();
-        };
-      }, [currentTheme]);
-
-      const effectiveTheme =
-        !props.theme || props.theme === 'auto' ? currentTheme : props.theme;
-
-      return (
-        <div
-          ref={wrapperRef}
-          className="w-full flex-1 flex flex-col items-stretch"
-        >
-          <Picker.default
-            data={data.default}
-            {...props}
-            dynamicWidth={
-              props.dynamicWidth !== undefined ? props.dynamicWidth : true
-            }
-            theme={effectiveTheme}
-          />
-        </div>
-      );
-    };
-  },
-  {
-    ssr: false,
-    loading: () => (
-      <div className="p-4 text-center text-[13px] text-theme-muted w-88 h-108.75 flex items-center justify-center">
-        <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin border-(--accent-primary)" />
-      </div>
-    ),
-  },
-);
-
-let isEmojiIndexInit = false;
-const searchEmojis = async (query: string) => {
-  if (!query) {
-    return [];
-  }
-  try {
-    const [data, { init, SearchIndex }] = await Promise.all([
-      import('@emoji-mart/data').then((m) => m.default),
-      import('emoji-mart'),
-    ]);
-    if (!isEmojiIndexInit) {
-      init({ data });
-      isEmojiIndexInit = true;
-    }
-    const results = await SearchIndex.search(query);
-    return results?.slice(0, 10) || [];
-  } catch (err) {
-    console.error(err);
-    return [];
-  }
-};
-
 import { useAppDispatch, useAppSelector } from '../store';
 import {
   fetchMessages,
@@ -383,37 +19,28 @@ import {
   hasGroupPermission,
   canUserWriteToChannel,
 } from '../utils/permissions';
-import { formatMessageTimestamp, formatReadAtTimestamp } from '../utils/date';
-
-import { Avatar } from './Avatar';
-import { MemberProfilePopover } from './MemberProfilePopover';
 import { ConfirmationModal } from './ConfirmationModal';
 import { FriendsDashboard } from './FriendsDashboard';
-import {
-  IconSend,
-  IconTrash,
-  IconChat,
-  IconCheck,
-  IconDoubleCheck,
-  IconX,
-  IconEmoji,
-  IconCompose,
-  IconBold,
-  IconItalic,
-  IconStrikethrough,
-  IconCode,
-  IconLink,
-  IconList,
-  IconQuote,
-  IconEye,
-  IconCamera,
-  IconImage,
-} from './Icons';
-import { PresenceDot } from './PresenceDot';
+import { IconChat } from './Icons';
 import { showToast } from './toast';
-import { AnimatedEmoji } from './AnimatedEmoji';
-import { getEmojiSegments } from '../utils/animatedEmoji';
 import type { Message, MessageMediaItem } from '../store/slices/chatSlice';
+
+import {
+  searchEmojis,
+  calculatePopoverPosition,
+  getMemberDetailsHelper,
+  ChatHeader,
+  WelcomeHub,
+  ChatInputArea,
+  MessageBubbleRow,
+  MessageCompactRow,
+  MessageContextMenu,
+  CodeViewerModal,
+  MediaViewerModal,
+  ReactionPickerModal,
+  MobileEmojiPickerModal,
+  MemberProfilePopoverModal,
+} from './chat';
 
 interface ChatAreaProps {
   activeConversationId: string | null;
@@ -424,308 +51,6 @@ interface ChatAreaProps {
   onToggleMembersList?: () => void;
   onMenuClick?: () => void;
   isMobileView?: boolean;
-}
-
-const isOnlyEmojis = (str: string): boolean => {
-  const cleanStr = str.replace(/\s/g, ''); // Remove all whitespace
-  if (!cleanStr) {
-    return false;
-  }
-
-  // Regex matching emojis and pictographs
-  const emojiRegex =
-    /^(\p{Emoji_Presentation}|\p{Emoji_Modifier_Base}|\p{Emoji_Component}|\p{Extended_Pictographic})+$/u;
-  if (!emojiRegex.test(cleanStr)) {
-    return false;
-  }
-
-  // Exclude standard alphanumeric characters
-  const hasTextOrDigits = /[a-zA-Z0-9]/g.test(cleanStr);
-  if (hasTextOrDigits) {
-    return false;
-  }
-
-  return true;
-};
-
-const getContrastColor = (color: string): string => {
-  if (!color || color === 'inherit') {
-    return '#ffffff';
-  }
-  let hex = color;
-  if (color.startsWith('var(')) {
-    if (typeof window !== 'undefined' && typeof document !== 'undefined') {
-      const varName = color.match(/var\(([^)]+)\)/)?.[1];
-      if (varName) {
-        hex = getComputedStyle(document.documentElement)
-          .getPropertyValue(varName)
-          .trim();
-      }
-    }
-  }
-  if (!hex || hex.startsWith('var(')) {
-    return '#ffffff';
-  }
-  const cleanHex = hex.replace('#', '');
-  let r = 0,
-    g = 0,
-    b = 0;
-  if (cleanHex.length === 3) {
-    r = parseInt(cleanHex[0] + cleanHex[0], 16);
-    g = parseInt(cleanHex[1] + cleanHex[1], 16);
-    b = parseInt(cleanHex[2] + cleanHex[2], 16);
-  } else if (cleanHex.length === 6) {
-    r = parseInt(cleanHex.slice(0, 2), 16);
-    g = parseInt(cleanHex.slice(2, 4), 16);
-    b = parseInt(cleanHex.slice(4, 6), 16);
-  } else {
-    return '#ffffff';
-  }
-  const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
-  return brightness > 128 ? '#000000' : '#ffffff';
-};
-
-const renderMessageMedia = (
-  msg: Message,
-  onMediaClick: (item: MessageMediaItem) => void,
-) => {
-  const mediaItems: MessageMediaItem[] = msg.media || [];
-
-  if (mediaItems.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="mt-1.5 flex flex-col gap-2 max-w-full">
-      {mediaItems.map((item, idx) => {
-        const isImage = item.type?.startsWith('image/');
-        const isVideo = item.type?.startsWith('video/');
-
-        if (isImage) {
-          const displayUrl = item.thumbnailUrl || item.url;
-          return (
-            <div
-              key={idx}
-              className="mt-1 max-w-full w-fit rounded-lg overflow-hidden border border-theme bg-theme-input hover:scale-[1.01] transition-all duration-200 h-[240px] max-w-[360px] relative group"
-            >
-              <img
-                src={displayUrl}
-                alt={item.name || 'Image'}
-                className="h-full w-auto max-w-full max-w-[360px] object-cover cursor-pointer hover:opacity-90 transition-opacity"
-                onClick={() => onMediaClick(item)}
-              />
-              {item.isExpired && (
-                <div className="absolute top-2 left-2 z-10 px-2 py-0.5 rounded-md bg-black/65 backdrop-blur-md text-amber-300 border border-amber-500/30 text-[10px] font-bold flex items-center gap-1 shadow-sm pointer-events-none">
-                  <span>⏱️</span>
-                  <span>Thumbnail Kept</span>
-                </div>
-              )}
-            </div>
-          );
-        }
-
-        if (isVideo) {
-          const displayUrl = item.thumbnailUrl || item.url;
-          return (
-            <div
-              key={idx}
-              className="mt-1 max-w-full w-fit rounded-lg overflow-hidden border border-theme bg-theme-input relative cursor-pointer hover:scale-[1.01] transition-all duration-200 group h-[240px] max-w-[360px]"
-              onClick={() => onMediaClick(item)}
-            >
-              {item.thumbnailUrl ? (
-                <div className="relative h-full w-fit">
-                  <img
-                    src={displayUrl}
-                    alt={item.name || 'Video'}
-                    className="h-full w-auto max-w-full max-w-[360px] object-cover transition-opacity"
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-black/25 transition-colors duration-150">
-                    <div className="w-12 h-12 rounded-full bg-white/95 flex items-center justify-center text-black shadow-lg hover:scale-105 active:scale-95 transition-all duration-150">
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                        className="w-5 h-5 ml-0.5 text-(--accent-primary)"
-                      >
-                        <path d="M8 5v14l11-7z" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <video
-                  src={item.url}
-                  className="h-full w-auto max-w-full max-w-[360px] object-cover"
-                  preload="metadata"
-                />
-              )}
-              {item.isExpired && (
-                <div className="absolute top-2 left-2 z-10 px-2 py-0.5 rounded-md bg-black/65 backdrop-blur-md text-amber-300 border border-amber-500/30 text-[10px] font-bold flex items-center gap-1 shadow-sm pointer-events-none">
-                  <span>⏱️</span>
-                  <span>Thumbnail Kept</span>
-                </div>
-              )}
-            </div>
-          );
-        }
-
-        return (
-          <div
-            key={idx}
-            className="mt-1 flex items-center gap-3 p-3 rounded-lg border border-theme bg-theme-input max-w-sm text-[13px] text-left"
-          >
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-(--accent-primary) text-white text-[16px] shrink-0">
-              📁
-            </div>
-            <div className="flex-1 min-w-0 pr-2">
-              <div className="font-semibold truncate text-theme-primary text-[13.5px]">
-                {item.name || 'Attachment'}
-              </div>
-              {item.isExpired ? (
-                <div className="text-[11px] text-amber-400 font-medium mt-0.5 flex items-center gap-1">
-                  <span>⏱️</span> Expired file
-                </div>
-              ) : (
-                <div className="text-[11px] text-theme-muted mt-0.5">
-                  {item.size
-                    ? `${(item.size / 1024).toFixed(1)} KB`
-                    : 'Unknown size'}
-                </div>
-              )}
-            </div>
-            {!item.isExpired && (
-              <a
-                href={item.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-1.5 rounded-lg bg-(--theme-btn) text-theme-secondary hover:text-theme-primary hover:bg-(--theme-btn-hover) shrink-0 flex items-center justify-center active-press"
-                title="Download file"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  className="w-4 h-4"
-                >
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="7 10 12 15 17 10" />
-                  <line x1="12" y1="15" x2="12" y2="3" />
-                </svg>
-              </a>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-};
-
-interface ReactionItemProps {
-  react: { emoji: string; userIds: string[] };
-  hasReacted: boolean;
-  onToggle: () => void;
-  userNames: string[];
-}
-
-function ReactionItem({
-  react,
-  hasReacted,
-  onToggle,
-  userNames,
-}: ReactionItemProps) {
-  const [isHovered, setIsHovered] = useState(false);
-  const [alignment, setAlignment] = useState<'center' | 'left' | 'right'>(
-    'center',
-  );
-  const buttonRef = useRef<HTMLButtonElement>(null);
-
-  const handleMouseEnter = () => {
-    if (buttonRef.current) {
-      const btnRect = buttonRef.current.getBoundingClientRect();
-      const chatContainer =
-        buttonRef.current.closest<HTMLElement>('.bg-theme-chat') ||
-        document.body;
-      const chatRect = chatContainer.getBoundingClientRect();
-
-      const leftEdge = Math.max(chatRect.left, 0);
-      const rightEdge = Math.min(chatRect.right, window.innerWidth);
-
-      const spaceLeft = btnRect.left - leftEdge;
-      const spaceRight = rightEdge - btnRect.right;
-
-      if (spaceLeft < 110 && spaceRight >= 110) {
-        setAlignment('left');
-      } else if (spaceRight < 110 && spaceLeft >= 110) {
-        setAlignment('right');
-      } else if (spaceLeft < 110 && spaceRight < 110) {
-        setAlignment(spaceLeft < spaceRight ? 'left' : 'right');
-      } else if (spaceRight < 150) {
-        setAlignment('right');
-      } else if (spaceLeft < 150) {
-        setAlignment('left');
-      } else {
-        setAlignment('center');
-      }
-    }
-    setIsHovered(true);
-  };
-
-  const handleMouseLeave = () => {
-    setIsHovered(false);
-  };
-
-  return (
-    <button
-      ref={buttonRef}
-      type="button"
-      onClick={(e) => {
-        e.stopPropagation();
-        onToggle();
-      }}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      className={`relative group/reaction flex items-center gap-1 px-1 py-0.5 rounded-full text-[14px] border cursor-pointer transition-all duration-150 active-press ${
-        hasReacted
-          ? 'bg-[var(--accent-ring)] border-[var(--accent-primary)] text-[var(--accent-primary)] font-semibold'
-          : 'bg-theme-input/40 border-glass/30 text-theme-secondary hover:bg-theme-input hover:border-glass'
-      }`}
-    >
-      <span className="leading-none text-[18px]">{react.emoji}</span>
-      {react.userIds.length > 1 && <span>{react.userIds.length}</span>}
-
-      {/* Collision-detected Tooltip */}
-      {isHovered && (
-        <div
-          className={`absolute bottom-full mb-2 pointer-events-none z-[9999] flex flex-col animate-fade-in ${
-            alignment === 'left'
-              ? 'left-[-6px] items-start'
-              : alignment === 'right'
-                ? 'right-[-6px] items-end'
-                : 'left-1/2 -translate-x-1/2 items-center'
-          }`}
-        >
-          <div className="bg-zinc-900/95 dark:bg-zinc-900/95 text-white text-[11px] font-medium py-1.5 px-3 rounded-xl max-w-[220px] border border-white/10 dark:border-white/10 shadow-xl text-center leading-normal backdrop-blur-md">
-            <span className="font-bold text-[var(--accent-primary)] mb-0.5 block whitespace-nowrap">
-              {react.emoji} Reacted by
-            </span>
-            <span className="opacity-90 break-words line-clamp-3">
-              {userNames.join(', ')}
-            </span>
-          </div>
-          <div
-            className={`w-2.5 h-2.5 bg-zinc-900/95 dark:bg-zinc-900/95 border-r border-b border-white/10 dark:border-white/10 rotate-45 -mt-1.25 ${
-              alignment === 'left'
-                ? 'ml-4'
-                : alignment === 'right'
-                  ? 'mr-4'
-                  : 'self-center'
-            }`}
-          />
-        </div>
-      )}
-    </button>
-  );
 }
 
 export function ChatArea({
@@ -740,9 +65,13 @@ export function ChatArea({
 }: ChatAreaProps): React.JSX.Element {
   const dispatch = useAppDispatch();
   const feedEndRef = useRef<HTMLDivElement>(null);
+  const feedContainerRef = useRef<HTMLDivElement>(null);
+  const contextMenuRef = useRef<HTMLDivElement>(null);
+  const mobileEmojiContainerRef = useRef<HTMLDivElement>(null);
 
   const { user, timeFormat } = useAppSelector((s) => s.auth);
 
+  // Live greeting and clock
   const [timeStr, setTimeStr] = useState('');
   const [greeting, setGreeting] = useState('');
 
@@ -770,6 +99,7 @@ export function ChatArea({
     const interval = setInterval(updateTimeAndGreeting, 1000);
     return () => clearInterval(interval);
   }, [timeFormat]);
+
   const {
     conversations,
     messages,
@@ -816,7 +146,7 @@ export function ChatArea({
       isAdmin ||
       hasGroupPermission(activeGroup, user?.id, 'delete_other_messages'));
 
-  // --- Local state ---
+  // Local state
   const [messageInput, setMessageInput] = useState('');
   const [isMdMode, setIsMdMode] = useState(false);
   const [mdTab, setMdTab] = useState<'write' | 'preview'>('write');
@@ -841,18 +171,6 @@ export function ChatArea({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   const isMobile = isMobileScreen || isMobileView;
-  const emojiPickerRef = useRef<HTMLDivElement>(null);
-  const emojiPickerContainerRef = useRef<HTMLDivElement>(null);
-  const mobileEmojiContainerRef = useRef<HTMLDivElement>(null);
-  const mobileAttachMenuRef = useRef<HTMLDivElement>(null);
-  const [showMobileAttachMenu, setShowMobileAttachMenu] = useState(false);
-
-  const [emojiPickerStyle, setEmojiPickerStyle] = useState<React.CSSProperties>(
-    {
-      opacity: 0,
-      pointerEvents: 'none',
-    },
-  );
 
   const [mentionQuery, setMentionQuery] = useState<{
     text: string;
@@ -973,122 +291,20 @@ export function ChatArea({
     return null;
   };
 
-  const getMemberDetailsForPopover = (userId: string) => {
-    const member = activeGroup?.members?.find((m) => m.userId === userId);
-    const userObj =
-      userId === user?.id
-        ? user
-        : userProfiles[userId] ||
-          member?.user ||
-          friends.find((f) => f.id === userId) ||
-          null;
-
-    const displayName =
-      userObj?.displayName ||
-      userObj?.username ||
-      userObj?.email?.split('@')[0] ||
-      'User';
-    const email = userObj?.email || '';
-    const username = userObj?.username || '';
-    const presence =
-      userId === user?.id
-        ? (user?.status as any) || 'online'
-        : (onlineUsers[userId] as any) || 'offline';
-    const isOwner = activeGroup?.ownerId === userId;
-    const memberRoleIds = member?.roleIds || [];
-    const groupRoles = activeGroup?.roles || [];
-    const matchingRoles = [...groupRoles]
-      .filter((r) => memberRoleIds.includes(r.id))
-      .sort((a, b) => {
-        const hpA = a.hierarchyPriority ?? a.priority ?? 1000000;
-        const hpB = b.hierarchyPriority ?? b.priority ?? 1000000;
-        if (hpA !== hpB) {
-          return hpA - hpB;
-        }
-        const cpA = a.colorPriority ?? 0;
-        const cpB = b.colorPriority ?? 0;
-        if (cpA !== cpB) {
-          if (cpA <= 0) {
-            return 1;
-          }
-          if (cpB <= 0) {
-            return -1;
-          }
-          return cpA - cpB;
-        }
-        return a.createdAt.localeCompare(b.createdAt);
-      });
-
-    const colorRoles = [...matchingRoles].sort((a, b) => {
-      const cpA = a.colorPriority ?? 0;
-      const cpB = b.colorPriority ?? 0;
-      if (cpA !== cpB) {
-        if (cpA <= 0) {
-          return 1;
-        }
-        if (cpB <= 0) {
-          return -1;
-        }
-        return cpA - cpB;
-      }
-      return 0;
-    });
-
-    const color = isOwner ? '#eab308' : colorRoles[0]?.color || 'inherit';
-
-    return {
-      id: userId,
-      displayName,
-      email,
-      username,
-      avatarUrl: userObj?.avatarUrl,
-      avatarThumbnailUrl: userObj?.avatarThumbnailUrl,
-      presence,
-      isOwner,
-      role: member?.role || 'member',
-      roleIds: memberRoleIds,
-      matchingRoles,
-      color,
-    };
-  };
+  const getMemberDetailsForPopover = (userId: string) =>
+    getMemberDetailsHelper(
+      userId,
+      user,
+      userProfiles,
+      activeGroup,
+      onlineUsers,
+      friends,
+    );
 
   const handleOpenProfile = (e: React.MouseEvent, userId: string) => {
     e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();
-    const popoverWidth = 260; // w-65 is 260px
-    const viewportWidth = window.innerWidth;
-
-    const isRightSide = rect.left > viewportWidth / 2;
-
-    let position: { top: number; right?: number; left?: number };
-
-    if (isRightSide) {
-      const fitsOnLeft = rect.left - 8 - popoverWidth >= 16;
-      if (fitsOnLeft) {
-        position = {
-          top: rect.top + rect.height / 2,
-          right: viewportWidth - rect.left + 8,
-        };
-      } else {
-        position = {
-          top: rect.top + rect.height / 2,
-          left: rect.right + 8,
-        };
-      }
-    } else {
-      const fitsOnRight = rect.right + 8 + popoverWidth <= viewportWidth - 16;
-      if (fitsOnRight) {
-        position = {
-          top: rect.top + rect.height / 2,
-          left: rect.right + 8,
-        };
-      } else {
-        position = {
-          top: rect.top + rect.height / 2,
-          right: viewportWidth - rect.left + 8,
-        };
-      }
-    }
+    const position = calculatePopoverPosition(rect);
 
     setProfilePopoverPosition(position);
     setProfileCardUserId(userId);
@@ -1098,25 +314,26 @@ export function ChatArea({
   };
 
   const getReactingUserNames = (userIds: string[]) => {
+    if (!userIds || userIds.length === 0) {
+      return [];
+    }
     return userIds.map((uid) => {
       if (uid === user?.id) {
         return 'You';
       }
-      const profile = userProfiles[uid];
-      if (profile?.username) {
-        return `@${profile.username}`;
+      const cached = userProfiles[uid];
+      if (cached?.username) {
+        return `@${cached.username}`;
       }
-      if (profile?.displayName) {
-        return profile.displayName;
+      if (cached?.displayName) {
+        return cached.displayName;
       }
-      const groupMem = activeGroup?.members?.find(
-        (m) => m.userId === uid,
-      )?.user;
-      if (groupMem?.username) {
-        return `@${groupMem.username}`;
+      const member = activeGroup?.members?.find((m) => m.userId === uid);
+      if (member?.user?.username) {
+        return `@${member.user.username}`;
       }
-      if (groupMem?.displayName) {
-        return groupMem.displayName;
+      if (member?.user?.displayName) {
+        return member.user.displayName;
       }
       const friend = friends.find((f) => f.id === uid);
       if (friend?.username) {
@@ -1128,263 +345,6 @@ export function ChatArea({
       return 'Someone';
     });
   };
-
-  const renderMessageContent = (content: string, isMarkdownMsg?: boolean) => {
-    if (!content) {
-      return null;
-    }
-    if (isMarkdownMsg || isMdMode) {
-      return (
-        <div className="markdown-body prose prose-sm dark:prose-invert max-w-none break-words">
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            components={{
-              // eslint-disable-next-line @typescript-eslint/no-unused-vars
-              pre({ node, children, ...props }: any) {
-                try {
-                  const isMobile = isMobileScreen || isMobileView;
-                  if (isMobile) {
-                    const codeElement = React.Children.toArray(
-                      children,
-                    )[0] as any;
-                    if (codeElement && codeElement.props) {
-                      const codeString = String(
-                        codeElement.props.children,
-                      ).replace(/\n$/, '');
-                      const match = /language-(\w+)/.exec(
-                        codeElement.props.className || '',
-                      );
-                      const lang = match ? match[1] : '';
-                      return (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setViewingCode({
-                              code: codeString,
-                              language: lang,
-                            });
-                          }}
-                          className="w-full text-left my-2 p-3 rounded-xl border border-glass bg-theme-input/40 hover:bg-theme-input/60 transition-all flex items-center justify-between gap-3 text-theme-primary font-sans cursor-pointer group active-press"
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="w-8 h-8 rounded-lg flex items-center justify-center bg-(--accent-primary)/10 text-(--accent-primary) shrink-0 group-hover:scale-105 transition-transform">
-                              <svg
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2.5"
-                                className="w-4 h-4"
-                              >
-                                <polyline points="16 18 22 12 16 6" />
-                                <polyline points="8 6 2 12 8 18" />
-                              </svg>
-                            </span>
-                            <div className="min-w-0">
-                              <div className="text-[12.5px] font-bold leading-tight">
-                                [Message with code]
-                              </div>
-                              <div className="text-[10px] text-theme-muted truncate mt-0.5">
-                                {lang
-                                  ? `${lang} code block`
-                                  : 'Click to view code snippet'}
-                              </div>
-                            </div>
-                          </div>
-                          <svg
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2.5"
-                            className="w-4 h-4 text-theme-muted opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all shrink-0"
-                          >
-                            <polyline points="9 18 15 12 9 6" />
-                          </svg>
-                        </button>
-                      );
-                    }
-                  }
-                } catch (err) {
-                  console.error('Error rendering mobile code block:', err);
-                }
-                return <pre {...props}>{children}</pre>;
-              },
-              // eslint-disable-next-line @typescript-eslint/no-unused-vars
-              code({ node, inline, className, children, ...props }: any) {
-                return (
-                  <code className={className} {...props}>
-                    {children}
-                  </code>
-                );
-              },
-            }}
-          >
-            {content}
-          </ReactMarkdown>
-        </div>
-      );
-    }
-    if (!isChannelMode) {
-      return content;
-    }
-    const parts = content.split(/(@everyone|@[a-zA-Z0-9_.-]+)/g);
-    const currentUserTag = user?.username ? `@${user.username}` : '';
-
-    return parts.map((part, idx) => {
-      if (part === '@everyone') {
-        const textColor = getContrastColor('var(--accent-primary)');
-        const borderColor =
-          textColor === '#ffffff'
-            ? 'rgba(255, 255, 255, 0.35)'
-            : 'rgba(0, 0, 0, 0.18)';
-        return (
-          <span
-            key={idx}
-            className="font-semibold px-1.5 py-0.5 rounded text-[13px] shadow-sm"
-            style={{
-              display: 'inline-block',
-              margin: '0 2px',
-              backgroundColor: 'var(--accent-primary)',
-              color: textColor,
-              border: `1.5px solid ${borderColor}`,
-            }}
-          >
-            @everyone
-          </span>
-        );
-      } else if (part.startsWith('@')) {
-        const cleanName = part.slice(1);
-        const resolvedUser = findUserByName(cleanName);
-
-        let roleColor = 'var(--accent-primary)';
-        if (resolvedUser?.id) {
-          const member = activeGroup?.members?.find(
-            (m) => m.userId === resolvedUser.id,
-          );
-          const memberRoleIds = member?.roleIds || [];
-          const groupRoles = activeGroup?.roles || [];
-          const matchingRoles = [...groupRoles]
-            .filter((r) => memberRoleIds.includes(r.id))
-            .sort((a, b) => {
-              const cpA = a.colorPriority ?? 0;
-              const cpB = b.colorPriority ?? 0;
-              if (cpA !== cpB) {
-                if (cpA <= 0) {
-                  return 1;
-                }
-                if (cpB <= 0) {
-                  return -1;
-                }
-                return cpA - cpB;
-              }
-              return 0;
-            });
-          const isOwner =
-            member?.role === 'owner' ||
-            activeGroup?.ownerId === resolvedUser.id;
-          // Owner color always wins — check it first, before any role color
-          const color = isOwner ? '#eab308' : matchingRoles[0]?.color || null;
-          if (color && color !== 'inherit') {
-            roleColor = color;
-          }
-        }
-
-        const isMe =
-          currentUserTag && part.toLowerCase() === currentUserTag.toLowerCase();
-
-        if (isMe) {
-          const textColor = getContrastColor(roleColor);
-          const borderColor =
-            textColor === '#ffffff'
-              ? 'rgba(255, 255, 255, 0.35)'
-              : 'rgba(0, 0, 0, 0.18)';
-          return (
-            <span
-              key={idx}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (resolvedUser?.id) {
-                  handleOpenProfile(e, resolvedUser.id);
-                }
-              }}
-              className="font-semibold px-1.5 py-0.5 rounded text-[13px] shadow-sm cursor-pointer hover:opacity-90 active:scale-95 transition-all"
-              style={{
-                display: 'inline-block',
-                margin: '0 2px',
-                backgroundColor: roleColor,
-                color: textColor,
-                border: `1.5px solid ${borderColor}`,
-              }}
-            >
-              {part}
-            </span>
-          );
-        } else {
-          return (
-            <span
-              key={idx}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (resolvedUser?.id) {
-                  handleOpenProfile(e, resolvedUser.id);
-                }
-              }}
-              className="font-semibold cursor-pointer hover:underline transition-all"
-              style={{
-                display: 'inline-block',
-                margin: '0 1px',
-                color: roleColor,
-              }}
-            >
-              {part}
-            </span>
-          );
-        }
-      }
-      return part;
-    });
-  };
-
-  useEffect(() => {
-    const handleClickOutside = (event: Event) => {
-      if (
-        emojiPickerRef.current &&
-        !emojiPickerRef.current.contains(event.target as Node) &&
-        (!emojiPickerContainerRef.current ||
-          !emojiPickerContainerRef.current.contains(event.target as Node)) &&
-        (!mobileEmojiContainerRef.current ||
-          !mobileEmojiContainerRef.current.contains(event.target as Node))
-      ) {
-        setShowEmojiPicker(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('touchstart', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('touchstart', handleClickOutside);
-    };
-  }, []);
-
-  useEffect(() => {
-    const handleAttachMenuClickOutside = (event: Event) => {
-      if (
-        mobileAttachMenuRef.current &&
-        !mobileAttachMenuRef.current.contains(event.target as Node)
-      ) {
-        setShowMobileAttachMenu(false);
-      }
-    };
-    if (showMobileAttachMenu) {
-      document.addEventListener('mousedown', handleAttachMenuClickOutside);
-      document.addEventListener('touchstart', handleAttachMenuClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleAttachMenuClickOutside);
-      document.removeEventListener('touchstart', handleAttachMenuClickOutside);
-    };
-  }, [showMobileAttachMenu]);
 
   // Global keydown listener to cancel editing on Escape
   useEffect(() => {
@@ -1426,11 +386,6 @@ export function ChatArea({
 
   const [activeMediaItem, setActiveMediaItem] =
     useState<MessageMediaItem | null>(null);
-  const [mediaLoadError, setMediaLoadError] = useState<boolean>(false);
-  const [showRetentionPopover, setShowRetentionPopover] =
-    useState<boolean>(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
   const [attachedFiles, setAttachedFiles] = useState<
     {
       url: string;
@@ -1507,7 +462,6 @@ export function ChatArea({
       ).replace(/\/+$/, '');
 
       const uploadPromises = validFiles.map(async (file) => {
-        // 1. Upload main media file
         const formData = new FormData();
         formData.append('bucket', 'relayflow');
         formData.append('folder', 'chat-medis');
@@ -1528,7 +482,6 @@ export function ChatArea({
         }
         const uploaded = data.files[0];
 
-        // 2. Generate and upload thumbnail if it's image or video (excluding GIFs)
         let thumbnailUrl: string | undefined;
         let thumbnailName: string | undefined;
         const isGif =
@@ -1589,22 +542,9 @@ export function ChatArea({
       showToast.error('Failed to upload some files.');
     } finally {
       setUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-      if (cameraInputRef.current) {
-        cameraInputRef.current.value = '';
-      }
     }
   };
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) {
-      return;
-    }
-    await processFiles(files);
-  };
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -1622,7 +562,6 @@ export function ChatArea({
   }
   const [contextMenu, setContextMenu] =
     useState<MessageContextMenuState | null>(null);
-  const contextMenuRef = useRef<HTMLDivElement>(null);
   const [adjustedContextMenu, setAdjustedContextMenu] = useState<{
     x: number;
     y: number;
@@ -1630,25 +569,21 @@ export function ChatArea({
     subMenuUp: boolean;
   } | null>(null);
 
-  // --- Pagination & Scroll UX state ---
+  // Pagination & Scroll UX state
   const isFetchingMoreRef = useRef(false);
-  const feedContainerRef = useRef<HTMLDivElement>(null);
-
   const scrollHeightBeforeLoadRef = useRef(0);
   const scrollTopBeforeLoadRef = useRef(0);
   const prevActiveConvoIdRef = useRef<string | null>(null);
   const prevMessagesLengthRef = useRef(0);
   const isFirstRenderForConvoRef = useRef(true);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // ---- Messages on conversation change ----
+  // Messages on conversation change
   useEffect(() => {
     setMessageInput('');
     setIsMdMode(false);
     setMdTab('write');
     setIsTypingState(false);
-    setShowMobileAttachMenu(false);
     setShowEmojiPicker(false);
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
@@ -1704,7 +639,7 @@ export function ChatArea({
     );
   }, [activeConversationId, typingUsers, userProfiles, user, dispatch]);
 
-  // ---- Scroll & Anchor Management ----
+  // Scroll & Anchor Management
   const activeMessages =
     activeConversationId && activeConversationId !== 'friends'
       ? messages[activeConversationId] || []
@@ -1739,7 +674,6 @@ export function ChatArea({
       prevMessagesLengthRef.current = messagesLength;
 
       if (isFetchingMoreRef.current) {
-        // We loaded older messages (pagination)
         const newScrollHeight = container.scrollHeight;
         const oldScrollHeight = scrollHeightBeforeLoadRef.current;
         const oldScrollTop = scrollTopBeforeLoadRef.current;
@@ -1748,11 +682,9 @@ export function ChatArea({
         isFetchingMoreRef.current = false;
         setIsFetchingMore(false);
       } else if (isFirstRenderForConvoRef.current) {
-        // Initial load of messages
         container.scrollTop = container.scrollHeight;
         isFirstRenderForConvoRef.current = false;
       } else {
-        // New real-time message
         const isNearBottom =
           container.scrollHeight -
             container.clientHeight -
@@ -1769,12 +701,11 @@ export function ChatArea({
         }
       }
     } else if (messagesLength < prevMessagesLengthRef.current) {
-      // Messages deleted/purged
       prevMessagesLengthRef.current = messagesLength;
     }
   }, [activeMessages, activeConversationId, user?.id]);
 
-  // ---- Infinite scroll (load more older messages on scroll up) ----
+  // Infinite scroll
   const hasMore = activeConversationId
     ? hasMoreMessages[activeConversationId] !== false
     : false;
@@ -1789,7 +720,6 @@ export function ChatArea({
       return;
     }
 
-    // Record scroll positions before dispatching/loading
     scrollHeightBeforeLoadRef.current = container.scrollHeight;
     scrollTopBeforeLoadRef.current = container.scrollTop;
 
@@ -1824,7 +754,7 @@ export function ChatArea({
     [isFetchingMore, hasMore, loadMoreMessages],
   );
 
-  // ---- Resolve sender profiles and reaction user profiles ----
+  // Resolve sender profiles and reaction user profiles
   useEffect(() => {
     if (
       activeConversationId &&
@@ -1848,9 +778,15 @@ export function ChatArea({
     }
   }, [activeConversationId, messages, userProfiles, user, dispatch]);
 
-  // ---- Messages ----
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSendMessage = (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
+    if (messageInput.trim().toLowerCase() === '/md') {
+      setIsMdMode(true);
+      setMessageInput('');
+      return;
+    }
     if (!canSendMessages) {
       return;
     }
@@ -1895,7 +831,6 @@ export function ChatArea({
     setMessageInput('');
     setAttachedFiles([]);
     setShowEmojiPicker(false);
-    setShowMobileAttachMenu(false);
     setReplyingToMessage(null);
   };
 
@@ -1933,53 +868,18 @@ export function ChatArea({
     [isChannelMode],
   );
 
-  const applyFormat = (prefix: string, suffix = '') => {
-    if (!textareaRef.current) {
-      return;
-    }
-    const start = textareaRef.current.selectionStart;
-    const end = textareaRef.current.selectionEnd;
-    const text = messageInput;
-    const selectedText = text.substring(start, end);
-
-    if (!suffix) {
-      const before = text.substring(0, start);
-      const after = text.substring(end);
-      const newText = before + prefix + selectedText + after;
-      setMessageInput(newText);
-      setTimeout(() => {
-        if (textareaRef.current) {
-          textareaRef.current.focus();
-          textareaRef.current.setSelectionRange(
-            start + prefix.length,
-            end + prefix.length,
-          );
-        }
-      }, 0);
-      return;
-    }
-
-    const before = text.substring(0, start);
-    const after = text.substring(end);
-    const newText = before + prefix + selectedText + suffix + after;
-    setMessageInput(newText);
-
-    setTimeout(() => {
-      if (textareaRef.current) {
-        textareaRef.current.focus();
-        textareaRef.current.setSelectionRange(
-          start + prefix.length,
-          end + prefix.length,
-        );
-      }
-    }, 0);
-  };
-
   const handleInputChange = async (
     e: React.ChangeEvent<HTMLTextAreaElement>,
   ) => {
     let val = e.target.value;
-    if (val === '/md ') {
+    const lowerVal = val.toLowerCase();
+    if (lowerVal.startsWith('/md ') || lowerVal.startsWith('/md\n')) {
+      setIsMdMode(true);
+      val = val.slice(4);
+    } else if (
+      lowerVal.trim() === '/md' &&
+      (val.endsWith(' ') || val.endsWith('\n'))
+    ) {
       setIsMdMode(true);
       val = '';
     }
@@ -2004,16 +904,9 @@ export function ChatArea({
     }, 1500);
   };
 
-  const handleTextareaSelect = (
-    e: React.SyntheticEvent<HTMLTextAreaElement>,
-  ) => {
-    const target = e.currentTarget;
-    checkAutocomplete(target.value, target.selectionStart);
-  };
-
-  // ---- Delete conversation ----
-  const handleDeleteConversation = (convoId: string | null) => {
-    if (!convoId) {
+  // Delete conversation
+  const handleDeleteConversation = () => {
+    if (!activeConversationId) {
       return;
     }
     setConfirmModal({
@@ -2024,7 +917,7 @@ export function ChatArea({
       confirmLabel: 'Delete',
       type: 'danger',
       onConfirm: () => {
-        dispatch(deleteConversation(convoId));
+        dispatch(deleteConversation(activeConversationId));
         setConfirmModal(null);
       },
     });
@@ -2086,24 +979,17 @@ export function ChatArea({
 
   const handleContextMenu = (e: React.MouseEvent, msg: Message) => {
     e.preventDefault();
+    if (isMobile) {
+      return;
+    }
     setContextMenu({ message: msg, x: e.clientX, y: e.clientY });
   };
 
-  const handleMobileClick = (e: React.MouseEvent, msg: Message) => {
-    const target = e.target as HTMLElement;
-    if (
-      target.tagName === 'A' ||
-      target.tagName === 'BUTTON' ||
-      target.tagName === 'INPUT' ||
-      target.tagName === 'TEXTAREA' ||
-      target.closest('button') ||
-      target.closest('a')
-    ) {
+  const handleLongPress = (coords: { x: number; y: number }, msg: Message) => {
+    if (!isMobile) {
       return;
     }
-    e.preventDefault();
-    e.stopPropagation();
-    setContextMenu({ message: msg, x: e.clientX, y: e.clientY });
+    setContextMenu({ message: msg, x: coords.x, y: coords.y });
   };
 
   useEffect(() => {
@@ -2133,7 +1019,6 @@ export function ChatArea({
       let adjustX = contextMenu.x;
       let adjustY = contextMenu.y;
 
-      // Adjust X (left/right bounds)
       if (contextMenu.x + rect.width > viewportWidth) {
         adjustX = viewportWidth - rect.width - 16;
       }
@@ -2141,7 +1026,6 @@ export function ChatArea({
         adjustX = 16;
       }
 
-      // Adjust Y (top/bottom bounds)
       if (contextMenu.y + rect.height > viewportHeight) {
         adjustY = viewportHeight - rect.height - 16;
       }
@@ -2149,15 +1033,7 @@ export function ChatArea({
         adjustY = 16;
       }
 
-      // Submenu check: Submenu is 160px wide (w-40).
-      // If we put the submenu on the right of the context menu, it will start at (adjustX + rect.width)
-      // and end at (adjustX + rect.width + 160).
-      // If that ends up exceeding the viewport, we position the submenu on the left instead!
       const subMenuLeft = adjustX + rect.width + 160 + 16 > viewportWidth;
-
-      // Vertical submenu check: submenu max height is ~220px (header + 150px list + padding)
-      // The submenu opens at the row's y offset within the context menu.
-      // Approximate: if context menu bottom is less than 220px from the bottom, open submenu upward.
       const subMenuUp = adjustY + rect.height + 220 > viewportHeight;
 
       setAdjustedContextMenu({
@@ -2171,47 +1047,7 @@ export function ChatArea({
     }
   }, [contextMenu]);
 
-  // Emoji picker: calculate position at click time using known emoji-mart dimensions.
-  // Using known dimensions avoids web-component async render timing issues.
-  const handleEmojiPickerToggle = () => {
-    if (!showEmojiPicker && emojiPickerRef.current) {
-      const rect = emojiPickerRef.current.getBoundingClientRect();
-      const PW = 352;
-      const PH = 440;
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-
-      // Prefer above the button; flip below if not enough space
-      let top = -PH - 8;
-      if (rect.top + top < 16) {
-        top = rect.height + 8;
-        if (rect.bottom + PH + 8 > vh - 16) {
-          top = 16 - rect.top;
-        }
-      }
-
-      // Left-align; shift left if it overflows right edge
-      let left = 0;
-      if (rect.left + PW > vw - 16) {
-        left = vw - 16 - PW - rect.left;
-      }
-      if (rect.left + left < 16) {
-        left = 16 - rect.left;
-      }
-
-      setEmojiPickerStyle({
-        top: `${top}px`,
-        left: `${left}px`,
-        opacity: 1,
-        pointerEvents: 'auto',
-      });
-    } else {
-      setEmojiPickerStyle({ opacity: 0, pointerEvents: 'none' });
-    }
-    setShowEmojiPicker((prev) => !prev);
-  };
-
-  // ---- Conversation Name helper ----
+  // Conversation details helper
   const getConversationDetails = (convo: any) => {
     if (!user) {
       return null;
@@ -2266,7 +1102,6 @@ export function ChatArea({
         )
       : false;
 
-  // Find all other users typing in the active conversation
   const typingUsernames =
     activeConversationId && typingUsers[activeConversationId]
       ? Object.entries(typingUsers[activeConversationId])
@@ -2294,292 +1129,33 @@ export function ChatArea({
     return `${typingUsernames[0]}, ${typingUsernames[1]} and ${typingUsernames.length - 2} others are typing`;
   };
 
-  // Derive the live message from Redux so readBy is always up-to-date in the context menu
-  const liveContextMenuMsg = contextMenu
-    ? (activeMessages.find((m) => m.id === contextMenu.message.id) ??
-      contextMenu.message)
-    : null;
-
   return (
     <div
-      className={`glass-panel flex flex-col overflow-hidden h-full flex-1 min-w-0 ${isMobileView ? 'rounded-none' : ''}`}
+      className={`glass-panel flex flex-col overflow-hidden h-full flex-1 min-w-0 ${
+        isMobileView ? 'rounded-none' : ''
+      }`}
     >
       {activeConversationId && (activeDetails || isChannelMode) ? (
         <>
-          {/* Chat Header — hidden in mobile view since MobileDashboard renders its own header */}
-          {!isMobileView && (
-            <div
-              className={`flex items-center justify-between gap-3 border-b border-theme bg-theme-sidebar/40 backdrop-blur-md rounded-t-2xl shrink-0 ${isMobileScreen ? 'px-3.5 py-2.5' : 'px-5 py-3.5'}`}
-            >
-              {isChannelMode ? (
-                /* Channel mode header */
-                <div className="flex-1 min-w-0 flex items-center gap-2">
-                  {onMenuClick && (
-                    <button
-                      id="mobile-menu-btn"
-                      onClick={onMenuClick}
-                      className="flex items-center justify-center p-1.5 rounded-md text-theme-muted hover:bg-theme-input hover:text-theme-primary cursor-pointer active-press focus:outline-none shrink-0 md:hidden"
-                      title="Open Navigation"
-                    >
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        className="w-5 h-5"
-                      >
-                        <line x1="19" y1="12" x2="5" y2="12" />
-                        <polyline points="12 19 5 12 12 5" />
-                      </svg>
-                    </button>
-                  )}
-                  <span className="text-theme-muted flex shrink-0">
-                    {isVoiceChannel ? (
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.2"
-                        className="w-5 h-5"
-                      >
-                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                        <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-                        <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-                      </svg>
-                    ) : (
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        className="w-5 h-5"
-                      >
-                        <line x1="4" y1="9" x2="20" y2="9" />
-                        <line x1="4" y1="15" x2="20" y2="15" />
-                        <line x1="10" y1="3" x2="8" y2="21" />
-                        <line x1="16" y1="3" x2="14" y2="21" />
-                      </svg>
-                    )}
-                  </span>
-                  <h3 className="text-[16px] font-bold tracking-tight truncate text-theme-primary">
-                    {activeChannelName || activeDetails?.name || ''}
-                  </h3>
-                  {isActiveTyping && !isVoiceChannel && (
-                    <span className="text-[11.5px] font-medium ml-2 animate-pulse text-(--accent-primary)">
-                      {getTypingText()}…
-                    </span>
-                  )}
-                </div>
-              ) : (
-                <>
-                  {onMenuClick && (
-                    <button
-                      id="mobile-menu-btn"
-                      onClick={onMenuClick}
-                      className="flex items-center justify-center p-1.5 rounded-md text-theme-muted hover:bg-theme-input hover:text-theme-primary cursor-pointer active-press focus:outline-none shrink-0 mr-1 md:hidden"
-                      title="Open Navigation"
-                    >
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        className="w-5 h-5"
-                      >
-                        <line x1="19" y1="12" x2="5" y2="12" />
-                        <polyline points="12 19 5 12 12 5" />
-                      </svg>
-                    </button>
-                  )}
-                  <div
-                    onClick={(e) => {
-                      if (activeDetails?.id) {
-                        handleOpenProfile(e, activeDetails.id);
-                      }
-                    }}
-                    className="flex items-center gap-3 cursor-pointer hover:opacity-90 active:scale-95 transition-all"
-                  >
-                    <Avatar
-                      letter={activeDetails?.letter || ''}
-                      url={
-                        activeDetails?.avatarThumbnailUrl ||
-                        activeDetails?.avatarUrl
-                      }
-                      status={activeStatus}
-                      size="md"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-[16px] font-bold tracking-tight truncate text-theme-primary">
-                        {activeDetails?.name || ''}
-                      </h3>
-                      {isActiveTyping ? (
-                        <span className="text-[11.5px] font-medium text-(--accent-primary)">
-                          typing…
-                        </span>
-                      ) : (
-                        <div className="flex items-center gap-1.5 text-[11.5px] mt-0.5">
-                          <PresenceDot status={activeStatus} size={7} />
-                          <span
-                            style={{
-                              color:
-                                PRESENCE_DOT_COLORS[
-                                  activeStatus as PresenceStatus
-                                ] || 'var(--text-muted)',
-                            }}
-                          >
-                            {STATUS_TEXTS[activeStatus as PresenceStatus] ||
-                              'Offline'}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </>
-              )}
-              {/* Call button & Delete thread — only in DM mode */}
-              {!isChannelMode && (
-                <div className="flex items-center gap-2 shrink-0">
-                  {/* 1-on-1 Retention Policy Badge */}
-                  {activeConvo?.retentionPolicy && (
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() => setShowRetentionPopover((prev) => !prev)}
-                        title="View 1-on-1 Auto-Deletion Policy"
-                        className="flex items-center gap-1.5 rounded-[9px] px-2.5 py-1.5 text-[11px] font-semibold cursor-pointer transition-all duration-200 border bg-theme-input/70 border-theme text-theme-secondary hover:text-theme-primary hover:bg-theme-input active-press"
-                      >
-                        <span className="text-[12px]">⏱️</span>
-                        <span className="hidden sm:inline">
-                          Media:{' '}
-                          {activeConvo.retentionPolicy.mediaDays === null
-                            ? 'Never'
-                            : `${activeConvo.retentionPolicy.mediaDays}d`}{' '}
-                          • Chat:{' '}
-                          {activeConvo.retentionPolicy.messageDays === null
-                            ? 'Never'
-                            : `${activeConvo.retentionPolicy.messageDays}d`}
-                        </span>
-                        <span className="sm:hidden">
-                          {activeConvo.retentionPolicy.mediaDays === null
-                            ? '∞'
-                            : `${activeConvo.retentionPolicy.mediaDays}d`}
-                          /
-                          {activeConvo.retentionPolicy.messageDays === null
-                            ? '∞'
-                            : `${activeConvo.retentionPolicy.messageDays}d`}
-                        </span>
-                      </button>
-
-                      {showRetentionPopover && (
-                        <div
-                          className="absolute right-0 top-full mt-2 w-72 sm:w-80 p-4 rounded-2xl glass-panel border border-glass shadow-2xl z-50 animate-fade-in flex flex-col gap-2.5 text-left"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <div className="flex items-center justify-between border-b border-glass pb-2">
-                            <span className="text-xs font-bold text-theme-primary flex items-center gap-1.5">
-                              <span>⏱️</span> 1-on-1 Retention Policy
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => setShowRetentionPopover(false)}
-                              className="text-theme-muted hover:text-theme-primary text-xs cursor-pointer p-0.5"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                          <p className="text-[11px] text-theme-muted leading-relaxed">
-                            In 1-on-1 chats, whichever participant has selected
-                            the longer duration applies to both users.
-                          </p>
-                          <div className="flex flex-col gap-1.5 py-1">
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="text-theme-muted">
-                                Media Retention:
-                              </span>
-                              <span className="font-bold text-(--accent-primary)">
-                                {activeConvo.retentionPolicy.mediaDays === null
-                                  ? 'Keep Forever'
-                                  : `${activeConvo.retentionPolicy.mediaDays} Days (Applied max)`}
-                              </span>
-                            </div>
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="text-theme-muted">
-                                Message History:
-                              </span>
-                              <span className="font-bold text-(--accent-primary)">
-                                {activeConvo.retentionPolicy.messageDays ===
-                                null
-                                  ? 'Keep Forever'
-                                  : `${activeConvo.retentionPolicy.messageDays} Days (Applied max)`}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="text-[10.5px] text-theme-muted/80 bg-theme-input/50 p-2.5 rounded-xl border border-theme leading-relaxed">
-                            💡 High-res media purges after media retention while
-                            keeping preview thumbnails. Expired messages are
-                            permanently wiped with all attachments.
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  <button
-                    id="call-user-btn"
-                    title="Start Voice Call"
-                    className="flex items-center gap-1.5 rounded-[9px] px-3 py-1.5 text-[12px] font-semibold cursor-pointer transition-all duration-200 border-[1.5px] bg-(--accent-primary)/10 text-(--accent-primary) border-(--accent-primary)/20 hover:bg-(--accent-primary) hover:text-white hover:border-(--accent-primary) active-press"
-                    onClick={handleStartCall}
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                      className="w-4 h-4"
-                    >
-                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-                    </svg>
-                    Call
-                  </button>
-
-                  <button
-                    id="delete-thread-btn"
-                    title="Delete thread"
-                    className="flex items-center gap-1.5 rounded-[9px] px-3 py-1.5 text-[12px] font-semibold cursor-pointer transition-all duration-200 border-[1.5px] bg-(--danger-bg) text-(--danger) border-(--danger-border) hover:bg-(--danger) hover:text-white hover:border-(--danger) hover:shadow-[0_4px_14px_rgba(239,68,68,0.3)] active-press"
-                    onClick={() =>
-                      handleDeleteConversation(activeConversationId)
-                    }
-                  >
-                    <IconTrash />
-                    Delete
-                  </button>
-                </div>
-              )}
-
-              {/* Members Toggle Button — only in Channel mode */}
-              {isChannelMode && onToggleMembersList && (
-                <button
-                  id="toggle-members-btn"
-                  title="Toggle Member List"
-                  onClick={onToggleMembersList}
-                  className={`bg-transparent border-none cursor-pointer p-1.5 rounded-md flex items-center transition-all duration-150 active-press 
-                  ${isMembersListOpen ? 'text-(--accent-primary)' : 'text-theme-muted hover:bg-theme-input hover:text-theme-primary'}`}
-                >
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    className="w-4.5 h-4.5"
-                  >
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                    <circle cx="9" cy="7" r="4" />
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                  </svg>
-                </button>
-              )}
-            </div>
-          )}
+          {/* Header component */}
+          <ChatHeader
+            isMobileView={isMobileView}
+            isMobileScreen={isMobileScreen}
+            isChannelMode={isChannelMode}
+            isVoiceChannel={isVoiceChannel}
+            activeChannelName={activeChannelName}
+            activeDetails={activeDetails}
+            activeStatus={activeStatus}
+            isActiveTyping={isActiveTyping}
+            typingText={getTypingText()}
+            activeConvo={activeConvo}
+            onMenuClick={onMenuClick}
+            onOpenProfile={handleOpenProfile}
+            onStartCall={handleStartCall}
+            onDeleteConversation={handleDeleteConversation}
+            isMembersListOpen={isMembersListOpen}
+            onToggleMembersList={onToggleMembersList}
+          />
 
           {isVoiceChannel && activeGroupId && activeChannel ? (
             <div
@@ -2592,7 +1168,9 @@ export function ChatArea({
               <div
                 ref={feedContainerRef}
                 onScroll={handleScroll}
-                className={`flex-1 overflow-y-auto overflow-x-hidden flex flex-col gap-3.5 bg-theme-chat ${isMobileScreen || isMobileView ? 'p-3' : 'p-5'}`}
+                className={`flex-1 overflow-y-auto overflow-x-hidden flex flex-col gap-3.5 bg-theme-chat ${
+                  isMobileScreen || isMobileView ? 'p-3' : 'p-5'
+                }`}
               >
                 {isFetchingMore && (
                   <div className="flex justify-center py-2 shrink-0">
@@ -2606,760 +1184,49 @@ export function ChatArea({
                   </div>
                 ) : (
                   activeMessages.map((msg) => {
-                    const isOut = msg.senderId === user.id;
-                    const senderProfile = userProfiles[msg.senderId];
-                    const senderName = isOut
-                      ? user.username ||
-                        user.displayName ||
-                        user.email.split('@')[0]
-                      : senderProfile?.username ||
-                        senderProfile?.displayName ||
-                        senderProfile?.email?.split('@')[0] ||
-                        'User';
+                    const rowProps = {
+                      key: msg.id,
+                      msg,
+                      user,
+                      userProfiles,
+                      onlineUsers,
+                      isChannelMode,
+                      activeGroup,
+                      timeFormat,
+                      editingMessageId,
+                      setEditingMessageId,
+                      editingContent,
+                      setEditingContent,
+                      handleSaveEdit,
+                      handleStartEdit,
+                      handleDeleteMessage,
+                      setReplyingToMessage,
+                      setActiveReactionMessageId,
+                      activeReactionMessageId,
+                      setActiveMediaItem,
+                      handleContextMenu,
+                      handleLongPress,
+                      handleOpenProfile,
+                      canDeleteOthers,
+                      activeConversationId,
+                      findUserByName,
+                      onViewCode: setViewingCode,
+                      isMobileScreen,
+                      isMobileView,
+                      getReactingUserNames,
+                    };
 
-                    // Determine sender color if it's channel mode
-                    let senderColor = 'inherit';
-                    if (isChannelMode && activeGroup) {
-                      const member = activeGroup.members?.find(
-                        (mem) => mem.userId === msg.senderId,
-                      );
-                      if (member) {
-                        // Use member.role for reliable owner detection
-                        const isOwnerSender =
-                          member.role === 'owner' ||
-                          msg.senderId === activeGroup.ownerId;
-                        if (isOwnerSender) {
-                          // Owner color always wins over any role color
-                          senderColor = '#eab308';
-                        } else {
-                          const memberRoleIds = member.roleIds || [];
-                          const matchingRole = activeGroup.roles?.find((r) =>
-                            memberRoleIds.includes(r.id),
-                          );
-                          senderColor = matchingRole?.color || 'inherit';
-                        }
-                      }
-                    }
-
-                    if (!isBubbleLayout) {
-                      const letter = senderName[0]?.toUpperCase() || 'U';
-                      const presenceStatus = isOut
-                        ? onlineUsers[user.id] || user.status || 'online'
-                        : onlineUsers[msg.senderId] || 'offline';
-                      return (
-                        <div
-                          id={`msg-${msg.id}`}
-                          key={msg.id}
-                          onContextMenu={(e) => handleContextMenu(e, msg)}
-                          onClick={(e) => {
-                            if (isMobileScreen || isMobileView) {
-                              handleMobileClick(e, msg);
-                            }
-                          }}
-                          className="flex items-start gap-3 animate-fade-in group justify-between hover:bg-[rgba(0,0,0,0.015)] dark:hover:bg-[rgba(255,255,255,0.01)] rounded-xl px-2 py-1.5 transition-colors duration-150 -mx-2 cursor-pointer md:cursor-default"
-                        >
-                          <div className="flex items-start gap-3 flex-1 min-w-0">
-                            <div
-                              onClick={(e) =>
-                                handleOpenProfile(e, msg.senderId)
-                              }
-                              className="cursor-pointer active-press hover:scale-105 transition-all"
-                            >
-                              <Avatar
-                                letter={letter}
-                                url={
-                                  isOut
-                                    ? user.avatarThumbnailUrl || user.avatarUrl
-                                    : senderProfile?.avatarThumbnailUrl ||
-                                      senderProfile?.avatarUrl
-                                }
-                                status={presenceStatus}
-                                size="sm"
-                              />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-baseline gap-2 mb-1">
-                                <span
-                                  onClick={(e) =>
-                                    handleOpenProfile(e, msg.senderId)
-                                  }
-                                  style={{
-                                    color:
-                                      senderColor !== 'inherit'
-                                        ? senderColor
-                                        : undefined,
-                                  }}
-                                  className={`text-[13.5px] font-bold cursor-pointer hover:underline ${isOut ? 'text-(--accent-primary)' : ''} ${!isOut && senderColor === 'inherit' ? 'text-theme-primary' : ''}`}
-                                >
-                                  {senderName}
-                                </span>
-                                <span className="text-[10.5px] text-theme-muted">
-                                  {formatMessageTimestamp(
-                                    msg.createdAt,
-                                    timeFormat,
-                                  )}
-                                </span>
-                                {msg.isEdited && (
-                                  <span className="text-[9.5px] text-theme-muted opacity-85 select-none">
-                                    (edited)
-                                  </span>
-                                )}
-                              </div>
-                              {msg.parentMessage && (
-                                <div
-                                  onClick={() => {
-                                    const el = document.getElementById(
-                                      `msg-${msg.parentId}`,
-                                    );
-                                    if (el) {
-                                      el.scrollIntoView({
-                                        behavior: 'smooth',
-                                        block: 'center',
-                                      });
-                                      el.classList.add('highlight-flash');
-                                      setTimeout(
-                                        () =>
-                                          el.classList.remove(
-                                            'highlight-flash',
-                                          ),
-                                        2000,
-                                      );
-                                    }
-                                  }}
-                                  className="flex items-center gap-1.5 text-[11px] text-theme-secondary bg-theme-input/50 border border-glass/30 rounded-lg px-2 py-1 mb-1.5 w-fit cursor-pointer hover:bg-theme-input transition-colors max-w-full"
-                                  title="Click to jump to message"
-                                >
-                                  <svg
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2.5"
-                                    className="w-3 h-3 text-[var(--accent-primary)] shrink-0"
-                                  >
-                                    <polyline points="9 17 4 12 9 7" />
-                                    <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
-                                  </svg>
-                                  <span className="font-bold text-theme-primary shrink-0">
-                                    {userProfiles[msg.parentMessage.senderId]
-                                      ?.displayName ||
-                                      userProfiles[msg.parentMessage.senderId]
-                                        ?.username ||
-                                      (msg.parentMessage.senderId === user?.id
-                                        ? 'You'
-                                        : 'User')}
-                                  </span>
-                                  <span className="truncate opacity-80">
-                                    {msg.parentMessage.content}
-                                  </span>
-                                </div>
-                              )}
-                              {editingMessageId === msg.id ? (
-                                <div className="flex flex-col gap-2 mt-1 max-w-full">
-                                  <textarea
-                                    autoFocus
-                                    value={editingContent}
-                                    onChange={(e) =>
-                                      setEditingContent(e.target.value)
-                                    }
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter' && !e.shiftKey) {
-                                        e.preventDefault();
-                                        handleSaveEdit(msg.id);
-                                      } else if (e.key === 'Escape') {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        setEditingMessageId(null);
-                                        setEditingContent('');
-                                      }
-                                    }}
-                                    className="w-full bg-theme-input text-theme-primary border border-theme rounded-lg p-2 text-sm focus:outline-none focus:border-(--accent-primary) resize-none"
-                                    rows={2}
-                                  />
-                                  <div className="flex gap-2 justify-start text-[11px] text-theme-muted">
-                                    <span>
-                                      escape to{' '}
-                                      <button
-                                        onClick={() => {
-                                          setEditingMessageId(null);
-                                          setEditingContent('');
-                                        }}
-                                        className="text-(--accent-primary) hover:underline cursor-pointer bg-transparent border-none p-0"
-                                      >
-                                        cancel
-                                      </button>
-                                    </span>
-                                    <span>•</span>
-                                    <span>
-                                      enter to{' '}
-                                      <button
-                                        onClick={() => handleSaveEdit(msg.id)}
-                                        className="text-(--accent-primary) hover:underline cursor-pointer bg-transparent border-none p-0"
-                                      >
-                                        save
-                                      </button>
-                                    </span>
-                                  </div>
-                                </div>
-                              ) : (
-                                <>
-                                  {msg.content &&
-                                    (() => {
-                                      const emojiSegments = getEmojiSegments(
-                                        msg.content,
-                                      );
-                                      if (
-                                        emojiSegments &&
-                                        emojiSegments.length >= 1 &&
-                                        emojiSegments.length <= 2
-                                      ) {
-                                        return (
-                                          <div className="flex items-center gap-2 select-all my-1.5 flex-wrap">
-                                            {emojiSegments.map((glyph, idx) => (
-                                              <AnimatedEmoji
-                                                key={`${msg.id}-anim-${glyph}-${idx}`}
-                                                glyph={glyph}
-                                                size={
-                                                  emojiSegments.length === 1
-                                                    ? 84
-                                                    : 68
-                                                }
-                                              />
-                                            ))}
-                                          </div>
-                                        );
-                                      }
-                                      return (
-                                        <div
-                                          className={`text-sm leading-relaxed text-theme-primary break-all ${isOnlyEmojis(msg.content) ? 'text-[60px] leading-15' : ''}`}
-                                        >
-                                          {isOnlyEmojis(msg.content)
-                                            ? msg.content
-                                            : renderMessageContent(
-                                                msg.content,
-                                                msg.isMarkdown,
-                                              )}
-                                        </div>
-                                      );
-                                    })()}
-                                </>
-                              )}
-                              {renderMessageMedia(msg, setActiveMediaItem)}
-
-                              {msg.reactions && msg.reactions.length > 0 && (
-                                <div className="flex flex-wrap gap-1 mt-1.5 select-none">
-                                  {msg.reactions.map((react, rIdx) => (
-                                    <ReactionItem
-                                      key={react.emoji + rIdx}
-                                      react={react}
-                                      hasReacted={react.userIds.includes(
-                                        user?.id || '',
-                                      )}
-                                      onToggle={() => {
-                                        if (activeConversationId) {
-                                          socketManager.toggleReaction(
-                                            msg.id,
-                                            activeConversationId,
-                                            react.emoji,
-                                          );
-                                        }
-                                      }}
-                                      userNames={getReactingUserNames(
-                                        react.userIds,
-                                      )}
-                                    />
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          {editingMessageId !== msg.id && (
-                            <div
-                              className={` hidden md:flex items-center gap-1 transition-opacity duration-150 shrink-0 self-center ${
-                                activeReactionMessageId === msg.id
-                                  ? 'opacity-100 pointer-events-auto'
-                                  : 'opacity-0 group-hover:opacity-100'
-                              }`}
-                            >
-                              <button
-                                onClick={() => setReplyingToMessage(msg)}
-                                className="flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-theme-input text-theme-secondary hover:text-[var(--accent-primary)] active-press"
-                                title="Reply to message"
-                              >
-                                <svg
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2.5"
-                                  className="w-4 h-4"
-                                >
-                                  <polyline points="9 17 4 12 9 7" />
-                                  <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
-                                </svg>
-                              </button>
-
-                              <div className="relative">
-                                <button
-                                  onClick={() =>
-                                    setActiveReactionMessageId(msg.id)
-                                  }
-                                  className="flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-theme-input text-theme-secondary hover:text-[var(--accent-primary)] active-press"
-                                  title="Add reaction"
-                                >
-                                  <svg
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2.2"
-                                    className="w-4 h-4"
-                                  >
-                                    <circle cx="12" cy="12" r="10" />
-                                    <path d="M8 14s1.5 2 4 2 4-2 4-2" />
-                                    <line
-                                      x1="9"
-                                      y1="9"
-                                      x2="9.01"
-                                      y2="9"
-                                      strokeWidth="2.5"
-                                    />
-                                    <line
-                                      x1="15"
-                                      y1="9"
-                                      x2="15.01"
-                                      y2="9"
-                                      strokeWidth="2.5"
-                                    />
-                                  </svg>
-                                </button>
-                                {/* Reaction picker is now a centered modal — rendered at component root */}
-                              </div>
-
-                              {isOut && (
-                                <button
-                                  onClick={() => handleStartEdit(msg)}
-                                  className="flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-theme-input text-theme-secondary hover:text-[var(--accent-primary)] active-press"
-                                  title="Edit message"
-                                >
-                                  <IconCompose />
-                                </button>
-                              )}
-                              {(isOut || canDeleteOthers) && (
-                                <button
-                                  onClick={() => handleDeleteMessage(msg.id)}
-                                  className="msg-delete-btn flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-[var(--danger-bg)] text-[var(--danger)] active-press"
-                                  title="Delete message"
-                                >
-                                  <IconTrash />
-                                </button>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    }
-
-                    const letter = senderName[0]?.toUpperCase() || 'U';
-                    const presenceStatus = isOut
-                      ? onlineUsers[user.id] || user.status || 'online'
-                      : onlineUsers[msg.senderId] || 'offline';
-
-                    return (
-                      <div
-                        id={`msg-${msg.id}`}
-                        key={msg.id}
-                        onContextMenu={(e) => handleContextMenu(e, msg)}
-                        onClick={(e) => {
-                          if (isMobileScreen || isMobileView) {
-                            handleMobileClick(e, msg);
-                          }
-                        }}
-                        className={`flex items-start gap-2.5 group max-w-[85%] md:max-w-[72%] animate-fade-in cursor-pointer md:cursor-default ${isOut ? 'self-end' : 'self-start'}`}
-                      >
-                        {isOut && editingMessageId !== msg.id && (
-                          <div
-                            className={`hidden md:flex items-center gap-1 transition-opacity duration-150 shrink-0 self-center ${
-                              activeReactionMessageId === msg.id
-                                ? 'opacity-100 pointer-events-auto'
-                                : 'opacity-0 group-hover:opacity-100'
-                            }`}
-                          >
-                            <button
-                              onClick={() => setReplyingToMessage(msg)}
-                              className="flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-theme-input text-theme-secondary hover:text-[var(--accent-primary)] active-press"
-                              title="Reply to message"
-                            >
-                              <svg
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2.5"
-                                className="w-4 h-4"
-                              >
-                                <polyline points="9 17 4 12 9 7" />
-                                <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
-                              </svg>
-                            </button>
-
-                            <div className="relative">
-                              <button
-                                onClick={() =>
-                                  setActiveReactionMessageId(msg.id)
-                                }
-                                className="flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-theme-input text-theme-secondary hover:text-[var(--accent-primary)] active-press"
-                                title="Add reaction"
-                              >
-                                <svg
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2.2"
-                                  className="w-4 h-4"
-                                >
-                                  <circle cx="12" cy="12" r="10" />
-                                  <path d="M8 14s1.5 2 4 2 4-2 4-2" />
-                                  <line
-                                    x1="9"
-                                    y1="9"
-                                    x2="9.01"
-                                    y2="9"
-                                    strokeWidth="2.5"
-                                  />
-                                  <line
-                                    x1="15"
-                                    y1="9"
-                                    x2="15.01"
-                                    y2="9"
-                                    strokeWidth="2.5"
-                                  />
-                                </svg>
-                              </button>
-                              {/* Reaction picker is now a centered modal — rendered at component root */}
-                            </div>
-                            <button
-                              onClick={() => handleStartEdit(msg)}
-                              className="flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-theme-input text-theme-secondary hover:text-[var(--accent-primary)] active-press"
-                              title="Edit message"
-                            >
-                              <IconCompose />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteMessage(msg.id)}
-                              className="msg-delete-btn flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-[var(--danger-bg)] text-[var(--danger)] active-press"
-                              title="Delete message"
-                            >
-                              <IconTrash />
-                            </button>
-                          </div>
-                        )}
-                        {!isOut && isChannelMode && (
-                          <div
-                            onClick={(e) => handleOpenProfile(e, msg.senderId)}
-                            className="shrink-0 mt-0.5 cursor-pointer active-press hover:scale-105 transition-all"
-                          >
-                            <Avatar
-                              letter={letter}
-                              url={
-                                senderProfile?.avatarThumbnailUrl ||
-                                senderProfile?.avatarUrl
-                              }
-                              status={presenceStatus}
-                              size="sm"
-                            />
-                          </div>
-                        )}
-                        <div
-                          className={`flex flex-col ${isOut ? 'items-end' : 'items-start'} min-w-0`}
-                        >
-                          {!isOut && isChannelMode && (
-                            <span
-                              onClick={(e) =>
-                                handleOpenProfile(e, msg.senderId)
-                              }
-                              style={{
-                                color:
-                                  senderColor !== 'inherit'
-                                    ? senderColor
-                                    : undefined,
-                              }}
-                              className="text-[11.5px] font-bold mb-1 ml-1.5 text-theme-secondary cursor-pointer hover:underline"
-                            >
-                              {senderName}
-                            </span>
-                          )}
-                          {msg.parentMessage && (
-                            <div
-                              onClick={() => {
-                                const el = document.getElementById(
-                                  `msg-${msg.parentId}`,
-                                );
-                                if (el) {
-                                  el.scrollIntoView({
-                                    behavior: 'smooth',
-                                    block: 'center',
-                                  });
-                                  el.classList.add('highlight-flash');
-                                  setTimeout(
-                                    () =>
-                                      el.classList.remove('highlight-flash'),
-                                    2000,
-                                  );
-                                }
-                              }}
-                              className="flex items-center gap-1.5 text-[11px] text-theme-secondary bg-theme-input/50 border border-glass/30 rounded-lg px-2 py-1 mb-1 w-fit cursor-pointer hover:bg-theme-input transition-colors max-w-full"
-                              title="Click to jump to message"
-                            >
-                              <svg
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2.5"
-                                className="w-3 h-3 text-[var(--accent-primary)] shrink-0"
-                              >
-                                <polyline points="9 17 4 12 9 7" />
-                                <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
-                              </svg>
-                              <span className="font-bold text-theme-primary shrink-0">
-                                {userProfiles[msg.parentMessage.senderId]
-                                  ?.displayName ||
-                                  userProfiles[msg.parentMessage.senderId]
-                                    ?.username ||
-                                  (msg.parentMessage.senderId === user?.id
-                                    ? 'You'
-                                    : 'User')}
-                              </span>
-                              <span className="truncate opacity-80">
-                                {msg.parentMessage.content}
-                              </span>
-                            </div>
-                          )}
-                          {editingMessageId === msg.id ? (
-                            <div className="flex flex-col gap-2 mt-1 w-65 sm:w-87.5">
-                              <textarea
-                                autoFocus
-                                value={editingContent}
-                                onChange={(e) =>
-                                  setEditingContent(e.target.value)
-                                }
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter' && !e.shiftKey) {
-                                    e.preventDefault();
-                                    handleSaveEdit(msg.id);
-                                  } else if (e.key === 'Escape') {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    setEditingMessageId(null);
-                                    setEditingContent('');
-                                  }
-                                }}
-                                className="w-full bg-theme-input text-theme-primary border border-theme rounded-lg p-2 text-sm focus:outline-none focus:border-(--accent-primary) resize-none"
-                                rows={2}
-                              />
-                              <div className="flex gap-2 justify-end text-[11px] text-theme-muted">
-                                <span>
-                                  escape to{' '}
-                                  <button
-                                    onClick={() => {
-                                      setEditingMessageId(null);
-                                      setEditingContent('');
-                                    }}
-                                    className="text-(--accent-primary) hover:underline cursor-pointer bg-transparent border-none p-0"
-                                  >
-                                    cancel
-                                  </button>
-                                </span>
-                                <span>•</span>
-                                <span>
-                                  enter to{' '}
-                                  <button
-                                    onClick={() => handleSaveEdit(msg.id)}
-                                    className="text-(--accent-primary) hover:underline cursor-pointer bg-transparent border-none p-0"
-                                  >
-                                    save
-                                  </button>
-                                </span>
-                              </div>
-                            </div>
-                          ) : (
-                            <>
-                              {msg.content &&
-                                (() => {
-                                  const emojiSegments = getEmojiSegments(
-                                    msg.content,
-                                  );
-                                  if (
-                                    emojiSegments &&
-                                    emojiSegments.length >= 1 &&
-                                    emojiSegments.length <= 2
-                                  ) {
-                                    return (
-                                      <div
-                                        className={`flex items-center gap-2 select-all my-1.5 flex-wrap ${isOut ? 'justify-end' : 'justify-start'}`}
-                                      >
-                                        {emojiSegments.map((glyph, idx) => (
-                                          <AnimatedEmoji
-                                            key={`${msg.id}-anim-bubble-${glyph}-${idx}`}
-                                            glyph={glyph}
-                                            size={
-                                              emojiSegments.length === 1
-                                                ? 84
-                                                : 68
-                                            }
-                                          />
-                                        ))}
-                                      </div>
-                                    );
-                                  }
-                                  return (
-                                    <div
-                                      className={
-                                        isOnlyEmojis(msg.content)
-                                          ? `text-[60px] leading-15 wrap-break-word select-all ${isOut ? 'text-right' : 'text-left'}`
-                                          : `px-4 py-2.5 rounded-[18px] text-[14px] leading-relaxed wrap-break-word ${isOut ? 'msg-bubble-out' : 'msg-bubble-in'}`
-                                      }
-                                    >
-                                      {isOnlyEmojis(msg.content)
-                                        ? msg.content
-                                        : renderMessageContent(
-                                            msg.content,
-                                            msg.isMarkdown,
-                                          )}
-                                    </div>
-                                  );
-                                })()}
-                            </>
-                          )}
-                          {renderMessageMedia(msg, setActiveMediaItem)}
-
-                          {msg.reactions && msg.reactions.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-1.5 select-none">
-                              {msg.reactions.map((react, rIdx) => (
-                                <ReactionItem
-                                  key={react.emoji + rIdx}
-                                  react={react}
-                                  hasReacted={react.userIds.includes(
-                                    user?.id || '',
-                                  )}
-                                  onToggle={() => {
-                                    if (activeConversationId) {
-                                      socketManager.toggleReaction(
-                                        msg.id,
-                                        activeConversationId,
-                                        react.emoji,
-                                      );
-                                    }
-                                  }}
-                                  userNames={getReactingUserNames(
-                                    react.userIds,
-                                  )}
-                                />
-                              ))}
-                            </div>
-                          )}
-
-                          <div className="flex items-center gap-1.5 mt-1 px-1 select-none">
-                            <span className="text-[10px] text-theme-muted">
-                              {formatMessageTimestamp(
-                                msg.createdAt,
-                                timeFormat,
-                              )}
-                            </span>
-                            {msg.isEdited && (
-                              <span className="text-[9.5px] text-theme-muted opacity-85 select-none">
-                                (edited)
-                              </span>
-                            )}
-                            {isOut && !isChannelMode && (
-                              <span
-                                className={`inline-flex items-center ${msg.isRead ? 'text-(--accent-primary)' : 'text-theme-muted'}`}
-                                title={msg.isRead ? 'Read' : 'Sent'}
-                              >
-                                {msg.isRead ? (
-                                  <IconDoubleCheck />
-                                ) : (
-                                  <IconCheck />
-                                )}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        {!isOut && editingMessageId !== msg.id && (
-                          <div
-                            className={`hidden md:flex items-center gap-1 transition-opacity duration-150 shrink-0 self-center ${
-                              activeReactionMessageId === msg.id
-                                ? 'opacity-100 pointer-events-auto'
-                                : 'opacity-0 group-hover:opacity-100'
-                            }`}
-                          >
-                            <button
-                              onClick={() => setReplyingToMessage(msg)}
-                              className="flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-theme-input text-theme-secondary hover:text-[var(--accent-primary)] active-press"
-                              title="Reply to message"
-                            >
-                              <svg
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2.5"
-                                className="w-4 h-4"
-                              >
-                                <polyline points="9 17 4 12 9 7" />
-                                <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
-                              </svg>
-                            </button>
-                            <div className="relative">
-                              <button
-                                onClick={() =>
-                                  setActiveReactionMessageId(msg.id)
-                                }
-                                className="flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-theme-input text-theme-secondary hover:text-[var(--accent-primary)] active-press"
-                                title="Add reaction"
-                              >
-                                <svg
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2.2"
-                                  className="w-4 h-4"
-                                >
-                                  <circle cx="12" cy="12" r="10" />
-                                  <path d="M8 14s1.5 2 4 2 4-2 4-2" />
-                                  <line
-                                    x1="9"
-                                    y1="9"
-                                    x2="9.01"
-                                    y2="9"
-                                    strokeWidth="2.5"
-                                  />
-                                  <line
-                                    x1="15"
-                                    y1="9"
-                                    x2="15.01"
-                                    y2="9"
-                                    strokeWidth="2.5"
-                                  />
-                                </svg>
-                              </button>
-                              {/* Reaction picker is now a centered modal — rendered at component root */}
-                            </div>
-                            {canDeleteOthers && (
-                              <button
-                                onClick={() => handleDeleteMessage(msg.id)}
-                                className="msg-delete-btn flex items-center justify-center p-1.5 rounded-lg border-none cursor-pointer bg-[var(--danger-bg)] text-[var(--danger)] active-press"
-                                title="Delete message"
-                              >
-                                <IconTrash />
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
+                    return isBubbleLayout ? (
+                      <MessageBubbleRow {...rowProps} />
+                    ) : (
+                      <MessageCompactRow {...rowProps} />
                     );
                   })
                 )}
 
                 {/* Typing indicator */}
                 {isActiveTyping && (
-                  <div className="self-start flex items-center gap-2 px-4 py-2.5 rounded-[18px] animate-fade-in msg-bubble-in text-[13px] text-theme-secondary">
+                  <div className="self-start flex items-center gap-2 px-4 py-2.5 rounded-[18px] animate-fade-in msg-bubble-in text-[13px] text-theme-secondary shadow-xs">
                     {isChannelMode ? (
                       <>
                         <span className="font-semibold text-theme-primary">
@@ -3368,1122 +1235,124 @@ export function ChatArea({
                         <div className="flex items-center gap-1 ml-1">
                           <span
                             className="typing-dot"
-                            style={{
-                              animationDelay: '0s',
-                              width: '5px',
-                              height: '5px',
-                            }}
+                            style={{ animationDelay: '0ms' }}
                           />
                           <span
                             className="typing-dot"
-                            style={{
-                              animationDelay: '0.15s',
-                              width: '5px',
-                              height: '5px',
-                            }}
+                            style={{ animationDelay: '200ms' }}
                           />
                           <span
                             className="typing-dot"
-                            style={{
-                              animationDelay: '0.30s',
-                              width: '5px',
-                              height: '5px',
-                            }}
+                            style={{ animationDelay: '400ms' }}
                           />
                         </div>
                       </>
                     ) : (
-                      <>
+                      <div className="flex items-center gap-1.5 py-0.5">
                         <span
                           className="typing-dot"
-                          style={{ animationDelay: '0s' }}
+                          style={{ animationDelay: '0ms' }}
                         />
                         <span
                           className="typing-dot"
-                          style={{ animationDelay: '0.15s' }}
+                          style={{ animationDelay: '200ms' }}
                         />
                         <span
                           className="typing-dot"
-                          style={{ animationDelay: '0.30s' }}
+                          style={{ animationDelay: '400ms' }}
                         />
-                      </>
+                      </div>
                     )}
                   </div>
                 )}
-
-                <div ref={feedEndRef} />
+                <div ref={feedEndRef} className="h-px shrink-0" />
               </div>
 
-              {/* Input Area */}
-              <div className="p-2 bg-transparent shrink-0">
-                <div className="glass-panel p-2.5 border-glass bg-theme-sidebar/35 shadow-[0_10px_35px_rgba(0,0,0,0.15)] rounded-2xl">
-                  {replyingToMessage && (
-                    <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-theme-input border border-glass mb-2.5 animate-fade-in">
-                      <div className="flex items-center gap-2 text-[12.5px] min-w-0">
-                        <span className="text-(--accent-primary) font-semibold flex items-center gap-1">
-                          <svg
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2.5"
-                            className="w-3.5 h-3.5"
-                          >
-                            <polyline points="9 17 4 12 9 7" />
-                            <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
-                          </svg>
-                          Replying to
-                        </span>
-                        <span className="font-bold text-theme-primary truncate">
-                          {userProfiles[replyingToMessage.senderId]
-                            ?.displayName ||
-                            (userProfiles[replyingToMessage.senderId]?.username
-                              ? `@${userProfiles[replyingToMessage.senderId].username}`
-                              : null) ||
-                            (replyingToMessage.senderId === user?.id
-                              ? 'You'
-                              : 'User')}
-                        </span>
-                        <span className="text-theme-secondary opacity-75 truncate max-w-md italic">
-                          "{replyingToMessage.content}"
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setReplyingToMessage(null)}
-                        className="p-1 rounded-full flex items-center justify-center bg-transparent border-none cursor-pointer text-theme-secondary hover:text-theme-primary hover:bg-theme-input/50 transition-colors active-press"
-                        title="Cancel reply"
-                      >
-                        <IconX size={12} />
-                      </button>
-                    </div>
-                  )}
-                  {attachedFiles.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mb-2.5 max-w-full">
-                      {attachedFiles.map((file, idx) => (
-                        <div
-                          key={file.url + idx}
-                          className="flex items-center gap-3 p-2 rounded-xl border border-glass bg-theme-input/80 backdrop-blur-md animate-fade-in text-[13px] relative max-w-50 shadow-sm"
-                        >
-                          {file.type.startsWith('image/') ? (
-                            <img
-                              src={file.url}
-                              alt="Preview"
-                              className="w-10 h-10 object-cover rounded-lg shrink-0"
-                            />
-                          ) : (
-                            <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-(--accent-primary) text-white text-[16px] shrink-0">
-                              📄
-                            </div>
-                          )}
-                          <div className="flex-1 min-w-0 pr-6">
-                            <div className="font-semibold truncate text-theme-primary text-[12px]">
-                              {file.name}
-                            </div>
-                            <div className="text-[10px] text-theme-muted mt-0.5">
-                              {(file.size / 1024).toFixed(1)} KB
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              deleteUploadedFile(file.url);
-                              if (file.thumbnailUrl) {
-                                deleteUploadedFile(file.thumbnailUrl);
-                              }
-                              setAttachedFiles((prev) =>
-                                prev.filter((f) => f.url !== file.url),
-                              );
-                            }}
-                            className="absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center bg-(--danger-bg) text-(--danger) border-none cursor-pointer hover:bg-(--danger) hover:text-white transition-all duration-150 active-press shadow-sm"
-                            title="Remove attachment"
-                          >
-                            <IconX size={10} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {!canSendMessages ? (
-                    <div className="flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-dashed border-[rgba(255,255,255,0.06)] text-theme-muted font-semibold text-[13.5px] cursor-not-allowed select-none w-full box-border">
-                      <svg
-                        width="15"
-                        height="15"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="opacity-50 mr-0.5"
-                      >
-                        <rect
-                          x="3"
-                          y="11"
-                          width="18"
-                          height="11"
-                          rx="2"
-                          ry="2"
-                        />
-                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                      </svg>
-                      {isChannelMode && activeChannel && !hasChannelWriteAccess
-                        ? 'This channel is read-only.'
-                        : 'You do not have permission to send messages in this group.'}
-                    </div>
-                  ) : (
-                    <form
-                      className="flex gap-2.5 items-end"
-                      onSubmit={handleSendMessage}
-                    >
-                      {/* Desktop Emoji Picker */}
-                      <div
-                        className={`relative ${isMobile ? 'hidden' : 'hidden md:block'}`}
-                        ref={emojiPickerRef}
-                      >
-                        <button
-                          type="button"
-                          disabled={!canSendMessages}
-                          onClick={handleEmojiPickerToggle}
-                          className="w-11.5 h-11.5 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200 bg-theme-input text-theme-muted hover:bg-(--theme-btn-hover) hover:text-theme-primary disabled:opacity-40 disabled:cursor-not-allowed active-press border border-glass"
-                          title={
-                            canSendMessages
-                              ? 'Choose an emoji'
-                              : isChannelMode &&
-                                  activeChannel &&
-                                  !hasChannelWriteAccess
-                                ? 'This channel is read-only'
-                                : 'You do not have permission to send messages'
-                          }
-                        >
-                          <IconEmoji size={20} />
-                        </button>
-
-                        {showEmojiPicker && !isMobile && (
-                          <div
-                            ref={emojiPickerContainerRef}
-                            className="absolute z-50 shadow-(--glass-shadow) rounded-2xl overflow-hidden border-[1.5px] border-glass bg-(--glass-bg) backdrop-blur-[20px] transition-opacity duration-150 ease-out w-[352px] h-[440px]"
-                            style={{ ...emojiPickerStyle }}
-                          >
-                            <EmojiPicker
-                              onEmojiSelect={onEmojiSelect}
-                              theme="auto"
-                              dynamicWidth={true}
-                              previewPosition="none"
-                            />
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Desktop Attachment Button (Paperclip / U-pin) */}
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={
-                          uploading || !canAttachFiles || !canSendMessages
-                        }
-                        className={`${isMobile ? 'hidden' : 'hidden md:flex'} w-11.5 h-11.5 rounded-xl items-center justify-center shrink-0 transition-all duration-200 bg-theme-input text-theme-muted hover:bg-(--theme-btn-hover) hover:text-theme-primary disabled:opacity-40 disabled:cursor-not-allowed active-press border border-glass`}
-                        title={
-                          !canSendMessages
-                            ? isChannelMode &&
-                              activeChannel &&
-                              !hasChannelWriteAccess
-                              ? 'This channel is read-only'
-                              : 'You do not have permission to send messages'
-                            : !canAttachFiles
-                              ? 'You do not have permission to attach files'
-                              : 'Attach a file'
-                        }
-                      >
-                        {uploading ? (
-                          <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin border-(--text-primary)" />
-                        ) : (
-                          <svg
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2.5"
-                            className="w-4.5 h-4.5"
-                          >
-                            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-                          </svg>
-                        )}
-                      </button>
-
-                      {/* Mobile Attachment Button with Dropdown (Paperclip / U-pin) */}
-                      <div
-                        className={`relative ${isMobile ? 'block' : 'md:hidden'}`}
-                        ref={mobileAttachMenuRef}
-                      >
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setShowMobileAttachMenu((prev) => !prev)
-                          }
-                          disabled={
-                            uploading || (!canAttachFiles && !canSendMessages)
-                          }
-                          className={`w-11.5 h-11.5 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200 bg-theme-input text-theme-muted hover:bg-(--theme-btn-hover) hover:text-theme-primary disabled:opacity-40 disabled:cursor-not-allowed active-press border border-glass ${
-                            showMobileAttachMenu
-                              ? 'bg-(--theme-btn-hover) text-theme-primary ring-2 ring-(--accent-primary)/30'
-                              : ''
-                          }`}
-                          title="Attach options"
-                        >
-                          {uploading ? (
-                            <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin border-(--text-primary)" />
-                          ) : (
-                            <svg
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2.5"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              className={`w-5 h-5 transition-transform duration-200 ${
-                                showMobileAttachMenu
-                                  ? 'rotate-45 text-(--accent-primary)'
-                                  : ''
-                              }`}
-                            >
-                              <line x1="12" y1="5" x2="12" y2="19" />
-                              <line x1="5" y1="12" x2="19" y2="12" />
-                            </svg>
-                          )}
-                        </button>
-
-                        {/* Mobile Dropdown Menu */}
-                        {showMobileAttachMenu && (
-                          <div className="absolute bottom-full left-0 mb-2.5 min-w-[190px] bg-theme-sidebar/95 backdrop-blur-xl border border-glass shadow-(--glass-shadow) rounded-2xl p-1.5 flex flex-col gap-1 z-50 animate-fade-in">
-                            {/* 1. Add emoji */}
-                            <button
-                              type="button"
-                              disabled={!canSendMessages}
-                              onClick={() => {
-                                setShowMobileAttachMenu(false);
-                                setShowEmojiPicker(true);
-                              }}
-                              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-[13.5px] font-medium text-theme-primary hover:bg-theme-input active-press transition-all cursor-pointer border-none bg-transparent disabled:opacity-40 disabled:cursor-not-allowed"
-                            >
-                              <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-amber-500/10 text-amber-500 shrink-0">
-                                <IconEmoji size={18} />
-                              </div>
-                              <span className="truncate">Add emoji</span>
-                            </button>
-
-                            {/* 2. Attach media */}
-                            <button
-                              type="button"
-                              disabled={
-                                uploading || !canAttachFiles || !canSendMessages
-                              }
-                              onClick={() => {
-                                setShowMobileAttachMenu(false);
-                                fileInputRef.current?.click();
-                              }}
-                              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-[13.5px] font-medium text-theme-primary hover:bg-theme-input active-press transition-all cursor-pointer border-none bg-transparent disabled:opacity-40 disabled:cursor-not-allowed"
-                            >
-                              <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-(--accent-primary)/10 text-(--accent-primary) shrink-0">
-                                <IconImage size={18} />
-                              </div>
-                              <span className="truncate">Attach media</span>
-                            </button>
-
-                            {/* 3. Open camera */}
-                            <button
-                              type="button"
-                              disabled={
-                                uploading || !canAttachFiles || !canSendMessages
-                              }
-                              onClick={() => {
-                                setShowMobileAttachMenu(false);
-                                cameraInputRef.current?.click();
-                              }}
-                              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-[13.5px] font-medium text-theme-primary hover:bg-theme-input active-press transition-all cursor-pointer border-none bg-transparent disabled:opacity-40 disabled:cursor-not-allowed"
-                            >
-                              <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-emerald-500/10 text-emerald-500 shrink-0">
-                                <IconCamera size={18} />
-                              </div>
-                              <span className="truncate">Open camera</span>
-                            </button>
-                          </div>
-                        )}
-                      </div>
-
-                      <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleFileSelect}
-                        className="hidden"
-                        multiple
-                      />
-                      <input
-                        type="file"
-                        ref={cameraInputRef}
-                        onChange={handleFileSelect}
-                        accept="image/*,video/*"
-                        capture="environment"
-                        className="hidden"
-                      />
-                      <div className="relative flex-1 flex flex-col justify-end">
-                        {mentionQuery && emojiResults.length > 0 && (
-                          <div className="absolute bottom-full left-0 mb-2 w-75 max-h-50 overflow-y-auto bg-theme-sidebar border border-theme rounded-xl shadow-(--glass-shadow) z-50 flex flex-col p-1">
-                            {emojiResults.map((emoji: any) => (
-                              <button
-                                key={emoji.id}
-                                type="button"
-                                className="flex items-center gap-2 px-3 py-2 text-left rounded-lg hover:bg-theme-input active-press cursor-pointer border-none bg-transparent"
-                                onClick={() => {
-                                  const val = messageInput;
-                                  const newText =
-                                    val.slice(0, mentionQuery.start) +
-                                    emoji.skins[0].native +
-                                    val.slice(mentionQuery.end);
-                                  setMessageInput(newText);
-                                  setMentionQuery(null);
-                                  setEmojiResults([]);
-                                  document
-                                    .getElementById('message-input')
-                                    ?.focus();
-                                }}
-                              >
-                                <span className="text-[20px] leading-none">
-                                  {emoji.skins[0].native}
-                                </span>
-                                <span className="text-[13px] text-theme-primary">
-                                  :{emoji.id}:
-                                </span>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                        {atMentionQuery &&
-                          isChannelMode &&
-                          activeGroup &&
-                          matchingMentions.length > 0 && (
-                            <div className="absolute bottom-full left-0 mb-2 w-75 max-h-50 overflow-y-auto bg-theme-sidebar border border-theme rounded-xl shadow-(--glass-shadow) z-50 flex flex-col p-1">
-                              {matchingMentions.map((item, idx) => {
-                                const isActive = idx === activeSuggestIndex;
-                                if (item.isEveryone) {
-                                  return (
-                                    <button
-                                      key="everyone"
-                                      type="button"
-                                      className={`flex items-center gap-2.5 px-3 py-2 text-left rounded-lg active-press cursor-pointer border-none ${
-                                        isActive
-                                          ? 'bg-theme-input text-theme-secondary font-semibold'
-                                          : 'bg-transparent text-theme-muted hover:bg-theme-input/50'
-                                      }`}
-                                      onClick={() => {
-                                        const val = messageInput;
-                                        const newText =
-                                          val.slice(0, atMentionQuery.start) +
-                                          '@everyone ' +
-                                          val.slice(atMentionQuery.end);
-                                        setMessageInput(newText);
-                                        setAtMentionQuery(null);
-                                        document
-                                          .getElementById('message-input')
-                                          ?.focus();
-                                      }}
-                                    >
-                                      <div className="w-8 h-8 rounded-full flex items-center justify-center bg-(--accent-primary) text-white text-[12px] font-bold shrink-0">
-                                        📢
-                                      </div>
-                                      <div className="flex flex-col">
-                                        <span
-                                          className={`text-[13px] font-bold ${isActive ? 'text-theme-secondary' : 'text-theme-primary'}`}
-                                        >
-                                          @everyone
-                                        </span>
-                                        <span className="text-[10.5px] text-theme-muted">
-                                          Notify all members
-                                        </span>
-                                      </div>
-                                    </button>
-                                  );
-                                }
-
-                                const member = item.member;
-                                const memberName = item.name;
-                                const letter =
-                                  memberName[0]?.toUpperCase() || 'U';
-
-                                const isOwnerMember =
-                                  activeGroup.ownerId === member.userId;
-                                const memberRoleIds = member.roleIds || [];
-                                const topRole = activeGroup.roles?.find((r) =>
-                                  memberRoleIds.includes(r.id),
-                                );
-                                const memberColor = isOwnerMember
-                                  ? '#eab308'
-                                  : topRole?.color || undefined;
-
-                                return (
-                                  <button
-                                    key={member.id}
-                                    type="button"
-                                    className={`flex items-center gap-2.5 px-3 py-2 text-left rounded-lg active-press cursor-pointer border-none ${
-                                      isActive
-                                        ? 'bg-theme-input font-semibold'
-                                        : 'bg-transparent hover:bg-theme-input/50'
-                                    }`}
-                                    onClick={() => {
-                                      const val = messageInput;
-                                      const newText =
-                                        val.slice(0, atMentionQuery.start) +
-                                        `@${memberName} ` +
-                                        val.slice(atMentionQuery.end);
-                                      setMessageInput(newText);
-                                      setAtMentionQuery(null);
-                                      document
-                                        .getElementById('message-input')
-                                        ?.focus();
-                                    }}
-                                  >
-                                    <Avatar
-                                      letter={letter}
-                                      url={
-                                        member.user?.avatarThumbnailUrl ||
-                                        member.user?.avatarUrl
-                                      }
-                                      size="xs"
-                                    />
-                                    <div className="flex flex-col">
-                                      <span
-                                        className={`text-[13px] font-bold ${!memberColor ? (isActive ? 'text-theme-secondary' : 'text-theme-primary') : ''}`}
-                                        style={
-                                          memberColor
-                                            ? { color: memberColor }
-                                            : undefined
-                                        }
-                                      >
-                                        @{memberName}
-                                      </span>
-                                      {member.user?.displayName && (
-                                        <span className="text-[10px] text-theme-muted">
-                                          {member.user.displayName}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          )}
-                        {isMdMode && (
-                          <div className="flex items-center justify-between mb-2 px-2">
-                            {/* Toggle Icon Button */}
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setMdTab(
-                                  mdTab === 'write' ? 'preview' : 'write',
-                                )
-                              }
-                              className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-(--accent-primary) transition-colors flex items-center gap-1.5"
-                              title={mdTab === 'write' ? 'Preview' : 'Edit'}
-                            >
-                              {mdTab === 'write' ? (
-                                <IconEye />
-                              ) : (
-                                <IconCompose />
-                              )}
-                              <span className="text-[12px] font-semibold">
-                                {mdTab === 'write' ? 'Preview' : 'Edit'}
-                              </span>
-                            </button>
-
-                            {/* Formatting Buttons */}
-                            {mdTab === 'write' && (
-                              <div className="flex items-center gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => applyFormat('# ')}
-                                  className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors flex items-center justify-center min-w-[24px]"
-                                  title="Heading 1"
-                                >
-                                  <span className="text-[11px] font-bold">
-                                    H1
-                                  </span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => applyFormat('## ')}
-                                  className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors flex items-center justify-center min-w-[24px]"
-                                  title="Heading 2"
-                                >
-                                  <span className="text-[11px] font-bold">
-                                    H2
-                                  </span>
-                                </button>
-                                <div className="w-px h-4 bg-theme/20 mx-1" />
-                                <button
-                                  type="button"
-                                  onClick={() => applyFormat('**', '**')}
-                                  className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors"
-                                  title="Bold"
-                                >
-                                  <IconBold />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => applyFormat('*', '*')}
-                                  className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors"
-                                  title="Italic"
-                                >
-                                  <IconItalic />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => applyFormat('~~', '~~')}
-                                  className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors"
-                                  title="Strikethrough"
-                                >
-                                  <IconStrikethrough />
-                                </button>
-                                <div className="w-px h-4 bg-theme/20 mx-1" />
-                                <button
-                                  type="button"
-                                  onClick={() => applyFormat('`', '`')}
-                                  className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors"
-                                  title="Inline Code"
-                                >
-                                  <IconCode />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => applyFormat('```\n', '\n```')}
-                                  className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors flex items-center justify-center w-6 h-6"
-                                  title="Code Block"
-                                >
-                                  <span className="text-[10px] font-bold mt-0.5">
-                                    {'</>'}
-                                  </span>
-                                </button>
-                                <div className="w-px h-4 bg-theme/20 mx-1" />
-                                <button
-                                  type="button"
-                                  onClick={() => applyFormat('[', '](url)')}
-                                  className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors"
-                                  title="Link"
-                                >
-                                  <IconLink />
-                                </button>
-                                <div className="w-px h-4 bg-theme/20 mx-1" />
-                                <button
-                                  type="button"
-                                  onClick={() => applyFormat('- ')}
-                                  className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors"
-                                  title="List"
-                                >
-                                  <IconList />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => applyFormat('> ')}
-                                  className="p-1.5 hover:bg-theme-input rounded text-theme-muted hover:text-theme-primary transition-colors"
-                                  title="Quote"
-                                >
-                                  <IconQuote />
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                        {(() => {
-                          const inputEmojiSegments =
-                            getEmojiSegments(messageInput);
-                          if (
-                            inputEmojiSegments &&
-                            inputEmojiSegments.length >= 1 &&
-                            inputEmojiSegments.length <= 2
-                          ) {
-                            return (
-                              <div className="flex items-center gap-2 px-2.5 py-1 mb-2 rounded-2xl bg-theme-sidebar/90 border border-glass shadow-(--glass-shadow) backdrop-blur-md animate-slide-up select-none w-fit">
-                                {inputEmojiSegments.map((glyph, idx) => (
-                                  <AnimatedEmoji
-                                    key={`input-preview-${glyph}-${idx}`}
-                                    glyph={glyph}
-                                    size={40}
-                                    alwaysAnimate
-                                  />
-                                ))}
-                              </div>
-                            );
-                          }
-                          return null;
-                        })()}
-                        {(!isMdMode || mdTab === 'write') && (
-                          <textarea
-                            ref={textareaRef}
-                            id="message-input"
-                            disabled={!canSendMessages}
-                            className={`input-base w-full block rounded-xl px-4 text-[14px] resize-none leading-normal bg-theme-input/40 border-[1.5px] border-glass text-theme-primary focus:outline-none focus:border-(--accent-primary) focus:ring-[3px] focus:ring-(--accent-ring) disabled:opacity-50 disabled:cursor-not-allowed box-border ${isMdMode ? 'max-h-64' : 'max-h-30'}`}
-                            style={{
-                              minHeight: isMdMode ? '100px' : '46px',
-                              paddingTop: '11px',
-                              paddingBottom: '11px',
-                            }}
-                            placeholder={
-                              isMdMode
-                                ? 'Markdown Mode...'
-                                : canSendMessages
-                                  ? isMobileScreen
-                                    ? 'Type a message…'
-                                    : 'Type a message… (Enter to send)'
-                                  : isChannelMode &&
-                                      activeChannel &&
-                                      !hasChannelWriteAccess
-                                    ? 'This channel is read-only.'
-                                    : 'You do not have permission to send messages in this group.'
-                            }
-                            rows={isMdMode ? 4 : 1}
-                            value={messageInput}
-                            onChange={handleInputChange}
-                            onSelect={handleTextareaSelect}
-                            onKeyDown={(e) => {
-                              if (
-                                atMentionQuery &&
-                                isChannelMode &&
-                                activeGroup &&
-                                matchingMentions.length > 0
-                              ) {
-                                if (e.key === 'ArrowDown') {
-                                  e.preventDefault();
-                                  setActiveSuggestIndex(
-                                    (prev) =>
-                                      (prev + 1) % matchingMentions.length,
-                                  );
-                                  return;
-                                }
-                                if (e.key === 'ArrowUp') {
-                                  e.preventDefault();
-                                  setActiveSuggestIndex(
-                                    (prev) =>
-                                      (prev - 1 + matchingMentions.length) %
-                                      matchingMentions.length,
-                                  );
-                                  return;
-                                }
-                                if (e.key === 'Enter') {
-                                  e.preventDefault();
-                                  const selected =
-                                    matchingMentions[activeSuggestIndex];
-                                  if (selected) {
-                                    const val = messageInput;
-                                    const inserted = selected.isEveryone
-                                      ? '@everyone '
-                                      : `@${selected.name} `;
-                                    const newText =
-                                      val.slice(0, atMentionQuery.start) +
-                                      inserted +
-                                      val.slice(atMentionQuery.end);
-                                    setMessageInput(newText);
-                                    setAtMentionQuery(null);
-                                    setTimeout(() => {
-                                      document
-                                        .getElementById('message-input')
-                                        ?.focus();
-                                    }, 0);
-                                  }
-                                  return;
-                                }
-                                if (e.key === 'Escape') {
-                                  e.preventDefault();
-                                  setAtMentionQuery(null);
-                                  return;
-                                }
-                              }
-
-                              if (e.key === 'Escape' && replyingToMessage) {
-                                e.preventDefault();
-                                setReplyingToMessage(null);
-                                return;
-                              }
-
-                              if (
-                                e.key === 'Enter' &&
-                                !e.shiftKey &&
-                                !isMdMode
-                              ) {
-                                e.preventDefault();
-                                if (canSendMessages) {
-                                  handleSendMessage(e);
-                                }
-                              }
-                            }}
-                            onPaste={(e) => {
-                              const items = e.clipboardData?.items;
-                              if (items) {
-                                const filesToPaste: File[] = [];
-                                for (let i = 0; i < items.length; i++) {
-                                  if (items[i].kind === 'file') {
-                                    const file = items[i].getAsFile();
-                                    if (file) {
-                                      filesToPaste.push(file);
-                                    }
-                                  }
-                                }
-                                if (filesToPaste.length > 0) {
-                                  e.preventDefault();
-                                  processFiles(filesToPaste);
-                                }
-                              }
-                            }}
-                          />
-                        )}
-                        {isMdMode && mdTab === 'preview' && (
-                          <div
-                            className="input-base w-full block rounded-xl px-4 text-[14px] leading-normal bg-theme-input/40 border-[1.5px] border-glass text-theme-primary box-border overflow-y-auto max-h-64 markdown-body"
-                            style={{
-                              minHeight: '100px',
-                              paddingTop: '11px',
-                              paddingBottom: '11px',
-                            }}
-                          >
-                            {messageInput.trim() ? (
-                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                {messageInput}
-                              </ReactMarkdown>
-                            ) : (
-                              <span className="text-theme-muted italic">
-                                Nothing to preview
-                              </span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      <button
-                        id="send-message-btn"
-                        type="submit"
-                        disabled={
-                          (!messageInput.trim() &&
-                            attachedFiles.length === 0) ||
-                          !canSendMessages
-                        }
-                        className="btn-send w-11.5 h-11.5 rounded-xl shrink-0 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed hover:-translate-y-0.5 hover:shadow-(--btn-shadow) active-press"
-                      >
-                        <IconSend />
-                      </button>
-                    </form>
-                  )}
-                </div>
-              </div>
+              {/* Chat Input Area */}
+              <ChatInputArea
+                replyingToMessage={replyingToMessage}
+                onCancelReply={() => setReplyingToMessage(null)}
+                attachedFiles={attachedFiles}
+                onRemoveAttachment={(file) => {
+                  deleteUploadedFile(file.url);
+                  if (file.thumbnailUrl) {
+                    deleteUploadedFile(file.thumbnailUrl);
+                  }
+                  setAttachedFiles((prev) =>
+                    prev.filter((f) => f.url !== file.url),
+                  );
+                }}
+                canSendMessages={canSendMessages}
+                canAttachFiles={canAttachFiles}
+                isChannelMode={isChannelMode}
+                activeChannel={activeChannel}
+                hasChannelWriteAccess={hasChannelWriteAccess}
+                uploading={uploading}
+                messageInput={messageInput}
+                onInputChange={handleInputChange}
+                onSendMessage={handleSendMessage}
+                isMobile={isMobile}
+                isMobileScreen={isMobileScreen}
+                isMdMode={isMdMode}
+                setIsMdMode={setIsMdMode}
+                mdTab={mdTab}
+                setMdTab={setMdTab}
+                showEmojiPicker={showEmojiPicker}
+                setShowEmojiPicker={setShowEmojiPicker}
+                onEmojiSelect={onEmojiSelect}
+                processFiles={processFiles}
+                matchingMentions={matchingMentions}
+                activeSuggestIndex={activeSuggestIndex}
+                setActiveSuggestIndex={setActiveSuggestIndex}
+                atMentionQuery={atMentionQuery}
+                setAtMentionQuery={setAtMentionQuery}
+                mentionQuery={mentionQuery}
+                setMentionQuery={setMentionQuery}
+                emojiResults={emojiResults}
+                setEmojiResults={setEmojiResults}
+                setMessageInput={setMessageInput}
+                userProfiles={userProfiles}
+                currentUser={user}
+                activeGroup={activeGroup}
+              />
             </>
           )}
         </>
       ) : (
-        /* Empty state - Beautiful Welcome Dashboard Hub */
-        <div className="flex-1 flex flex-col p-6 md:p-8 bg-theme-chat rounded-2xl overflow-y-auto animate-fade-in relative">
-          {/* Decorative Glowing Orbs in Background */}
-          <div className="absolute top-10 right-10 w-64 h-64 bg-(--bg-glow-1) rounded-full blur-3xl pointer-events-none opacity-40 animate-pulse" />
-          <div className="absolute bottom-10 left-10 w-64 h-64 bg-(--bg-glow-2) rounded-full blur-3xl pointer-events-none opacity-40 animate-pulse" />
-
-          {/* Top Widget: Live Clock & Date */}
-          <div className="self-end glass-panel px-4 py-2 flex items-center gap-3 text-sm font-semibold shrink-0 mb-8 border-glass bg-theme-sidebar/30">
-            <span className="text-theme-secondary font-mono tracking-wider">
-              {timeStr}
-            </span>
-            <div className="w-1 h-3 rounded bg-theme-muted" />
-            <span className="text-theme-muted">
-              {new Date().toLocaleDateString([], {
-                weekday: 'short',
-                month: 'short',
-                day: 'numeric',
-              })}
-            </span>
-          </div>
-
-          {/* Hero Welcome Banner */}
-          <div className="flex-1 flex flex-col items-center justify-center text-center my-6 max-w-2xl mx-auto shrink-0">
-            <div className="w-20 h-20 rounded-2xl overflow-hidden animate-float border border-glass bg-theme-sidebar shadow-lg">
-              <img
-                src="/logo.png"
-                alt="RelayFlow Logo"
-                className="w-full h-full object-contain"
-              />
-            </div>
-
-            <h1 className="text-[28px] md:text-[34px] font-extrabold tracking-tight text-theme-primary leading-tight">
-              {greeting},{' '}
-              <span className="gradient-text font-black">
-                {user?.displayName || `@${user?.username}`}
-              </span>
-            </h1>
-
-            <p className="text-[14.5px] mt-3.5 text-theme-secondary leading-relaxed max-w-md opacity-85">
-              Welcome to your RelayFlow Workspace. Chat with team members,
-              connect over voice rooms, and stay organized.
-            </p>
-          </div>
-
-          {/* Grid of Interactive Quick Action Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto w-full mb-6 shrink-0">
-            <div
-              onClick={() => setIsComposeOpen(true)}
-              className="glass-panel p-4.5 border-glass bg-theme-sidebar/20 hover:bg-theme-sidebar/40 hover:border-(--accent-primary) cursor-pointer hover:shadow-lg transition-all duration-300 group flex items-start gap-4 active-press"
-            >
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-(--accent-primary)/10 text-(--accent-primary) group-hover:bg-(--accent-primary) group-hover:text-white transition-all duration-300">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  className="w-5 h-5"
-                >
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                </svg>
-              </div>
-              <div className="flex-1 min-w-0">
-                <h4 className="font-bold text-[14px] text-theme-primary mb-1">
-                  New Message
-                </h4>
-                <p className="text-[12.5px] text-theme-muted leading-snug">
-                  Start a direct messaging thread with any colleague.
-                </p>
-              </div>
-            </div>
-
-            <div
-              onClick={() => dispatch(setActiveConversation('friends'))}
-              className="glass-panel p-4.5 border-glass bg-theme-sidebar/20 hover:bg-theme-sidebar/40 hover:border-(--accent-primary) cursor-pointer hover:shadow-lg transition-all duration-300 group flex items-start gap-4 active-press"
-            >
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-(--accent-primary)/10 text-(--accent-primary) group-hover:bg-(--accent-primary) group-hover:text-white transition-all duration-300">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  className="w-5 h-5"
-                >
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                </svg>
-              </div>
-              <div className="flex-1 min-w-0">
-                <h4 className="font-bold text-[14px] text-theme-primary mb-1">
-                  Friends Dashboard
-                </h4>
-                <p className="text-[12.5px] text-theme-muted leading-snug">
-                  See who is online, send requests, and add connections.
-                </p>
-              </div>
-            </div>
-
-            <div
-              onClick={() => {
-                document.getElementById('rail-create-group-btn')?.click();
-              }}
-              className="glass-panel p-4.5 border-glass bg-theme-sidebar/20 hover:bg-theme-sidebar/40 hover:border-(--accent-primary) cursor-pointer hover:shadow-lg transition-all duration-300 group flex items-start gap-4 active-press"
-            >
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-(--accent-primary)/10 text-(--accent-primary) group-hover:bg-(--accent-primary) group-hover:text-white transition-all duration-300">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  className="w-5 h-5"
-                >
-                  <rect x="3" y="3" width="18" height="18" rx="2" />
-                  <line x1="12" y1="8" x2="12" y2="16" />
-                  <line x1="8" y1="12" x2="16" y2="12" />
-                </svg>
-              </div>
-              <div className="flex-1 min-w-0">
-                <h4 className="font-bold text-[14px] text-theme-primary mb-1">
-                  Create a Group
-                </h4>
-                <p className="text-[12.5px] text-theme-muted leading-snug">
-                  Set up a new space for team collaboration and discussion.
-                </p>
-              </div>
-            </div>
-
-            <div
-              onClick={() => {
-                const btn =
-                  document.getElementById('profile-settings-btn') ||
-                  document.getElementById('channel-sidebar-settings-btn');
-                if (btn) {
-                  btn.click();
-                }
-              }}
-              className="glass-panel p-4.5 border-glass bg-theme-sidebar/20 hover:bg-theme-sidebar/40 hover:border-(--accent-primary) cursor-pointer hover:shadow-lg transition-all duration-300 group flex items-start gap-4 active-press"
-            >
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-(--accent-primary)/10 text-(--accent-primary) group-hover:bg-(--accent-primary) group-hover:text-white transition-all duration-300">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  className="w-5 h-5"
-                >
-                  <path d="M12 22C17.52 22 22 17.52 22 12S17.52 2 12 2 2 6.48 2 12s4.48 10 10 10z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
-              </div>
-              <div className="flex-1 min-w-0">
-                <h4 className="font-bold text-[14px] text-theme-primary mb-1">
-                  Theme & Profile
-                </h4>
-                <p className="text-[12.5px] text-theme-muted leading-snug">
-                  Change color skins, set statuses, and adjust configurations.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
+        /* Empty State / Welcome Hub */
+        <WelcomeHub
+          timeStr={timeStr}
+          greeting={greeting}
+          user={user}
+          onNewMessage={() => setIsComposeOpen(true)}
+          onOpenFriends={() => dispatch(setActiveConversation('friends'))}
+        />
       )}
-      {contextMenu &&
-        liveContextMenuMsg &&
-        ReactDOM.createPortal(
-          <div
-            ref={contextMenuRef}
-            className="convo-context-menu message-context-menu"
-            style={{
-              top: adjustedContextMenu
-                ? `${adjustedContextMenu.y}px`
-                : `${contextMenu.y}px`,
-              left: adjustedContextMenu
-                ? `${adjustedContextMenu.x}px`
-                : `${contextMenu.x}px`,
-              opacity: adjustedContextMenu ? 1 : 0,
-            }}
-            role="menu"
-            aria-label="Message options"
-          >
-            {contextMenu.message.senderId === user?.id && (
-              <button
-                className="convo-context-menu-item"
-                role="menuitem"
-                onClick={() => {
-                  handleStartEdit(contextMenu.message);
-                  setContextMenu(null);
-                }}
-              >
-                <IconCompose />
-                <span>Edit Message</span>
-              </button>
-            )}
-            {(contextMenu.message.senderId === user?.id || canDeleteOthers) && (
-              <button
-                className="convo-context-menu-item danger"
-                role="menuitem"
-                onClick={() => {
-                  handleDeleteMessage(contextMenu.message.id);
-                  setContextMenu(null);
-                }}
-              >
-                <IconTrash />
-                <span>Delete Message</span>
-              </button>
-            )}
-            <button
-              className="convo-context-menu-item"
-              role="menuitem"
-              onClick={() => {
-                setReplyingToMessage(contextMenu.message);
-                setContextMenu(null);
-              }}
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                width="15"
-                height="15"
-              >
-                <polyline points="9 17 4 12 9 7" />
-                <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
-              </svg>
-              <span>Reply to Message</span>
-            </button>
-            {isChannelMode && (
-              <>
-                <div className="convo-context-menu-separator" />
-                <div
-                  className="convo-context-menu-item group relative flex justify-between items-center cursor-pointer"
-                  role="menuitem"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      width="15"
-                      height="15"
-                    >
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                      <circle cx="12" cy="12" r="3" />
-                    </svg>
-                    <span>
-                      Read by {liveContextMenuMsg.readBy?.length || 0}
-                    </span>
-                  </div>
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    width="12"
-                    height="12"
-                    className="opacity-60"
-                  >
-                    <polyline points="9 18 15 12 9 6" />
-                  </svg>
-                  <div
-                    className="hidden group-hover:block absolute w-64 bg-(--dropdown-bg) border border-glass rounded-[10px] p-1 shadow-[0_16px_40px_rgba(0,0,0,0.35),0_0_0_1px_var(--glass-border)] backdrop-blur-lg z-10000 animate-[fadeIn_0.15s_ease-out_forwards]"
-                    style={{
-                      ...(adjustedContextMenu?.subMenuLeft
-                        ? { right: '100%', left: 'auto', marginRight: '4px' }
-                        : { left: '100%', right: 'auto', marginLeft: '4px' }),
-                      ...(adjustedContextMenu?.subMenuUp
-                        ? { bottom: 0, top: 'auto' }
-                        : { top: 0, bottom: 'auto' }),
-                    }}
-                  >
-                    <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-theme-muted border-b border-glass mb-1">
-                      Read By
-                    </div>
-                    <div style={{ maxHeight: '150px', overflowY: 'auto' }}>
-                      {liveContextMenuMsg.readBy &&
-                      liveContextMenuMsg.readBy.length > 0 ? (
-                        liveContextMenuMsg.readBy.map((reader) => (
-                          <div
-                            key={reader.userId}
-                            className="flex items-center justify-between gap-3 px-3 py-1.5 rounded-md text-[12px] font-medium text-theme-primary"
-                          >
-                            <span className="truncate flex-1">
-                              {reader.name}
-                            </span>
-                            {reader.readAt && (
-                              <span className="text-[10.5px] text-theme-muted shrink-0">
-                                {formatReadAtTimestamp(
-                                  reader.readAt,
-                                  timeFormat,
-                                )}
-                              </span>
-                            )}
-                          </div>
-                        ))
-                      ) : (
-                        <div className="flex items-center px-3 py-1.5 rounded-md text-[12px] font-medium text-theme-muted italic break-all">
-                          <span className="whitespace-nowrap overflow-hidden text-ellipsis w-full">
-                            No one yet
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>,
-          document.body,
-        )}
 
+      {/* Message Context Menu Portal */}
+      <MessageContextMenu
+        contextMenu={contextMenu}
+        adjustedContextMenu={adjustedContextMenu}
+        contextMenuRef={contextMenuRef}
+        currentUser={user}
+        canDeleteOthers={canDeleteOthers}
+        isChannelMode={isChannelMode}
+        timeFormat={timeFormat}
+        onStartEdit={handleStartEdit}
+        onDeleteMessage={handleDeleteMessage}
+        onReply={(msg) => setReplyingToMessage(msg)}
+        onClose={() => setContextMenu(null)}
+        onSelectReaction={(msgId, emoji) => {
+          if (activeConversationId) {
+            socketManager.toggleReaction(msgId, activeConversationId, emoji);
+          }
+        }}
+        onOpenReactionPicker={(msgId) => {
+          setActiveReactionMessageId(msgId);
+        }}
+      />
+
+      {/* Confirmation Modal */}
       {confirmModal && (
         <ConfirmationModal
           isOpen={confirmModal.isOpen}
@@ -4496,275 +1365,58 @@ export function ChatArea({
         />
       )}
 
-      {viewingCode && (
-        <div
-          className="fixed inset-0 z-[1300] flex flex-col items-center justify-center p-4 bg-[rgba(4,6,12,0.7)] backdrop-blur-sm animate-fade-in"
-          onClick={() => setViewingCode(null)}
-        >
-          <div
-            className="w-full max-w-2xl bg-(--glass-bg) border border-glass rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh] animate-slide-up"
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              backdropFilter: 'blur(12px)',
-            }}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-theme bg-theme-input/20">
-              <div className="flex items-center gap-2.5">
-                <span className="w-8 h-8 rounded-lg flex items-center justify-center bg-(--accent-primary)/10 text-(--accent-primary)">
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    className="w-4 h-4"
-                  >
-                    <polyline points="16 18 22 12 16 6" />
-                    <polyline points="8 6 2 12 8 18" />
-                  </svg>
-                </span>
-                <h3 className="m-0 text-[15px] font-bold text-theme-primary">
-                  {viewingCode.language
-                    ? `${viewingCode.language} code block`
-                    : 'Code block'}
-                </h3>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText(viewingCode.code);
-                    showToast.success('Code copied to clipboard!');
-                  }}
-                  className="px-3 py-1.5 rounded-lg bg-(--accent-primary) hover:bg-(--accent-primary)/90 text-white text-[12px] font-bold border-none cursor-pointer flex items-center gap-1.5 transition-colors active-press"
-                >
-                  <svg
-                    viewBox="0 0 24 24"
-                    width="13"
-                    height="13"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                  >
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                  </svg>
-                  Copy
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewingCode(null)}
-                  className="bg-transparent border-none cursor-pointer text-theme-muted hover:text-theme-primary p-1 rounded-lg flex items-center justify-center hover:bg-theme-input transition-colors active-press"
-                >
-                  <IconX size={16} />
-                </button>
-              </div>
-            </div>
-            {/* Code Content */}
-            <div className="p-4 overflow-y-auto flex-1 bg-theme-input/20">
-              <pre className="m-0 p-4 rounded-xl bg-theme-chat border border-glass/40 overflow-x-auto text-[13px] font-mono leading-relaxed text-theme-primary">
-                <code>{viewingCode.code}</code>
-              </pre>
-            </div>
-          </div>
-        </div>
-      )}
-      {activeMediaItem && (
-        <div
-          className="fixed inset-0 z-100 flex flex-col items-center justify-center bg-black/80 backdrop-blur-md transition-all duration-300 animate-fade-in animate-duration-150"
-          onClick={() => {
-            setActiveMediaItem(null);
-            setMediaLoadError(false);
-          }}
-        >
-          <div
-            className="relative max-w-[90vw] max-h-[85vh] flex flex-col items-center justify-center"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Close button */}
-            <button
-              className="absolute -top-12 right-0 bg-white/10 hover:bg-white/25 text-white rounded-full p-2 hover:scale-105 active:scale-95 transition-all border-none cursor-pointer flex items-center justify-center shadow-lg"
-              onClick={() => {
-                setActiveMediaItem(null);
-                setMediaLoadError(false);
-              }}
-              title="Close viewer"
-            >
-              <IconX size={20} />
-            </button>
+      {/* Code Viewer Modal */}
+      <CodeViewerModal
+        viewingCode={viewingCode}
+        onClose={() => setViewingCode(null)}
+      />
 
-            {/* Expired / Fallback Notice Banner */}
-            {(activeMediaItem.isExpired || mediaLoadError) && (
-              <div className="mb-3 px-4 py-1.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-semibold flex items-center gap-2 backdrop-blur-md shadow-lg">
-                <span className="text-sm">⏱️</span>
-                <span>
-                  Original media expired according to chat retention policy •
-                  Displaying thumbnail
-                </span>
-              </div>
-            )}
+      {/* Media Lightbox Modal */}
+      <MediaViewerModal
+        activeMediaItem={activeMediaItem}
+        onClose={() => setActiveMediaItem(null)}
+      />
 
-            {/* Media rendering */}
-            {activeMediaItem.type.startsWith('image/') ? (
-              <img
-                src={
-                  (activeMediaItem.isExpired || mediaLoadError) &&
-                  activeMediaItem.thumbnailUrl
-                    ? activeMediaItem.thumbnailUrl
-                    : activeMediaItem.url
-                }
-                alt={activeMediaItem.name}
-                onError={() => {
-                  if (!mediaLoadError && activeMediaItem.thumbnailUrl) {
-                    setMediaLoadError(true);
-                  }
-                }}
-                className="max-w-full max-h-[75vh] object-contain rounded-xl shadow-2xl border border-white/10"
-              />
-            ) : activeMediaItem.type.startsWith('video/') ? (
-              (activeMediaItem.isExpired || mediaLoadError) &&
-              activeMediaItem.thumbnailUrl ? (
-                <div className="relative flex flex-col items-center">
-                  <img
-                    src={activeMediaItem.thumbnailUrl}
-                    alt={activeMediaItem.name}
-                    className="max-w-full max-h-[75vh] object-contain rounded-xl shadow-2xl border border-white/10"
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-xl">
-                    <div className="px-3.5 py-1.5 rounded-lg bg-black/70 text-white text-xs font-semibold flex items-center gap-2">
-                      <span>🎬</span>
-                      <span>Original video expired (Preview only)</span>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <video
-                  src={activeMediaItem.url}
-                  controls
-                  autoPlay
-                  onError={() => {
-                    if (!mediaLoadError && activeMediaItem.thumbnailUrl) {
-                      setMediaLoadError(true);
-                    }
-                  }}
-                  className="max-w-full max-h-[75vh] object-contain rounded-xl shadow-2xl border border-white/10"
-                />
-              )
-            ) : null}
+      {/* Member Profile Popover Modal */}
+      <MemberProfilePopoverModal
+        userId={profileCardUserId}
+        popoverPosition={profilePopoverPosition}
+        selectedMember={
+          profileCardUserId
+            ? getMemberDetailsForPopover(profileCardUserId)
+            : null
+        }
+        groupId={activeGroup?.id}
+        onClose={() => {
+          setProfileCardUserId(null);
+          setProfilePopoverPosition(null);
+        }}
+      />
 
-            {/* Title / details */}
-            <div className="mt-4 text-center text-white px-4 max-w-lg">
-              <h4 className="text-[15px] font-bold truncate">
-                {activeMediaItem.name}
-              </h4>
-              <p className="text-[12px] text-white/60 mt-1">
-                {(activeMediaItem.size / (1024 * 1024)).toFixed(2)} MB
-                {(activeMediaItem.isExpired || mediaLoadError) &&
-                  ' • Thumbnail Preview'}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Centered Reaction Picker Modal */}
+      <ReactionPickerModal
+        activeReactionMessageId={activeReactionMessageId}
+        onClose={() => setActiveReactionMessageId(null)}
+        onSelectReaction={(emojiNative) => {
+          if (activeConversationId && activeReactionMessageId) {
+            socketManager.toggleReaction(
+              activeReactionMessageId,
+              activeConversationId,
+              emojiNative,
+            );
+          }
+        }}
+      />
 
-      {profileCardUserId && (
-        <div
-          className="fixed inset-0 z-9998 bg-transparent cursor-default"
-          onClick={() => {
-            setProfileCardUserId(null);
-            setProfilePopoverPosition(null);
-          }}
-        />
-      )}
-      {profileCardUserId && profilePopoverPosition && (
-        <MemberProfilePopover
-          selectedMember={getMemberDetailsForPopover(profileCardUserId)}
-          popoverPosition={profilePopoverPosition}
-          onClose={() => {
-            setProfileCardUserId(null);
-            setProfilePopoverPosition(null);
-          }}
-          groupId={activeGroup?.id}
-        />
-      )}
-      {/* Reaction picker — single centered modal shared across all messages */}
-      {activeReactionMessageId && (
-        <div
-          className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-xs animate-fade-in"
-          onClick={() => setActiveReactionMessageId(null)}
-        >
-          <div
-            className="relative z-10 w-full max-w-md sm:w-[352px] sm:max-w-[352px] sm:rounded-2xl rounded-t-2xl overflow-hidden border-[1.5px] border-glass bg-(--glass-bg) backdrop-blur-[20px] shadow-(--glass-shadow) animate-slide-up sm:animate-fade-in flex flex-col items-stretch"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="w-full flex items-center justify-between px-4 py-2.5 border-b border-glass bg-theme-sidebar/40 shrink-0">
-              <span className="text-xs font-semibold text-theme-secondary flex items-center gap-1.5">
-                <IconEmoji size={16} /> Add Reaction
-              </span>
-              <button
-                type="button"
-                onClick={() => setActiveReactionMessageId(null)}
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-theme-muted hover:text-theme-primary bg-theme-input/50 hover:bg-theme-input active-press transition-colors"
-                title="Close"
-              >
-                <IconX size={14} />
-              </button>
-            </div>
-            <div className="w-full overflow-hidden flex flex-col items-stretch">
-              <EmojiPicker
-                onEmojiSelect={(emoji: any) => {
-                  if (activeConversationId && activeReactionMessageId) {
-                    socketManager.toggleReaction(
-                      activeReactionMessageId,
-                      activeConversationId,
-                      emoji.native,
-                    );
-                  }
-                  setActiveReactionMessageId(null);
-                }}
-                theme="auto"
-                dynamicWidth={true}
-                previewPosition="none"
-              />
-            </div>
-          </div>
-        </div>
-      )}
       {/* Mobile Input Emoji Picker Overlay */}
-      {showEmojiPicker && isMobile && (
-        <div
-          className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-xs animate-fade-in"
-          onClick={() => setShowEmojiPicker(false)}
-        >
-          <div
-            ref={mobileEmojiContainerRef}
-            className="relative z-10 w-full max-w-md sm:rounded-2xl rounded-t-2xl overflow-hidden border-[1.5px] border-glass bg-(--glass-bg) backdrop-blur-[20px] shadow-(--glass-shadow) animate-slide-up flex flex-col items-stretch pb-1"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="w-full flex items-center justify-between px-4 py-2.5 border-b border-glass bg-theme-sidebar/30">
-              <span className="text-xs font-semibold text-theme-secondary flex items-center gap-1.5">
-                <IconEmoji size={16} /> Choose Emoji
-              </span>
-              <button
-                type="button"
-                onClick={() => setShowEmojiPicker(false)}
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-theme-muted hover:text-theme-primary bg-theme-input/50 hover:bg-theme-input active-press transition-colors"
-                title="Close"
-              >
-                <IconX size={14} />
-              </button>
-            </div>
-            <div className="w-full h-[52vh] min-h-[380px] max-h-[500px] overflow-hidden flex flex-col items-stretch">
-              <EmojiPicker
-                onEmojiSelect={onEmojiSelect}
-                theme="auto"
-                dynamicWidth={true}
-                previewPosition="none"
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      <MobileEmojiPickerModal
+        isOpen={showEmojiPicker && isMobile}
+        onClose={() => setShowEmojiPicker(false)}
+        onEmojiSelect={onEmojiSelect}
+        mobileEmojiContainerRef={mobileEmojiContainerRef}
+      />
     </div>
   );
 }
+
+export default ChatArea;
