@@ -289,6 +289,7 @@ export const updateUserProfile = createAsyncThunk(
       avatarThumbnailUrl?: string;
       groupOrder?: string;
       customThemes?: string;
+      hotReactions?: string;
       retentionMediaDays?: number;
       retentionMessageDays?: number;
     },
@@ -576,6 +577,33 @@ const authSlice = createSlice({
         }
       }
     },
+    setLocalHotReactions: (state, action) => {
+      if (state.user) {
+        state.user.hotReactions = action.payload;
+        if (isBrowser) {
+          localStorage.setItem('chat_user', JSON.stringify(state.user));
+          if (action.payload) {
+            try {
+              localStorage.setItem('rf-hot-reactions', action.payload);
+              localStorage.setItem(
+                `rf-hot-reactions-${state.user.id}`,
+                action.payload,
+              );
+            } catch {
+              // ignore
+            }
+          }
+        }
+      }
+    },
+    syncCurrentUser: (state, action) => {
+      if (action.payload) {
+        state.user = { ...state.user, ...action.payload };
+        if (isBrowser) {
+          localStorage.setItem('chat_user', JSON.stringify(state.user));
+        }
+      }
+    },
   },
   extraReducers: (builder) => {
     // Register
@@ -778,5 +806,7 @@ export const {
   addWarning,
   updateRole,
   adminUpdateUserIdentity,
+  setLocalHotReactions,
+  syncCurrentUser,
 } = authSlice.actions;
 export default authSlice.reducer;

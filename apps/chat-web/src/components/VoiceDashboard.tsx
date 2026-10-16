@@ -33,199 +33,19 @@ interface VoiceDashboardProps {
   isViewed?: boolean;
 }
 
-interface VoiceParticipantMediaProps {
-  stream: MediaStream | null;
-  isMe: boolean;
-  showCameraFeed: boolean;
-}
-
-const VoiceParticipantMedia = ({
-  stream,
-  isMe,
-  showCameraFeed,
-}: VoiceParticipantMediaProps): React.JSX.Element => {
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  const videoTrackId = stream?.getVideoTracks()[0]?.id;
-
-  useEffect(() => {
-    if (videoRef.current && stream) {
-      const hasVideo = stream.getVideoTracks().length > 0;
-      if (hasVideo && (showCameraFeed || !isMe)) {
-        videoRef.current.srcObject = stream;
-      } else {
-        videoRef.current.srcObject = null;
-      }
-    }
-  }, [stream, videoTrackId, showCameraFeed, isMe]);
-
-  const hasVideoTrack = stream && stream.getVideoTracks().length > 0;
-
-  return (
-    <>
-      {hasVideoTrack && (showCameraFeed || !isMe) ? (
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted={isMe}
-          className="absolute inset-0 w-full h-full object-cover bg-black"
-        />
-      ) : null}
-    </>
-  );
-};
-
-interface BackgroundAudioPlayerProps {
-  stream: MediaStream | null;
-  volume: number;
-  isSelfDeafened: boolean;
-}
-
-const BackgroundAudioPlayer = ({
-  stream,
-  volume,
-  isSelfDeafened,
-}: BackgroundAudioPlayerProps): React.JSX.Element => {
-  const audioRef = useRef<HTMLAudioElement>(null);
-
-  useEffect(() => {
-    if (audioRef.current && stream) {
-      audioRef.current.srcObject = stream;
-    }
-  }, [stream]);
-
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = isSelfDeafened ? 0 : volume;
-    }
-  }, [volume, isSelfDeafened]);
-
-  return (
-    <audio ref={audioRef} autoPlay playsInline style={{ display: 'none' }} />
-  );
-};
-
-/* ─── SVG Icon Helpers ─── */
-const IconBell = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    className="w-4.5 h-4.5"
-  >
-    <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-    <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
-  </svg>
-);
-
-const IconMic = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    className="w-4.5 h-4.5"
-  >
-    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
-    <path d="M19 10v1a7 7 0 0 1-14 0v-1M12 19v3M8 22h8" />
-  </svg>
-);
-const IconMicOff = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    className="w-4.5 h-4.5"
-  >
-    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
-    <path d="M19 10v1a7 7 0 0 1-14 0v-1M12 19v3M8 22h8" />
-    <line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" strokeWidth="2" />
-  </svg>
-);
-const IconHeadphones = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    className="w-4.5 h-4.5"
-  >
-    <path d="M3 18v-6a9 9 0 0 1 18 0v6M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3" />
-  </svg>
-);
-const IconHeadphonesOff = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    className="w-4.5 h-4.5"
-  >
-    <path d="M3 18v-6a9 9 0 0 1 18 0v6M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3" />
-    <line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" strokeWidth="2" />
-  </svg>
-);
-const IconCamera = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    className="w-4.5 h-4.5"
-  >
-    <path d="M23 7l-7 5 7 5V7z" />
-    <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-  </svg>
-);
-const IconScreen = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    className="w-4.5 h-4.5"
-  >
-    <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
-    <polyline points="8 21 12 17 16 21" />
-    <line x1="12" y1="17" x2="12" y2="21" />
-  </svg>
-);
-const IconDisconnect = ({ size = 18 }: { size?: number }) => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2.5"
-    style={{ width: size, height: size }}
-  >
-    <path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-5.33-5.34A19.79 19.79 0 0 1 2 3.18 2 2 0 0 1 4 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8 8.91c1.07 1.27 2.2 2.4 3.47 3.47z" />
-    <line
-      x1="1"
-      y1="1"
-      x2="23"
-      y2="23"
-      stroke="currentColor"
-      strokeWidth="2.5"
-    />
-  </svg>
-);
-const IconExpand = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    className="w-3.5 h-3.5"
-  >
-    <polyline points="15 3 21 3 21 9" />
-    <polyline points="9 21 3 21 3 15" />
-    <line x1="21" y1="3" x2="14" y2="10" />
-    <line x1="3" y1="21" x2="10" y2="14" />
-  </svg>
-);
+import {
+  BackgroundAudioPlayer,
+  FocusVideo,
+  VoiceParticipantCard,
+  IconBell,
+  IconMic,
+  IconMicOff,
+  IconHeadphones,
+  IconHeadphonesOff,
+  IconCamera,
+  IconScreen,
+  IconDisconnect,
+} from './voice';
 
 /* ─── Control Button with Tooltip ─── */
 const CtrlBtn = ({
@@ -1194,206 +1014,33 @@ export const VoiceDashboard = ({
                       const activeStream = isMe
                         ? localStreamState
                         : remoteStreams[vs.userId] || null;
-                      const hasVideo =
+                      const hasVideo = Boolean(
                         activeStream &&
-                        activeStream.getVideoTracks().length > 0;
+                          activeStream.getVideoTracks().length > 0,
+                      );
                       const isStreaming = streamingUsers.includes(vs.userId);
                       const isFocused = vs.userId === focusedUserId;
 
                       return (
-                        <div
+                        <VoiceParticipantCard
                           key={vs.userId}
-                          onClick={() => setFocusedUserId(vs.userId)}
-                          className={`voice-card relative flex flex-col items-center justify-center aspect-16/10 rounded-[10px] overflow-hidden cursor-pointer shrink-0 transition-all duration-200 w-35 md:w-auto
-                      ${
-                        isFocused
-                          ? 'border-2 border-(--accent-primary) bg-[rgba(56,189,248,0.08)]'
-                          : 'border-[1.5px] border-glass bg-(--glass-bg) hover:border-[rgba(255,255,255,0.12)] hover:bg-[rgba(255,255,255,0.025)] hover:scale-[1.015]'
-                      }
-                      ${isSpeaking && !isFocused ? 'border-(--accent-primary) shadow-[0_0_12px_rgba(56,189,248,0.2)]' : ''}
-                    `}
-                        >
-                          {/* Video preview */}
-                          <VoiceParticipantMedia
-                            stream={activeStream}
-                            isMe={isMe}
-                            showCameraFeed={isCameraOn || isScreenSharing}
-                          />
-
-                          {/* Avatar fallback when no video */}
-                          {(!hasVideo ||
-                            (isMe && !isCameraOn && !isScreenSharing)) && (
-                            <div className="relative flex items-center justify-center z-2">
-                              {isSpeaking && (
-                                <div
-                                  className="absolute -inset-0.75 rounded-full border-[2.5px] border-(--accent-primary) pointer-events-none"
-                                  style={{
-                                    animation:
-                                      'voiceSpeakingGlow 1.5s ease-in-out infinite',
-                                  }}
-                                />
-                              )}
-                              <Avatar
-                                letter={(profile.username ||
-                                  profile.displayName ||
-                                  profile.email ||
-                                  'U')[0].toUpperCase()}
-                                url={
-                                  profile.avatarThumbnailUrl ||
-                                  profile.avatarUrl
-                                }
-                                size="sm"
-                              />
-                            </div>
-                          )}
-
-                          {/* Disconnect button (appears on hover) */}
-                          {canDisconnect && !isMe && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDisconnectParticipant(vs.userId);
-                              }}
-                              className="voice-disconnect-btn absolute top-1.5 left-1.5 w-6.5 h-6.5 rounded-md border-none bg-[rgba(237,66,69,0.85)] hover:bg-[#ed4245] text-white cursor-pointer flex items-center justify-center opacity-0 scale-[0.85] transition-all duration-150 z-4"
-                              title="Disconnect user"
-                            >
-                              <IconDisconnect size={14} />
-                            </button>
-                          )}
-
-                          {/* Expand button (appears on hover) */}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setFocusedUserId(vs.userId);
-                            }}
-                            className="voice-expand-btn absolute top-1.5 right-1.5 w-6.5 h-6.5 rounded-md border-none bg-[rgba(0,0,0,0.55)] backdrop-blur-sm text-white cursor-pointer flex items-center justify-center opacity-0 scale-[0.85] transition-all duration-150 z-4"
-                            title="Focus on this user"
-                          >
-                            <IconExpand />
-                          </button>
-
-                          {/* Card Footer — name + badges */}
-                          <div className="absolute bottom-0 left-0 right-0 flex flex-col gap-1 px-1.5 py-1 bg-linear-to-t from-[rgba(0,0,0,0.7)] to-transparent z-3">
-                            <div className="flex items-center justify-between w-full">
-                              <div className="flex items-center gap-1 min-w-0">
-                                <span className="text-[10px] font-semibold text-white truncate max-w-20 drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]">
-                                  {isMe
-                                    ? 'You'
-                                    : profile.username
-                                      ? `@${profile.username}`
-                                      : profile.displayName ||
-                                        profile.email.split('@')[0]}
-                                </span>
-                                {isSpeaking && (
-                                  <div className="flex gap-0.5 items-end h-2.5">
-                                    <span className="w-0.5 bg-(--accent-primary) animate-sound-bar-1 rounded-full" />
-                                    <span className="w-0.5 bg-(--accent-primary) animate-sound-bar-2 rounded-full" />
-                                    <span className="w-0.5 bg-(--accent-primary) animate-sound-bar-3 rounded-full" />
-                                  </div>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-1">
-                                {isStreaming && (
-                                  <span
-                                    className="voice-live-badge inline-flex items-center gap-0.75 px-1 py-px rounded bg-[#ed4245] text-[8px] font-extrabold uppercase text-white leading-none"
-                                    style={{
-                                      animation:
-                                        'voiceLivePulse 2s ease-in-out infinite',
-                                      boxShadow:
-                                        '0 0 8px rgba(237, 66, 69, 0.4)',
-                                    }}
-                                  >
-                                    LIVE
-                                  </span>
-                                )}
-                                {vs.isMuted && (
-                                  <svg
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="var(--danger)"
-                                    strokeWidth="2.5"
-                                    className="w-2.75 h-2.75 opacity-80"
-                                  >
-                                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
-                                    <path d="M19 10v1a7 7 0 0 1-14 0v-1M12 19v3M8 22h8" />
-                                    <line
-                                      x1="1"
-                                      y1="1"
-                                      x2="23"
-                                      y2="23"
-                                      stroke="var(--danger)"
-                                      strokeWidth="2.5"
-                                    />
-                                  </svg>
-                                )}
-                                {vs.isDeafened && (
-                                  <svg
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="var(--danger)"
-                                    strokeWidth="2.5"
-                                    className="w-2.75 h-2.75 opacity-80"
-                                  >
-                                    <path d="M3 18v-6a9 9 0 0 1 18 0v6M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3" />
-                                    <line
-                                      x1="1"
-                                      y1="1"
-                                      x2="23"
-                                      y2="23"
-                                      stroke="var(--danger)"
-                                      strokeWidth="2.5"
-                                    />
-                                  </svg>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Volume slider for remote users */}
-                            {!isMe && (
-                              <div
-                                className="flex items-center gap-1 bg-[rgba(0,0,0,0.6)] px-1.5 py-0.5 rounded backdrop-blur-sm self-start text-white text-[9px] mt-0.5"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <svg
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2.5"
-                                  className="w-3 h-3 shrink-0 opacity-80"
-                                >
-                                  <path d="M11 5L6 9H2v6h4l5 4V5z" />
-                                </svg>
-                                <input
-                                  type="range"
-                                  min="0"
-                                  max="1"
-                                  step="0.05"
-                                  value={
-                                    userVolumes[vs.userId] !== undefined
-                                      ? userVolumes[vs.userId]
-                                      : 0.8
-                                  }
-                                  onChange={(e) => {
-                                    const val = parseFloat(e.target.value);
-                                    setUserVolumes((prev) => ({
-                                      ...prev,
-                                      [vs.userId]: val,
-                                    }));
-                                  }}
-                                  className="w-14 h-0.5 bg-[rgba(255,255,255,0.2)] rounded-lg appearance-none cursor-pointer accent-(--accent-primary)"
-                                />
-                                <span className="w-4 text-right font-mono text-[8px] opacity-80">
-                                  {Math.round(
-                                    (userVolumes[vs.userId] !== undefined
-                                      ? userVolumes[vs.userId]
-                                      : 0.8) * 100,
-                                  )}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
+                          vs={vs}
+                          profile={profile}
+                          isMe={isMe}
+                          isSpeaking={isSpeaking}
+                          activeStream={activeStream}
+                          hasVideo={hasVideo}
+                          isStreaming={isStreaming}
+                          isFocused={isFocused}
+                          isCameraOn={isCameraOn}
+                          isScreenSharing={isScreenSharing}
+                          canDisconnect={canDisconnect}
+                          onDisconnect={handleDisconnectParticipant}
+                          onFocus={setFocusedUserId}
+                          userVolumes={userVolumes}
+                          setUserVolumes={setUserVolumes}
+                          variant="sidebar"
+                        />
                       );
                     })}
                   </div>
@@ -1417,159 +1064,30 @@ export const VoiceDashboard = ({
                     const activeStream = isMe
                       ? localStreamState
                       : remoteStreams[vs.userId] || null;
+                    const hasVideo = Boolean(
+                      activeStream && activeStream.getVideoTracks().length > 0,
+                    );
+                    const isStreaming = streamingUsers.includes(vs.userId);
 
                     return (
-                      <div
+                      <VoiceParticipantCard
                         key={vs.userId}
-                        className={`relative flex flex-col items-center justify-center aspect-4/3 rounded-2xl border overflow-hidden backdrop-blur-md transition-all duration-300
-                    ${
-                      isSpeaking
-                        ? 'border-(--accent-primary) shadow-[0_0_15px_rgba(114,137,218,0.2)] bg-[rgba(114,137,218,0.08)] scale-[1.02]'
-                        : 'border-glass bg-(--glass-bg) hover:border-[rgba(255,255,255,0.12)] hover:bg-[rgba(255,255,255,0.015)]'
-                    }`}
-                      >
-                        {/* Dynamic Audio/Video Render element */}
-                        <VoiceParticipantMedia
-                          stream={activeStream}
-                          isMe={isMe}
-                          showCameraFeed={isCameraOn || isScreenSharing}
-                        />
-
-                        {/* Standard overlay if video is off */}
-                        {(!activeStream ||
-                          activeStream.getVideoTracks().length === 0) && (
-                          <div className="relative flex items-center justify-center">
-                            {isSpeaking && (
-                              <div className="absolute inset-0 rounded-full border-2 border-(--accent-primary) animate-ping opacity-60 scale-[1.1]" />
-                            )}
-                            <Avatar
-                              letter={(profile.username ||
-                                profile.displayName ||
-                                profile.email ||
-                                'U')[0].toUpperCase()}
-                              url={
-                                profile.avatarThumbnailUrl || profile.avatarUrl
-                              }
-                              size="lg"
-                            />
-                          </div>
-                        )}
-
-                        {/* Badges */}
-                        <div className="absolute top-3 right-3 flex items-center gap-1.5 z-10">
-                          {vs.isMuted && (
-                            <span className="p-1 rounded-lg bg-(--danger-bg) text-(--danger) flex items-center justify-center border border-(--danger-border)">
-                              <svg
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2.5"
-                                className="w-3 h-3"
-                              >
-                                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
-                                <path d="M19 10v1a7 7 0 0 1-14 0v-1M12 19v3M8 22h8" />
-                                <line
-                                  x1="1"
-                                  y1="1"
-                                  x2="23"
-                                  y2="23"
-                                  stroke="currentColor"
-                                  strokeWidth="2.5"
-                                />
-                              </svg>
-                            </span>
-                          )}
-                          {vs.isDeafened && (
-                            <span className="p-1 rounded-lg bg-(--danger-bg) text-(--danger) flex items-center justify-center border border-(--danger-border)">
-                              <svg
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2.5"
-                                className="w-3 h-3"
-                              >
-                                <path d="M3 18v-6a9 9 0 0 1 18 0v6M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3" />
-                                <line
-                                  x1="1"
-                                  y1="1"
-                                  x2="23"
-                                  y2="23"
-                                  stroke="currentColor"
-                                  strokeWidth="2.5"
-                                />
-                              </svg>
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Left Bottom Name & Speaker indicator */}
-                        <div className="absolute bottom-3 left-3 flex flex-col gap-1.5 max-w-[85%] z-10">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold text-theme-primary truncate bg-[rgba(0,0,0,0.45)] px-2.5 py-1 rounded-lg backdrop-blur-sm shadow-sm">
-                              {isMe
-                                ? 'You'
-                                : profile.username
-                                  ? `@${profile.username}`
-                                  : profile.displayName ||
-                                    profile.email.split('@')[0]}
-                            </span>
-
-                            {/* Speaking Soundbar visualizer */}
-                            {isSpeaking && (
-                              <div className="flex gap-0.5 items-end h-3 bg-[rgba(0,0,0,0.45)] px-1.5 py-1 rounded-md">
-                                <span className="w-0.5 bg-(--accent-primary) animate-sound-bar-1 rounded-full" />
-                                <span className="w-0.5 bg-(--accent-primary) animate-sound-bar-2 rounded-full" />
-                                <span className="w-0.5 bg-(--accent-primary) animate-sound-bar-3 rounded-full" />
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Volume slider for remote users */}
-                          {!isMe && (
-                            <div
-                              className="flex items-center gap-1.5 bg-[rgba(0,0,0,0.55)] px-2 py-1 rounded-lg backdrop-blur-sm shadow-sm text-white text-[10px] w-fit"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <svg
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2.5"
-                                className="w-3 h-3 shrink-0 opacity-85"
-                              >
-                                <path d="M11 5L6 9H2v6h4l5 4V5z" />
-                              </svg>
-                              <input
-                                type="range"
-                                min="0"
-                                max="1"
-                                step="0.05"
-                                value={
-                                  userVolumes[vs.userId] !== undefined
-                                    ? userVolumes[vs.userId]
-                                    : 0.8
-                                }
-                                onChange={(e) => {
-                                  const val = parseFloat(e.target.value);
-                                  setUserVolumes((prev) => ({
-                                    ...prev,
-                                    [vs.userId]: val,
-                                  }));
-                                }}
-                                className="w-16 h-1 bg-[rgba(255,255,255,0.2)] rounded-lg appearance-none cursor-pointer accent-(--accent-primary)"
-                              />
-                              <span className="w-5 text-right font-mono text-[9px] opacity-90">
-                                {Math.round(
-                                  (userVolumes[vs.userId] !== undefined
-                                    ? userVolumes[vs.userId]
-                                    : 0.8) * 100,
-                                )}
-                                %
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                        vs={vs}
+                        profile={profile}
+                        isMe={isMe}
+                        isSpeaking={isSpeaking}
+                        activeStream={activeStream}
+                        hasVideo={hasVideo}
+                        isStreaming={isStreaming}
+                        isCameraOn={isCameraOn}
+                        isScreenSharing={isScreenSharing}
+                        canDisconnect={canDisconnect}
+                        onDisconnect={handleDisconnectParticipant}
+                        onFocus={setFocusedUserId}
+                        userVolumes={userVolumes}
+                        setUserVolumes={setUserVolumes}
+                        variant="grid"
+                      />
                     );
                   })}
                 </div>
@@ -1661,32 +1179,5 @@ export const VoiceDashboard = ({
           portalTarget,
         )}
     </>
-  );
-};
-
-/* ─── Focus Video Sub-Component ─── */
-const FocusVideo = ({
-  stream,
-  isMe,
-}: {
-  stream: MediaStream;
-  isMe: boolean;
-}) => {
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  useEffect(() => {
-    if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream;
-    }
-  }, [stream]);
-
-  return (
-    <video
-      ref={videoRef}
-      autoPlay
-      playsInline
-      muted={isMe}
-      className="w-full h-full object-contain bg-black"
-    />
   );
 };
